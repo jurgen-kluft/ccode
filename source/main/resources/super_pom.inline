@@ -17,6 +17,23 @@
   </UsingTask>
 
   <UsingTask
+  TaskName="CreateGuid"
+  TaskFactory="CodeTaskFactory"
+  AssemblyFile="$(MSBuildToolsPath)\Microsoft.Build.Tasks.v4.0.dll">
+    <ParameterGroup>
+      <NewGuid ParameterType="System.String" Output="True"/>
+    </ParameterGroup>
+    <Task>
+      <Using Namespace="System" />
+      <Code Type="Fragment" Language="cs">
+        <![CDATA[
+          NewGuid = System.Guid.NewGuid().ToString();
+        ]]>
+      </Code>
+    </Task>
+  </UsingTask>
+
+  <UsingTask
   TaskName="FileTemplate"
   TaskFactory="CodeTaskFactory"
   AssemblyFile="$(MSBuildToolsPath)\Microsoft.Build.Tasks.v4.0.dll">

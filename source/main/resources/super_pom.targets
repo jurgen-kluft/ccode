@@ -144,12 +144,8 @@
     <!-- Generate folder -->
     <MakeDir Directories="$(mvpackage_name)" />
     <!-- Generate Guids -->
-    <MSBuild.ExtensionPack.Framework.Guid TaskAction="Create">
-      <Output TaskParameter="FormattedGuidString" PropertyName="mvpackage_main_project_guid" />
-    </MSBuild.ExtensionPack.Framework.Guid>
-    <MSBuild.ExtensionPack.Framework.Guid TaskAction="Create">
-      <Output TaskParameter="FormattedGuidString" PropertyName="mvpackage_test_project_guid" />
-    </MSBuild.ExtensionPack.Framework.Guid>
+    <CreateGuid><Output ItemName="mvpackage_main_project_guid" TaskParameter="NewGuid" /></CreateGuid>
+    <CreateGuid><Output ItemName="mvpackage_test_project_guid" TaskParameter="NewGuid" /></CreateGuid>
     <!-- Generate pom.props -->
     <ItemGroup>
       <TemplateTokens Include="main">
