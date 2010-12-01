@@ -1,0 +1,9 @@
+D:\SCM_PACKAGE_REPO\com\virtuos\tnt\xmaven\xmaven\xmaven\bin\Debug\xmaven.exe
+D:\SCM_PACKAGE_REPO\com\virtuos\tnt\xmaven\xmaven\xmaven\bin\Debug\xmaven.pdb
+D:\SCM_PACKAGE_REPO\com\virtuos\tnt\xmaven\xmaven\xmaven\obj\x86\Debug\ResolveAssemblyReference.cache
+D:\SCM_PACKAGE_REPO\com\virtuos\tnt\xmaven\xmaven\xmaven\obj\x86\Debug\xmaven.Main.resources
+D:\SCM_PACKAGE_REPO\com\virtuos\tnt\xmaven\xmaven\xmaven\obj\x86\Debug\xmaven.Properties.Resources.resources
+D:\SCM_PACKAGE_REPO\com\virtuos\tnt\xmaven\xmaven\xmaven\obj\x86\Debug\GenerateResource.read.1.tlog
+D:\SCM_PACKAGE_REPO\com\virtuos\tnt\xmaven\xmaven\xmaven\obj\x86\Debug\GenerateResource.write.1.tlog
+D:\SCM_PACKAGE_REPO\com\virtuos\tnt\xmaven\xmaven\xmaven\obj\x86\Debug\xmaven.exe
+D:\SCM_PACKAGE_REPO\com\virtuos\tnt\xmaven\xmaven\xmaven\obj\x86\Debug\xmaven.pdb

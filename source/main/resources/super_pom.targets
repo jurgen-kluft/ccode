@@ -1,0 +1,293 @@
+<Project ToolsVersion="4.0" DefaultTargets="mvinfo" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+
+  <Import Project="super_pom_imports.targets"/>
+  <Import Project="super_pom.inline"/>
+
+  <!-- These are the xmaven lifecycle targets that can be overriden -->
+  <Target Name = "__mvvalidate"></Target>
+  <Target Name = "__mvinitialize"></Target>
+  <Target Name = "__mvsources_generate"></Target>
+  <Target Name = "__mvsources_process"></Target>
+  <Target Name = "__mvresources_generate"></Target>
+  <Target Name = "__mvresources_process"></Target>
+  <Target Name = "__mvcompile"></Target>
+  <Target Name = "__mvcompile_post"></Target>
+  <Target Name = "__mvtest_sources_generate"></Target>
+  <Target Name = "__mvtest_sources_process"></Target>
+  <Target Name = "__mvtest_resources_generate"></Target>
+  <Target Name = "__mvtest_resources_process"></Target>
+  <Target Name = "__mvtest_compile"></Target>
+  <Target Name = "__mvtest_compile_post"></Target>
+  <Target Name = "__mvtest_run"></Target>
+  <Target Name = "__mvpackage_prepare"></Target>
+  <Target Name = "__mvpackage"></Target>
+  <Target Name = "__mvintegration_test_pre"></Target>
+  <Target Name = "__mvintegration_test_run"></Target>
+  <Target Name = "__mvintegration_test_post"></Target>
+  <Target Name = "__mvverify"></Target>
+  <Target Name = "__mvinstall"></Target>
+  <Target Name = "__mvdeploy"></Target>
+
+  <!-- These are the core xmaven lifecycle targets and should not be overriden!! -->
+  <Target Name = "mvvalidate" DependsOnTargets=""><CallTarget Targets="__mvvalidate" /></Target>
+  <Target Name = "mvinitialize" DependsOnTargets="mvvalidate"><CallTarget Targets="__mvinitialize" /></Target>
+  <Target Name = "mvsources_generate" DependsOnTargets="mvinitialize"><CallTarget Targets="__mvsources_generate" /></Target>
+  <Target Name = "mvsources_process" DependsOnTargets="mvsources_generate"><CallTarget Targets="__mvsources_process" /></Target>
+  <Target Name = "mvresources_generate" DependsOnTargets="mvsources_process"><CallTarget Targets="__mvresources_generate" /></Target>
+  <Target Name = "mvresources_process" DependsOnTargets="mvresources_generate"><CallTarget Targets="__mvresources_process" /></Target>
+  <Target Name = "mvcompile" DependsOnTargets="mvresources_process"><CallTarget Targets="__mvcompile" /></Target>
+  <Target Name = "mvcompile_post" DependsOnTargets="mvcompile"><CallTarget Targets="__mvcompile_post" /></Target>
+  <Target Name = "mvtest_sources_generate" DependsOnTargets="mvcompile_post"><CallTarget Targets="__mvtest_sources_generate" /></Target>
+  <Target Name = "mvtest_sources_process" DependsOnTargets="mvtest_sources_generate"><CallTarget Targets="__mvtest_sources_process" /></Target>
+  <Target Name = "mvtest_resources_generate" DependsOnTargets="mvtest_sources_process"><CallTarget Targets="__mvtest_resources_generate" /></Target>
+  <Target Name = "mvtest_resources_process" DependsOnTargets="mvtest_resources_generate"><CallTarget Targets="__mvtest_resources_process" /></Target>
+  <Target Name = "mvtest_compile" DependsOnTargets="mvtest_resources_process"><CallTarget Targets="__mvtest_compile" /></Target>
+  <Target Name = "mvtest_compile_post" DependsOnTargets="mvtest_compile"><CallTarget Targets="__mvtest_compile_post" /></Target>
+  <Target Name = "mvtest_run" DependsOnTargets="mvtest_compile_post"><CallTarget Targets="__mvtest_run" /></Target>
+  <Target Name = "mvpackage_prepare" DependsOnTargets="mvtest_run"><CallTarget Targets="__mvpackage_prepare" /></Target>
+  <Target Name = "mvpackage" DependsOnTargets="mvpackage_prepare"><CallTarget Targets="__mvpackage" /></Target>
+  <Target Name = "mvintegration_test_pre" DependsOnTargets="mvpackage"><CallTarget Targets="__mvintegration_test_pre" /></Target>
+  <Target Name = "mvintegration_test_run" DependsOnTargets="mvintegration_test_pre"><CallTarget Targets="__mvintegration_test_run" /></Target>
+  <Target Name = "mvintegration_test_post" DependsOnTargets="mvintegration_test_run"><CallTarget Targets="__mvintegration_test_post" /></Target>
+  <Target Name = "mvverify" DependsOnTargets="mvintegration_test_post"><CallTarget Targets="__mvverify" /></Target>
+  <Target Name = "mvinstall" DependsOnTargets="mvverify"><CallTarget Targets="__mvinstall" /></Target>
+  <Target Name = "mvdeploy" DependsOnTargets="mvinstall"><CallTarget Targets="__mvdeploy" /></Target>
+
+  <Target Name = "mvinfo" />
+  <Target Name = "mvclean" />
+
+  <Target Name="mvpackage_hg_extractrevision" Condition="'$(MSBuildMercurialTasksAvailable)' == 'true'" DependsOnTargets="MavenEnvironmentExtensionChecks">
+    <HgVersion LocalPath="$(MSBuildProjectDirectory)" Timeout="5000">
+      <Output TaskParameter="Changeset" PropertyName="mvpackage_vcs_version" />
+    </HgVersion>
+    <HgBranch LocalPath="$(MSBuildProjectDirectory)" Timeout="5000">
+      <Output TaskParameter="BranchName" PropertyName="mvpackage_vcs_branch" />
+    </HgBranch>
+  </Target>
+ 
+  <Target Name="mvpackage_generate_zip" DependsOnTargets="mvpackage_hg_extractrevision">
+    <Time>
+      <Output TaskParameter="Year" PropertyName="mvpackage_build_year" />
+      <Output TaskParameter="Month" PropertyName="mvpackage_build_month" />
+      <Output TaskParameter="Day" PropertyName="mvpackage_build_day" />
+    </Time>
+    
+    <PropertyGroup>
+      <mvpackage_builddate>$(mvpackage_build_year).$(mvpackage_build_month)</mvpackage_builddate>
+      <mvpackage_buildrev>$(mvpackage_vcs_branch).$(mvpackage_vcs_version)</mvpackage_buildrev>
+    </PropertyGroup>
+
+    <ItemGroup>
+      <mvpackage_ZipFiles Include="target\$(mvpackage_name)\**\*.*" Exclude="@(DefaultExclude)" />
+    </ItemGroup>
+
+    <Message Text="MvPackage Filename: $(mvpackage_name)_$(mvpackage_versionmajor).$(mvpackage_versionminor).$(mvpackage_builddate).$(mvpackage_buildrev)_$(mvpackage_platform)"/>
+
+    <MSBuild.ExtensionPack.Compression.DNZip TaskAction="Create" CompressFiles="@(mvpackage_zipfiles)" RemoveRoot="target\" ZipFileName="target\$(mvpackage_name)_$(mvpackage_version_major).$(mvpackage_version_minor).$(mvpackage_builddate).$(mvpackage_buildrev)_$(mvpackage_platform).zip"/>
+  </Target>
+
+  <Target Name="mvpackage_prepare_zip">
+    <!-- Delete the file in the target folder -->
+    <ItemGroup>
+      <mvpackage_clean_files Include="target\$(mvpackage_name)\**\*.*" />
+    </ItemGroup>
+    <Delete Files="@(mvpackage_clean_files)"/>
+
+    <ItemGroup>
+      <mvpackage_src_files Include="source\**\*.*" Exclude="source\**\*.user;source\**\*.suo;source\**\*.sdf;source\**\*.opensdf;source\**\*.ipch" />
+      <mvpackage_lib_files Include="target\outdir\$(mvpackage_name)*\*$(mvpackage_platform)*.lib" />
+      <mvpackage_tools_files Include="tools\**\*.*" />
+      <mvpackage_doc_files Include="docs\**\*.*" />
+      <mvpackage_pom_files Include="dep.props" />
+    </ItemGroup>
+
+    <Copy SourceFiles="@(mvpackage_src_files)" DestinationFolder="target\$(mvpackage_name)\source\%(RecursiveDir)"/>
+    <Copy SourceFiles="@(mvpackage_lib_files)" DestinationFolder="target\$(mvpackage_name)\libs\$(mvpackage_name)"/>
+    <Copy SourceFiles="@(mvpackage_tools_files)" DestinationFolder="target\$(mvpackage_name)\tools\%(RecursiveDir)"/>
+    <Copy SourceFiles="@(mvpackage_doc_files)" DestinationFolder="target\$(mvpackage_name)\docs\%(RecursiveDir)"/>
+    <Copy SourceFiles="@(mvpackage_pom_files)" DestinationFolder="target\$(mvpackage_name)\"/>
+  </Target>
+
+  <Target Name="__mvpackage">
+    <CallTarget Targets="mvpackage_prepare_zip"></CallTarget>
+    <CallTarget Targets="mvpackage_generate_zip"></CallTarget>
+  </Target>
+
+  <!-- This will call msbuild multiple times for every item in PackageConfigTargets -->
+  <Target Name="mvcompile_platform_for_every_target" Outputs="%(mvpackage_config_targets.Identity)">
+    <MSBuild Condition=" '$(mvpackage_proj)' != ''" Projects="$(mvpackage_proj)" Properties="Configuration=%(mvpackage_config_targets.Identity);Platform=$(mvpackage_platform)"/>
+  </Target>
+
+  <Target Name="__mvcompile">
+    <CallTarget Targets="mvcompile_platform_for_every_target"></CallTarget>
+  </Target>
+
+  <!-- This will call msbuild multiple times for every item in PackageConfigTargets -->
+  <Target Name="mvclean_platform_for_every_target" Outputs="%(mvpackage_config_targets.Identity)">
+    <MSBuild Projects="$(mvpackage_proj)" Targets="Clean" Properties="Configuration=%(mvpackage_config_targets.Identity);Platform=$(mvpackage_platform)"/>
+  </Target>
+  
+  <Target Name="mvclean">
+    <CallTarget Targets="mvclean_platform_for_every_target"></CallTarget>
+  </Target>
+
+  <Target Name="mvgenerate_cpp_project_main">
+    <msbuild.xmaven.tasks.GenerateCppProject TemplatePath="$(mvpackage_local_url)com\virtuos\xmaven\tasks\template.cpp.project\" OutputPath="$(mvpackage_dir)\source\main\cpp" Configs="@(Configs)" Platforms="@(Platforms)" Configurations="@(ProjectConfigurations)" ProjectName="$(mvpackage_name)" ProjectGuid="$(mvpackage_main_guid)" />
+  </Target>
+  <Target Name="mvgenerate_cpp_project_test">
+    <msbuild.xmaven.tasks.GenerateCppProject TemplatePath="$(mvpackage_local_url)com\virtuos\xmaven\tasks\template.cpp.project\" OutputPath="$(mvpackage_dir)\source\test\cpp" Configs="@(Configs)" Platforms="@(Platforms)" Configurations="@(ProjectConfigurations)" ProjectName="$(mvpackage_name)" ProjectGuid="$(mvpackage_test_guid)" />
+  </Target>
+  <Target Name="mvgenerate_cpp_solution">
+  </Target>
+
+  <Target Name="mvsetup_stage_1">
+    <!-- Generate folder -->
+    <MakeDir Directories="$(mvpackage_name)" />
+    <!-- Generate Guids -->
+    <MSBuild.ExtensionPack.Framework.Guid TaskAction="Create">
+      <Output TaskParameter="FormattedGuidString" PropertyName="mvpackage_main_project_guid" />
+    </MSBuild.ExtensionPack.Framework.Guid>
+    <MSBuild.ExtensionPack.Framework.Guid TaskAction="Create">
+      <Output TaskParameter="FormattedGuidString" PropertyName="mvpackage_test_project_guid" />
+    </MSBuild.ExtensionPack.Framework.Guid>
+    <!-- Generate pom.props -->
+    <ItemGroup>
+      <TemplateTokens Include="main">
+        <Name>$(mvpackage_name)</Name>
+        <MainProjectGuid>$(mvpackage_main_project_guid)</MainProjectGuid>
+        <TestProjectGuid>$(mvpackage_test_project_guid)</TestProjectGuid>
+      </TemplateTokens>
+    </ItemGroup>
+    <Copy SourceFiles="$(mvpackage_local_url)\com\virtuos\xmaven\templates\pom.props.template" DestinationFiles="$(mvpackage_name)\pom.props.template" />
+    <!-- Copy pom.targets -->
+    <Copy SourceFiles="$(mvpackage_local_url)\com\virtuos\xmaven\templates\pom.targets.template" DestinationFiles="$(mvpackage_name)\pom.targets" />
+    <!-- Copy dep.props -->
+    <Copy SourceFiles="$(mvpackage_local_url)\com\virtuos\xmaven\templates\dep.props.template" DestinationFiles="$(mvpackage_name)\dep.props" />
+    <FileTemplate Template="$(mvpackage_name)\pom.props.template" Destination="$(mvpackage_name)\pom.props" Tokens="@(TemplateTokens)"/>
+    <Delete Files="$(mvpackage_name)\pom.props.template"/>
+  </Target>
+
+  <Target Name="mvsetup_stage_2">
+
+    <!-- Generate directory structure -->
+    <MakeDir Directories="%(DirectoryStructure.Identity)" />
+
+    <!-- Generate vcxproj for main -->
+    <CallTarget Targets="mvgenerate_cpp_project_main" Condition="'$(mvpackage_main_guid)' != '' " />
+
+    <!-- Generate vcxproj for test -->
+    <CallTarget Targets="mvgenerate_cpp_project_test" Condition="'$(mvpackage_test_guid)' != '' " />
+
+    <!-- Generate sln -->
+    <CallTarget Targets="mvgenerate_cpp_solution"/>
+
+  </Target>
+
+  <Target Name="mvsetup">
+    <!-- If pom.props, pom.targets and dep.props exist then -->
+    <!--   Construct the directory structure -->
+    <!--   Sync the dependencies -->
+    <!--   Create the vcxproj for main and test -->
+    <!--   Create the sln -->
+    <!-- Else -->
+    <!--   Generate pom.props -->
+    <!--   Generate pom.targets -->
+    <!--   Generate dep.props -->
+    <!-- Endif -->
+
+    <Message Text="$(mvpackage_dir)" />
+    
+    <CallTarget Targets="mvsetup_stage_1" Condition="!Exists('$(mvpackage_dir)\pom.props') Or !Exists('$(mvpackage_dir)\pom.targets') Or !Exists('$(mvpackage_dir)\dep.props')"></CallTarget>
+    <CallTarget Targets="mvsetup_stage_2" Condition="Exists('pom.props') And Exists('pom.targets') And Exists('dep.props')"></CallTarget>
+  </Target>
+
+  <Target Name="mvinfo" DependsOnTargets="mvpackage_hg_extractrevision">
+    <Time>
+      <Output TaskParameter="Year" PropertyName="mvpackage_version_year" />
+      <Output TaskParameter="Month" PropertyName="mvpackage_version_month" />
+    </Time>
+
+    <Message Text="MvPackage VCS Version    = $(mvpackage_vcs_version)" />
+    <Message Text="MvPackage VCS Branch     = $(mvpackage_vcs_branch)" />
+
+    <Message Text="MvPackage Directory      = $(mvpackage_dir)" />
+    <Message Text="MvPackage Name           = $(mvpackage_name)" />
+    <Message Text="MvPackage Group          = $(mvpackage_group)" />
+
+    <Message Text="MvPackage Version        = $(mvpackage_version_major).$(mvpackage_version_minor).$(mvpackage_version_year).$(mvpackage_version_month).$(mvpackage_vcs_branch).$(mvpackage_vcs_version)" />
+
+    <Message Text="MvPackage Platform       = $(mvpackage_platform)" />
+    <Message Text="MvPackage Platforms      = $(mvpackage_platforms)" />
+
+    <Message Condition = " '$(mvpackage_language)' == 'cpp' " 
+             Text="MvPackage Language       = C++" />
+    <Message Condition = " '$(mvpackage_language)' == 'cs' "
+             Text="MvPackage Language       = C#" />
+
+    <Message Text="MvPackage Config-Target  = %(mvpackage_config_targets.Identity)" />
+    <Message Text="MvPackage Repository     = %(mvpackage_repository.Identity), %(mvpackage_repository.URL)" />
+
+    <Message Text="MvPackage Dependencies   = %(mvpackage_dependency.Identity), group:%(mvpackage_dependency.Group), platforms:%(mvpackage_dependency.Platforms), version:%(mvpackage_dependency.Version), type:%(mvpackage_dependency.Type)" />
+
+  </Target>
+
+  <Target Name="mvpackage_group_expand">
+    <MSBuild.ExtensionPack.Framework.TextString TaskAction="Split" String1="$(mvpackage_group)" String2="." StartIndex="0">
+      <Output PropertyName="mvpackage_group_h" TaskParameter="NewString"/>
+    </MSBuild.ExtensionPack.Framework.TextString>
+    <MSBuild.ExtensionPack.Framework.TextString TaskAction="Split" String1="$(mvpackage_group)" String2="." StartIndex="1">
+      <Output PropertyName="mvpackage_group_m" TaskParameter="NewString"/>
+    </MSBuild.ExtensionPack.Framework.TextString>
+    <MSBuild.ExtensionPack.Framework.TextString TaskAction="Split" String1="$(mvpackage_group)" String2="." StartIndex="2">
+      <Output PropertyName="mvpackage_group_l" TaskParameter="NewString"/>
+    </MSBuild.ExtensionPack.Framework.TextString>
+  </Target>
+
+  <Target Name="mvpackage_install" DependsOnTargets="mvpackage_group_expand">
+    <!-- Install the package zip in the local package repository -->
+    <!-- Update latest in the local package repository -->
+    <!-- Parameters to pass to the task: -->
+    <!-- - Path to package zip file -->
+    <!-- - URL of local package repositories -->
+
+    <PropertyGroup>
+      <SrcFilename>$(mvpackage_name)_$(mvpackage_version_major).$(mvpackage_version_minor).$(mvpackage_version_year).$(mvpackage_version_month).$(mvpackage_vcs_branch).$(mvpackage_vcs_version)_$(mvpackage_platform)</SrcFilename>
+      <SrcFilenameExt>.zip</SrcFilenameExt>
+      <SrcFolder>file://$(mvpackage_dir)\target\</SrcFolder>
+      <DstFolder>$(mvpackage_local_url)$(mvpackage_group_h)\$(mvpackage_group_m)\$(mvpackage_group_l)\$(mvpackage_name)\</DstFolder>
+      <Name>$(mvpackage_name)</Name>
+      <Major>$(mvpackage_version_major)</Major>
+      <Minor>$(mvpackage_version_minor)</Minor>
+      <Year>$(mvpackage_version_year)</Year>
+      <Month>$(mvpackage_version_month)</Month>
+      <Branch>$(mvpackage_vcs_branch)</Branch>
+      <Revision>$(mvpackage_vcs_version)</Revision>
+      <Platform>$(mvpackage_platform)</Platform>
+    </PropertyGroup>
+
+    <Copy SourceFiles="$(SrcFolder)$(SrcFilename)$(SrcFilenameExt)" DestinationFiles="$(DstFolder)$(Year)\$(Month)" />
+    <Delete Files="$!(DstFolder)latest\$(Name)_*$(Branch)*_$(Platform).latest" />
+    <MkFile SourceFile="$(DstFolder)latest\$(SrcFilename)$(SrcFilenameExt).latest" />
+  </Target>
+
+  <Target Name="mvpackage_deploy">
+    <!-- Install the package zip in the remote package repository -->
+    <!-- Update latest in the remote package repository -->
+    <!-- Parameters to pass to the task: -->
+    <!-- - Path to package zip file -->
+    <!-- - URL of remote package repositories -->
+
+  </Target>
+
+  <Target Name="mvpackage_sync">
+    <!-- Retrieve the dependencies, recursive -->
+    <!-- Parameters to pass to the task: -->
+    <!-- - Current path -->
+    <!-- - Target path where package needs to go -->
+    <!-- - URLs of local and remote package repositories -->
+    <!-- - Current list of dependencies -->
+
+  </Target>
+
+</Project>
+

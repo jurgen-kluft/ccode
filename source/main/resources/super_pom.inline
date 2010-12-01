@@ -1,0 +1,64 @@
+<Project ToolsVersion="4.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+
+  <UsingTask
+    TaskName="MkFile"
+    TaskFactory="CodeTaskFactory"
+    AssemblyFile="$(MSBuildToolsPath)\Microsoft.Build.Tasks.v4.0.dll">
+    <ParameterGroup>
+      <SourceFile ParameterType="System.String" Required="true"/>
+    </ParameterGroup>
+    <Task>
+      <Code Type="Fragment" Language="cs">
+        <![CDATA[
+          File.Create(SourceFile);
+        ]]>
+      </Code>
+    </Task>
+  </UsingTask>
+
+  <UsingTask
+  TaskName="FileTemplate"
+  TaskFactory="CodeTaskFactory"
+  AssemblyFile="$(MSBuildToolsPath)\Microsoft.Build.Tasks.v4.0.dll">
+    <ParameterGroup>
+      <Template ParameterType="System.String" Required="true"/>
+      <Tokens ParameterType="Microsoft.Build.Framework.ITaskItem[]" Required="true"/>
+      <Destination ParameterType="System.String" Required="true"/>
+    </ParameterGroup>
+    <Task>
+      <Code Type="Fragment" Language="cs">
+        <![CDATA[
+            if (File.Exists(Template))
+            {
+                string[] lines = File.ReadAllLines(Template);
+                FileStream wfs = new FileStream(Destination, FileMode.Create, FileAccess.Write);
+                StreamWriter writer = new StreamWriter(wfs);
+                foreach(string l in lines)
+                {
+                    string line = l;
+                    foreach (ITaskItem item in Tokens)
+                    {
+                        foreach (string name in item.MetadataNames)
+                        {
+                            string value = string.Empty;
+                            try
+                            {
+                                value = item.GetMetadata(name);
+                            }
+                            catch (Exception)
+                            {
+                            }
+                            line = line.Replace("${" + name + "}", value);
+                        }
+                    }
+                    writer.WriteLine(line);
+                }
+                writer.Close();
+                wfs.Close();
+            }
+        ]]>
+      </Code>
+    </Task>
+  </UsingTask>
+
+</Project>

@@ -1,0 +1,84 @@
+<Project ToolsVersion="4.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+ 
+  <!-- 
+    Include MSBuild Community Tasks.
+  -->
+  <Choose>
+    <When Condition="Exists('$(MSBuildExtensionsPath)\MSBuildCommunityTasks\MSBuild.Community.Tasks.Targets')">
+      <PropertyGroup>
+        <MSBuildCommunityTasksAvailable>true</MSBuildCommunityTasksAvailable>
+      </PropertyGroup>
+    </When>
+    <Otherwise>
+      <PropertyGroup>
+        <MSBuildCommunityTasksAvailable>false</MSBuildCommunityTasksAvailable>
+      </PropertyGroup>
+    </Otherwise>
+  </Choose>
+  <Import Project="$(MSBuildExtensionsPath)\MSBuildCommunityTasks\MSBuild.Community.Tasks.Targets" Condition="'$(MSBuildCommunityTasksAvailable)' == 'true'" />
+
+  <!-- 
+    Include MSBuild Extension Tasks.
+  -->
+  <Choose>
+    <When Condition="Exists('$(MSBuildExtensionsPath)\ExtensionPack\4.0\MSBuild.ExtensionPack.tasks')">
+      <PropertyGroup>
+        <MSBuildExtensionTasksAvailable>true</MSBuildExtensionTasksAvailable>
+      </PropertyGroup>
+    </When>
+    <Otherwise>
+      <PropertyGroup>
+        <MSBuildExtensionTasksAvailable>false</MSBuildExtensionTasksAvailable>
+    </PropertyGroup>
+    </Otherwise>
+  </Choose>
+  <Import Project="$(MSBuildExtensionsPath)\ExtensionPack\4.0\MSBuild.ExtensionPack.tasks" Condition="'$(MSBuildExtensionTasksAvailable)' == 'true'" />
+
+  <!-- 
+    Include MSBuild Mercurial Tasks.
+  -->
+  <Choose>
+    <When Condition="Exists('$(MSBuildExtensionsPath)\MSBuild.Mercurial\MSBuild.Mercurial.Tasks')">
+      <PropertyGroup>
+        <MSBuildMercurialTasksAvailable>true</MSBuildMercurialTasksAvailable>
+      </PropertyGroup>
+    </When>
+    <Otherwise>
+      <PropertyGroup>
+        <MSBuildMercurialTasksAvailable>false</MSBuildMercurialTasksAvailable>
+      </PropertyGroup>
+    </Otherwise>
+  </Choose>
+  <Import Project="$(MSBuildExtensionsPath)\MSBuild.Mercurial\MSBuild.Mercurial.Tasks" Condition="'$(MSBuildMercurialTasksAvailable)' == 'true'" />
+
+  <!-- 
+    Include MSBuild MsMaven Tasks.
+  -->
+  <Choose>
+    <When Condition="Exists('$(SCM_LOCAL_REPO_ROOT)\com\virtuos\xmaven\tasks\msbuild.xmaven.dll')">
+      <PropertyGroup>
+        <MSBuildXMavenTasksAvailable>true</MSBuildXMavenTasksAvailable>
+      </PropertyGroup>
+    </When>
+    <Otherwise>
+      <PropertyGroup>
+        <MSBuildXMavenTasksAvailable>false</MSBuildXMavenTasksAvailable>
+      </PropertyGroup>
+    </Otherwise>
+  </Choose>
+  <Import Project="$(SCM_LOCAL_REPO_ROOT)\com\virtuos\xmaven\tasks\msbuild.xmaven.Targets" Condition="'$(MSBuildXMavenTasksAvailable)' == 'true'" />
+   
+  <!-- 
+    Generate messages (informations, warnings and errors) depending of
+    the current configuration and environment.
+  -->
+  
+  <Target Name="MavenEnvironmentExtensionChecks">
+    <Warning Condition="'$(MSBuildCommunityTasksAvailable)' == 'false'" Text="MSBuild Community tasks are not available" />
+    <Warning Condition="'$(MSBuildExtensionTasksAvailable)' == 'false'" Text="MSBuild Extension tasks are not available" />
+    <Warning Condition="'$(MSBuildMercurialTasksAvailable)' == 'false'" Text="MSBuild Mercurial tasks are not available" />
+    <Warning Condition="'$(MSBuildXMavenTasksAvailable)' == 'false'" Text="MSBuild XMaven tasks are not available" />
+  </Target>
+
+</Project>
+
