@@ -2,7 +2,7 @@ using System;
 using System.Collections.Generic;
 using System.Diagnostics;
 
-namespace xCore
+namespace msbuild.xmaven.tasks
 {
 	/// <summary>
 	/// Provides standard mathematical functions for the library types.

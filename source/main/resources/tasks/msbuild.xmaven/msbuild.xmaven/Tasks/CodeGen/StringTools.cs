@@ -4,7 +4,7 @@ using System.Collections.Generic;
 using System.Text;
 using System.Text.RegularExpressions;
 
-namespace xCore
+namespace msbuild.xmaven.tasks
 {
 	#region String Formatting Documentation
 	/// <summary>

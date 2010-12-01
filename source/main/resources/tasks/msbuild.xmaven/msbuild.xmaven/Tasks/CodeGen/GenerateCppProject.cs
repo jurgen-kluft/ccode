@@ -7,9 +7,9 @@ using System.IO;
 using System.Reflection;
 using System.Text;
 using System.Text.RegularExpressions;
-using MSBuild.MsMaven.Helpers;
+using msbuild.xmaven.helpers;
 
-namespace MSBuild.MsMaven.Tasks
+namespace msbuild.xmaven.tasks
 {
     /// <summary>
     /// </summary>
@@ -231,7 +231,7 @@ namespace MSBuild.MsMaven.Tasks
                 string line = l.Trim();
                 if (line.StartsWith("@"))
                 {
-                    string[] filenames = xCore.StringTools.Between(line, "@(", ")@");
+                    string[] filenames = StringTools.Between(line, "@(", ")@");
                     foreach (string f in filenames)
                         blockNames.Add(f.Trim());
                 }
@@ -256,39 +256,6 @@ namespace MSBuild.MsMaven.Tasks
                 fs.Close();
             }
             return lines.ToArray();
-        }
-
-        public void Test()
-        {
-            if (File.Exists(Template))
-            {
-                FileStream rfs = new FileStream(Template, FileMode.Open, FileAccess.Read, FileShare.Read);
-                StreamReader reader = new StreamReader(rfs);
-                FileStream wfs = new FileStream(Template, FileMode.Create, FileAccess.Write);
-                StreamWriter writer = new StreamWriter(wfs);
-                while (!reader.EndOfStream)
-                {
-                    string line = reader.ReadLine();
-                    foreach (ITaskItem item in Tokens)
-                    {
-                        foreach (string name in item.MetadataNames)
-                        {
-                            string value = string.Empty;
-                            try
-                            {
-                                value = item.GetMetadata(name);
-                            }
-                            catch (Exception)
-                            {
-                            }
-                            line = line.Replace("${" + name + "}", value);
-                        }
-                    }
-                }
-
-                reader.Close();
-                rfs.Close();
-            }
         }
 
         public Dictionary<string, string> ConstructVars(ITaskItem item, out string key)
@@ -412,7 +379,7 @@ namespace MSBuild.MsMaven.Tasks
                 string line = l.Trim();
                 if (line.StartsWith("@"))
                 {
-                    string[] blockName = xCore.StringTools.Between(line, "@(", ")@");
+                    string[] blockName = StringTools.Between(line, "@(", ")@");
                     if (blockName.Length == 1)
                     {
                         string f = blockName[0];

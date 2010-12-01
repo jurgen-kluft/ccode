@@ -3,7 +3,7 @@ using System.Collections;
 using System.Text.RegularExpressions;
 using System.Runtime.Serialization;
 
-namespace xCore
+namespace msbuild.xmaven.tasks
 {
 	/// <summary>
 	/// Summary description for Scanner.

@@ -4,7 +4,7 @@ using System.Text;
 using System.Diagnostics;
 using Microsoft.Build.Utilities;
 
-namespace MSBuild.MsMaven.Helpers
+namespace msbuild.xmaven.helpers
 {
     /// <summary>
     /// Helper class to run an executable

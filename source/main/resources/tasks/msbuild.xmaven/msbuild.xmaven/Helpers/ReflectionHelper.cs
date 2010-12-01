@@ -3,7 +3,7 @@ using System.Collections.Generic;
 using System.Text;
 using System.Reflection;
 
-namespace MSBuild.MsMaven.Helpers
+namespace msbuild.xmaven.helpers
 {
     /// <summary>
     /// Helper class providing reflection functionality
