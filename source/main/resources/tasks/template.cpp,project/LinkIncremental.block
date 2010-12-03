@@ -1,1 +1,0 @@
-<LinkIncremental Condition="'$(Configuration)|$(Platform)'=='##ProjectConfig##|##ProjectPlatform##'">true</LinkIncremental>

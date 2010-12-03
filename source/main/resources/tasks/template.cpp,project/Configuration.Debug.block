@@ -1,6 +1,0 @@
-  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='##ProjectConfig##|##ProjectPlatform##'" Label="Configuration">
-    <ConfigurationType>##ConfigurationType##></ConfigurationType>
-    <CharacterSet>##CharSet##</CharacterSet>
-    <CLRSupport>false</CLRSupport>
-    <WholeProgramOptimization>##WholeProgramOptimization##</WholeProgramOptimization>
-  </PropertyGroup>

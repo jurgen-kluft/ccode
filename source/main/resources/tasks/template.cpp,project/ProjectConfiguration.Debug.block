@@ -1,4 +1,0 @@
-<ProjectConfiguration Include="##ProjectConfig##|##ProjectPlatform##">
-	<Configuration>##ProjectConfig##</Configuration>
-	<Platform>##ProjectPlatform##</Platform>
-</ProjectConfiguration>

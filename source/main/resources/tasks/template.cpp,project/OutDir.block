@@ -1,1 +1,0 @@
-<IntDir Condition="'$(Configuration)|$(Platform)'=='##ProjectConfig##|##ProjectPlatform##'">$(MvPackageTargetDir)\outdir\$(ProjectName)_$(Configuration)_$(PlatformName)\</IntDir>
