@@ -4,28 +4,59 @@ using System.Collections.Generic;
 using System.Text;
 using Microsoft.Build.Framework;
 using Microsoft.Build.Utilities;
+using Microsoft.Build.Evaluation;
 
-namespace MsBuild.MsMaven.Tasks
+namespace msbuild.xmaven
 {
     /// <summary>
-    ///	Will copy a new package release to the local-package-repository. 
-    ///	Also updates 'latest'.
-    ///
-    ///  Actions:
-    ///	1) Determine destination device and path for version
-    ///	2) Determine destination device and path for latest
-    ///	3) Determine the file that is now latest in the repository
-    ///	4) Copy the package to it's version location
-    ///	5) Generate a file with the filename of the package + '.latest' to latest location and delete the previous latest
-    ///	6) Done
-    ///
+    ///	Will sync the local-package-repository with the remote-package-repository. 
+    ///	Will sync dependencies specified into the target folder
     /// </summary>
-    class Sync : Task
+    public class PackageSync : Task
     {
-        public string Cmd { get; set; }
+        public string Name { get; set; }
+        public string Path { get; set; }
+        public string Dep { get; set; }
+        public string LocalRepoPath { get; set; }
+        public string RemoteRepoPath { get; set; }
+
+        private class Dependency
+        {
+            public string Group { get; set; }
+            public string Platforms { get; set; }
+            public string Version { get; set; }
+            public string Type { get; set; }
+        }
+        private Dictionary<string, List<Dependency>> mDependencies;
+
+        private void AnalyzeAndGatherDependencies(Project project)
+        {
+
+        }
+
+        private void ObtainDepFromPackage(string name, string version, string p)
+        {
+
+        }
 
         public override bool Execute()
         {
+            // Load dep.props of main package
+            // Add dependencies to the dependency list
+            // 1
+            // For every dependency copy it from remote to local repository if necessary
+            // For every dependency load its dep.props and add it to the dependency list
+            // Go back to 1 until no new dependencies (watch out for cyclic dependencies)
+            // Analyze the dependency list and resolve versioning conflicts
+            // Install the dependency packages in the target folder
+            // Verify the installed packages
+            // Done
+
+            if (!File.Exists(Path + Dep))
+                return false;
+
+            Project deps = new Project(Path + Dep);
+            AnalyzeAndGatherDependencies(deps);
 
             return false;
         }

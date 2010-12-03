@@ -1,0 +1,26 @@
+  <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='##ProjectConfig##|##ProjectPlatform##'">
+    <ClCompile>
+      <Optimization>##CompilerOptimization##</Optimization>
+      <AdditionalIncludeDirectories>##CompilerIncludeDirectories##;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <PreprocessorDefinitions>##CompilerPreprocessorDefines##;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <MinimalRebuild>true</MinimalRebuild>
+      <BasicRuntimeChecks>EnableFastChecks</BasicRuntimeChecks>
+      <RuntimeLibrary>MultiThreadedDLL</RuntimeLibrary>
+      <PrecompiledHeader>
+      </PrecompiledHeader>
+      <PrecompiledHeaderFile></PrecompiledHeaderFile>
+      <WarningLevel>##CompilerWarningLevel##</WarningLevel>
+      <DebugInformationFormat>EditAndContinue</DebugInformationFormat>
+      <DisableSpecificWarnings>##CompilerDisableSpecificWarnings##;%(DisableSpecificWarnings)</DisableSpecificWarnings>
+    </ClCompile>
+    <Link>
+      <AdditionalDependencies>##LinkerLibraryFiles##;%(AdditionalDependencies)</AdditionalDependencies>
+      <AdditionalLibraryDirectories>##LinkerLibraryDirs##;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
+      <GenerateDebugInformation>##LinkerDebugInfo##</GenerateDebugInformation>
+      <SubSystem>Console</SubSystem>
+      <TargetMachine>MachineX86</TargetMachine>
+    </Link>
+    <Lib>
+      <OutputFile>$(OutDir)\$(TargetName)$(TargetExt)</OutputFile>
+    </Lib>
+  </ItemDefinitionGroup>

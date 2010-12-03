@@ -21,16 +21,22 @@
   </ItemGroup>
 
   <PropertyGroup>
-    <mvpackage_platforms>Win32;SonyPSP;SonyPS3;NintendoDS;Nintendo3DS;NintendoWII;MicrosoftXbox360</mvpackage_platforms>
+    <mvpackage_platforms>Win32;SonyPSP;SonyPS3;NintendoDS;Nintendo3DS;NintendoWII;Microsoft360</mvpackage_platforms>
     <mvpackage_version_major>1</mvpackage_version_major>
     <mvpackage_version_minor>0</mvpackage_version_minor>
+    <mvpackage_version_year>2010</mvpackage_version_year>
+    <mvpackage_version_month>12</mvpackage_version_month>
+    <mvpackage_version_day>01</mvpackage_version_day>
+    <mvpackage_version_hour>00</mvpackage_version_hour>
+    <mvpackage_version_minute>00</mvpackage_version_minute>
+    <mvpackage_version_second>00</mvpackage_version_second>
   </PropertyGroup>
   <!-- 
     Generate a 'mvpackage_vcs_version' property containing the changeset ID of the hg repository
     as well as a 'mvpackage_vcs_branch' property that contains the name of the current branch.
   -->
   <PropertyGroup>
-    <mvpackage_vcs_version>0</mvpackage_vcs_version>
+    <mvpackage_vcs_version>ffffffffffff</mvpackage_vcs_version>
     <mvpackage_vcs_branch>default</mvpackage_vcs_branch>
   </PropertyGroup>
   

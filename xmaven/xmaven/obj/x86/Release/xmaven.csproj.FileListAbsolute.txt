@@ -1,9 +1,0 @@
-D:\SCM_PACKAGE_REPO\com\virtuos\tnt\xmaven\xmaven\xmaven\bin\Release\xmaven.exe
-D:\SCM_PACKAGE_REPO\com\virtuos\tnt\xmaven\xmaven\xmaven\bin\Release\xmaven.pdb
-D:\SCM_PACKAGE_REPO\com\virtuos\tnt\xmaven\xmaven\xmaven\obj\x86\Release\ResolveAssemblyReference.cache
-D:\SCM_PACKAGE_REPO\com\virtuos\tnt\xmaven\xmaven\xmaven\obj\x86\Release\xmaven.Main.resources
-D:\SCM_PACKAGE_REPO\com\virtuos\tnt\xmaven\xmaven\xmaven\obj\x86\Release\xmaven.Properties.Resources.resources
-D:\SCM_PACKAGE_REPO\com\virtuos\tnt\xmaven\xmaven\xmaven\obj\x86\Release\GenerateResource.read.1.tlog
-D:\SCM_PACKAGE_REPO\com\virtuos\tnt\xmaven\xmaven\xmaven\obj\x86\Release\GenerateResource.write.1.tlog
-D:\SCM_PACKAGE_REPO\com\virtuos\tnt\xmaven\xmaven\xmaven\obj\x86\Release\xmaven.exe
-D:\SCM_PACKAGE_REPO\com\virtuos\tnt\xmaven\xmaven\xmaven\obj\x86\Release\xmaven.pdb

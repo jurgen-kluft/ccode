@@ -6,6 +6,10 @@
     <msbuildxmaventaskslib>msbuild.xmaven.dll</msbuildxmaventaskslib>
   </PropertyGroup>
 
-  <UsingTask AssemblyFile="$(msbuildxmaventaskslib)" TaskName="msbuild.xmaven.tasks.GenerateCppProject" />
+  <UsingTask AssemblyFile="$(msbuildxmaventaskslib)" TaskName="msbuild.xmaven.GenerateCppProject" />
+  <UsingTask AssemblyFile="$(msbuildxmaventaskslib)" TaskName="msbuild.xmaven.PackageCreate" />
+  <UsingTask AssemblyFile="$(msbuildxmaventaskslib)" TaskName="msbuild.xmaven.PackageInstall" />
+  <UsingTask AssemblyFile="$(msbuildxmaventaskslib)" TaskName="msbuild.xmaven.PackageDeploy" />
+  <UsingTask AssemblyFile="$(msbuildxmaventaskslib)" TaskName="msbuild.xmaven.PackageSync" />
 
 </Project>

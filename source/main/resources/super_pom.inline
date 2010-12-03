@@ -16,6 +16,32 @@
     </Task>
   </UsingTask>
 
+
+  <UsingTask
+    TaskName="SplitGroup"
+    TaskFactory="CodeTaskFactory"
+    AssemblyFile="$(MSBuildToolsPath)\Microsoft.Build.Tasks.v4.0.dll">
+    <ParameterGroup>
+      <Group ParameterType="System.String" Required="true"/>
+      <GroupH ParameterType="System.String" Output="True"/>
+      <GroupM ParameterType="System.String" Output="True"/>
+      <GroupL ParameterType="System.String" Output="True"/>
+    </ParameterGroup>
+    <Task>
+      <Code Type="Fragment" Language="cs">
+        <![CDATA[
+          string[] tokens = Group.Split(new char[] { '.' }, StringSplitOptions.RemoveEmptyEntries);
+          GroupH = "com";
+          GroupM = "virtuos";
+          GroupL = "temp";
+          if (tokens.Length>0) GroupH = tokens[0];
+          if (tokens.Length>1) GroupM = tokens[1];
+          if (tokens.Length>2) GroupL = tokens[2];
+        ]]>
+      </Code>
+    </Task>
+  </UsingTask>
+
   <UsingTask
   TaskName="CreateGuid"
   TaskFactory="CodeTaskFactory"

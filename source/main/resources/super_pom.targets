@@ -10,6 +10,7 @@
   <Target Name = "__mvsources_process"></Target>
   <Target Name = "__mvresources_generate"></Target>
   <Target Name = "__mvresources_process"></Target>
+  <Target Name = "__mvsync"></Target>
   <Target Name = "__mvcompile"></Target>
   <Target Name = "__mvcompile_post"></Target>
   <Target Name = "__mvtest_sources_generate"></Target>
@@ -28,14 +29,41 @@
   <Target Name = "__mvinstall"></Target>
   <Target Name = "__mvdeploy"></Target>
 
+  <Target Name="mvpackage_version_time">
+    <Time>
+      <Output TaskParameter="Year" PropertyName="mvpackage_version_year" />
+      <Output TaskParameter="Month" PropertyName="mvpackage_version_month" />
+      <Output TaskParameter="Day" PropertyName="mvpackage_version_day" />
+      <Output TaskParameter="Hour" PropertyName="mvpackage_version_hour" />
+      <Output TaskParameter="Minute" PropertyName="mvpackage_version_minute" />
+      <Output TaskParameter="Second" PropertyName="mvpackage_version_second" />
+    </Time>
+  </Target>
+
+  <Target Name="mvpackage_group_split">
+    <SplitGroup Group="$(mvpackage_group)">
+      <Output PropertyName="mvpackage_group_h" TaskParameter="GroupH"/>
+      <Output PropertyName="mvpackage_group_m" TaskParameter="GroupM"/>
+      <Output PropertyName="mvpackage_group_l" TaskParameter="GroupL"/>
+    </SplitGroup>
+  </Target>
+
+
   <!-- These are the core xmaven lifecycle targets and should not be overriden!! -->
   <Target Name = "mvvalidate" DependsOnTargets=""><CallTarget Targets="__mvvalidate" /></Target>
-  <Target Name = "mvinitialize" DependsOnTargets="mvvalidate"><CallTarget Targets="__mvinitialize" /></Target>
+  <Target Name = "mvinitialize" DependsOnTargets="mvvalidate">
+    <CallTarget Targets="mvpackage_group_split" />
+    <CallTarget Targets="mvpackage_version_time" />
+    <CallTarget Targets="__mvinitialize" />
+  </Target>
   <Target Name = "mvsources_generate" DependsOnTargets="mvinitialize"><CallTarget Targets="__mvsources_generate" /></Target>
   <Target Name = "mvsources_process" DependsOnTargets="mvsources_generate"><CallTarget Targets="__mvsources_process" /></Target>
   <Target Name = "mvresources_generate" DependsOnTargets="mvsources_process"><CallTarget Targets="__mvresources_generate" /></Target>
   <Target Name = "mvresources_process" DependsOnTargets="mvresources_generate"><CallTarget Targets="__mvresources_process" /></Target>
-  <Target Name = "mvcompile" DependsOnTargets="mvresources_process"><CallTarget Targets="__mvcompile" /></Target>
+  <Target Name = "mvcompile" DependsOnTargets="mvresources_process">
+    <CallTarget Targets="__mvsync" />
+    <CallTarget Targets="__mvcompile" />
+  </Target>
   <Target Name = "mvcompile_post" DependsOnTargets="mvcompile"><CallTarget Targets="__mvcompile_post" /></Target>
   <Target Name = "mvtest_sources_generate" DependsOnTargets="mvcompile_post"><CallTarget Targets="__mvtest_sources_generate" /></Target>
   <Target Name = "mvtest_sources_process" DependsOnTargets="mvtest_sources_generate"><CallTarget Targets="__mvtest_sources_process" /></Target>
@@ -56,6 +84,7 @@
   <Target Name = "mvinfo" />
   <Target Name = "mvclean" />
 
+
   <Target Name="mvpackage_hg_extractrevision" Condition="'$(MSBuildMercurialTasksAvailable)' == 'true'" DependsOnTargets="MavenEnvironmentExtensionChecks">
     <HgVersion LocalPath="$(MSBuildProjectDirectory)" Timeout="5000">
       <Output TaskParameter="Changeset" PropertyName="mvpackage_vcs_version" />
@@ -64,32 +93,20 @@
       <Output TaskParameter="BranchName" PropertyName="mvpackage_vcs_branch" />
     </HgBranch>
   </Target>
- 
-  <Target Name="mvpackage_generate_zip" DependsOnTargets="mvpackage_hg_extractrevision">
-    <Time>
-      <Output TaskParameter="Year" PropertyName="mvpackage_build_year" />
-      <Output TaskParameter="Month" PropertyName="mvpackage_build_month" />
-      <Output TaskParameter="Day" PropertyName="mvpackage_build_day" />
-    </Time>
-    
+  
+  <Target Name="mvpackage_generate_zip" DependsOnTargets="mvpackage_hg_extractrevision;mvpackage_version_time">
     <PropertyGroup>
-      <mvpackage_builddate>$(mvpackage_build_year).$(mvpackage_build_month)</mvpackage_builddate>
+      <mvpackage_builddate>$(mvpackage_build_year).$(mvpackage_build_month).$(mvpackage_build_day).$(mvpackage_build_hour).$(mvpackage_build_minute).$(mvpackage_build_second)</mvpackage_builddate>
       <mvpackage_buildrev>$(mvpackage_vcs_branch).$(mvpackage_vcs_version)</mvpackage_buildrev>
     </PropertyGroup>
-
-    <ItemGroup>
-      <mvpackage_ZipFiles Include="target\$(mvpackage_name)\**\*.*" Exclude="@(DefaultExclude)" />
-    </ItemGroup>
-
     <Message Text="MvPackage Filename: $(mvpackage_name)_$(mvpackage_versionmajor).$(mvpackage_versionminor).$(mvpackage_builddate).$(mvpackage_buildrev)_$(mvpackage_platform)"/>
-
-    <MSBuild.ExtensionPack.Compression.DNZip TaskAction="Create" CompressFiles="@(mvpackage_zipfiles)" RemoveRoot="target\" ZipFileName="target\$(mvpackage_name)_$(mvpackage_version_major).$(mvpackage_version_minor).$(mvpackage_builddate).$(mvpackage_buildrev)_$(mvpackage_platform).zip"/>
+    <msbuild.xmaven.PackageCreate Path="@(mvpackage_dir)\target" Name="$(mvpackage_name)" ZipFilename="target\$(mvpackage_name)_$(mvpackage_version_major).$(mvpackage_version_minor).$(mvpackage_builddate).$(mvpackage_buildrev)_$(mvpackage_platform).zip"/>
   </Target>
 
   <Target Name="mvpackage_prepare_zip">
     <!-- Delete the file in the target folder -->
     <ItemGroup>
-      <mvpackage_clean_files Include="target\$(mvpackage_name)\**\*.*" />
+      <mvpackage_clean_files Include="target\$(mvpackage_name)\$(mvpackage_platform)\**\*.*" />
     </ItemGroup>
     <Delete Files="@(mvpackage_clean_files)"/>
 
@@ -101,11 +118,11 @@
       <mvpackage_pom_files Include="dep.props" />
     </ItemGroup>
 
-    <Copy SourceFiles="@(mvpackage_src_files)" DestinationFolder="target\$(mvpackage_name)\source\%(RecursiveDir)"/>
-    <Copy SourceFiles="@(mvpackage_lib_files)" DestinationFolder="target\$(mvpackage_name)\libs\$(mvpackage_name)"/>
-    <Copy SourceFiles="@(mvpackage_tools_files)" DestinationFolder="target\$(mvpackage_name)\tools\%(RecursiveDir)"/>
-    <Copy SourceFiles="@(mvpackage_doc_files)" DestinationFolder="target\$(mvpackage_name)\docs\%(RecursiveDir)"/>
-    <Copy SourceFiles="@(mvpackage_pom_files)" DestinationFolder="target\$(mvpackage_name)\"/>
+    <Copy SourceFiles="@(mvpackage_src_files)" DestinationFolder="target\$(mvpackage_name)\$(mvpackage_platform)\source\%(RecursiveDir)"/>
+    <Copy SourceFiles="@(mvpackage_lib_files)" DestinationFolder="target\$(mvpackage_name)\$(mvpackage_platform)\libs\$(mvpackage_name)"/>
+    <Copy SourceFiles="@(mvpackage_tools_files)" DestinationFolder="target\$(mvpackage_name)\$(mvpackage_platform)\tools\%(RecursiveDir)"/>
+    <Copy SourceFiles="@(mvpackage_doc_files)" DestinationFolder="target\$(mvpackage_name)\$(mvpackage_platform)\docs\%(RecursiveDir)"/>
+    <Copy SourceFiles="@(mvpackage_pom_files)" DestinationFolder="target\$(mvpackage_name)\$(mvpackage_platform)\"/>
   </Target>
 
   <Target Name="__mvpackage">
@@ -132,15 +149,15 @@
   </Target>
 
   <Target Name="mvgenerate_cpp_project_main">
-    <msbuild.xmaven.tasks.GenerateCppProject TemplatePath="$(mvpackage_local_url)com\virtuos\xmaven\tasks\template.cpp.project\" OutputPath="$(mvpackage_dir)\source\main\cpp" Configs="@(Configs)" Platforms="@(Platforms)" Configurations="@(ProjectConfigurations)" ProjectName="$(mvpackage_name)" ProjectGuid="$(mvpackage_main_guid)" />
+    <msbuild.xmaven.GenerateCppProject TemplatePath="$(mvpackage_local_url)com\virtuos\xmaven\tasks\template.cpp.project\" OutputPath="$(mvpackage_dir)\source\main\cpp" Configs="@(Configs)" Platforms="@(Platforms)" Configurations="@(ProjectConfigurations)" ProjectName="$(mvpackage_name)" ProjectGuid="$(mvpackage_main_guid)" />
   </Target>
   <Target Name="mvgenerate_cpp_project_test">
-    <msbuild.xmaven.tasks.GenerateCppProject TemplatePath="$(mvpackage_local_url)com\virtuos\xmaven\tasks\template.cpp.project\" OutputPath="$(mvpackage_dir)\source\test\cpp" Configs="@(Configs)" Platforms="@(Platforms)" Configurations="@(ProjectConfigurations)" ProjectName="$(mvpackage_name)" ProjectGuid="$(mvpackage_test_guid)" />
+    <msbuild.xmaven.GenerateCppProject TemplatePath="$(mvpackage_local_url)com\virtuos\xmaven\tasks\template.cpp.project\" OutputPath="$(mvpackage_dir)\source\test\cpp" Configs="@(Configs)" Platforms="@(Platforms)" Configurations="@(ProjectConfigurations)" ProjectName="$(mvpackage_name)" ProjectGuid="$(mvpackage_test_guid)" />
   </Target>
   <Target Name="mvgenerate_cpp_solution">
   </Target>
 
-  <Target Name="mvsetup_stage_1">
+  <Target Name="mvconstruct_stage_1">
     <!-- Generate folder -->
     <MakeDir Directories="$(mvpackage_name)" />
     <!-- Generate Guids -->
@@ -163,7 +180,7 @@
     <Delete Files="$(mvpackage_name)\pom.props.template"/>
   </Target>
 
-  <Target Name="mvsetup_stage_2">
+  <Target Name="mvconstruct_stage_2">
 
     <!-- Generate directory structure -->
     <MakeDir Directories="%(DirectoryStructure.Identity)" />
@@ -179,7 +196,7 @@
 
   </Target>
 
-  <Target Name="mvsetup">
+  <Target Name="mvconstruct">
     <!-- If pom.props, pom.targets and dep.props exist then -->
     <!--   Construct the directory structure -->
     <!--   Sync the dependencies -->
@@ -197,57 +214,32 @@
     <CallTarget Targets="mvsetup_stage_2" Condition="Exists('pom.props') And Exists('pom.targets') And Exists('dep.props')"></CallTarget>
   </Target>
 
-  <Target Name="mvinfo" DependsOnTargets="mvpackage_hg_extractrevision">
-    <Time>
-      <Output TaskParameter="Year" PropertyName="mvpackage_version_year" />
-      <Output TaskParameter="Month" PropertyName="mvpackage_version_month" />
-    </Time>
-
+  <Target Name="mvinfo" DependsOnTargets="mvpackage_hg_extractrevision;mvpackage_version_time">
     <Message Text="MvPackage VCS Version    = $(mvpackage_vcs_version)" />
     <Message Text="MvPackage VCS Branch     = $(mvpackage_vcs_branch)" />
-
     <Message Text="MvPackage Directory      = $(mvpackage_dir)" />
     <Message Text="MvPackage Name           = $(mvpackage_name)" />
     <Message Text="MvPackage Group          = $(mvpackage_group)" />
-
     <Message Text="MvPackage Version        = $(mvpackage_version_major).$(mvpackage_version_minor).$(mvpackage_version_year).$(mvpackage_version_month).$(mvpackage_vcs_branch).$(mvpackage_vcs_version)" />
-
     <Message Text="MvPackage Platform       = $(mvpackage_platform)" />
     <Message Text="MvPackage Platforms      = $(mvpackage_platforms)" />
-
     <Message Condition = " '$(mvpackage_language)' == 'cpp' " 
              Text="MvPackage Language       = C++" />
     <Message Condition = " '$(mvpackage_language)' == 'cs' "
              Text="MvPackage Language       = C#" />
-
     <Message Text="MvPackage Config-Target  = %(mvpackage_config_targets.Identity)" />
     <Message Text="MvPackage Repository     = %(mvpackage_repository.Identity), %(mvpackage_repository.URL)" />
-
     <Message Text="MvPackage Dependencies   = %(mvpackage_dependency.Identity), group:%(mvpackage_dependency.Group), platforms:%(mvpackage_dependency.Platforms), version:%(mvpackage_dependency.Version), type:%(mvpackage_dependency.Type)" />
-
   </Target>
 
-  <Target Name="mvpackage_group_expand">
-    <MSBuild.ExtensionPack.Framework.TextString TaskAction="Split" String1="$(mvpackage_group)" String2="." StartIndex="0">
-      <Output PropertyName="mvpackage_group_h" TaskParameter="NewString"/>
-    </MSBuild.ExtensionPack.Framework.TextString>
-    <MSBuild.ExtensionPack.Framework.TextString TaskAction="Split" String1="$(mvpackage_group)" String2="." StartIndex="1">
-      <Output PropertyName="mvpackage_group_m" TaskParameter="NewString"/>
-    </MSBuild.ExtensionPack.Framework.TextString>
-    <MSBuild.ExtensionPack.Framework.TextString TaskAction="Split" String1="$(mvpackage_group)" String2="." StartIndex="2">
-      <Output PropertyName="mvpackage_group_l" TaskParameter="NewString"/>
-    </MSBuild.ExtensionPack.Framework.TextString>
-  </Target>
-
-  <Target Name="mvpackage_install" DependsOnTargets="mvpackage_group_expand">
+  <Target Name="mvpackage_install">
     <!-- Install the package zip in the local package repository -->
     <!-- Update latest in the local package repository -->
     <!-- Parameters to pass to the task: -->
     <!-- - Path to package zip file -->
     <!-- - URL of local package repositories -->
-
     <PropertyGroup>
-      <SrcFilename>$(mvpackage_name)_$(mvpackage_version_major).$(mvpackage_version_minor).$(mvpackage_version_year).$(mvpackage_version_month).$(mvpackage_vcs_branch).$(mvpackage_vcs_version)_$(mvpackage_platform)</SrcFilename>
+      <SrcFilename>$(mvpackage_name)_$(mvpackage_version_major).$(mvpackage_version_minor).$(mvpackage_version_year).$(mvpackage_version_month).$(mvpackage_version_day).$(mvpackage_version_hour).$(mvpackage_version_minute).$(mvpackage_version_second).$(mvpackage_vcs_branch).$(mvpackage_vcs_version)_$(mvpackage_platform)</SrcFilename>
       <SrcFilenameExt>.zip</SrcFilenameExt>
       <SrcFolder>file://$(mvpackage_dir)\target\</SrcFolder>
       <DstFolder>$(mvpackage_local_url)$(mvpackage_group_h)\$(mvpackage_group_m)\$(mvpackage_group_l)\$(mvpackage_name)\</DstFolder>
@@ -256,14 +248,17 @@
       <Minor>$(mvpackage_version_minor)</Minor>
       <Year>$(mvpackage_version_year)</Year>
       <Month>$(mvpackage_version_month)</Month>
+      <Day>$(mvpackage_version_day)</Day>
+      <Hour>$(mvpackage_version_hour)</Hour>
+      <Minute>$(mvpackage_version_minute)</Minute>
+      <Second>$(mvpackage_version_second)</Second>
       <Branch>$(mvpackage_vcs_branch)</Branch>
       <Revision>$(mvpackage_vcs_version)</Revision>
       <Platform>$(mvpackage_platform)</Platform>
     </PropertyGroup>
-
-    <Copy SourceFiles="$(SrcFolder)$(SrcFilename)$(SrcFilenameExt)" DestinationFiles="$(DstFolder)$(Year)\$(Month)" />
-    <Delete Files="$!(DstFolder)latest\$(Name)_*$(Branch)*_$(Platform).latest" />
-    <MkFile SourceFile="$(DstFolder)latest\$(SrcFilename)$(SrcFilenameExt).latest" />
+    <msbuild.xmaven.PackageInstall SourcePath="$(SrcFolder)" SourceFilename="$(SrcFilename)$(SrcFilenameExt)" OldLatest="$(Name)_*$(Branch)*_$(Platform)*.latest" RepoPath="$(DstFolder)" VersionPath="$(Year)\$(Month)\" LatestPath="latest\" />
+  </Target>
+  <Target Name="__mvinstall" DependsOnTargets="mvpackage_install">
   </Target>
 
   <Target Name="mvpackage_deploy">
@@ -272,17 +267,40 @@
     <!-- Parameters to pass to the task: -->
     <!-- - Path to package zip file -->
     <!-- - URL of remote package repositories -->
+    <PropertyGroup>
+      <SrcFilename>$(mvpackage_name)_$(mvpackage_version_major).$(mvpackage_version_minor).$(mvpackage_version_year).$(mvpackage_version_month).$(mvpackage_version_day).$(mvpackage_version_hour).$(mvpackage_version_minute).$(mvpackage_version_second).$(mvpackage_vcs_branch).$(mvpackage_vcs_version)_$(mvpackage_platform)</SrcFilename>
+      <SrcFilenameExt>.zip</SrcFilenameExt>
+      <SrcFolder>file://$(mvpackage_dir)\target\</SrcFolder>
+      <DstFolder>$(mvpackage_remote_url)$(mvpackage_group_h)\$(mvpackage_group_m)\$(mvpackage_group_l)\$(mvpackage_name)\</DstFolder>
+      <Name>$(mvpackage_name)</Name>
+      <Major>$(mvpackage_version_major)</Major>
+      <Minor>$(mvpackage_version_minor)</Minor>
+      <Year>$(mvpackage_version_year)</Year>
+      <Month>$(mvpackage_version_month)</Month>
+      <Day>$(mvpackage_version_day)</Day>
+      <Hour>$(mvpackage_version_hour)</Hour>
+      <Minute>$(mvpackage_version_minute)</Minute>
+      <Second>$(mvpackage_version_second)</Second>
+      <Branch>$(mvpackage_vcs_branch)</Branch>
+      <Revision>$(mvpackage_vcs_version)</Revision>
+      <Platform>$(mvpackage_platform)</Platform>
+    </PropertyGroup>
 
+    <msbuild.xmaven.PackageDeploy SourcePath="$(SrcFolder)" SourceFilename="$(SrcFilename)$(SrcFilenameExt)" OldLatest="$(Name)_*$(Branch)*_$(Platform)*.latest" RepoPath="$(DstFolder)" VersionPath="$(Year)\$(Month)\" LatestPath="latest\" />
+  </Target>
+  <Target Name="__mvdeploy" DependsOnTargets="mvpackage_deploy">
   </Target>
 
   <Target Name="mvpackage_sync">
     <!-- Retrieve the dependencies, recursive -->
     <!-- Parameters to pass to the task: -->
-    <!-- - Current path -->
-    <!-- - Target path where package needs to go -->
-    <!-- - URLs of local and remote package repositories -->
-    <!-- - Current list of dependencies -->
-
+    <!-- - Package name-->
+    <!-- - Package path -->
+    <!-- - Package dependency filename (dep.props) -->
+    <!-- - Local package repository path -->
+    <!-- - Remote package repository path -->
+  </Target>
+  <Target Name="__mvsync" DependsOnTargets="mvpackage_sync">
   </Target>
 
 </Project>

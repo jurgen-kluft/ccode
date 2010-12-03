@@ -9,7 +9,7 @@ using System.Text;
 using System.Text.RegularExpressions;
 using msbuild.xmaven.helpers;
 
-namespace msbuild.xmaven.tasks
+namespace msbuild.xmaven
 {
     /// <summary>
     /// Need:
@@ -186,5 +186,10 @@ namespace msbuild.xmaven.tasks
 
     class CppSolution
     {
+        private string mSlnProjectGuid = "8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942";
+
+        public void Generate()
+        {
+        }
    }
 }

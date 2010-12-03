@@ -9,7 +9,7 @@ using System.Text;
 using System.Text.RegularExpressions;
 using msbuild.xmaven.helpers;
 
-namespace msbuild.xmaven.tasks
+namespace msbuild.xmaven
 {
     /// <summary>
     /// </summary>

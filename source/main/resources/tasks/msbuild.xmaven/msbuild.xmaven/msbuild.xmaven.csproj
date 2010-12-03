@@ -10,7 +10,7 @@
     <AppDesignerFolder>Properties</AppDesignerFolder>
     <RootNamespace>msbuild.xmaven</RootNamespace>
     <AssemblyName>msbuild.xmaven</AssemblyName>
-    <SignAssembly>true</SignAssembly>
+    <SignAssembly>false</SignAssembly>
     <AssemblyOriginatorKeyFile>
     </AssemblyOriginatorKeyFile>
     <TargetFrameworkVersion>v4.0</TargetFrameworkVersion>
@@ -55,6 +55,15 @@
     <CodeAnalysisRuleSet>AllRules.ruleset</CodeAnalysisRuleSet>
   </PropertyGroup>
   <ItemGroup>
+    <Reference Include="envdte100, Version=10.0.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a, processorArchitecture=MSIL">
+      <EmbedInteropTypes>True</EmbedInteropTypes>
+      <HintPath>C:\Program Files\Common Files\Microsoft Shared\MSEnv\PublicAssemblies\envdte100.dll</HintPath>
+    </Reference>
+    <Reference Include="Ionic.Zip">
+      <HintPath>References\Ionic.Zip.dll</HintPath>
+    </Reference>
+    <Reference Include="Microsoft.Build" />
+    <Reference Include="Microsoft.Build.Engine" />
     <Reference Include="Microsoft.Build.Framework" />
     <Reference Include="Microsoft.Build.Utilities.v4.0" />
     <Reference Include="System" />
@@ -62,6 +71,9 @@
     <Reference Include="System.Xml" />
   </ItemGroup>
   <ItemGroup>
+    <Compile Include="Helpers\DirectoryScanner.cs" />
+    <Compile Include="Helpers\Dirname.cs" />
+    <Compile Include="Helpers\Filename.cs" />
     <Compile Include="Helpers\ProcessHelper.cs" />
     <Compile Include="Helpers\ReflectionHelper.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
@@ -73,9 +85,13 @@
     <Compile Include="Tasks\CodeGen\GenerateCppSolution.cs" />
     <Compile Include="Tasks\CodeGen\TextTemplate.cs" />
     <Compile Include="Tasks\CodeGen\GenerateCppProject.cs" />
-    <Compile Include="Tasks\CodeGen\Math.cs" />
-    <Compile Include="Tasks\CodeGen\StringScan.cs" />
-    <Compile Include="Tasks\CodeGen\StringTools.cs" />
+    <Compile Include="Helpers\Math.cs" />
+    <Compile Include="Helpers\StringScan.cs" />
+    <Compile Include="Helpers\StringTools.cs" />
+    <Compile Include="Tasks\Package\Verify.cs" />
+    <Compile Include="Tasks\Package\Deploy.cs" />
+    <Compile Include="Tasks\Package\Install.cs" />
+    <Compile Include="Tasks\Package\Create.cs" />
     <Compile Include="Tasks\Package\Sync.cs" />
   </ItemGroup>
   <ItemGroup>
@@ -118,6 +134,6 @@
   </Target>
   -->
   <PropertyGroup>
-    <PostBuildEvent>xcopy $(ProjectDir)Samples\*.* $(TargetDir)*.* /R /Y /Q</PostBuildEvent>
+    <PostBuildEvent>xcopy $(ProjectDir)bin\Release\*.dll  $(ProjectDir)..\..\*.* /R /Y /Q</PostBuildEvent>
   </PropertyGroup>
 </Project>
