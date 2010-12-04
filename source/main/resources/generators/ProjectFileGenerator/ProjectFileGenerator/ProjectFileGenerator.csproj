@@ -48,11 +48,11 @@
     <Reference Include="System.Xml" />
   </ItemGroup>
   <ItemGroup>
-    <Compile Include="ProjectFileGenerator.Private.cs" />
+    <Compile Include="ProjectFileGenerator.cs" />
     <Compile Include="ProjectFileTemplate.Public.cs" />
     <Compile Include="ProjectFileTemplate.cs" />
     <Compile Include="Program.cs" />
-    <Compile Include="ProjectFileGenerator.cs" />
+    <Compile Include="ProjectFileGenerator.Public.cs" />
     <None Include="ProjectFileVs2010.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
   </ItemGroup>
