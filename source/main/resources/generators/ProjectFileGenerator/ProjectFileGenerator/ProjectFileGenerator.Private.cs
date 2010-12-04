@@ -1,4 +1,5 @@
 ﻿using System;
+using System.IO;
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
@@ -19,7 +20,9 @@ namespace ProjectFileGenerator
         private string mProjectGuid;
 
         private ProjectFileTemplate mTemplate;
+        private StreamWriter mWriter;
 
+        private string mCondition = "mCondition=\"'$(Configuration)|$(Platform)'=='%s'\"";
         private string mToolVersionAndXmlns = "ToolsVersion=\"4.0\" xmlns=\"http://schemas.microsoft.com/developer/msbuild/2003\"";
         private string mXmlVersionAndEncoding = "<?xml version=\"1.0\" encoding=\"utf-8\"?>";
 
@@ -32,7 +35,12 @@ namespace ProjectFileGenerator
         {
             for (int i = 0; i < tab; ++i)
                 mWriter.Write("\t");
+            string s = _c(text, p);
+            mWriter.WriteLine(s);
+        }
 
+        private string _c(string text, params string[] p)
+        {
             int pi = 0;
             int cursor = 0;
             while (p != null && pi < p.Length)
@@ -41,22 +49,46 @@ namespace ProjectFileGenerator
                 if (cursor >= 0)
                 {
                     text = text.Substring(0, cursor) + p[pi] + text.Substring(cursor + 2);
-                    ++pi;
                     cursor = cursor + p[pi].Length;
+                    ++pi;
                 }
                 break;
             }
-            mWriter.WriteLine(text);
+            return text;
         }
 
-        private void EmitGroupElementsFor(int indent, string platform, string config, string group)
+        private void _SaveGroup(int indent, string platform, string config, string group)
+        {
+            List<string> lines = mTemplate.GetGroupElementsFor(platform, config, group);
+            if (lines.Count > 0)
+            {
+                _p(indent, "<" + group + ">");
+                {
+                    foreach (string line in lines)
+                        _p(indent + 1, line);
+                }
+                _p(indent, "</" + group + ">");
+            }
+        }
+
+        private void _SaveElement(int indent, string platform, string config, string group)
         {
             List<string> lines = mTemplate.GetGroupElementsFor(platform, config, group);
             foreach (string line in lines)
                 _p(indent, line);
         }
 
-
+        private void _SaveGroup(int indent, string begin, string end, string platform, string config, string group)
+        {
+            List<string> lines = mTemplate.GetGroupElementsFor(platform, config, group);
+            if (lines.Count > 0)
+            {
+                _p(indent, begin);
+                foreach (string line in lines)
+                    _p(indent+1, line);
+                _p(indent, end);
+            }
+        }
         private void _SaveConfig()
         {
             _p(1, "<ItemGroup Label=\"ProjectConfigurations\">");
@@ -79,7 +111,7 @@ namespace ProjectFileGenerator
                 _p(2, "<ProjectGuid>{%s}</ProjectGuid>", mProjectGuid);
                 _p(2, "<RootNamespace>%s</RootNamespace>", mProjectName);
                 _p(2, "<Keyword>Win32Proj</Keyword>");
-            _p(1, "PropertyGroup>");
+            _p(1, "</PropertyGroup>");
         }
 
         public void _SaveConfigTypeBlock()
@@ -88,9 +120,9 @@ namespace ProjectFileGenerator
             {
                 foreach (string p in mPlatforms)
                 {
-                    _p(1, "<PropertyGroup " + if_config_and_platform() + " Label=\"Configuration\">", Helpers.esc(cfginfo.name));
-                    EmitGroupElementsFor(2,p,c,"Configuration");
-                    _p(1, "</PropertyGroup>");
+                    string begin = _c("<PropertyGroup " + mCondition + " Label=\"Configuration\">", c + "|" + p);
+                    string end = _c("</PropertyGroup>");
+                    _SaveGroup(1, begin, end, p, c, "Configuration");
                 }
             }
         }
@@ -100,9 +132,9 @@ namespace ProjectFileGenerator
             {
                 foreach (string p in mPlatforms)
                 {
-                    _p(1, "<ImportGroup " + if_config_and_platform() + " Label=\"PropertySheets\">", Helpers.esc(cfginfo.name));
-                    EmitGroupElementsFor(2, p, c, "ImportGroup");
-                    _p(1, "</ImportGroup>");
+                    string begin = _c("<ImportGroup " + mCondition + " Label=\"PropertySheets\">", c + "|" + p);
+                    string end = _c("</ImportGroup>");
+                    _SaveGroup(1, begin, end, p, c, "ImportGroup");
                 }
             }
         }
@@ -116,12 +148,12 @@ namespace ProjectFileGenerator
             {
                 foreach (string p in mPlatforms)
                 {
-                    EmitGroup(2, p, c, "OutDir");
-                    EmitGroup(2, p, c, "IntDir");
-                    EmitGroup(2, p, c, "TargetName");
-                    EmitGroup(2, p, c, "IgnoreImportLibrary");
-                    EmitGroup(2, p, c, "LinkIncremental");
-                    EmitGroup(2, p, c, "GenerateManifest");
+                    _SaveElement(2, p, c, "OutDir");
+                    _SaveElement(2, p, c, "IntDir");
+                    _SaveElement(2, p, c, "TargetName");
+                    _SaveElement(2, p, c, "IgnoreImportLibrary");
+                    _SaveElement(2, p, c, "LinkIncremental");
+                    _SaveElement(2, p, c, "GenerateManifest");
                 }
             }
             _p(1, "</PropertyGroup>");
@@ -133,13 +165,16 @@ namespace ProjectFileGenerator
             {
                 foreach (string p in mPlatforms)
                 {
-                    _p(1, "<ItemDefinitionGroup " + if_config_and_platform() + ">", Helpers.esc(cfginfo.name));
-                    _p(2, "<ClCompile>")
-                    clcompile(cfg);
-                    resource_compile(cfg);
-                    item_def_lib(cfg);
-                    item_link(cfg);
-                    event_hooks(cfg);
+                    _p(1, "<ItemDefinitionGroup " + mCondition + ">", c + "|" + p);
+                    {
+                        _SaveGroup(2, p, c, "ClCompile");
+                        _SaveGroup(2, p, c, "ResourceCompile");
+                        _SaveGroup(2, p, c, "Lib");
+                        _SaveGroup(2, p, c, "Link");
+                        _SaveGroup(2, p, c, "PostBuildEvent");
+                        _SaveGroup(2, p, c, "PreBuildEvent");
+                        _SaveGroup(2, p, c, "PreLinkEvent");
+                    }
                     _p(1, "</ItemDefinitionGroup>");
                 }
             }
@@ -171,14 +206,19 @@ namespace ProjectFileGenerator
             _p(1, "<PropertyGroup Label=\"UserMacros\" />");
 
             _SaveIntermediateAndOutDirs();
-            item_definitions();
-            vcxproj_files();
+            _SaveItemDefinitions();
+            
+            // save files ?
 
             _p(1, "<Import Project=\"$(VCTargetsPath)\\Microsoft.Cpp.targets\" />");
             _p(1, "<ImportGroup Label=\"ExtensionTargets\">");
             _p(1, "</ImportGroup>");
 
             _p(0, "</Project>");
+
+            mWriter.Close();
+            wfs.Close();
+            mWriter = null;
         }
     }
 }

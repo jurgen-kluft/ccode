@@ -10,15 +10,17 @@ namespace ProjectFileGenerator
 {
     public partial class ProjectFileTemplate
     {
-        public ProjectFileTemplate(string[] platforms, string[] configs)
+        public ProjectFileTemplate(string[] all_platforms, string[] all_configs, string[] project_platforms, string[] project_configs)
         {
-            mPlatforms = platforms;
-            mConfigs = configs;
+            mPlatforms = all_platforms;
+            mConfigs = all_configs;
+            mProjectPlatforms = project_platforms;
+            mProjectConfigs = project_configs;
         }
 
-        public void Load(string filename)
+        public void Load(string template_filename, string project_filename)
         {
-            InternalLoad(filename);
+            InternalLoad(template_filename, project_filename);
         }
 
         public List<string> GetGroupElementsFor(string platform, string config, string group)

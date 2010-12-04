@@ -1,50 +1,20 @@
 <Project>
   <!-- Win32 will inherit all properties from Template/Win32 -->
   <Win32>
-    <ClCompile>
-      <PreprocessorDefinitions>
-        <Insert>WIN32</Insert>
-      </PreprocessorDefinitions>
-    </ClCompile>
-
     <!-- Debug will inherit all properties from Template/Win32/Debug -->
     <Debug>
-      <ClCompile>
-        <PreprocessorDefinitions>
-          <Insert>DEBUG</Insert>
-          <Insert>Target_Dev_Debug_Win32</Insert>
-        </PreprocessorDefinitions>
-      </ClCompile>
+		<ClCompile>
+		    <AdditionalIncludeDirectories></AdditionalIncludeDirectories>
+		</ClCompile>
     </Debug>
     <!-- Debug will inherit all properties from Template/Win32/Release -->
     <Release>
-      <ClCompile>
-        <Optimization>O2</Optimization>
-        <PreprocessorDefinitions>
-          <Insert>NDEBUG</Insert>
-          <Insert>Target_Dev_Release_Win32</Insert>
-        </PreprocessorDefinitions>
-      </ClCompile>
     </Release>
     <!-- Debug will inherit all properties from Template/Win32/Profile -->
     <Profile>
-      <ClCompile>
-        <Optimization>O2</Optimization>
-        <PreprocessorDefinitions>
-          <Insert>NDEBUG</Insert>
-          <Insert>Target_Dev_Profile_Win32</Insert>
-        </PreprocessorDefinitions>
-      </ClCompile>
     </Profile>
     <!-- Debug will inherit all properties from Template/Win32/Final -->
     <Final>
-      <ClCompile>
-        <Optimization>O3</Optimization>
-        <PreprocessorDefinitions>
-          <Insert>NDEBUG</Insert>
-          <Insert>Target_Dev_Final_Win32</Insert>
-        </PreprocessorDefinitions>
-      </ClCompile>
     </Final>
   </Win32>
 </Project>

@@ -53,7 +53,7 @@
     <Compile Include="ProjectFileTemplate.cs" />
     <Compile Include="Program.cs" />
     <Compile Include="ProjectFileGenerator.cs" />
-    <Compile Include="ProjectFileVs2010.cs" />
+    <None Include="ProjectFileVs2010.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
   </ItemGroup>
   <ItemGroup>
