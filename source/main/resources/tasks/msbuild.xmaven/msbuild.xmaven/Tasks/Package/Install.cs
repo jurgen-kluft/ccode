@@ -4,6 +4,7 @@ using System.Collections.Generic;
 using System.Text;
 using Microsoft.Build.Framework;
 using Microsoft.Build.Utilities;
+using msbuild.xmaven.Helpers;
 
 namespace msbuild.xmaven
 {
@@ -22,38 +23,14 @@ namespace msbuild.xmaven
 
         public override bool Execute()
         {
-            bool ok = true;
-
-            if (!SourcePath.EndsWith("\\"))
-                SourcePath = SourcePath + "\\";
-            if (!RepoPath.EndsWith("\\"))
-                RepoPath = RepoPath + "\\";
-            if (!VersionPath.EndsWith("\\"))
-                VersionPath = VersionPath + "\\";
-            if (!LatestPath.EndsWith("\\"))
-                LatestPath = LatestPath + "\\";
-
-            if (File.Exists(RepoPath + VersionPath + SourceFilename) && File.Exists(RepoPath + LatestPath + SourceFilename + ".latest"))
-            {
-                // Do we need to do a binary compare to be sure ?
-                return ok;
-            }
-
-            try
-            {
-                File.Copy(SourcePath + SourceFilename, RepoPath + VersionPath + SourceFilename, true);
-                string[] files = Directory.GetFiles(RepoPath + LatestPath, OldLatest, SearchOption.TopDirectoryOnly);
-                foreach(string f in files)
-                    File.Delete(f);
-                File.Create(RepoPath + LatestPath + SourceFilename + ".latest");
-            }
-            catch (Exception)
-            {
-                Log.LogMessage("PackageInstall FAILED...");
-                ok = false;
-            }
-
-            return ok;
+            Package p = new Package();
+            p.SourcePath = SourcePath;
+            p.SourceFilename = SourceFilename;
+            p.OldLatest = OldLatest;
+            p.RepoPath = RepoPath;
+            p.VersionPath = VersionPath;
+            p.LatestPath = LatestPath;
+            return p.Install();
         }
     }
 }

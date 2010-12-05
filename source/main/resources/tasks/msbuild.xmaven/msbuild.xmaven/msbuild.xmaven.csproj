@@ -71,9 +71,11 @@
     <Reference Include="System.Xml" />
   </ItemGroup>
   <ItemGroup>
+    <Compile Include="Helpers\Package.Private.cs" />
     <Compile Include="Helpers\DirectoryScanner.cs" />
     <Compile Include="Helpers\Dirname.cs" />
     <Compile Include="Helpers\Filename.cs" />
+    <Compile Include="Helpers\Package.cs" />
     <Compile Include="Helpers\ProcessHelper.cs" />
     <Compile Include="Helpers\ReflectionHelper.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
@@ -82,9 +84,20 @@
       <DesignTime>True</DesignTime>
       <DependentUpon>Resources.resx</DependentUpon>
     </Compile>
-    <Compile Include="Tasks\CodeGen\GenerateCppSolution.cs" />
+    <Compile Include="Tasks\CodeGen\XElement.cs" />
+    <Compile Include="Tasks\CodeGen\XAttribute.cs" />
+    <Compile Include="Tasks\CodeGen\XConfig.cs" />
+    <Compile Include="Tasks\CodeGen\XPlatform.cs" />
+    <Compile Include="Tasks\CodeGen\XProject.cs" />
+    <Compile Include="Tasks\CodeGen\XProjectMerge.cs" />
+    <Compile Include="Tasks\CodeGen\XProjectReader.cs" />
+    <Compile Include="Tasks\CodeGen\XProjectWriter.cs" />
+    <Compile Include="Tasks\CodeGen\GenerateSolution.cs" />
+    <Compile Include="Tasks\CodeGen\ProjectFileGenerator.cs" />
+    <Compile Include="Tasks\CodeGen\ProjectFileGenerator.Public.cs" />
+    <Compile Include="Tasks\CodeGen\SolutionGenerator.cs" />
     <Compile Include="Tasks\CodeGen\TextTemplate.cs" />
-    <Compile Include="Tasks\CodeGen\GenerateCppProject.cs" />
+    <Compile Include="Tasks\CodeGen\GenerateProject.cs" />
     <Compile Include="Helpers\Math.cs" />
     <Compile Include="Helpers\StringScan.cs" />
     <Compile Include="Helpers\StringTools.cs" />

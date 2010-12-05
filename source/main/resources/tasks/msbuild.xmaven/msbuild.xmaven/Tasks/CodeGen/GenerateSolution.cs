@@ -21,7 +21,7 @@ namespace msbuild.xmaven
     /// Using the dependencies we need to collect
     /// 
     /// </summary>
-    public class GenerateCppSolution : Task
+    public class GenerateSolution : Task
     {
         #region Private instance fields
 
@@ -152,30 +152,13 @@ namespace msbuild.xmaven
             Log.LogMessage("Configurations " + _configurations.Length.ToString());
 #endif
 
-            // Build
-            CppProject project = new CppProject(ProjectName, ProjectGuid, configs, platforms);
-            project.Preprocess(TemplatePath);
 
-            foreach (ITaskItem item in _configurations)
-            {
-                string key;
-                Dictionary<string, string> variables = project.ConstructVars(item, out key);
-                project.AddVars(key, variables);
-
-#if DEBUG
-                Log.LogMessage("ID:" + key);
-                foreach (KeyValuePair<string, string> kvp in variables)
-                {
-                    Log.LogMessage("Key:" + kvp.Key + " = " + kvp.Value);
-                }
-#endif
-            }
 
             _outputPath = OutputPath;
             if (!_outputPath.EndsWith("\\"))
                 _outputPath = _outputPath + "\\";
-            _outputPath = _outputPath + ProjectName + ".vcxproj";
-            project.Generate(_outputPath);
+            _outputPath = _outputPath + ProjectName + ".sln";
+
 
             return success;
         }
@@ -184,12 +167,4 @@ namespace msbuild.xmaven
         #endregion
     }
 
-    class CppSolution
-    {
-        private string mSlnProjectGuid = "8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942";
-
-        public void Generate()
-        {
-        }
-   }
 }

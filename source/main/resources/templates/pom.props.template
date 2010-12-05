@@ -4,67 +4,7 @@
   <PropertyGroup>
     <mvpackage_dir>$(MSBuildProjectDirectory)</mvpackage_dir>
     <mvpackage_platform>Win32</mvpackage_platform>
-    <mvpackage_main_guid>${MainProjectGuid}</mvpackage_main_guid>
-    <mvpackage_test_guid>${TestProjectGuid}</mvpackage_test_guid>
-    <mvpackage_name>${Name}</mvpackage_name>
-    <mvpackage_group>com.virtuos.tnt</mvpackage_group>
-    <mvpackage_version_major>1</mvpackage_version_major>
-    <mvpackage_version_minor>0</mvpackage_version_minor>
-    <mvpackage_platforms>Win32;SonyPSP;SonyPS3;NintendoDS;Nintendo3DS;NintendoWII;MicrosoftXbox360</mvpackage_platforms>
-    <mvpackage_language>cpp</mvpackage_language>
-    <mvpackage_proj>$(mvpackage_name).sln</mvpackage_proj>
-    <mvpackage_include_dir>source\main\$(mvpackage_language)\include</mvpackage_include_dir>
-    <mvpackage_library_dir>libs\$(mvpackage_name)</mvpackage_library_dir>
+    <mvpackage_name>${PackageName}</mvpackage_name>
   </PropertyGroup>
-
-  <ItemGroup>
-    <Configs Include="Debug" />
-    <Configs Include="Release" />
-    <Configs Include="Final" />
-  </ItemGroup>
-  <ItemGroup>
-    <Platforms Include="Win32" />
-  </ItemGroup>
-  <ItemGroup>
-    <ProjectConfigurations Include="Debug|Win32">
-      <WholeProgramOptimization>false</WholeProgramOptimization>
-      <ConfigurationType>StaticLibrary</ConfigurationType>
-      <CharSet>NotSet</CharSet>
-      <CompilerOptimization>Disable</CompilerOptimization>
-      <CompilerIncludeDirectories>$(MvPackageIncludePath)</CompilerIncludeDirectories>
-      <CompilerPreprocessorDefines>TARGET_PC_DEV_DEBUG;WIN32;_DEBUG;_CONSOLE;</CompilerPreprocessorDefines>
-      <CompilerWarningLevel>Level3</CompilerWarningLevel>
-      <CompilerDisableSpecificWarnings>4996</CompilerDisableSpecificWarnings>
-      <LinkerLibraryFiles>kernel32.lib;user32.lib;ws2_32.lib;rpcrt4.lib</LinkerLibraryFiles>
-      <LinkerLibraryDirs></LinkerLibraryDirs>
-      <LinkerDebugInfo>true</LinkerDebugInfo>
-    </ProjectConfigurations>
-    <ProjectConfigurations Include="Release|Win32">
-      <WholeProgramOptimization>false</WholeProgramOptimization>
-      <ConfigurationType>StaticLibrary</ConfigurationType>
-      <CharSet>NotSet</CharSet>
-      <CompilerOptimization>O1</CompilerOptimization>
-      <CompilerIncludeDirectories>$(MvPackageIncludePath)</CompilerIncludeDirectories>
-      <CompilerPreprocessorDefines>TARGET_PC_DEV_RELEASE;WIN32;_DEBUG;_CONSOLE;</CompilerPreprocessorDefines>
-      <CompilerWarningLevel>Level3</CompilerWarningLevel>
-      <CompilerDisableSpecificWarnings>4996</CompilerDisableSpecificWarnings>
-      <LinkerLibraryFiles>kernel32.lib;user32.lib;ws2_32.lib;rpcrt4.lib</LinkerLibraryFiles>
-      <LinkerLibraryDirs></LinkerLibraryDirs>
-      <LinkerDebugInfo>true</LinkerDebugInfo>
-    </ProjectConfigurations>
-    <ProjectConfigurations Include="Final|Win32">
-      <WholeProgramOptimization>false</WholeProgramOptimization>
-      <ConfigurationType>StaticLibrary</ConfigurationType>
-      <CharSet>NotSet</CharSet>
-      <CompilerOptimization>O1</CompilerOptimization>
-      <CompilerIncludeDirectories>$(MvPackageIncludePath)</CompilerIncludeDirectories>
-      <CompilerPreprocessorDefines>TARGET_PC_DEV_FINAL;WIN32;_DEBUG;_CONSOLE;</CompilerPreprocessorDefines>
-      <CompilerWarningLevel>Level3</CompilerWarningLevel>
-      <CompilerDisableSpecificWarnings>4996</CompilerDisableSpecificWarnings>
-      <LinkerLibraryFiles>kernel32.lib;user32.lib;ws2_32.lib;rpcrt4.lib</LinkerLibraryFiles>
-      <LinkerLibraryDirs></LinkerLibraryDirs>
-      <LinkerDebugInfo>true</LinkerDebugInfo>
-    </ProjectConfigurations>
-  </ItemGroup>
 
 </Project>

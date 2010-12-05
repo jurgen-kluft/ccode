@@ -1,0 +1,52 @@
+<Package>
+  <Group>com.virtuos.tnt</Group>
+  <Version Major="1" Minor="0"></Version>
+  <IncludePath>source\main\cpp\include</IncludePath>
+  <LibraryPath>libs\${PackageName}</LibraryPath>
+  
+  <Dependency Package="example_package_name">
+    <Group>com.virtuos.tnt</Group>
+    <!-- Specify '==number', '<=number' or 'latest' -->
+    <Version>Latest</Version>
+    <!-- Specify StaticLibrary(default), DynamicLibrary, Dev, Test -->
+    <Type>StaticLibrary</Type>
+  </Dependency>
+
+  <Project Name="$(PackageName)" Language="C++" Location="source\main\cpp">
+    <UUID>${GUID}</UUID>
+    <Dependency Package="example_package_name" />
+
+    <!-- Win32 will inherit all properties from Template/Win32 -->
+    <Platform Name="Win32">
+      <!-- Debug will inherit all properties from Template/Win32/Debug -->
+      <Config Name="Debug"> </Config>
+      <!-- Release will inherit all properties from Template/Win32/Release -->
+      <Config Name="Release"> </Config>
+      <!-- Profile will inherit all properties from Template/Win32/Profile -->
+      <Config Name="Profile"> </Config>
+      <!-- Final will inherit all properties from Template/Win32/Final -->
+      <Config Name="Final"> </Config>
+    </Platform>
+  </Project>
+
+  <Project Name="${PackageName}_test" Language="C++" Location="source\test\cpp">
+    <UUID>${GUID}</UUID>
+    <Dependency Project="${PackageName}" /> 
+
+    <!-- Win32 will inherit all properties from Template/Win32 -->
+    <Platform Name="Win32">
+      <Configuration>
+        <ConfigurationType>Application</ConfigurationType>
+      </Configuration>
+      <!-- Debug will inherit all properties from Template/Win32/Debug -->
+      <Config Name="Debug"> </Config>
+      <!-- Release will inherit all properties from Template/Win32/Release -->
+      <Config Name="Release"> </Config>
+      <!-- Profile will inherit all properties from Template/Win32/Profile -->
+      <Config Name="Profile"> </Config>
+      <!-- Final will inherit all properties from Template/Win32/Final -->
+      <Config Name="Final"> </Config>
+    </Platform>
+  </Project>
+
+</Package>

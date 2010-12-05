@@ -115,7 +115,7 @@
       <mvpackage_lib_files Include="target\outdir\$(mvpackage_name)*\*$(mvpackage_platform)*.lib" />
       <mvpackage_tools_files Include="tools\**\*.*" />
       <mvpackage_doc_files Include="docs\**\*.*" />
-      <mvpackage_pom_files Include="dep.props" />
+      <mvpackage_pom_files Include="prj.xml" />
     </ItemGroup>
 
     <Copy SourceFiles="@(mvpackage_src_files)" DestinationFolder="target\$(mvpackage_name)\$(mvpackage_platform)\source\%(RecursiveDir)"/>
@@ -160,24 +160,18 @@
   <Target Name="mvconstruct_stage_1">
     <!-- Generate folder -->
     <MakeDir Directories="$(mvpackage_name)" />
-    <!-- Generate Guids -->
-    <CreateGuid><Output ItemName="mvpackage_main_project_guid" TaskParameter="NewGuid" /></CreateGuid>
-    <CreateGuid><Output ItemName="mvpackage_test_project_guid" TaskParameter="NewGuid" /></CreateGuid>
     <!-- Generate pom.props -->
     <ItemGroup>
       <TemplateTokens Include="main">
-        <Name>$(mvpackage_name)</Name>
-        <MainProjectGuid>$(mvpackage_main_project_guid)</MainProjectGuid>
-        <TestProjectGuid>$(mvpackage_test_project_guid)</TestProjectGuid>
+        <PackageName>$(mvpackage_name)</PackageName>
       </TemplateTokens>
     </ItemGroup>
-    <Copy SourceFiles="$(mvpackage_local_url)\com\virtuos\xmaven\templates\pom.props.template" DestinationFiles="$(mvpackage_name)\pom.props.template" />
     <!-- Copy pom.targets -->
     <Copy SourceFiles="$(mvpackage_local_url)\com\virtuos\xmaven\templates\pom.targets.template" DestinationFiles="$(mvpackage_name)\pom.targets" />
-    <!-- Copy dep.props -->
-    <Copy SourceFiles="$(mvpackage_local_url)\com\virtuos\xmaven\templates\dep.props.template" DestinationFiles="$(mvpackage_name)\dep.props" />
-    <FileTemplate Template="$(mvpackage_name)\pom.props.template" Destination="$(mvpackage_name)\pom.props" Tokens="@(TemplateTokens)"/>
-    <Delete Files="$(mvpackage_name)\pom.props.template"/>
+    <!-- Copy pom.props -->
+    <FileTemplate Template="$(mvpackage_local_url)\com\virtuos\xmaven\templates\pom.props.template" Destination="$(mvpackage_name)\pom.props" Tokens="@(TemplateTokens)"/>
+    <!-- Copy prj.xml -->
+    <FileTemplate Template="$(mvpackage_local_url)\com\virtuos\xmaven\templates\prj.xml.template" Destination="$(mvpackage_name)\prj.xml" Tokens="@(TemplateTokens)"/>
   </Target>
 
   <Target Name="mvconstruct_stage_2">
@@ -197,7 +191,7 @@
   </Target>
 
   <Target Name="mvconstruct">
-    <!-- If pom.props, pom.targets and dep.props exist then -->
+    <!-- If pom.props, pom.targets and prj.xml exist then -->
     <!--   Construct the directory structure -->
     <!--   Sync the dependencies -->
     <!--   Create the vcxproj for main and test -->
@@ -205,13 +199,13 @@
     <!-- Else -->
     <!--   Generate pom.props -->
     <!--   Generate pom.targets -->
-    <!--   Generate dep.props -->
+    <!--   Generate prj.xml -->
     <!-- Endif -->
 
     <Message Text="$(mvpackage_dir)" />
     
-    <CallTarget Targets="mvsetup_stage_1" Condition="!Exists('$(mvpackage_dir)\pom.props') Or !Exists('$(mvpackage_dir)\pom.targets') Or !Exists('$(mvpackage_dir)\dep.props')"></CallTarget>
-    <CallTarget Targets="mvsetup_stage_2" Condition="Exists('pom.props') And Exists('pom.targets') And Exists('dep.props')"></CallTarget>
+    <CallTarget Targets="mvsetup_stage_1" Condition="!Exists('$(mvpackage_dir)\pom.props') Or !Exists('$(mvpackage_dir)\pom.targets') Or !Exists('$(mvpackage_dir)\prj.xml')"></CallTarget>
+    <CallTarget Targets="mvsetup_stage_2" Condition="Exists('pom.props') And Exists('pom.targets') And Exists('prj.xml')"></CallTarget>
   </Target>
 
   <Target Name="mvinfo" DependsOnTargets="mvpackage_hg_extractrevision;mvpackage_version_time">
@@ -241,7 +235,7 @@
     <PropertyGroup>
       <SrcFilename>$(mvpackage_name)_$(mvpackage_version_major).$(mvpackage_version_minor).$(mvpackage_version_year).$(mvpackage_version_month).$(mvpackage_version_day).$(mvpackage_version_hour).$(mvpackage_version_minute).$(mvpackage_version_second).$(mvpackage_vcs_branch).$(mvpackage_vcs_version)_$(mvpackage_platform)</SrcFilename>
       <SrcFilenameExt>.zip</SrcFilenameExt>
-      <SrcFolder>file://$(mvpackage_dir)\target\</SrcFolder>
+      <SrcFolder>$(mvpackage_dir)\target\</SrcFolder>
       <DstFolder>$(mvpackage_local_url)$(mvpackage_group_h)\$(mvpackage_group_m)\$(mvpackage_group_l)\$(mvpackage_name)\</DstFolder>
       <Name>$(mvpackage_name)</Name>
       <Major>$(mvpackage_version_major)</Major>
@@ -270,7 +264,7 @@
     <PropertyGroup>
       <SrcFilename>$(mvpackage_name)_$(mvpackage_version_major).$(mvpackage_version_minor).$(mvpackage_version_year).$(mvpackage_version_month).$(mvpackage_version_day).$(mvpackage_version_hour).$(mvpackage_version_minute).$(mvpackage_version_second).$(mvpackage_vcs_branch).$(mvpackage_vcs_version)_$(mvpackage_platform)</SrcFilename>
       <SrcFilenameExt>.zip</SrcFilenameExt>
-      <SrcFolder>file://$(mvpackage_dir)\target\</SrcFolder>
+      <SrcFolder>$(mvpackage_dir)\target\</SrcFolder>
       <DstFolder>$(mvpackage_remote_url)$(mvpackage_group_h)\$(mvpackage_group_m)\$(mvpackage_group_l)\$(mvpackage_name)\</DstFolder>
       <Name>$(mvpackage_name)</Name>
       <Major>$(mvpackage_version_major)</Major>
@@ -296,7 +290,7 @@
     <!-- Parameters to pass to the task: -->
     <!-- - Package name-->
     <!-- - Package path -->
-    <!-- - Package dependency filename (dep.props) -->
+    <!-- - Package dependency filename (prj.xml) -->
     <!-- - Local package repository path -->
     <!-- - Remote package repository path -->
   </Target>

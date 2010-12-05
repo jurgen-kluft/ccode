@@ -1,10 +1,10 @@
 ﻿using System;
+using System.Xml;
 using System.IO;
 using System.Collections.Generic;
 using System.Text;
-using Microsoft.Build.Framework;
+//using Microsoft.Build.Framework;
 using Microsoft.Build.Utilities;
-using Microsoft.Build.Evaluation;
 
 namespace msbuild.xmaven
 {
@@ -29,7 +29,7 @@ namespace msbuild.xmaven
         }
         private Dictionary<string, List<Dependency>> mDependencies;
 
-        private void AnalyzeAndGatherDependencies(Project project)
+        private void AnalyzeAndGatherDependencies(XmlDocument project)
         {
 
         }
@@ -41,13 +41,13 @@ namespace msbuild.xmaven
 
         public override bool Execute()
         {
-            // Load dep.props of main package
+            // Load prj.xml of main package
             // Add dependencies to the dependency list
             // 1
             // For every dependency copy it from remote to local repository if necessary
-            // For every dependency load its dep.props and add it to the dependency list
+            // For every dependency load its prj.xml and add it to the dependency list
             // Go back to 1 until no new dependencies (watch out for cyclic dependencies)
-            // Analyze the dependency list and resolve versioning conflicts
+            // Analyze the dependency list and resolve version conflicts
             // Install the dependency packages in the target folder
             // Verify the installed packages
             // Done
@@ -55,7 +55,8 @@ namespace msbuild.xmaven
             if (!File.Exists(Path + Dep))
                 return false;
 
-            Project deps = new Project(Path + Dep);
+            XmlDocument deps = new XmlDocument();
+            deps.Load(Path + Dep);
             AnalyzeAndGatherDependencies(deps);
 
             return false;
