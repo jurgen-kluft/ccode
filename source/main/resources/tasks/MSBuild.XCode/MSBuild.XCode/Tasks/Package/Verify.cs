@@ -5,9 +5,9 @@ using System.Text;
 using System.Security.Cryptography;
 using Microsoft.Build.Framework;
 using Microsoft.Build.Utilities;
-using MSBuild.Cod.Helpers;
+using MSBuild.XCode.Helpers;
 
-namespace MSBuild.Cod
+namespace MSBuild.XCode
 {
     /// <summary>
     ///	Will copy a new package release to the local-package-repository. 

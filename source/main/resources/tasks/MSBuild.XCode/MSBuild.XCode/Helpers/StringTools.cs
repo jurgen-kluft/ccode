@@ -4,7 +4,7 @@ using System.Collections.Generic;
 using System.Text;
 using System.Text.RegularExpressions;
 
-namespace MSBuild.Cod.Helpers
+namespace MSBuild.XCode.Helpers
 {
 	#region String Formatting Documentation
 	/// <summary>

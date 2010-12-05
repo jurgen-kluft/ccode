@@ -107,6 +107,8 @@
     <Compile Include="Tasks\Package\Install.cs" />
     <Compile Include="Tasks\Package\Create.cs" />
     <Compile Include="Tasks\Package\Sync.cs" />
+    <Compile Include="Tasks\Package\Version.cs" />
+    <Compile Include="Tasks\Settings.cs" />
   </ItemGroup>
   <ItemGroup>
     <EmbeddedResource Include="Properties\Resources.resx">
@@ -137,7 +139,7 @@
     </BootstrapperPackage>
   </ItemGroup>
   <ItemGroup>
-    <None Include="msbuild.xmaven.snk" />
+    <None Include="MSBuild.XCode.snk" />
   </ItemGroup>
   <Import Project="$(MSBuildBinPath)\Microsoft.CSharp.targets" />
   <!-- To modify your build process, add your task inside one of the targets below and uncomment it. 

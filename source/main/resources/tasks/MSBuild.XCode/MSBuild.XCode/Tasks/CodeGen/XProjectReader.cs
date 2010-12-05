@@ -6,7 +6,7 @@ using System.IO;
 using System.Xml;
 using Microsoft.Build.Evaluation;
 
-namespace MSBuild.Cod
+namespace MSBuild.XCode
 {
     public class XProjectReader
     {

@@ -2,7 +2,7 @@ using System;
 using System.Collections.Generic;
 using System.Diagnostics;
 
-namespace MSBuild.Cod.Helpers
+namespace MSBuild.XCode.Helpers
 {
     /// <summary>
     ///  Represents a filename

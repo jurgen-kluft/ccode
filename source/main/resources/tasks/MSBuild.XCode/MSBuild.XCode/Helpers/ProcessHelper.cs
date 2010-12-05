@@ -4,7 +4,7 @@ using System.Text;
 using System.Diagnostics;
 using Microsoft.Build.Utilities;
 
-namespace MSBuild.Cod.Helpers
+namespace MSBuild.XCode.Helpers
 {
     /// <summary>
     /// Helper class to run an executable

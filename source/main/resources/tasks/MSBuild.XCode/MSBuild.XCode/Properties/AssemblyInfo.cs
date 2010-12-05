@@ -10,7 +10,7 @@ using System.Runtime.InteropServices;
 [assembly: AssemblyConfiguration("")]
 [assembly: AssemblyCompany("")]
 [assembly: AssemblyProduct("MSBuild XCode")]
-[assembly: AssemblyCopyright("Copyright ©2010 Jurgen Kluft")]
+[assembly: AssemblyCopyright("Copyright © 2010 Jurgen Kluft")]
 [assembly: AssemblyTrademark("")]
 [assembly: AssemblyCulture("")]
 

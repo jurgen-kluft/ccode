@@ -3,7 +3,7 @@ using System.Globalization;
 using System.Collections.Generic;
 using System.IO;
 
-namespace MSBuild.Cod.Helpers
+namespace MSBuild.XCode.Helpers
 {
     public class DirectoryScanner
     {

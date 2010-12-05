@@ -3,7 +3,7 @@ using System.Collections.Generic;
 using System.Text;
 using System.Reflection;
 
-namespace MSBuild.Cod.Helpers
+namespace MSBuild.XCode.Helpers
 {
     /// <summary>
     /// Helper class providing reflection functionality

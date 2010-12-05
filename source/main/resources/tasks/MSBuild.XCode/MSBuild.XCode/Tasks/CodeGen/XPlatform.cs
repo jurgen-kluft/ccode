@@ -1,7 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
 
-namespace MSBuild.Cod
+namespace MSBuild.XCode
 {
     public class XPlatform
     {

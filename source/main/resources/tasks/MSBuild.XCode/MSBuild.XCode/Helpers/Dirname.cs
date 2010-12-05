@@ -1,6 +1,6 @@
 using System;
 
-namespace MSBuild.Cod.Helpers
+namespace MSBuild.XCode.Helpers
 {
     /// <summary>
     /// Represents a directory

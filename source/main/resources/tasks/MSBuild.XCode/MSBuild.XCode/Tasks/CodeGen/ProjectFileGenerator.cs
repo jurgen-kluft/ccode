@@ -4,7 +4,7 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Text;
 
-namespace MSBuild.Cod
+namespace MSBuild.XCode
 {
     public partial class ProjectFileGenerator
     {

@@ -4,7 +4,7 @@ using System.Text;
 using System.Text.RegularExpressions;
 using System.IO;
 
-namespace MSBuild.Cod
+namespace MSBuild.XCode
 {
     class SolutionGenerator
     {

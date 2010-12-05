@@ -9,9 +9,9 @@ using System.Text;
 using System.Runtime;
 using Ionic.Zip;
 using Ionic.Zlib;
-using MSBuild.Cod.Helpers;
+using MSBuild.XCode.Helpers;
 
-namespace MSBuild.Cod
+namespace MSBuild.XCode
 {
     public class PackageCreate : Task
     {

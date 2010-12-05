@@ -4,7 +4,7 @@ using System.Text;
 using System.IO;
 using System.Xml;
 
-namespace MSBuild.Cod
+namespace MSBuild.XCode
 {
     public class XProject
     {

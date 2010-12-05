@@ -2,7 +2,7 @@ using System;
 using System.Text;
 using System.Xml;
 
-namespace MSBuild.Cod
+namespace MSBuild.XCode
 {
     public class XAttribute
     {

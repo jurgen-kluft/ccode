@@ -5,7 +5,7 @@ using System.Collections.Generic;
 using System.Text;
 using Microsoft.Build.Utilities;
 
-namespace MSBuild.Cod
+namespace MSBuild.XCode
 {
     /// <summary>
     ///	Will sync the local-package-repository with the remote-package-repository. 
