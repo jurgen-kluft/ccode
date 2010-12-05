@@ -1,43 +1,42 @@
 <Project ToolsVersion="4.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
 
   <!-- 
-    Maven package repository configuration
+    Package repository configuration
     The system needs to define 2 environment variables:
     1) SCM_LOCAL_REPO_ROOT
     2) SCM_REMOTE_REPO_ROOT
   -->
   <PropertyGroup>
-    <mvpackage_local_url>$(SCM_LOCAL_REPO_ROOT)\</mvpackage_local_url>
-    <mvpackage_remote_url>$(SCM_REMOTE_REPO_ROOT)</mvpackage_remote_url>
+    <XCodePackageLocalRepoURL>$(SCM_LOCAL_REPO_ROOT)\</XCodePackageLocalRepoURL>
+    <XCodePackageRemoteRepoURL>$(SCM_REMOTE_REPO_ROOT)</XCodePackageRemoteRepoURL>
   </PropertyGroup>
   
   <ItemGroup>
-    <mvpackage_repository Include="local">
-      <URL>$(mvpackage_local_url)</URL>
-    </mvpackage_repository>
-    <mvpackage_repository Include="central">
-      <URL>$(mvpackage_remote_url)</URL>
-    </mvpackage_repository>
+    <XCodePackageRepository Include="local">
+      <URL>$(XCodePackageLocalRepoURL)</URL>
+    </XCodePackageRepository>
+    <XCodePackageRepository Include="central">
+      <URL>$(XCodePackageRemoteRepoURL)</URL>
+    </XCodePackageRepository>
   </ItemGroup>
 
   <PropertyGroup>
-    <mvpackage_platforms>Win32;SonyPSP;SonyPS3;NintendoDS;Nintendo3DS;NintendoWII;Microsoft360</mvpackage_platforms>
-    <mvpackage_version_major>1</mvpackage_version_major>
-    <mvpackage_version_minor>0</mvpackage_version_minor>
-    <mvpackage_version_year>2010</mvpackage_version_year>
-    <mvpackage_version_month>12</mvpackage_version_month>
-    <mvpackage_version_day>01</mvpackage_version_day>
-    <mvpackage_version_hour>00</mvpackage_version_hour>
-    <mvpackage_version_minute>00</mvpackage_version_minute>
-    <mvpackage_version_second>00</mvpackage_version_second>
+    <XCodePackageVersionMajor>1</XCodePackageVersionMajor>
+    <XCodePackageVersionMinor>0</XCodePackageVersionMinor>
+    <XCodePackageVersionYear>2010</XCodePackageVersionYear>
+    <XCodePackageVersionMonth>12</XCodePackageVersionMonth>
+    <XCodePackageVersionDay>01</XCodePackageVersionDay>
+    <XCodePackageVersionHour>00</XCodePackageVersionHour>
+    <XCodePackageVersionMinute>00</XCodePackageVersionMinute>
+    <XCodePackageVersionSecond>00</XCodePackageVersionSecond>
   </PropertyGroup>
   <!-- 
-    Generate a 'mvpackage_vcs_version' property containing the changeset ID of the hg repository
-    as well as a 'mvpackage_vcs_branch' property that contains the name of the current branch.
+    Generate a 'XCodePackageVcsRevision' property containing the changeset ID of the hg repository
+    as well as a 'XCodePackageVcsBranch' property that contains the name of the current branch.
   -->
   <PropertyGroup>
-    <mvpackage_vcs_version>ffffffffffff</mvpackage_vcs_version>
-    <mvpackage_vcs_branch>default</mvpackage_vcs_branch>
+    <XCodePackageVcsRevision>ffffffffffff</XCodePackageVcsRevision>
+    <XCodePackageVcsBranch>default</XCodePackageVcsBranch>
   </PropertyGroup>
   
   <ItemGroup>
@@ -54,10 +53,10 @@
   <ItemGroup>
     <DirectoryStructure Include="docs\manuals" />
     <DirectoryStructure Include="docs\references" />
-    <DirectoryStructure Include="source\main\$(mvpackage_language)" />
+    <DirectoryStructure Include="source\main\$(XCodePackageLanguage)" />
     <DirectoryStructure Include="source\main\include" />
     <DirectoryStructure Include="source\main\resources" />
-    <DirectoryStructure Include="source\test\$(mvpackage_language)" />
+    <DirectoryStructure Include="source\test\$(XCodePackageLanguage)" />
     <DirectoryStructure Include="source\test\include" />
     <DirectoryStructure Include="source\test\resources" />
     <DirectoryStructure Include="target" />
@@ -65,18 +64,14 @@
   </ItemGroup>
 
   <PropertyGroup>
-    <mvpackage_name></mvpackage_name>
-    <mvpackage_dir></mvpackage_dir>
-    <mvpackage_platform>Win32</mvpackage_platform>
-    <mvpackage_group>com.virtuos.tnt</mvpackage_group>
-    <mvpackage_group_h>com</mvpackage_group_h>
-    <mvpackage_group_m>virtuos</mvpackage_group_m>
-    <mvpackage_group_l>tnt</mvpackage_group_l>
+    <XCodePackageName></XCodePackageName>
+    <XCodePackageDir></XCodePackageDir>
+    <XCodePackagePlatform>Win32</XCodePackagePlatform>
+    <XCodePackageGroup>com.virtuos.tnt</XCodePackageGroup>
+    <XCodePackageGroupH>com</XCodePackageGroupH>
+    <XCodePackageGroupM>virtuos</XCodePackageGroupM>
+    <XCodePackageGroupL>tnt</XCodePackageGroupL>
   </PropertyGroup>
 
-  <ItemGroup>
-    <mvpackage_config_targets Include="Target_Dev_Debug;Target_Dev_Release;Target_Dev_Profile;Target_Dev_Final" />
-  </ItemGroup>
-  
 </Project>
 

@@ -1,4 +1,4 @@
-﻿namespace xmaven
+﻿namespace xcod
 {
     partial class Main
     {

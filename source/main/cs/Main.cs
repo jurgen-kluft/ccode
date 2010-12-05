@@ -7,7 +7,7 @@ using System.Linq;
 using System.Text;
 using System.Windows.Forms;
 
-namespace xmaven
+namespace xcod
 {
     public partial class Main : Form
     {

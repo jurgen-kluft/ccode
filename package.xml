@@ -1,0 +1,34 @@
+<Package Name="xcode">
+  <Group>com.virtuos.tnt</Group>
+  <Version Major="1" Minor="0"></Version>
+  <LibraryPath>libs\${PackageName}</LibraryPath>
+
+  <Project Name="xcode" Language="C#" Location="source\main\cs">
+    <UUID>${GUID}</UUID>
+
+    <!-- Win32 will inherit all properties from Template/Win32 -->
+    <Platform Name="Win32">
+      <!-- Debug will inherit all properties from Template/Win32/Debug -->
+      <Config Name="Debug"> </Config>
+      <!-- Release will inherit all properties from Template/Win32/Release -->
+      <Config Name="Release"> </Config>
+    </Platform>
+  </Project>
+
+  <Project Name="${PackageName}_test" Language="C++" Location="source\test\cs">
+    <UUID>${GUID}</UUID>
+    <Dependency Project="xcode" /> 
+
+    <!-- Win32 will inherit all properties from Template/Win32 -->
+    <Platform Name="Win32">
+      <Configuration>
+        <ConfigurationType>Application</ConfigurationType>
+      </Configuration>
+      <!-- Debug will inherit all properties from Template/Win32/Debug -->
+      <Config Name="Debug"> </Config>
+      <!-- Release will inherit all properties from Template/Win32/Release -->
+      <Config Name="Release"> </Config>
+    </Platform>
+  </Project>
+
+</Package>
