@@ -3,7 +3,7 @@ using System.Configuration;
 using System.Collections.Generic;
 using Microsoft.Win32;
 
-namespace MSBuild.Cod
+namespace MSBuild.XCode
 {
     static class Program
     {

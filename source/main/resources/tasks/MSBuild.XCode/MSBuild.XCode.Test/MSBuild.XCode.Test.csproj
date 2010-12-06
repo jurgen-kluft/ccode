@@ -109,7 +109,7 @@
     </BootstrapperPackage>
   </ItemGroup>
   <ItemGroup>
-    <ProjectReference Include="..\msbuild.xmaven\MSBuild.Cod.csproj">
+    <ProjectReference Include="..\MSBuild.XCode\MSBuild.XCode.csproj">
       <Project>{68195FA5-2A86-4C7C-856F-7CCBDC721D68}</Project>
       <Name>MSBuild.Cod</Name>
     </ProjectReference>

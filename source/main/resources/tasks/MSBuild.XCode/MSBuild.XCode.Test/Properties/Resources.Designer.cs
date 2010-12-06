@@ -8,7 +8,7 @@
 // </auto-generated>
 //------------------------------------------------------------------------------
 
-namespace MSBuild.Cod.Properties {
+namespace MSBuild.XCode.Properties {
     using System;
     
     
