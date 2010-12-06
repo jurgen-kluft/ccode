@@ -1,5 +1,4 @@
 <Project ToolsVersion="4.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
-
   <!-- 
     Package repository configuration
     The system needs to define 2 environment variables:
@@ -21,56 +20,9 @@
   </ItemGroup>
 
   <PropertyGroup>
-    <XCodePackageVersionMajor>1</XCodePackageVersionMajor>
-    <XCodePackageVersionMinor>0</XCodePackageVersionMinor>
-    <XCodePackageVersionYear>2010</XCodePackageVersionYear>
-    <XCodePackageVersionMonth>12</XCodePackageVersionMonth>
-    <XCodePackageVersionDay>01</XCodePackageVersionDay>
-    <XCodePackageVersionHour>00</XCodePackageVersionHour>
-    <XCodePackageVersionMinute>00</XCodePackageVersionMinute>
-    <XCodePackageVersionSecond>00</XCodePackageVersionSecond>
-  </PropertyGroup>
-  <!-- 
-    Generate a 'XCodePackageVcsRevision' property containing the changeset ID of the hg repository
-    as well as a 'XCodePackageVcsBranch' property that contains the name of the current branch.
-  -->
-  <PropertyGroup>
-    <XCodePackageVcsRevision>ffffffffffff</XCodePackageVcsRevision>
-    <XCodePackageVcsBranch>default</XCodePackageVcsBranch>
-  </PropertyGroup>
-  
-  <ItemGroup>
-    <DefaultExclude Include="**\.svn\**" />
-    <DefaultExclude Include="**\.hg\**" />
-    <DefaultExclude Include="**\*.suo" />
-    <DefaultExclude Include="**\*.sdf" />
-    <DefaultExclude Include="**\*.opensdf" />
-    <DefaultExclude Include="**\*.ipch" />
-    <DefaultExclude Include="**\*.user" />
-    <DefaultExclude Include="**\*.original" />
-  </ItemGroup>
-
-  <ItemGroup>
-    <DirectoryStructure Include="docs\manuals" />
-    <DirectoryStructure Include="docs\references" />
-    <DirectoryStructure Include="source\main\$(XCodePackageLanguage)" />
-    <DirectoryStructure Include="source\main\include" />
-    <DirectoryStructure Include="source\main\resources" />
-    <DirectoryStructure Include="source\test\$(XCodePackageLanguage)" />
-    <DirectoryStructure Include="source\test\include" />
-    <DirectoryStructure Include="source\test\resources" />
-    <DirectoryStructure Include="target" />
-    <DirectoryStructure Include="tools" />
-  </ItemGroup>
-
-  <PropertyGroup>
-    <XCodePackageName></XCodePackageName>
     <XCodePackageDir></XCodePackageDir>
-    <XCodePackagePlatform>Win32</XCodePackagePlatform>
-    <XCodePackageGroup>com.virtuos.tnt</XCodePackageGroup>
-    <XCodePackageGroupH>com</XCodePackageGroupH>
-    <XCodePackageGroupM>virtuos</XCodePackageGroupM>
-    <XCodePackageGroupL>tnt</XCodePackageGroupL>
+    <XCodePackagePlatform>$(Platform)</XCodePackagePlatform>
+    <XCodePackageFile></XCodePackageFile>
   </PropertyGroup>
 
 </Project>

@@ -1,4 +1,4 @@
-﻿namespace xcod
+﻿namespace xcode
 {
     partial class Main
     {

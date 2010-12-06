@@ -6,7 +6,7 @@ using System.IO;
 
 namespace MSBuild.XCode
 {
-    class SolutionGenerator
+    class MsDevSolutionGenerator
     {
         public enum EVersion
         {
@@ -25,7 +25,7 @@ namespace MSBuild.XCode
 
         private List<string> m_Configs;
 
-        public SolutionGenerator(EVersion version, ELanguage language)
+        public MsDevSolutionGenerator(EVersion version, ELanguage language)
         {
             mVersion = version;
             mLanguage = language;
@@ -200,7 +200,7 @@ namespace MSBuild.XCode
             }
         }
 
-        public int Execute(string _SolutionFile, List<string> _ProjectFiles)
+        public int Save(string _SolutionFile, List<string> _ProjectFiles)
         {
             mRootDir = Path.GetDirectoryName(_SolutionFile);
 

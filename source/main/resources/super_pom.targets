@@ -29,26 +29,6 @@
   <Target Name = "__Install"></Target>
   <Target Name = "__Deploy"></Target>
 
-  <Target Name="XCodePackageVersionTime">
-    <Time>
-      <Output TaskParameter="Year" PropertyName="XCodePackageVersionYear" />
-      <Output TaskParameter="Month" PropertyName="XCodePackageVersionMonth" />
-      <Output TaskParameter="Day" PropertyName="XCodePackageVersionDay" />
-      <Output TaskParameter="Hour" PropertyName="XCodePackageVersionHour" />
-      <Output TaskParameter="Minute" PropertyName="XCodePackageVersionMinute" />
-      <Output TaskParameter="Second" PropertyName="XCodePackageVersionSecond" />
-    </Time>
-  </Target>
-
-  <Target Name="XCodePackageGroupSplit">
-    <SplitGroup Group="$(XCodePackageGroup)">
-      <Output PropertyName="XCodePackageGroupH" TaskParameter="GroupH"/>
-      <Output PropertyName="XCodePackageGroupM" TaskParameter="GroupM"/>
-      <Output PropertyName="XCodePackageGroupL" TaskParameter="GroupL"/>
-    </SplitGroup>
-  </Target>
-
-
   <!-- These are the core xcode lifecycle targets and should not be overriden!! -->
   <Target Name = "Validate" DependsOnTargets=""><CallTarget Targets="__Validate" /></Target>
   <Target Name = "Initialize" DependsOnTargets="Validate">
@@ -83,24 +63,12 @@
 
   <Target Name = "Info" />
   <Target Name = "Clean" />
-
-
-  <Target Name="HgExtractRevision" Condition="'$(MSBuildMercurialTasksAvailable)' == 'true'" DependsOnTargets="MavenEnvironmentExtensionChecks">
-    <HgVersion LocalPath="$(MSBuildProjectDirectory)" Timeout="5000">
-      <Output TaskParameter="Changeset" PropertyName="XCodePackageVcsRevision" />
-    </HgVersion>
-    <HgBranch LocalPath="$(MSBuildProjectDirectory)" Timeout="5000">
-      <Output TaskParameter="BranchName" PropertyName="XCodePackageVcsBranch" />
-    </HgBranch>
-  </Target>
   
   <Target Name="PackageCreate" DependsOnTargets="HgExtractRevision;XCodePackageVersionTime">
-    <PropertyGroup>
-      <XCodePackageBuildDate>$(XCodePackageBuildYear).$(XCodePackageBuildMonth).$(XCodePackageBuildDay).$(XCodePackageBuildHour).$(XCodePackageBuildMinute).$(XCodePackageBuildSecond)</XCodePackageBuildDate>
-      <XCodePackageBuildRev>$(XCodePackageVcsBranch).$(XCodePackageVcsRevision)</XCodePackageBuildRev>
-    </PropertyGroup>
     <Message Text="Package Filename: $(XCodePackageName)_$(XCodePackageVersionMajor).$(XCodePackageVersionMinor).$(XCodePackageBuildDate).$(XCodePackageBuildRev)_$(XCodePackagePlatform)"/>
-    <MSBuild.XCode.PackageCreate Path="@(XCodePackageDir)\target" Name="$(XCodePackageName)" ZipFilename="target\$(XCodePackageName)_$(XCodePackageVersionMajor).$(XCodePackageVersionMinor).$(XCodePackageBuildDate).$(XCodePackageBuildRev)_$(XCodePackagePlatform).zip"/>
+    <MSBuild.XCode.PackageCreate Path="@(XCodePackageDir)" Platform="$(XCodePackagePlatform)">
+      <Output PropertyName="XCodePackageFile" TaskParameter="Filename" />
+    </MSBuild.XCode.PackageCreate>
   </Target>
 
   <Target Name="PackageCreatePrep">
@@ -115,7 +83,7 @@
       <XCodePackageLibFiles Include="target\outdir\$(XCodePackageName)*\*$(XCodePackagePlatform)*.lib" />
       <XCodePackageToolsFiles Include="tools\**\*.*" />
       <XCodePackageDocFiles Include="docs\**\*.*" />
-      <XCodePackagePomFiles Include="package.xml" />
+      <XCodePackagePomFiles Include="package.xml;pom.targets;pom.props" />
     </ItemGroup>
 
     <Copy SourceFiles="@(XCodePackageSrcFiles)" DestinationFolder="target\$(XCodePackageName)\$(XCodePackagePlatform)\source\%(RecursiveDir)"/>
@@ -148,137 +116,28 @@
     <CallTarget Targets="CleanPlatformForEveryTarget"></CallTarget>
   </Target>
 
-  <Target Name="GenerateCppProjects">
-    <MSBuild.XCode.GenerateCppProject TemplatePath="$(XCodePackageLocalRepoURL)com\virtuos\xcode\templates\vcxproj_template.xml" PackagePath="$(XCodePackageDir)\package.xml"  />
-  </Target>
-
-  <Target Name="ConstructStage1">
-    <!-- Generate folder -->
-    <MakeDir Directories="$(XCodePackageName)" />
-    <!-- Generate pom.props -->
-    <ItemGroup>
-      <TemplateTokens Include="main">
-        <PackageName>$(XCodePackageName)</PackageName>
-      </TemplateTokens>
-    </ItemGroup>
-    <!-- Copy pom.targets -->
-    <Copy SourceFiles="$(XCodePackageLocalRepoURL)\com\virtuos\xcode\templates\pom.targets.template" DestinationFiles="$(XCodePackageName)\pom.targets" />
-    <!-- Copy pom.props -->
-    <FileTemplate Template="$(XCodePackageLocalRepoURL)\com\virtuos\xcode\templates\pom.props.template" Destination="$(XCodePackageName)\pom.props" Tokens="@(TemplateTokens)"/>
-    <!-- Copy package.xml -->
-    <FileTemplate Template="$(XCodePackageLocalRepoURL)\com\virtuos\xcode\templates\package.xml.template" Destination="$(XCodePackageName)\package.xml" Tokens="@(TemplateTokens)"/>
-  </Target>
-
-  <Target Name="ConstructStage2">
-
-    <!-- Generate directory structure -->
-    <MakeDir Directories="%(DirectoryStructure.Identity)" />
-
-    <!-- Generate solution and vcxproj files -->
-    <CallTarget Targets="GenerateCppProjects" />
-
-  </Target>
-
   <Target Name="Construct">
-    <!-- If pom.props, pom.targets and package.xml exist then -->
-    <!--   Construct the directory structure -->
-    <!--   Sync the dependencies -->
-    <!--   Create the vcxproj for main and test -->
-    <!--   Create the sln -->
-    <!-- Else -->
-    <!--   Generate pom.props -->
-    <!--   Generate pom.targets -->
-    <!--   Generate package.xml -->
-    <!-- Endif -->
-
-    <Message Text="$(XCodePackageDir)" />
-    
-    <CallTarget Targets="ConstructStage1" Condition="!Exists('$(XCodePackageDir)\pom.props') Or !Exists('$(XCodePackageDir)\pom.targets') Or !Exists('$(XCodePackageDir)\package.xml')"></CallTarget>
-    <CallTarget Targets="ConstructStage2" Condition="Exists('pom.props') And Exists('pom.targets') And Exists('package.xml')"></CallTarget>
+    <MSBuild.XCode.Construct TemplatePath="$(XCodePackageLocalRepoURL)com\virtuos\xcode\templates\" Path="$(XCodePackageDir)" />
   </Target>
 
   <Target Name="Info" DependsOnTargets="HgExtractRevision;XCodePackageVersionTime">
-    <Message Text="Package VCS Version    = $(XCodePackageVcsRevision)" />
-    <Message Text="Package VCS Branch     = $(XCodePackageVcsBranch)" />
-    <Message Text="Package Directory      = $(XCodePackageDir)" />
-    <Message Text="Package Name           = $(XCodePackageName)" />
-    <Message Text="Package Group          = $(XCodePackageGroup)" />
-    <Message Text="Package Version        = $(XCodePackageVersionMajor).$(XCodePackageVersionMinor).$(XCodePackageVersionYear).$(XCodePackageVersionMonth).$(XCodePackageVcsBranch).$(XCodePackageVcsRevision)" />
-    <Message Text="Package Platform       = $(XCodePackagePlatform)" />
-    <Message Text="Package Platforms      = $(XCodePackagePlatforms)" />
-    <Message Condition = " '$(XCodePackageLanguage)' == 'cpp' " 
-             Text="Package Language       = C++" />
-    <Message Condition = " '$(XCodePackageLanguage)' == 'cs' "
-             Text="Package Language       = C#" />
+    <MSBuild.XCode.Info Path="$(XCodePackageDir)" />
   </Target>
 
   <Target Name="PackageInstall">
-    <!-- Install the package zip in the local package repository -->
-    <!-- Update latest in the local package repository -->
-    <!-- Parameters to pass to the task: -->
-    <!-- - Path to package zip file -->
-    <!-- - URL of local package repositories -->
-    <PropertyGroup>
-      <SrcFilename>$(XCodePackageName)_$(XCodePackageVersionMajor).$(XCodePackageVersionMinor).$(XCodePackageVersionYear).$(XCodePackageVersionMonth).$(XCodePackageVersionDay).$(XCodePackageVersionHour).$(XCodePackageVersionMinute).$(XCodePackageVersionSecond).$(XCodePackageVcsBranch).$(XCodePackageVcsRevision)_$(XCodePackagePlatform)</SrcFilename>
-      <SrcFilenameExt>.zip</SrcFilenameExt>
-      <SrcFolder>$(XCodePackageDir)\target\</SrcFolder>
-      <DstFolder>$(XCodePackageLocalRepoURL)$(XCodePackageGroupH)\$(XCodePackageGroupM)\$(XCodePackageGroupL)\$(XCodePackageName)\</DstFolder>
-      <Name>$(XCodePackageName)</Name>
-      <Major>$(XCodePackageVersionMajor)</Major>
-      <Minor>$(XCodePackageVersionMinor)</Minor>
-      <Year>$(XCodePackageVersionYear)</Year>
-      <Month>$(XCodePackageVersionMonth)</Month>
-      <Day>$(XCodePackageVersionDay)</Day>
-      <Hour>$(XCodePackageVersionHour)</Hour>
-      <Minute>$(XCodePackageVersionMinute)</Minute>
-      <Second>$(XCodePackageVersionSecond)</Second>
-      <Branch>$(XCodePackageVcsBranch)</Branch>
-      <Revision>$(XCodePackageVcsRevision)</Revision>
-      <Platform>$(XCodePackagePlatform)</Platform>
-    </PropertyGroup>
-    <MSBuild.XCode.PackageInstall SourcePath="$(SrcFolder)" SourceFilename="$(SrcFilename)$(SrcFilenameExt)" OldLatest="$(Name)_*$(Branch)*_$(Platform)*.latest" RepoPath="$(DstFolder)" VersionPath="$(Year)\$(Month)\" LatestPath="latest\" />
+    <MSBuild.XCode.PackageInstall SourcePath="$(XCodePackageDir)" SourceFilename="$(XCodePackageFilename)" RepoPath="$(XCodePackageLocalRepoURL)" />
   </Target>
   <Target Name="__Install" DependsOnTargets="PackageInstall">
   </Target>
 
   <Target Name="PackageDeploy">
-    <!-- Install the package zip in the remote package repository -->
-    <!-- Update latest in the remote package repository -->
-    <!-- Parameters to pass to the task: -->
-    <!-- - Path to package zip file -->
-    <!-- - URL of remote package repositories -->
-    <PropertyGroup>
-      <SrcFilename>$(XCodePackageName)_$(XCodePackageVersionMajor).$(XCodePackageVersionMinor).$(XCodePackageVersionYear).$(XCodePackageVersionMonth).$(XCodePackageVersionDay).$(XCodePackageVersionHour).$(XCodePackageVersionMinute).$(XCodePackageVersionSecond).$(XCodePackageVcsBranch).$(XCodePackageVcsRevision)_$(XCodePackagePlatform)</SrcFilename>
-      <SrcFilenameExt>.zip</SrcFilenameExt>
-      <SrcFolder>$(XCodePackageDir)\target\</SrcFolder>
-      <DstFolder>$(Package_remote_url)$(XCodePackageGroupH)\$(XCodePackageGroupM)\$(XCodePackageGroupL)\$(XCodePackageName)\</DstFolder>
-      <Name>$(XCodePackageName)</Name>
-      <Major>$(XCodePackageVersionMajor)</Major>
-      <Minor>$(XCodePackageVersionMinor)</Minor>
-      <Year>$(XCodePackageVersionYear)</Year>
-      <Month>$(XCodePackageVersionMonth)</Month>
-      <Day>$(XCodePackageVersionDay)</Day>
-      <Hour>$(XCodePackageVersionHour)</Hour>
-      <Minute>$(XCodePackageVersionMinute)</Minute>
-      <Second>$(XCodePackageVersionSecond)</Second>
-      <Branch>$(XCodePackageVcsBranch)</Branch>
-      <Revision>$(XCodePackageVcsRevision)</Revision>
-      <Platform>$(XCodePackagePlatform)</Platform>
-    </PropertyGroup>
-
-    <MSBuild.XCode.PackageDeploy SourcePath="$(SrcFolder)" SourceFilename="$(SrcFilename)$(SrcFilenameExt)" OldLatest="$(Name)_*$(Branch)*_$(Platform)*.latest" RepoPath="$(DstFolder)" VersionPath="$(Year)\$(Month)\" LatestPath="latest\" />
+    <MSBuild.XCode.PackageDeploy SourcePath="$(XCodePackageDir)" SourceFilename="$(XCodePackageFilename)" RepoPath="$(XCodePackageRemoteRepoURL)" />
   </Target>
   <Target Name="__Deploy" DependsOnTargets="PackageDeploy">
   </Target>
 
   <Target Name="PackageSync">
-    <!-- Retrieve the dependencies, recursive -->
-    <!-- Parameters to pass to the task: -->
-    <!-- - Package name-->
-    <!-- - Package path -->
-    <!-- - Package dependency filename (package.xml) -->
-    <!-- - Local package repository path -->
-    <!-- - Remote package repository path -->
+    <MSBuild.XCode.PackageSync SourcePath="$(XCodePackageDir)" LocalRepoPath="$(XCodePackageLocalRepoURL)" RemoteRepoPath="$(XCodePackageRemoteRepoURL)" />
   </Target>
   <Target Name="__Sync" DependsOnTargets="PackageSync">
   </Target>

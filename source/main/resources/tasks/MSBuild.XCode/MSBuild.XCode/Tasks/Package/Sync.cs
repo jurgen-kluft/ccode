@@ -13,30 +13,9 @@ namespace MSBuild.XCode
     /// </summary>
     public class PackageSync : Task
     {
-        public string Name { get; set; }
         public string Path { get; set; }
-        public string Dep { get; set; }
         public string LocalRepoPath { get; set; }
         public string RemoteRepoPath { get; set; }
-
-        private class Dependency
-        {
-            public string Group { get; set; }
-            public string Platforms { get; set; }
-            public string Version { get; set; }
-            public string Type { get; set; }
-        }
-        private Dictionary<string, List<Dependency>> mDependencies;
-
-        private void AnalyzeAndGatherDependencies(XmlDocument project)
-        {
-
-        }
-
-        private void ObtainDepFromPackage(string name, string version, string p)
-        {
-
-        }
 
         public override bool Execute()
         {
@@ -51,12 +30,14 @@ namespace MSBuild.XCode
             // Verify the installed packages
             // Done
 
-            if (!File.Exists(Path + Dep))
+            if (!Path.EndsWith("\\"))
+                Path = Path + "\\";
+
+            if (!File.Exists(Path + "package.xml"))
                 return false;
 
-            XmlDocument deps = new XmlDocument();
-            deps.Load(Path + Dep);
-            AnalyzeAndGatherDependencies(deps);
+            XPackage package = new XPackage();
+            package.Load(Path + "package.xml");
 
             return false;
         }

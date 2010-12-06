@@ -44,7 +44,6 @@ namespace MSBuild.XCode
                             mainElementsList.Add(e.Copy());
                         }
                     }
-
                 }
                 else
                 {
@@ -60,24 +59,32 @@ namespace MSBuild.XCode
         private static void Merge(XPlatform main, XPlatform template)
         {
             Merge(main.groups, template.groups);
-            foreach (KeyValuePair<string, XConfig> p in template.configs)
+
+            foreach (KeyValuePair<string, XConfig> p in main.configs)
             {
+                Merge(p.Value.groups, main.groups);
+
                 XConfig x;
-                main.configs.TryGetValue(p.Key, out x);
-                Merge(x.groups, main.groups);
-                Merge(x.groups, p.Value.groups);
+                if (template.configs.TryGetValue(p.Key, out x))
+                {
+                    Merge(p.Value.groups, x.groups);
+                }
             }
         }
 
         public static void Merge(XProject main, XProject template)
         {
             Merge(main.groups, template.groups);
-            foreach (KeyValuePair<string, XPlatform> p in template.platforms)
+            
+            foreach (KeyValuePair<string, XPlatform> p in main.platforms)
             {
+                Merge(p.Value.groups, main.groups);
+
                 XPlatform x;
-                main.platforms.TryGetValue(p.Key, out x);
-                Merge(x.groups, main.groups);
-                Merge(x, p.Value);
+                if (template.platforms.TryGetValue(p.Key, out x))
+                {
+                    Merge(p.Value, x);
+                }
             }
         }
     }

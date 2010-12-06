@@ -16,16 +16,41 @@ namespace MSBuild.XCode
 
         public Dictionary<string, List<XElement>> groups { get { return mGroups; } }
 
-        public void Initialize(string p, string c, string[] groups)
+        public void Initialize(string p, string c)
         {
             Name = c + "|" + p;
             Platform = p;
             Config = c;
+        }
 
-            foreach (string g in groups)
+        public void Read(XmlNode node)
+        {
+            if (!node.HasChildNodes)
+                return;
+
+            foreach (XmlNode child in node.ChildNodes)
             {
-                mGroups.Add(g, new List<XElement>());
+                if (child.NodeType == XmlNodeType.Comment)
+                    continue;
+
+                foreach (string g in XProject.AllGroups)
+                {
+                    if (String.Compare(child.Name, g, true) == 0)
+                    {
+                        XElement e = new XElement(g, new List<XElement>(), new List<XAttribute>());
+                        List<XElement> elements;
+                        if (!groups.TryGetValue(g, out elements))
+                        {
+                            elements = new List<XElement>();
+                            groups.Add(g, elements);
+                        }
+                        elements.Add(e);
+                        e.Read(child);
+                        break;
+                    }
+                }
             }
         }
+
     }
 }

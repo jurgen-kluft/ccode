@@ -6,7 +6,7 @@ using System.Text;
 
 namespace MSBuild.XCode
 {
-    public partial class ProjectFileGenerator
+    public partial class MsDevProjectFileGenerator
     {
         private string mRootDir = string.Empty;
 

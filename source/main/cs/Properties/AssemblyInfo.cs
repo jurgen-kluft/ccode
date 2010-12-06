@@ -5,12 +5,12 @@ using System.Runtime.InteropServices;
 // General Information about an assembly is controlled through the following 
 // set of attributes. Change these attribute values to modify the information
 // associated with an assembly.
-[assembly: AssemblyTitle("xcod")]
+[assembly: AssemblyTitle("xcode")]
 [assembly: AssemblyDescription("")]
 [assembly: AssemblyConfiguration("")]
 [assembly: AssemblyCompany("")]
-[assembly: AssemblyProduct("xcod")]
-[assembly: AssemblyCopyright("Copyright ©  2010")]
+[assembly: AssemblyProduct("xcode")]
+[assembly: AssemblyCopyright("Copyright © 2010 Jurgen Kluft")]
 [assembly: AssemblyTrademark("")]
 [assembly: AssemblyCulture("")]
 

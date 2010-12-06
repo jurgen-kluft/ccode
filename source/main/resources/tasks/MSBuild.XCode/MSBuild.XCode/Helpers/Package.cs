@@ -16,32 +16,7 @@ namespace MSBuild.XCode.Helpers
 
         public Package()
         {
-            Versions = new List<string>();
-        }
 
-        private string mVersion = string.Empty;
-        public string Version { get { ResolveVersions(); return mVersion; } }
-        private List<string> Versions { get; set; }
-        private void ResolveVersions()
-        {
-        }
-
-        private string mType = string.Empty;
-        public string Type { get { ResolveTypes(); return mType; } }
-        private List<string> Types { get; set; }
-        private void ResolveTypes()
-        {
-        }
-
-        private string mGroup = string.Empty;
-        public string Group { get { return mGroup;} set { SetGroup(value); } }
-        private void SetGroup(string group)
-        {
-        }
-
-        public void Load(string filename)
-        {
-            _Load(filename);
         }
 
         public bool Install()
@@ -82,6 +57,7 @@ namespace MSBuild.XCode.Helpers
         public bool Sync(string RemoteRepoPath)
         {
             // Synchronize Remote Repo with Local Repo
+            // Here we need to compare versions, NAME-VERSION-BRANCH-PLATFORM.ZIP
 
             return false;
         }

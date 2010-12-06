@@ -14,23 +14,18 @@ namespace MSBuild.XCode
     /// </summary>
     public class PackageInstall : Task
     {
-        public string SourcePath { get; set; }
-        public string SourceFilename { get; set; }
-        public string OldLatest { get; set; }
+        public string Path { get; set; }
         public string RepoPath { get; set; }
-        public string VersionPath { get; set; }
-        public string LatestPath { get; set; }
 
         public override bool Execute()
         {
-            Package p = new Package();
-            p.SourcePath = SourcePath;
-            p.SourceFilename = SourceFilename;
-            p.OldLatest = OldLatest;
-            p.RepoPath = RepoPath;
-            p.VersionPath = VersionPath;
-            p.LatestPath = LatestPath;
-            return p.Install();
+            if (!Path.EndsWith("\\"))
+                Path = Path + "\\";
+
+            if (!File.Exists(Path + "package.xml"))
+                return false;
+
+            return false;
         }
     }
 }

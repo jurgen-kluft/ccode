@@ -53,6 +53,7 @@
     <ErrorReport>prompt</ErrorReport>
     <WarningLevel>4</WarningLevel>
     <CodeAnalysisRuleSet>AllRules.ruleset</CodeAnalysisRuleSet>
+    <RegisterForComInterop>true</RegisterForComInterop>
   </PropertyGroup>
   <ItemGroup>
     <Reference Include="envdte100, Version=10.0.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a, processorArchitecture=MSIL">
@@ -85,30 +86,32 @@
       <DesignTime>True</DesignTime>
       <DependentUpon>Resources.resx</DependentUpon>
     </Compile>
+    <Compile Include="Tasks\CodeGen\XDependency.cs" />
+    <Compile Include="Tasks\CodeGen\XGroup.cs" />
     <Compile Include="Tasks\CodeGen\XElement.cs" />
     <Compile Include="Tasks\CodeGen\XAttribute.cs" />
     <Compile Include="Tasks\CodeGen\XConfig.cs" />
+    <Compile Include="Tasks\CodeGen\XPackage.cs" />
     <Compile Include="Tasks\CodeGen\XPlatform.cs" />
     <Compile Include="Tasks\CodeGen\XProject.cs" />
     <Compile Include="Tasks\CodeGen\XProjectMerge.cs" />
-    <Compile Include="Tasks\CodeGen\XProjectReader.cs" />
     <Compile Include="Tasks\CodeGen\XProjectWriter.cs" />
     <Compile Include="Tasks\CodeGen\GenerateSolution.cs" />
-    <Compile Include="Tasks\CodeGen\ProjectFileGenerator.cs" />
-    <Compile Include="Tasks\CodeGen\ProjectFileGenerator.Public.cs" />
-    <Compile Include="Tasks\CodeGen\SolutionGenerator.cs" />
+    <Compile Include="Tasks\CodeGen\MsDevProjectFileGenerator.cs" />
+    <Compile Include="Tasks\CodeGen\MsDevProjectFileGenerator.Public.cs" />
+    <Compile Include="Tasks\CodeGen\MsDevSolutionGenerator.cs" />
     <Compile Include="Tasks\CodeGen\TextTemplate.cs" />
     <Compile Include="Tasks\CodeGen\GenerateProject.cs" />
     <Compile Include="Helpers\Math.cs" />
     <Compile Include="Helpers\StringScan.cs" />
     <Compile Include="Helpers\StringTools.cs" />
+    <Compile Include="Tasks\Package\Construct.cs" />
     <Compile Include="Tasks\Package\Verify.cs" />
     <Compile Include="Tasks\Package\Deploy.cs" />
     <Compile Include="Tasks\Package\Install.cs" />
     <Compile Include="Tasks\Package\Create.cs" />
     <Compile Include="Tasks\Package\Sync.cs" />
-    <Compile Include="Tasks\Package\Version.cs" />
-    <Compile Include="Tasks\Settings.cs" />
+    <Compile Include="Tasks\CodeGen\XVersion.cs" />
   </ItemGroup>
   <ItemGroup>
     <EmbeddedResource Include="Properties\Resources.resx">
@@ -138,9 +141,6 @@
       <Install>true</Install>
     </BootstrapperPackage>
   </ItemGroup>
-  <ItemGroup>
-    <None Include="MSBuild.XCode.snk" />
-  </ItemGroup>
   <Import Project="$(MSBuildBinPath)\Microsoft.CSharp.targets" />
   <!-- To modify your build process, add your task inside one of the targets below and uncomment it. 
        Other similar extension points exist, see Microsoft.Common.targets.
@@ -150,6 +150,6 @@
   </Target>
   -->
   <PropertyGroup>
-    <PostBuildEvent>xcopy $(ProjectDir)bin\Release\*.dll  $(ProjectDir)..\..\*.* /R /Y /Q</PostBuildEvent>
+    <PostBuildEvent>xcopy $(ProjectDir)bin\$(ConfigurationName)\*.dll  $(ProjectDir)..\..\*.* /R /Y /Q</PostBuildEvent>
   </PropertyGroup>
 </Project>

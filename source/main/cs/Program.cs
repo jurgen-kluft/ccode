@@ -6,7 +6,7 @@ using System.Linq;
 using System.Windows.Forms;
 using Microsoft.Win32;
 
-namespace xcod
+namespace xcode
 {
     static class Program
     {

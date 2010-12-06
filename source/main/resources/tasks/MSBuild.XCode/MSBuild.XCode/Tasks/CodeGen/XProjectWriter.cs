@@ -28,42 +28,13 @@ namespace MSBuild.XCode
             mProjectConfigs = configs;
         }
 
-        private string ConvertElementToString(XElement e)
-        {
-            string str;
-            if (e.Attributes.Count == 0)
-            {
-                if (String.IsNullOrEmpty(e.Value))
-                    str = String.Format("<{0} />", e.Name);
-                else
-                    str = String.Format("<{0}>{1}</{0}>", e.Name, e.Value);
-            }
-            else
-            {
-                string attributes = string.Empty;
-                foreach (XAttribute a in e.Attributes)
-                {
-                    string attribute = a.Name + "=\"" + a.Value + "\"";
-                    if (String.IsNullOrEmpty(attributes))
-                        attributes = attribute;
-                    else
-                        attributes = attributes + " " + attribute;
-                }
-                if (String.IsNullOrEmpty(e.Value))
-                    str = String.Format("<{0} {2} />", e.Name, e.Value, attributes);
-                else
-                    str = String.Format("<{0} {2}>{1}</{0}>", e.Name, e.Value, attributes);
-            }
-            return str;
-        }
-
         private void ConvertElementsToLines(List<XElement> elements, List<string> lines)
         {
             // Build the lines
             // If contains #(Configuration) and/or #(Platform) then iterate
             foreach (XElement e in elements)
             {
-                string line = ConvertElementToString(e);
+                string line = e.ToString();
                 bool iterator_platform = line.Contains("#(Platform)");
                 bool iterator_config = line.Contains("#(Configuration)");
                 if (iterator_platform && iterator_config)

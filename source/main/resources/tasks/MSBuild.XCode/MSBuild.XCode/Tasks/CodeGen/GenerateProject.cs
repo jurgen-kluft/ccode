@@ -154,12 +154,8 @@ namespace MSBuild.XCode
 #if DEBUG
             Log.LogMessage("Configurations " + _configurations.Length.ToString());
 #endif
-            XProjectReader reader = new XProjectReader();
-            XProject template = reader.Read(TemplatePath);
-            XProject project = reader.Read(ProjectPath);
-            XProjectMerge.Merge(project, template);
-
-            ProjectFileGenerator generator = new ProjectFileGenerator(ProjectName, ProjectGuid, ProjectFileGenerator.EVersion.VS2010, ProjectFileGenerator.ELanguage.CPP, platforms, configs, project);
+//            XProjectMerge.Merge(project, template);
+//            ProjectFileGenerator generator = new ProjectFileGenerator(ProjectName, ProjectGuid, ProjectFileGenerator.EVersion.VS2010, ProjectFileGenerator.ELanguage.CPP, platforms, configs, project);
             _outputPath = OutputPath;
             if (!_outputPath.EndsWith("\\"))
                 _outputPath = _outputPath + "\\";
