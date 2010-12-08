@@ -11,11 +11,13 @@ namespace MSBuild.XCode
         {
             Group = new XGroup("com.virtuos.tnt");
             Version = new XVersion("1.0");
+            Branch = "default";
             Type = "Package";
         }
 
         public XGroup Group { get; set; }
         public XVersion Version { get; set; }
+        public string Branch { get; set; }
         public string Type { get; set; }
 
         public void Read(XmlNode node)
@@ -37,6 +39,10 @@ namespace MSBuild.XCode
                         {
                             Version.ParseVersion(XElement.sGetXmlNodeValueAsText(child));
                         }
+                        else if (child.Name == "Branch")
+                        {
+                            Branch = XElement.sGetXmlNodeValueAsText(child);
+                        }
                         else if (child.Name == "Type")
                         {
                             Type = XElement.sGetXmlNodeValueAsText(child);
@@ -44,6 +50,11 @@ namespace MSBuild.XCode
                     }
                 }
             }
+        }
+
+        public void Sync(string remote_repo, string local_repo, string path, string[] platforms)
+        {
+
         }
    }
 }

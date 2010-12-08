@@ -1,4 +1,4 @@
-<Template>
+<Project Name="Template" Language="cpp" Location="">
   <!-- The blueprint -->
   <Configuration>
     <!-- StaticLibrary, DynamicLibrary, Application -->
@@ -8,12 +8,12 @@
     <UseDebugLibraries>true</UseDebugLibraries>
   </Configuration>
   <ImportGroup>
-    <Import Condition="exists('$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props')" Project="$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props" Label="LocalAppDataPlatform"></Import>
+    <Import Condition="exists('$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props')" Project="$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props" Label="LocalAppDataPlatform"/>
   </ImportGroup>
   <OutDir Condition="'$(Configuration)|$(Platform)'=='#(Configuration)|#(Platform)'">$(SolutionDir)\target\outdir\$(ProjectName)_$(Configuration)_$(PlatformName)\</OutDir>
   <IntDir Condition="'$(Configuration)|$(Platform)'=='#(Configuration)|#(Platform)'">$(SolutionDir)\target\outdir\$(ProjectName)_$(Configuration)_$(PlatformName)\</IntDir>
   <TargetName Condition="'$(Configuration)|$(Platform)'=='#(Configuration)|#(Platform)'">$(ProjectName)_$(Configuration)_$(PlatformName)_$(PlatformToolset)</TargetName>
-  <IgnoreImportLibrary Condition="'$(Configuration)|$(Platform)'=='#(Configuration)|#(Platform)'"></IgnoreImportLibrary>
+  <IgnoreImportLibrary Condition="'$(Configuration)|$(Platform)'=='#(Configuration)|#(Platform)'"/>
   <GenerateManifest Condition="'$(Configuration)|$(Platform)'=='#(Configuration)|#(Platform)'">false</GenerateManifest>
   <LinkIncremental Condition="'$(Configuration)|$(Platform)'=='#(Configuration)|#(Platform)'">false</LinkIncremental>
   <ClCompile>
@@ -29,16 +29,17 @@
   </ClCompile>
   <Link>
     <GenerateDebugInformation>true</GenerateDebugInformation>
-    <AdditionalDependencies Concat="true" Separator=" "></AdditionalDependencies>
-    <AdditionalLibraryDirectories Concat="true"></AdditionalLibraryDirectories>
-    <SubSystem></SubSystem>
+    <AdditionalDependencies Concat="true" Separator=" "/>
+    <AdditionalLibraryDirectories Concat="true"/>
+    <SubSystem/>
   </Link>
   <ResourceCompile>
   </ResourceCompile>
   <Lib>
     <OutputFile>$(OutDir)\$(TargetName)$(TargetExt)</OutputFile>
-    <AdditionalOptions Concat="true"></AdditionalOptions>
+    <AdditionalOptions Concat="true"/>
   </Lib>
+
   <!-- Win32 will inherit all properties -->
   <Platform Name="Win32">
     <ClCompile>
@@ -72,4 +73,5 @@
       </Link>
     </Config>
   </Platform>
-</Template>
+</Project>
+

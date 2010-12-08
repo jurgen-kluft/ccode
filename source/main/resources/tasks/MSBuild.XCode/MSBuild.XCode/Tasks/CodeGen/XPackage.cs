@@ -14,6 +14,8 @@ namespace MSBuild.XCode
         public string IncludePath { get; set; }
         public string LibraryPath { get; set; }
 
+        public List<XAttribute> DirectoryStructure { get; set; }
+
         public List<XDependency> Dependencies { get; set; }
         public List<XProject> Projects { get; set; }
         public List<XProject> Templates { get; set; }
@@ -24,6 +26,7 @@ namespace MSBuild.XCode
             Group = new XGroup("com.virtuos.tnt");
             Version = new XVersion("1.0");
 
+            DirectoryStructure = new List<XAttribute>();
             Dependencies = new List<XDependency>();
             Projects = new List<XProject>();
             Templates = new List<XProject>();
@@ -90,6 +93,21 @@ namespace MSBuild.XCode
                             project.Read(child);
                             Projects.Add(project);
                         }
+                        else if (child.Name == "DirectoryStructure")
+                        {
+                            if (child.HasChildNodes)
+                            {
+                                foreach (XmlNode item in child.ChildNodes)
+                                {
+                                    string folder = XAttribute.Get("Folder", item, string.Empty);
+                                    if (!String.IsNullOrEmpty(folder))
+                                        DirectoryStructure.Add(new XAttribute("Folder", folder));
+                                    string file = XAttribute.Get("File", item, string.Empty);
+                                    if (!String.IsNullOrEmpty(file))
+                                        DirectoryStructure.Add(new XAttribute("File", file));
+                                }
+                            }
+                        }
                         else
                         {
                             // Elements: IncludePath, LibraryPath
@@ -107,32 +125,38 @@ namespace MSBuild.XCode
             }
         }
 
-        public void GenerateProjects()
+        public void GenerateProjects(string root)
         {
+            if (!root.EndsWith("\\"))
+                root = root + "\\";
+
             foreach (XProject p in Projects)
             {
                 MsDevProjectFileGenerator generator = new MsDevProjectFileGenerator(p.Name, p.UUID, MsDevProjectFileGenerator.EVersion.VS2010, MsDevProjectFileGenerator.ELanguage.CPP, p);
                 string path = p.Location.Replace("/", "\\");
                 path = path.EndsWith("\\") ? path : (path + "\\");
-                string filename = path + p.Name + p.Extension;
+                string filename = root + path + p.Name + p.Extension;
                 generator.Save(filename);
             }
         }
 
-        public void GenerateSolution(string path)
+        public void GenerateSolution(string root)
         {
-            MsDevSolutionGenerator generator = new MsDevSolutionGenerator(MsDevSolutionGenerator.EVersion.VS2010, MsDevSolutionGenerator.ELanguage.CPP);
-            string filename = path.EndsWith("\\") ? (path + Name + ".sln") : (path + "\\" + Name + ".sln");
+            if (!root.EndsWith("\\"))
+                root = root + "\\";
+
+            string filename = root + Name + ".sln";
 
             List<string> projectFilenames = new List<string>();
             foreach (XProject prj in Projects)
             {
-                string p = prj.Location.Replace("/", "\\");
-                p = p.EndsWith("\\") ? p : (p + "\\");
-                string f = p + prj.Name + prj.Extension;
+                string path = prj.Location.Replace("/", "\\");
+                path = path.EndsWith("\\") ? path : (path + "\\");
+                string f = path + prj.Name + prj.Extension;
                 projectFilenames.Add(f);
             }
 
+            MsDevSolutionGenerator generator = new MsDevSolutionGenerator(MsDevSolutionGenerator.EVersion.VS2010, MsDevSolutionGenerator.ELanguage.CPP);
             generator.Save(filename, projectFilenames);
         }
     }

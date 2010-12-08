@@ -1,21 +1,44 @@
-<Package Name="${PackageName}">
-  <Group>com.virtuos.tnt</Group>
-  <Version Major="1" Minor="0"></Version>
-  <IncludePath>source\main\cpp\include</IncludePath>
-  <LibraryPath>libs\${PackageName}</LibraryPath>
+<Package Name="${Name}" Version="1.0.0" Group="com.virtuos.tnt">
+
+  <IncludePath>source\main\${Language}\include</IncludePath>
+  <LibraryPath>libs\${Name}</LibraryPath>
+
+  <DirectoryStructure>
+    <Item Folder="docs\manuals"/>
+    <Item Folder="docs\references"/>
+    <Item Folder="source\main\${Language}"/>
+    <Item Folder="source\main\include"/>
+    <Item Folder="source\main\resources"/>
+    <Item Folder="source\test\${Language}"/>
+    <Item Folder="source\test\include"/>
+    <Item Folder="source\test\resources"/>
+    <Item Folder="target"/>
+    <Item Folder="tools"/>
+  </DirectoryStructure>
   
   <Dependency Package="example_package_name">
     <Group>com.virtuos.tnt</Group>
-    <!-- Specify '==number', '<=number' or 'latest' -->
+    <!-- Specify according to package versioning, see docs -->
     <Version>Latest</Version>
-    <!-- Specify StaticLibrary(default), DynamicLibrary, Dev, Test -->
-    <Type>StaticLibrary</Type>
+    <!-- Specify Package, Source -->
+    <Type>Package</Type>
   </Dependency>
 
-  <Project Name="$(PackageName)" Language="C++" Location="source\main\cpp">
+  <Project Name="${Name}" Language="${Language}" Location="source\main\${Language}">
     <UUID>${GUID}</UUID>
-    <Dependency Package="example_package_name" />
+    <Dependency Package="example_package_name"/>
 
+    <!-- Here list the Configurations of this Project -->
+    <Config Name="Debug"/>
+    <Config Name="Release"/>
+    <Config Name="Profile"/>
+    <Config Name="Final"/>
+
+    <!-- Here list the Types/Targets of the Configurations -->
+    <Type Name="Dev"/>
+    <Type Name="Client"/>
+    <Type Name="Retail"/>
+    
     <!-- Win32 will inherit all properties from Template/Win32 -->
     <Platform Name="Win32">
       <!-- Debug will inherit all properties from Template/Win32/Debug -->
@@ -29,10 +52,17 @@
     </Platform>
   </Project>
 
-  <Project Name="${PackageName}_test" Language="C++" Location="source\test\cpp">
+  <Project Name="${Name}_test" Language="${Language}" Location="source\test\${Language}">
     <UUID>${GUID}</UUID>
-    <Dependency Project="${PackageName}" /> 
+    <Dependency Project="${Name}"/>
 
+    <!-- Here list the Configurations of this Project -->
+    <Config Name="Debug"/>
+    <Config Name="Release"/>
+
+    <!-- Here list the Types/Targets of the Configurations -->
+    <Type Name="Dev"/>
+    
     <!-- Win32 will inherit all properties from Template/Win32 -->
     <Platform Name="Win32">
       <Configuration>
@@ -50,3 +80,5 @@
   </Project>
 
 </Package>
+
+

@@ -86,12 +86,15 @@
       <DesignTime>True</DesignTime>
       <DependentUpon>Resources.resx</DependentUpon>
     </Compile>
+    <Compile Include="Tasks\CodeGen\XPackageRepositoryLayout.cs" />
+    <Compile Include="Tasks\CodeGen\XVersionRange.cs" />
     <Compile Include="Tasks\CodeGen\XDependency.cs" />
     <Compile Include="Tasks\CodeGen\XGroup.cs" />
     <Compile Include="Tasks\CodeGen\XElement.cs" />
     <Compile Include="Tasks\CodeGen\XAttribute.cs" />
     <Compile Include="Tasks\CodeGen\XConfig.cs" />
     <Compile Include="Tasks\CodeGen\XPackage.cs" />
+    <Compile Include="Tasks\CodeGen\XPackageRepository.cs" />
     <Compile Include="Tasks\CodeGen\XPlatform.cs" />
     <Compile Include="Tasks\CodeGen\XProject.cs" />
     <Compile Include="Tasks\CodeGen\XProjectMerge.cs" />

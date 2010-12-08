@@ -34,7 +34,7 @@ namespace MSBuild.XCode
         {
             get
             {
-                if (Language == "C#")
+                if (String.Compare(Language,"C#",true)==0 || String.Compare(Language, "cs", true)==0)
                     return ".csproj";
                 return ".vcxproj";
             }
@@ -43,7 +43,7 @@ namespace MSBuild.XCode
         public XProject()
         {
             Name = "Unknown";
-            Language = "C++";
+            Language = "cpp";   /// "cs"
             Location = @"source\main\cpp";
             UUID = string.Empty;
         }
@@ -51,7 +51,7 @@ namespace MSBuild.XCode
         public void Initialize()
         {
             Name = "Unknown";
-            Language = "C++";
+            Language = "cpp";
             Location = @"source\main\cpp";
             UUID = Guid.NewGuid().ToString();
 
@@ -79,7 +79,7 @@ namespace MSBuild.XCode
             Initialize();
 
             this.Name = XAttribute.Get("Name", node, "Unknown");
-            this.Language = XAttribute.Get("Language", node, "C++");
+            this.Language = XAttribute.Get("Language", node, "cpp");
             this.Location = XAttribute.Get("Location", node, "source\\main\\cpp");
 
             foreach (XmlNode child in node.ChildNodes)
@@ -174,7 +174,5 @@ namespace MSBuild.XCode
                 }
             }
         }
-
     }
-
 }

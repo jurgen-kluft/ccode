@@ -203,10 +203,12 @@ namespace MSBuild.XCode
         public int Save(string _SolutionFile, List<string> _ProjectFiles)
         {
             mRootDir = Path.GetDirectoryName(_SolutionFile);
+            if (!mRootDir.EndsWith("\\"))
+                mRootDir = mRootDir + "\\";
 
             foreach (string projectFilename in _ProjectFiles)
             {
-                FileInfo fi = new FileInfo(projectFilename);
+                FileInfo fi = new FileInfo(mRootDir + projectFilename);
                 if (fi.Exists)
                     m_Projects.Add(fi);
             }

@@ -28,6 +28,30 @@ namespace MSBuild.XCode
             mProjectConfigs = configs;
         }
 
+        private string GetAdditionalIncludeDirectories()
+        {
+            // Dependency:
+            //   If Type == "Package"
+            //     $(SolutionDir)target\$(package_name)\$(platform)\include
+            //   Else
+            //     $(SolutionDir)target\$(package_name)\$(platform)\source\main\include
+            return string.Empty;
+        }
+
+        private string GetAdditionalLibraryDirectories()
+        {
+            // Dependency:
+            //  $(SolutionDir)target\$(package_name)\$(platform)\libs
+            return string.Empty;
+        }
+
+        private string GetAdditionalLibraryDependencies()
+        {
+            // Dependency:
+            //  $(SolutionDir)target\$(package_name)\$(platform)\libs\$(package_name)_Dev_Debug_Win32.lib
+            return string.Empty;
+        }
+
         private void ConvertElementsToLines(List<XElement> elements, List<string> lines)
         {
             // Build the lines

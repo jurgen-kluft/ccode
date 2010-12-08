@@ -14,12 +14,34 @@ namespace MSBuild.XCode.Test
         [STAThread]
         static void Main()
         {
-            XProject template = new XProject();
-            template.Load(@"D:\SCM_PACKAGE_REPO\com\virtuos\xcode\templates\vcxproj.xml.template");
+            {
+                XVersionRange xrange1 = new XVersionRange("(,1.0],[1.2,)");
+                bool in_range = xrange1.IsInRange(new XVersion("1.1.2"));
+                in_range = xrange1.IsInRange(new XVersion("0.9"));
 
-            XPackage xpack = new XPackage();
-            xpack.Templates.Add(template);
-            xpack.Load(@"D:\SCM_PACKAGE_REPO\com\virtuos\xcode\templates\package.xml.template");
+                XVersion xversion1 = new XVersion("1.2.23.0");
+                string[] version_components1 = xversion1.ToStrings();
+                XVersion xversion2 = new XVersion("1.0.0.0");
+            }
+
+            {
+                XProject template = new XProject();
+                template.Load(@"D:\SCM_PACKAGE_REPO\com\virtuos\xcode\templates\vcxproj.xml.template");
+
+                XPackage xpack = new XPackage();
+                xpack.Templates.Add(template);
+                xpack.Load(@"D:\SCM_PACKAGE_REPO\com\virtuos\xcode\templates\package.xml.template");
+            }
+
+            PackageConstruct construct = new PackageConstruct();
+            construct.Name = "xproject";
+            construct.Path = @"i:\HgDev.Modules\";
+            construct.Language = "cpp";
+            construct.TemplatePath = @"d:\SCM_PACKAGE_REPO\com\virtuos\xcode\templates\";
+            construct.Execute();
+            construct.Path = construct.Path + construct.Name + "\\";
+            construct.Execute();
+            return;
 
             PackageSync sync = new PackageSync();
             sync.Path = @"i:\HgDev.Modules\xbase\";
