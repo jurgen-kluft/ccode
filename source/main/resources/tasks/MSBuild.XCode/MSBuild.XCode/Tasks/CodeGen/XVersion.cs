@@ -7,7 +7,7 @@ namespace MSBuild.XCode
     ///
     /// Generic implementation of a comparable version (see Version.docx in docs\manuals)
     /// 
-    public class XVersion : IComparable
+    public class XVersion : IComparable<XVersion>
     {
         private string mValue;
         private string mCanonical;
@@ -487,28 +487,50 @@ namespace MSBuild.XCode
 
         public static bool operator <(XVersion a, XVersion b)
         {
-            return a.CompareTo(b) == -1;
+            return Compare(a, b) == -1;
         }
         public static bool operator <=(XVersion a, XVersion b)
         {
-            return a.CompareTo(b) != 1;
+            return Compare(a, b) != 1;
         }
         public static bool operator >(XVersion a, XVersion b)
         {
-            return a.CompareTo(b) == 1;
+            return Compare(a, b) == 1;
         }
         public static bool operator >=(XVersion a, XVersion b)
         {
-            return a.CompareTo(b) != -1;
+            return Compare(a, b) != -1;
         }
         public static bool operator ==(XVersion a, XVersion b)
         {
-            return a.CompareTo(b) == 0;
+            return Compare(a, b) == 0;
         }
         public static bool operator !=(XVersion a, XVersion b)
         {
-            return a.CompareTo(b) != 0;
+            return Compare(a, b) != 0;
         }
+
+        public static int Compare(XVersion a, XVersion b)
+        {
+            bool a_null = (object)a == null;
+            bool b_null = (object)b == null;
+            if (a_null && b_null)
+                return 0;
+            if (a_null != b_null)
+                return a_null ? -1 : 1;
+            return a.mItems.CompareTo(b.mItems);
+        }
+
+        #region IComparable<XVersion> Members
+
+        public int CompareTo(XVersion b)
+        {
+            if ((object)b == null)
+                return 1;
+            return mItems.CompareTo(b.mItems);
+        }
+
+        #endregion
     }
 
 }
