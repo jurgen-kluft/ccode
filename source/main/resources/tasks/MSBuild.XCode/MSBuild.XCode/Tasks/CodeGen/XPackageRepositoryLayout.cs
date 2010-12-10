@@ -14,12 +14,73 @@ namespace MSBuild.XCode
         string CommitVersion(string group, string package_path, string package_name, string branch, string platform, XVersion version);
 
         void SyncTo(string group, string package_name, string branch, string platform, XVersionRange range, XPackageRepositoryLayout to);
-
-        void UpdateVersionCache(string group, string package_name);
     }
 
     public class XPackageRepositoryLayoutDefault : XPackageRepositoryLayout
     {
+        public static class Layout
+        {
+            public static string VersionToPath(XVersion version)
+            {
+                string path = string.Empty;
+                string[] components = version.ToStrings();
+                // Keep it to X.Y.Z
+                for (int i = 0; i < components.Length && i < 3; ++i)
+                {
+                    path = path + components[0] + "\\";
+                }
+                return path;
+            }
+            
+            public static string VersionToFilenameWithoutExtension(string package_name, string branch, string platform, XVersion version)
+            {
+                return String.Format("{0}+{1}+{2}+{3}", package_name, version.ToString(), branch, platform);
+            }
+
+            public static string VersionToFilename(string package_name, string branch, string platform, XVersion version)
+            {
+                return VersionToFilenameWithoutExtension(package_name, branch, platform, version) + ".zip";
+            }
+
+            public static string FilenameToVersion(string filename)
+            {
+                string[] parts = filename.Split(new char[] { '+' }, StringSplitOptions.RemoveEmptyEntries);
+                return parts[1];
+            }
+
+            public static string FullRootPath(string repoPath, string group, string package_name)
+            {
+                // Path = group[] \ group[] ... \ package_name \ version.cache
+                string[] splitted_group = group.Split(new char[] { '.' }, StringSplitOptions.RemoveEmptyEntries);
+                string groupPath = string.Empty;
+                foreach (string g in splitted_group)
+                {
+                    if (String.IsNullOrEmpty(groupPath))
+                        groupPath = g + "\\";
+                    else
+                        groupPath = groupPath + g + "\\";
+                }
+                string fullPath = repoPath + groupPath + package_name + "\\";
+                return fullPath;
+            }
+
+            public static string FullVersionPath(string repoPath, string group, string package_name, XVersion version)
+            {
+                // Path = group[] \ group[] ... \ package_name \ version.cache
+                string[] splitted_group = group.Split(new char[] { '.' }, StringSplitOptions.RemoveEmptyEntries);
+                string groupPath = string.Empty;
+                foreach (string g in splitted_group)
+                {
+                    if (String.IsNullOrEmpty(groupPath))
+                        groupPath = g + "\\";
+                    else
+                        groupPath = groupPath + g + "\\";
+                }
+                string fullPath = repoPath + groupPath + package_name + "\\version\\" + VersionToPath(version);
+                return fullPath;
+            }
+        }
+
         public XPackageRepositoryLayoutDefault(string repoPath)
         {
             RepoPath = repoPath;
@@ -29,8 +90,8 @@ namespace MSBuild.XCode
 
         private void CheckoutVersion(string group, string package_path, string package_name, string branch, string platform, XVersion version)
         {
-            string src_path = MakeRepoPackagePath(group, package_name) + "version\\" + VersionToPath(version);
-            string src_filename = VersionToFilename(package_name, branch, platform, version);
+            string src_path = Layout.FullVersionPath(RepoPath, group, package_name, version);
+            string src_filename = Layout.VersionToFilename(package_name, branch, platform, version);
 
             if (File.Exists(src_path + src_filename) && Directory.Exists(package_path))
             {
@@ -46,75 +107,47 @@ namespace MSBuild.XCode
             XVersion version = FindBestVersion(group, package_name, branch, platform, versionRange);
             if (version != null)
                 CheckoutVersion(group, package_path, package_name, branch, platform, version);
-
             return string.Empty;
         }
 
         public string CommitVersion(string group, string package_path, string package_name, string branch, string platform, XVersion version)
         {
-            string package_filename = VersionToFilename(package_name, branch, platform, version);
-            if (File.Exists(package_path + package_filename))
+            string package_filename = Layout.VersionToFilename(package_name, branch, platform, version);
+            if (File.Exists(package_path))
             {
-                string dest_path = MakeRepoPackagePath(group, package_name) + "version\\" + VersionToPath(version);
+                string dest_path = Layout.FullVersionPath(RepoPath, group, package_name, version);
                 if (!Directory.Exists(dest_path))
                 {
                     Directory.CreateDirectory(dest_path);
                 }
-                File.Copy(package_path + package_filename, dest_path + package_filename, true);
+                File.Copy(package_path, dest_path + package_filename, true);
                 DirtyVersionCache(group, package_name);
                 return package_filename;
             }
             return string.Empty;
         }
 
-        public void SyncTo(string group, string package_name, string branch, string platform, XVersionRange range, XPackageRepositoryLayout to)
+
+        /// Database file should contain a table like this:
+        ///     Version                 |    Branch    |     Platform     |     Change-Set ID
+        ///     1.0.0.0.10.12.10.17.20  |    default   |       Win32      |   AAAAAAAAAAAAAAAAAAAAA
+
+
+        public void SyncTo(string group, string package_name, string branch, string platform, XVersionRange versionRange, XPackageRepositoryLayout to)
         {
             // Sync the best version from this repository to another
-        }
-
-        private string VersionToPath(XVersion version)
-        {
-            string path = string.Empty;
-            string[] components = version.ToStrings();
-            foreach (string c in components)
+            XVersion version = FindBestVersion(group, package_name, branch, platform, versionRange);
+            if (version != null)
             {
-                path = path + c[0] + "\\";
+                string dir = Layout.FullVersionPath(RepoPath, group, package_name, version);
+                string path = dir + Layout.VersionToFilename(package_name, branch, platform, version);
+                to.CommitVersion(group, path, package_name, branch, platform, version);
             }
-            return path;
-        }
-        private string VersionToFilenameWithoutExtension(string package_name, string branch, string platform, XVersion version)
-        {
-            return String.Format("{0}+{1}+{2}+{3}", package_name, version.ToString(), branch, platform);
-        }
-        private string VersionToFilename(string package_name, string branch, string platform, XVersion version)
-        {
-            return VersionToFilenameWithoutExtension(package_name, branch, platform, version) + ".zip";
-        }
-        private XVersion FilenameToVersion(string filename)
-        {
-            string[] parts = filename.Split(new char[] { '+' }, StringSplitOptions.RemoveEmptyEntries);
-            return new XVersion(parts[1]);
-        }
-
-        private string MakeRepoPackagePath(string group, string package_name)
-        {
-            // Path = group[] \ group[] ... \ package_name \ version.cache
-            string[] splitted_group = group.Split(new char[] { '.' }, StringSplitOptions.RemoveEmptyEntries);
-            string path = string.Empty;
-            foreach (string g in splitted_group)
-            {
-                if (String.IsNullOrEmpty(path))
-                    path = g + "\\";
-                else
-                    path = path + g + "\\";
-            }
-            path = RepoPath + path + package_name + "\\";
-            return path;
         }
 
         public void UpdateVersionCache(string group, string package_name)
         {
-            string path = MakeRepoPackagePath(group, package_name);
+            string path = Layout.FullRootPath(RepoPath, group, package_name);
             if (!Directory.Exists(path))
                 return;
             if (File.Exists(path + "version.cache.writelock"))
@@ -171,7 +204,7 @@ namespace MSBuild.XCode
 
         private string[] LoadVersionCache(string group, string package_name)
         {
-            string path = MakeRepoPackagePath(group, package_name);
+            string path = Layout.FullRootPath(RepoPath, group, package_name);
             string[] versions = new string[0];
 
             int retry = 0;
@@ -195,7 +228,7 @@ namespace MSBuild.XCode
 
         private void DirtyVersionCache(string group, string package_name)
         {
-            string path = MakeRepoPackagePath(group, package_name);
+            string path = Layout.FullRootPath(RepoPath, group, package_name);
             if (!File.Exists(path + Environment.MachineName + ".dirty"))
             {
                 FileStream s = File.Create(path + Environment.MachineName + ".dirty");

@@ -25,6 +25,7 @@ namespace MSBuild.XCode
             if (!File.Exists(Path + "package.xml"))
                 return false;
 
+
             return false;
         }
     }

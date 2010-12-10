@@ -78,7 +78,11 @@ namespace MSBuild.XCode
             }
 
             string branch = "default";
+
             // TODO: Here we need to determine the branch name from version control
+            // There should be no local outstanding modifications
+            // The changes should have been pushed to the repository
+            // Now we can list the tags and auto increment the version, create a tag, commit
 
             Filename = package.Name + "-" + package.Version.ToString() + "-" + branch + "-" + Platform + ".zip";
             if (File.Exists(Filename))

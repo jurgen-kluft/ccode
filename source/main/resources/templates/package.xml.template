@@ -1,4 +1,4 @@
-<Package Name="${Name}" Version="1.0.0" Group="com.virtuos.tnt">
+<Package Name="${Name}" Version="1.0.0.0" Group="com.virtuos.tnt">
 
   <IncludePath>source\main\${Language}\include</IncludePath>
   <LibraryPath>libs\${Name}</LibraryPath>
@@ -18,9 +18,9 @@
   
   <Dependency Package="example_package_name">
     <Group>com.virtuos.tnt</Group>
-    <!-- Specify according to package versioning, see docs -->
-    <Version>Latest</Version>
-    <!-- Specify Package, Source -->
+    <!-- See Versioning.docx in docs\manuals -->
+    <Version>[1.0,)</Version>
+    <!-- Specify Package(default), Source -->
     <Type>Package</Type>
   </Dependency>
 
@@ -80,5 +80,6 @@
   </Project>
 
 </Package>
+
 
 

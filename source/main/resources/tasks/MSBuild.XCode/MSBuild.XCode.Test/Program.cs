@@ -16,7 +16,6 @@ namespace MSBuild.XCode.Test
         {
             {
                 XPackageRepository repo = new XPackageRepository(@"d:\SCM_PACKAGE_REPO\");
-                repo.UpdateVersionCache("com.virtuos.tnt", "xbase");
                 repo.CheckoutVersion("com.virtuos.tnt", @"i:\temp\", "xbase", "default", "Win32", new XVersionRange("[,2.0]"));
             }
 

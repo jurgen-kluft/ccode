@@ -11,7 +11,7 @@ namespace MSBuild.XCode
         {
             /// <summary>
             /// Default Layout:
-            ///     Package VersionPath = RepositoryPath\GroupH\GroupM\GroupL\Package_Name\Major\Minor\Fix
+            ///     Package VersionPath = RepositoryPath\GroupH\GroupM\GroupL\Package_Name\Version\Major\Minor\Fix
             ///     Package Filename    = Package_Name+Version+Branch+Platform.zip
             /// </summary>
             Default,
@@ -45,11 +45,6 @@ namespace MSBuild.XCode
         public void SyncTo(string group, string package_name, string branch, string platform, XVersionRange range, XPackageRepository to)
         {
             mLayout.SyncTo(group, package_name, branch, platform, range, to.mLayout);
-        }
-
-        public void UpdateVersionCache(string group, string package_name)
-        {
-            mLayout.UpdateVersionCache(group, package_name);
         }
     }
 }
