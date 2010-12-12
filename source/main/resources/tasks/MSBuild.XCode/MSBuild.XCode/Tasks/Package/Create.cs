@@ -83,6 +83,11 @@ namespace MSBuild.XCode
             // - Get package.Version
             // - Build = (DateTime.Year).(DateTime.Month).(DateTime.Day).(DateTime.Hour).(DateTime.Minute).(DateTime.Second)
 
+            // VCS:
+            // - Get revision information and write it into a file
+            // - Add that file to the source file list to include it into the zip package
+            // @TODO
+
             DateTime t = DateTime.Now;
             string version = package.Version.ToString() + String.Format(".{0}.{1}.{2}.{3}.{4}.{5}", t.Year, t.Month, t.Day, t.Hour, t.Minute, t.Second);
 

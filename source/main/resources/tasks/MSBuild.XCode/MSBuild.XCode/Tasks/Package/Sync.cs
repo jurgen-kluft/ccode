@@ -41,24 +41,33 @@ namespace MSBuild.XCode
             XPackage package = new XPackage();
             package.Load(Path + "package.xml");
 
-            Dictionary<string, XDependency> dependencies = new Dictionary<string, XDependency>();
+            Dictionary<string, XVersionRange> dependencyVersionRangeMap = new Dictionary<string, XVersionRange>();
+            Dictionary<string, XDependency> dependencyMap = new Dictionary<string, XDependency>();
             foreach (XDependency d in package.Dependencies)
             {
-                XDependency o;
-                if (dependencies.TryGetValue(d.Name, out o))
+                if (dependencyMap.ContainsKey(d.Name))
                 {
                     // Version conflict?
-                    if (o.GetVersionRange())
+                    XVersionRange current;
+                    dependencyVersionRangeMap.TryGetValue(d.Name, out current);
+                    XVersionRange union = d.GetVersionRange(Platform, Branch).Union(current);
+                    dependencyVersionRangeMap.Remove(d.Name);
+                    dependencyVersionRangeMap.Add(d.Name, union);
                 }
                 else
                 {
-                    dependencies.Add(d.Name, d);
+                    dependencyVersionRangeMap.Add(d.Name, d.GetVersionRange(Platform, Branch));
+                    dependencyMap.Add(d.Name, d);
                 }
-
             }
 
-            while (true)
+            Queue<string> dependencyQueue = new Queue<string>();
+            foreach (XDependency d in dependencyMap.Values)
+                dependencyQueue.Enqueue(d.Name);
+
+            while (dependencyQueue.Count > 0)
             {
+
             }
 
 

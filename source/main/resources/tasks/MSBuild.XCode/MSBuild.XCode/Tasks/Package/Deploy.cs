@@ -22,11 +22,11 @@ namespace MSBuild.XCode
             if (!Path.EndsWith("\\"))
                 Path = Path + "\\";
 
-            if (!File.Exists(Path + "package.xml"))
-                return false;
+            // if (!File.Exists(Path + "package.xml"))
+            //    return false;
 
             // - Verify that there are no local changes 
-            // - Verify that there are no incoming changes
+            // - Verify that there are no outgoing changes
             // - Strip (Year).(Month).(Day).(Minute).(Second) from version of filename
             // - Commit version to remote package repository
 
