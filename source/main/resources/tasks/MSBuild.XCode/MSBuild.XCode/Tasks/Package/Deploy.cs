@@ -10,11 +10,11 @@ namespace MSBuild.XCode
 {
     /// <summary>
     ///	Will copy a new package release to the remote-package-repository. 
-    ///	Also updates 'latest'.
     /// </summary>
     public class PackageDeploy : Task
     {
         public string Path { get; set; }
+        public string Filename { get; set; }
         public string RepoPath { get; set; }
 
         public override bool Execute()
@@ -25,6 +25,10 @@ namespace MSBuild.XCode
             if (!File.Exists(Path + "package.xml"))
                 return false;
 
+            // - Verify that there are no local changes 
+            // - Verify that there are no incoming changes
+            // - Strip (Year).(Month).(Day).(Minute).(Second) from version of filename
+            // - Commit version to remote package repository
 
             return false;
         }

@@ -469,5 +469,47 @@ namespace MSBuild.XCode
             }
             return range;
         }
+
+
+        public static int Join(XVersionRange a, XVersionRange b)
+        {
+            bool a_null = (object)a == null;
+            bool b_null = (object)b == null;
+            if (a_null && b_null)
+                return 0;
+            if (a_null != b_null)
+                return a_null ? -1 : 1;
+
+            bool same_kind = (a.Kind == b.Kind);
+
+            int cfrom = a.From.CompareTo(b.From);
+            int cto = a.To.CompareTo(b.To);
+
+        }
+
+        public static bool operator <(XVersionRange a, XVersionRange b)
+        {
+            return Compare(a, b) == -1;
+        }
+        public static bool operator <=(XVersionRange a, XVersionRange b)
+        {
+            return Compare(a, b) != 1;
+        }
+        public static bool operator >(XVersionRange a, XVersionRange b)
+        {
+            return Compare(a, b) == 1;
+        }
+        public static bool operator >=(XVersionRange a, XVersionRange b)
+        {
+            return Compare(a, b) != -1;
+        }
+        public static bool operator ==(XVersionRange a, XVersionRange b)
+        {
+            return Compare(a, b) == 0;
+        }
+        public static bool operator !=(XVersionRange a, XVersionRange b)
+        {
+            return Compare(a, b) != 0;
+        }
     }
 }

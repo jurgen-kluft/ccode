@@ -25,6 +25,7 @@ namespace MSBuild.XCode
             public XVersionRange VersionRange { get; set; }
         }
 
+        public string Name { get; set; }
         public XGroup Group { get; set; }
         public string Type { get; set; }
 
@@ -65,6 +66,8 @@ namespace MSBuild.XCode
         {
             if (node.Name == "Dependency")
             {
+                Name = XAttribute.Get("Package", node, "Unknown");
+
                 if (node.HasChildNodes)
                 {
                     foreach (XmlNode child in node.ChildNodes)

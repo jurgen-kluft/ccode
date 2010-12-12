@@ -17,6 +17,8 @@ namespace MSBuild.XCode
     {
         public string Path { get; set; }
         public string Platform { get; set; }
+        public string Branch { get; set; }
+
         [Output]
         public string Filename { get; set; }
 
@@ -77,14 +79,14 @@ namespace MSBuild.XCode
                 sourceFilenames.Add(new KeyValuePair<string, string>(sfv_filename, ""));
             }
 
-            string branch = "default";
+            // Versioning:
+            // - Get package.Version
+            // - Build = (DateTime.Year).(DateTime.Month).(DateTime.Day).(DateTime.Hour).(DateTime.Minute).(DateTime.Second)
 
-            // TODO: Here we need to determine the branch name from version control
-            // There should be no local outstanding modifications
-            // The changes should have been pushed to the repository
-            // Now we can list the tags and auto increment the version, create a tag, commit
+            DateTime t = DateTime.Now;
+            string version = package.Version.ToString() + String.Format(".{0}.{1}.{2}.{3}.{4}.{5}", t.Year, t.Month, t.Day, t.Hour, t.Minute, t.Second);
 
-            Filename = package.Name + "-" + package.Version.ToString() + "-" + branch + "-" + Platform + ".zip";
+            Filename = package.Name + "-" + version + "-" + Branch + "-" + Platform + ".zip";
             if (File.Exists(Filename))
             {
                 try { File.Delete(Filename); }

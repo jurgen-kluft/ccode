@@ -1,4 +1,11 @@
-<Package Name="${Name}" Version="1.0.0.0" Group="com.virtuos.tnt">
+<Package Name="${Name}" Group="com.virtuos.tnt">
+  <Versions>
+    <Version Major="1" Minor="0" Fix="0" />
+    <!-- You may specify a different version for a specific platform -->
+    <!-- Version Platform="SonyPS3" Branch="default" Major="1" Minor="0" Fix="0" Build="0" -->
+    <!-- You may even specify a different version for a specific platform on a specific branch -->
+    <!-- Version Platform="SonyPS3" Branch="Optimize-PS3" Major="1" Minor="0" Fix="0" Build="0" -->
+  </Versions>
 
   <IncludePath>source\main\${Language}\include</IncludePath>
   <LibraryPath>libs\${Name}</LibraryPath>
