@@ -15,7 +15,6 @@ namespace MSBuild.XCode
     {
         public string Path { get; set; }
         public string Platform { get; set; }
-        public string Branch { get; set; }
         public string LocalRepoPath { get; set; }
         public string RemoteRepoPath { get; set; }
 
@@ -41,37 +40,7 @@ namespace MSBuild.XCode
             XPackage package = new XPackage();
             package.Load(Path + "package.xml");
 
-            Dictionary<string, XVersionRange> dependencyVersionRangeMap = new Dictionary<string, XVersionRange>();
-            Dictionary<string, XDependency> dependencyMap = new Dictionary<string, XDependency>();
-            foreach (XDependency d in package.Dependencies)
-            {
-                if (dependencyMap.ContainsKey(d.Name))
-                {
-                    // Version conflict?
-                    XVersionRange current;
-                    dependencyVersionRangeMap.TryGetValue(d.Name, out current);
-                    XVersionRange union = d.GetVersionRange(Platform, Branch).Union(current);
-                    dependencyVersionRangeMap.Remove(d.Name);
-                    dependencyVersionRangeMap.Add(d.Name, union);
-                }
-                else
-                {
-                    dependencyVersionRangeMap.Add(d.Name, d.GetVersionRange(Platform, Branch));
-                    dependencyMap.Add(d.Name, d);
-                }
-            }
-
-            Queue<string> dependencyQueue = new Queue<string>();
-            foreach (XDependency d in dependencyMap.Values)
-                dependencyQueue.Enqueue(d.Name);
-
-            while (dependencyQueue.Count > 0)
-            {
-
-            }
-
-
-            return false;
+            return true;
         }
     }
 }

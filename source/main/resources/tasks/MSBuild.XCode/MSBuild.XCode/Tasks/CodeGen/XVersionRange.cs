@@ -34,6 +34,15 @@ namespace MSBuild.XCode
                 FromString(range);
             }
 
+            public Range(XVersion unique)
+            {
+                mFrom = new XVersion(unique);
+                IncludeFrom = true;
+                mTo = new XVersion(string.Empty);
+                IncludeTo = false;
+                IsRange = false;
+            }
+
             public Range(XVersion from, XVersion to, bool includeFrom, bool includeTo)
             {
                 mFrom = from;
@@ -226,6 +235,12 @@ namespace MSBuild.XCode
         {
             mRanges = new List<Range>();
             FromString(range);
+        }
+
+        public XVersionRange(XVersion unique)
+        {
+            mRanges = new List<Range>();
+            mRanges.Add(new Range(unique));
         }
 
         public XVersionRange(XVersion from, XVersion to, bool includeFrom, bool includeTo)
@@ -470,8 +485,12 @@ namespace MSBuild.XCode
             return range;
         }
 
+        public override bool Equals(object obj)
+        {
+            return base.Equals(obj);
+        }
 
-        public static int Join(XVersionRange a, XVersionRange b)
+        public static int Compare(XVersionRange a, XVersionRange b)
         {
             bool a_null = (object)a == null;
             bool b_null = (object)b == null;
@@ -480,11 +499,12 @@ namespace MSBuild.XCode
             if (a_null != b_null)
                 return a_null ? -1 : 1;
 
-            bool same_kind = (a.Kind == b.Kind);
+            string a_str = a.ToString();
+            string b_str = b.ToString();
+            if (String.Compare(a_str, b_str)==0)
+                return 0;
 
-            int cfrom = a.From.CompareTo(b.From);
-            int cto = a.To.CompareTo(b.To);
-
+            return -1;
         }
 
         public static bool operator <(XVersionRange a, XVersionRange b)

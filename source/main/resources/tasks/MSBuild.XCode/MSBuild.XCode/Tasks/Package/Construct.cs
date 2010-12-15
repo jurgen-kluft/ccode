@@ -17,6 +17,10 @@ namespace MSBuild.XCode
         public string Language { get; set; }
         [Required]
         public string TemplatePath { get; set; }
+        [Required]
+        public string LocalRepoPath { get; set; }
+        [Required]
+        public string RemoteRepoPath { get; set; }
 
         public override bool Execute()
         {
@@ -61,6 +65,28 @@ namespace MSBuild.XCode
                 }
 
                 // Sync dependencies
+                // Here we need to sync for one platform since the package
+                // structure for the include directory and library directory
+                // should stay the same!
+                PackageSync sync = new PackageSync();
+                sync.Path = Path;
+                sync.LocalRepoPath = LocalRepoPath;
+                sync.RemoteRepoPath = RemoteRepoPath;
+
+                foreach (XProject project in package.Projects)
+                {
+                    foreach (XPlatform platform in project.Platforms.Values)
+                    {
+
+                        sync.Platform = platform.Name;
+                        bool sync_ok = sync.Execute();
+                    }
+                }
+
+                // @TODO: Obtain all XPackage objects
+                // - Concat the include directories   (target\package_name\platform + include_dir)
+                // - Concat the library directories   (target\package_name\platform + lib_dir)
+                // - Concat the library dependencies  
 
                 // Generate the projects and solution
                 package.GenerateProjects(Path);

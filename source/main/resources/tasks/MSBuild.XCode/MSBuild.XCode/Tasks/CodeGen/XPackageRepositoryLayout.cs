@@ -3,32 +3,31 @@ using System.IO;
 using System.Text;
 using System.Collections;
 using System.Collections.Generic;
+using Ionic.Zip;
 
 namespace MSBuild.XCode
 {
     public interface XPackageRepositoryLayout
     {
-        string RepoPath { get; set; }
+        string RepoDir { get; set; }
 
-        string CheckoutVersion(string group, string package_path, string package_name, string branch, string platform, XVersionRange versionRange);
-        string CommitVersion(string group, string package_path, string package_name, string branch, string platform, XVersion version);
-
-        void SyncTo(string group, string package_name, string branch, string platform, XVersionRange range, XPackageRepositoryLayout to);
+        bool Checkout(string group, string package_path, string package_name, string branch, string platform, XVersionRange versionRange);
+        bool Commit(string group, string package_path, string package_name, string branch, string platform, XVersion version);
+        XVersion Sync(string group, string package_name, string branch, string platform, XVersionRange range, XPackageRepositoryLayout to);
+        XPackage Info(string group, string package_name, string branch, string platform, XVersion version);
     }
 
     public class XPackageRepositoryLayoutDefault : XPackageRepositoryLayout
     {
         public static class Layout
         {
-            public static string VersionToPath(XVersion version)
+            public static string VersionToDir(XVersion version)
             {
                 string path = string.Empty;
-                string[] components = version.ToStrings();
+                string[] components = version.ToStrings(3);
                 // Keep it to X.Y.Z
                 for (int i = 0; i < components.Length && i < 3; ++i)
-                {
-                    path = path + components[0] + "\\";
-                }
+                    path = path + components[i] + "\\";
                 return path;
             }
             
@@ -48,7 +47,7 @@ namespace MSBuild.XCode
                 return parts[1];
             }
 
-            public static string FullRootPath(string repoPath, string group, string package_name)
+            public static string FullRootDir(string repoPath, string group, string package_name)
             {
                 // Path = group[] \ group[] ... \ package_name \ version.cache
                 string[] splitted_group = group.Split(new char[] { '.' }, StringSplitOptions.RemoveEmptyEntries);
@@ -64,7 +63,7 @@ namespace MSBuild.XCode
                 return fullPath;
             }
 
-            public static string FullVersionPath(string repoPath, string group, string package_name, XVersion version)
+            public static string FullVersionDir(string repoPath, string group, string package_name, XVersion version)
             {
                 // Path = group[] \ group[] ... \ package_name \ version.cache
                 string[] splitted_group = group.Split(new char[] { '.' }, StringSplitOptions.RemoveEmptyEntries);
@@ -76,107 +75,184 @@ namespace MSBuild.XCode
                     else
                         groupPath = groupPath + g + "\\";
                 }
-                string fullPath = repoPath + groupPath + package_name + "\\version\\" + VersionToPath(version);
+                string fullPath = repoPath + groupPath + package_name + "\\version\\" + VersionToDir(version);
                 return fullPath;
             }
         }
 
-        public XPackageRepositoryLayoutDefault(string repoPath)
+        public XPackageRepositoryLayoutDefault(string repoDir)
         {
-            RepoPath = repoPath;
+            RepoDir = repoDir;
         }
 
-        public string RepoPath { get; set; }
+        public string RepoDir { get; set; }
 
-        private void CheckoutVersion(string group, string package_path, string package_name, string branch, string platform, XVersion version)
+        private bool Checkout(string group, string package_dir, string package_name, string branch, string platform, XVersion version)
         {
-            string src_path = Layout.FullVersionPath(RepoPath, group, package_name, version);
+            string src_dir = Layout.FullVersionDir(RepoDir, group, package_name, version);
             string src_filename = Layout.VersionToFilename(package_name, branch, platform, version);
 
-            if (File.Exists(src_path + src_filename) && Directory.Exists(package_path))
+            string src_path = src_dir + src_filename;
+            if (File.Exists(src_path) && Directory.Exists(package_dir))
             {
-                if (!File.Exists(package_path + src_filename))
+                string dst_path = package_dir + "target\\" + src_filename;
+                if (!File.Exists(dst_path))
                 {
-                    File.Copy(src_path + src_filename, package_path + src_filename);
+                    if (Directory.Exists(package_dir))
+                    {
+                        // Check the marker, if the markers are the same then no need to copy and unpack
+                        bool checkout = true;
+                        if (!Directory.Exists(package_dir + "target\\"))
+                        {
+                            Directory.CreateDirectory(package_dir + "target\\");
+                            checkout = true;
+                        }
+
+                        if (checkout)
+                        {
+                            //
+                            // Copy
+                            File.Copy(src_path, dst_path);
+
+                            // 
+                            // Unpack
+                            ZipFile zip = new ZipFile(dst_path);
+                            zip.ExtractAll(package_dir + "target\\", ExtractExistingFileAction.OverwriteSilently);
+                        }
+
+                        return true;
+                    }
                 }
             }
+            return false;
         }
 
-        public string CheckoutVersion(string group, string package_path, string package_name, string branch, string platform, XVersionRange versionRange)
+        public bool Checkout(string group, string package_dir, string package_name, string branch, string platform, XVersionRange versionRange)
         {
             XVersion version = FindBestVersion(group, package_name, branch, platform, versionRange);
             if (version != null)
-                CheckoutVersion(group, package_path, package_name, branch, platform, version);
-            return string.Empty;
+                return Checkout(group, package_dir, package_name, branch, platform, version);
+
+            return false;
         }
 
-        public string CommitVersion(string group, string package_path, string package_name, string branch, string platform, XVersion version)
+        public bool Commit(string group, string package_path, string package_name, string branch, string platform, XVersion version)
         {
             string package_filename = Layout.VersionToFilename(package_name, branch, platform, version);
             if (File.Exists(package_path))
             {
-                string dest_path = Layout.FullVersionPath(RepoPath, group, package_name, version);
-                if (!Directory.Exists(dest_path))
+                string dest_dir = Layout.FullVersionDir(RepoDir, group, package_name, version);
+                if (!Directory.Exists(dest_dir))
                 {
-                    Directory.CreateDirectory(dest_path);
+                    Directory.CreateDirectory(dest_dir);
                 }
-                File.Copy(package_path, dest_path + package_filename, true);
-                DirtyVersionCache(group, package_name);
-                return package_filename;
+                if (!File.Exists(dest_dir + package_filename))
+                {
+                    File.Copy(package_path, dest_dir + package_filename, true);
+                    DirtyVersionCache(group, package_name);
+                }
+                return true;
             }
-            return string.Empty;
+            return false;
         }
 
 
         /// Database file should contain a table like this:
-        ///     Version                 |    Branch    |     Platform     |     Change-Set ID
-        ///     1.0.0.0.10.12.10.17.20  |    default   |       Win32      |   AAAAAAAAAAAAAAAAAAAAA
-
-
-        public void SyncTo(string group, string package_name, string branch, string platform, XVersionRange versionRange, XPackageRepositoryLayout to)
+        ///    Platform     |  Branch    |         Version                          
+        ///      Win32      |  default   | 1.0.0.0.2010.12.10.17.20.10      
+        public XVersion Sync(string group, string package_name, string branch, string platform, XVersionRange versionRange, XPackageRepositoryLayout to)
         {
             // Sync the best version from this repository to another
             XVersion version = FindBestVersion(group, package_name, branch, platform, versionRange);
             if (version != null)
             {
-                string dir = Layout.FullVersionPath(RepoPath, group, package_name, version);
+                string dir = Layout.FullVersionDir(RepoDir, group, package_name, version);
                 string path = dir + Layout.VersionToFilename(package_name, branch, platform, version);
-                to.CommitVersion(group, path, package_name, branch, platform, version);
+                if (to.Commit(group, path, package_name, branch, platform, version))
+                    return version;
             }
+            return null;
         }
 
-        public void UpdateVersionCache(string group, string package_name)
+        public XPackage Info(string group, string package_name, string branch, string platform, XVersion version)
         {
-            string path = Layout.FullRootPath(RepoPath, group, package_name);
-            if (!Directory.Exists(path))
-                return;
-            if (File.Exists(path + "version.cache.writelock"))
+            XPackage package = null;
+
+            string src_path = Layout.FullVersionDir(RepoDir, group, package_name, version);
+            string src_filename = Layout.VersionToFilename(package_name, branch, platform, version);
+
+            string filename = src_path + src_filename;
+            if (File.Exists(filename))
             {
-                long ticks = File.GetLastWriteTime(path + "version.cache.writelock").Ticks;
+                ZipFile zip = new ZipFile(filename);
+                if (zip.Entries.Count > 0)
+                {
+                    ZipEntry entry = zip[package_name + "\\package.xml"];
+                    if (entry != null)
+                    {
+                        using (MemoryStream stream = new MemoryStream())
+                        {
+                            entry.Extract(stream);
+                            stream.Position = 0;
+                            using (StreamReader reader = new StreamReader(stream))
+                            {
+                                string xml = reader.ReadToEnd();
+                                reader.Close();
+                                stream.Close();
+                                package = new XPackage();
+                                package.LoadXml(xml);
+                            }
+                        }
+                    }
+                }
+            }
+            return package;
+        }
+
+        public string[] RetrieveVersionsFor(string group, string package_name, string branch, string platform)
+        {
+            UpdateVersionCache(group, package_name, branch, platform);
+            return LoadVersionCache(group, package_name, branch, platform);
+        }
+
+        // 
+        // OPTIMIZATION, THIS CAN BE DONE IN MANY DIFFERENT WAYS
+        // 
+        public void UpdateVersionCache(string group, string package_name, string branch, string platform)
+        {
+            string root_dir = Layout.FullRootDir(RepoDir, group, package_name);
+            if (!Directory.Exists(root_dir))
+                return;
+
+            string filename = String.Format("versions.{0}.{1}.cache", branch, platform);
+
+            if (File.Exists(root_dir + filename + ".writelock"))
+            {
+                long ticks = File.GetLastWriteTime(root_dir + filename + ".writelock").Ticks;
                 long current_ticks = DateTime.Now.Ticks;
                 TimeSpan timespan = new TimeSpan(current_ticks - ticks);
                 TimeSpan timeout = new TimeSpan(0, 5, 0);
                 bool _return = true;
                 if (timespan > timeout)
                 {
-                    try { _return = false;  File.Delete(path + "version.cache.writelock"); }
+                    try { _return = false;  File.Delete(root_dir + filename + ".writelock"); }
                     catch (SystemException) { _return = true; }
                 }
                 if (_return)
                     return;
             }
 
-            using (FileStream stream = new FileStream(path + "version.cache.writelock", FileMode.Create, FileAccess.Write, FileShare.None))
+            using (FileStream stream = new FileStream(root_dir + filename + ".writelock", FileMode.Create, FileAccess.Write, FileShare.None))
             {
                 using (StreamWriter writer = new StreamWriter(stream))
                 {
-                    string[] dirtyMarkerFiles = Directory.GetFiles(path, "*.dirty", SearchOption.TopDirectoryOnly);
+                    string[] dirtyMarkerFiles = Directory.GetFiles(root_dir, "*.dirty", SearchOption.TopDirectoryOnly);
                     foreach (string dirty in dirtyMarkerFiles)
                     {
                         try { File.Delete(dirty); }
                         catch (SystemException) { }
                     }
-                    string[] packages = Directory.GetFiles(path + "version\\", "*.zip", SearchOption.AllDirectories);
+                    string[] packages = Directory.GetFiles(root_dir + "version\\", "*.zip", SearchOption.AllDirectories);
                     SortedDictionary<XVersion, bool> sortedVersions = new SortedDictionary<XVersion, bool>();
                     foreach (string package in packages)
                     {
@@ -194,18 +270,20 @@ namespace MSBuild.XCode
                     writer.Close();
                     stream.Close();
 
-                    try { File.Copy(path + "version.cache.writelock", path + "version.cache", true); }
+                    try { File.Copy(root_dir + filename + ".writelock", root_dir + filename, true); }
                     catch (SystemException) { }
-                    try { File.Delete(path + "version.cache.writelock"); }
+                    try { File.Delete(root_dir + filename + ".writelock"); }
                     catch (SystemException) { }
                 }
             }
         }
 
-        private string[] LoadVersionCache(string group, string package_name)
+        private string[] LoadVersionCache(string group, string package_name, string branch, string platform)
         {
-            string path = Layout.FullRootPath(RepoPath, group, package_name);
+            string root_dir = Layout.FullRootDir(RepoDir, group, package_name);
             string[] versions = new string[0];
+
+            string filename = String.Format("versions.{0}.{1}.cache", branch, platform);
 
             int retry = 0;
             bool exception = true;
@@ -214,7 +292,7 @@ namespace MSBuild.XCode
                 try
                 {
                     exception = false;
-                    versions = File.ReadAllLines(path + "version.cache");
+                    versions = File.ReadAllLines(root_dir + filename);
                 }
                 catch (SystemException)
                 {
@@ -228,10 +306,10 @@ namespace MSBuild.XCode
 
         private void DirtyVersionCache(string group, string package_name)
         {
-            string path = Layout.FullRootPath(RepoPath, group, package_name);
-            if (!File.Exists(path + Environment.MachineName + ".dirty"))
+            string root_dir = Layout.FullRootDir(RepoDir, group, package_name);
+            if (!File.Exists(root_dir + Environment.MachineName + ".dirty"))
             {
-                FileStream s = File.Create(path + Environment.MachineName + ".dirty");
+                FileStream s = File.Create(root_dir + Environment.MachineName + ".dirty");
                 s.Close();
             }
         }
@@ -256,7 +334,7 @@ namespace MSBuild.XCode
 
         private XVersion FindBestVersion(string group, string package_name, string branch, string platform, XVersionRange versionRange)
         {
-            string[] versions = LoadVersionCache(group, package_name);
+            string[] versions = RetrieveVersionsFor(group, package_name, branch, platform);
             if (versions.Length > 1)
             {
                 if (versionRange.Kind == XVersionRange.EKind.UniqueVersion)

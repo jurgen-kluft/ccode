@@ -1,4 +1,5 @@
 ﻿using System;
+using System.IO;
 using System.Xml;
 using System.Text;
 using System.Collections.Generic;
@@ -8,7 +9,6 @@ namespace MSBuild.XCode
     public class XPackage
     {
         public string Name { get; set; }
-        public XVersion Version { get; set; }
         public XGroup Group { get; set; }
 
         public string IncludePath { get; set; }
@@ -19,23 +19,48 @@ namespace MSBuild.XCode
         public List<XDependency> Dependencies { get; set; }
         public List<XProject> Projects { get; set; }
         public List<XProject> Templates { get; set; }
+        public XVersions Versions { get; set; }
+        public XDependencyTree DependencyTree { get; set; }
 
         public XPackage()
         {
             Name = "Unknown";
             Group = new XGroup("com.virtuos.tnt");
-            Version = new XVersion("1.0");
 
             DirectoryStructure = new List<XAttribute>();
             Dependencies = new List<XDependency>();
             Projects = new List<XProject>();
             Templates = new List<XProject>();
+            Versions = new XVersions();
+            DependencyTree = new XDependencyTree();
         }
 
         public void Load(string filename)
         {
             XmlDocument xmlDoc = new XmlDocument();
             xmlDoc.Load(filename);
+            Read(xmlDoc.FirstChild);
+
+            foreach (XProject p in Projects)
+            {
+                XProject template = null;
+                foreach (XProject t in Templates)
+                {
+                    if (t.Language == p.Language)
+                    {
+                        template = t;
+                        break;
+                    }
+                }
+                if (template != null)
+                    XProjectMerge.Merge(p, template);
+            }
+        }
+
+        public void LoadXml(string xml)
+        {
+            XmlDocument xmlDoc = new XmlDocument();
+            xmlDoc.LoadXml(xml);
             Read(xmlDoc.FirstChild);
 
             foreach (XProject p in Projects)
@@ -66,13 +91,9 @@ namespace MSBuild.XCode
                         {
                             Name = a.Value;
                         }
-                        else if (a.Name == "Version")
-                        {
-                            Version.ParseVersion(a.Value);
-                        }
                         else if (a.Name == "Group")
                         {
-                            Group.Group = a.Value;
+                            Group.Full = a.Value;
                         }
                     }
                 }
@@ -81,7 +102,11 @@ namespace MSBuild.XCode
                 {
                     foreach (XmlNode child in node.ChildNodes)
                     {
-                        if (child.Name == "Dependency")
+                        if (child.Name == "Versions")
+                        {
+                            Versions.Read(child);
+                        }
+                        else if (child.Name == "Dependency")
                         {
                             XDependency dependency = new XDependency();
                             dependency.Read(child);
@@ -158,6 +183,23 @@ namespace MSBuild.XCode
 
             MsDevSolutionGenerator generator = new MsDevSolutionGenerator(MsDevSolutionGenerator.EVersion.VS2010, MsDevSolutionGenerator.ELanguage.CPP);
             generator.Save(filename, projectFilenames);
+        }
+
+        public bool BuildDependencies(string Platform, XPackageRepository localRepo, XPackageRepository remoteRepo)
+        {
+            bool result = DependencyTree.Build(Platform, localRepo, remoteRepo);
+            return result;
+        }
+
+        public void PrintDependencies()
+        {
+            DependencyTree.Print();
+        }
+
+        public bool CheckoutDependencies(string Path, string Platform, XPackageRepository localRepo)
+        {
+            bool result = DependencyTree.Checkout(Path, Platform, localRepo);
+            return result;
         }
     }
 }

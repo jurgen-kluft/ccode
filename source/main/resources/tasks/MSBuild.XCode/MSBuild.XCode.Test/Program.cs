@@ -16,7 +16,8 @@ namespace MSBuild.XCode.Test
         {
             {
                 XPackageRepository repo = new XPackageRepository(@"d:\SCM_PACKAGE_REPO\");
-                repo.CheckoutVersion("com.virtuos.tnt", @"i:\temp\", "xbase", "default", "Win32", new XVersionRange("[,2.0]"));
+                repo.Checkout("com.virtuos.tnt", @"i:\temp\", "xbase", "default", "Win32", new XVersionRange("[,2.0]"));
+                XPackage info = repo.Info("com.virtuos.tnt", "xbase", "default", "Win32", new XVersion("2.0.0"));
             }
 
             {
@@ -46,22 +47,25 @@ namespace MSBuild.XCode.Test
             construct.Execute();
             construct.Path = construct.Path + construct.Name + "\\";
             construct.Execute();
-            return;
-
-            PackageSync sync = new PackageSync();
-            sync.Path = @"i:\HgDev.Modules\xbase\";
-            sync.LocalRepoPath = @"D:\SCM_PACKAGE_REPO\com\virtuos\tnt\xbase\";
-            sync.RemoteRepoPath = @"\\cnshasap2\Hg_Repo\SCM_PACKAGE_REPO\com\virtuos\tnt\xbase\";
-            sync.Execute();
 
             PackageCreate create = new PackageCreate();
             create.Path = @"i:\HgDev.Modules\xbase\";
             create.Platform = "Win32";
+            create.Branch = "default";
             bool result1 = create.Execute();
 
             PackageVerify verify = new PackageVerify();
             verify.Path = @"i:\HgDev.Modules\xbase\";
+            verify.Platform = "Win32";
+            verify.Branch = "default";
             bool result2 = verify.Execute();
+
+            PackageSync sync = new PackageSync();
+            sync.Path = @"i:\HgDev.Modules\xbase\";
+            sync.Platform = "Win32";
+            sync.LocalRepoPath = @"D:\SCM_PACKAGE_REPO\";
+            sync.RemoteRepoPath = @"\\cnshasap2\Hg_Repo\SCM_PACKAGE_REPO\";
+            sync.Execute();
 
             PackageInstall install = new PackageInstall();
             install.Path = @"i:\HgDev.Modules\xbase\";

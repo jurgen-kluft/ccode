@@ -1,13 +1,9 @@
 <Package Name="${Name}" Group="com.virtuos.tnt">
   <Versions>
-    <Version Major="1" Minor="0" Fix="0" />
-    <!-- You may specify a different version for a specific platform -->
-    <!-- Version Platform="SonyPS3" Branch="default" Major="1" Minor="0" Fix="0" Build="0" -->
-    <!-- You may even specify a different version for a specific platform on a specific branch -->
-    <!-- Version Platform="SonyPS3" Branch="Optimize-PS3" Major="1" Minor="0" Fix="0" Build="0" -->
+    <Version>1.0.0</Version>
   </Versions>
 
-  <IncludePath>source\main\${Language}\include</IncludePath>
+  <IncludePath>source\main\include</IncludePath>
   <LibraryPath>libs\${Name}</LibraryPath>
 
   <DirectoryStructure>
@@ -25,9 +21,7 @@
   
   <Dependency Package="example_package_name">
     <Group>com.virtuos.tnt</Group>
-    <!-- See Versioning.docx in docs\manuals -->
     <Version>[1.0,)</Version>
-    <!-- Specify Package(default), Source -->
     <Type>Package</Type>
   </Dependency>
 
@@ -46,15 +40,10 @@
     <Type Name="Client"/>
     <Type Name="Retail"/>
     
-    <!-- Win32 will inherit all properties from Template/Win32 -->
     <Platform Name="Win32">
-      <!-- Debug will inherit all properties from Template/Win32/Debug -->
       <Config Name="Debug"> </Config>
-      <!-- Release will inherit all properties from Template/Win32/Release -->
       <Config Name="Release"> </Config>
-      <!-- Profile will inherit all properties from Template/Win32/Profile -->
       <Config Name="Profile"> </Config>
-      <!-- Final will inherit all properties from Template/Win32/Final -->
       <Config Name="Final"> </Config>
     </Platform>
   </Project>
@@ -70,23 +59,15 @@
     <!-- Here list the Types/Targets of the Configurations -->
     <Type Name="Dev"/>
     
-    <!-- Win32 will inherit all properties from Template/Win32 -->
     <Platform Name="Win32">
       <Configuration>
         <ConfigurationType>Application</ConfigurationType>
       </Configuration>
-      <!-- Debug will inherit all properties from Template/Win32/Debug -->
       <Config Name="Debug"> </Config>
-      <!-- Release will inherit all properties from Template/Win32/Release -->
       <Config Name="Release"> </Config>
-      <!-- Profile will inherit all properties from Template/Win32/Profile -->
       <Config Name="Profile"> </Config>
-      <!-- Final will inherit all properties from Template/Win32/Final -->
       <Config Name="Final"> </Config>
     </Platform>
   </Project>
-
 </Package>
-
-
 

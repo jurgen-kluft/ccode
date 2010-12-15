@@ -475,6 +475,15 @@ namespace MSBuild.XCode
             return strings.ToArray();
         }
 
+        public string[] ToStrings(int n)
+        {
+            List<string> strings = new List<string>();
+            ToStringsRecursive(mItems, strings);
+            while (strings.Count < n)
+                strings.Add("0");
+            return strings.ToArray();
+        }
+
         public override bool Equals(Object o)
         {
             return (o is XVersion) && mCanonical.Equals((o as XVersion).mCanonical);

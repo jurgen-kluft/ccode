@@ -7,14 +7,13 @@ namespace MSBuild.XCode
     public class XGroup
     {
         private string mGroup = string.Empty;
-        private string[] mCategory = new string[0];
 
         public XGroup(string group)
         {
-            Group = group;
+            Full = group;
         }
 
-        public string Group 
+        public string Full 
         {
             get
             {
@@ -22,14 +21,30 @@ namespace MSBuild.XCode
             }
             set
             {
-                Split(value);
                 mGroup = value;
             }
         }
 
-        private void Split(string value)
+        public string[] Split
         {
-            mCategory = value.Split(new char[] { '.' }, StringSplitOptions.RemoveEmptyEntries);
+            get
+            {
+                return mGroup.Split(new char[] { '.' }, StringSplitOptions.RemoveEmptyEntries);
+            }
+            set
+            {
+                if (value!=null && value.Length > 0)
+                {
+                    mGroup = value[0];
+                    for (int i = 1; i < value.Length; ++i)
+                        if (!String.IsNullOrEmpty(value[1]))
+                            mGroup = "." + value[1];
+                }
+                else
+                {
+                    mGroup = string.Empty;
+                }
+            }
         }
     }
 }

@@ -26,7 +26,7 @@ namespace MSBuild.XCode
             mLanguage = language;
 
             List<string> platforms = new List<string>();
-            foreach (KeyValuePair<string, XPlatform> p in project.platforms)
+            foreach (KeyValuePair<string, XPlatform> p in project.Platforms)
                 platforms.Add(p.Key);
             mPlatforms = platforms.ToArray();
             List<string> configs = new List<string>();

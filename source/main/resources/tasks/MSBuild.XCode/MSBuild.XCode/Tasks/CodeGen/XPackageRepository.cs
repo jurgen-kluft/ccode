@@ -34,17 +34,21 @@ namespace MSBuild.XCode
 
         public string RepoPath { get; set; }
 
-        public string CheckoutVersion(string group, string package_path, string package_name, string branch, string platform, XVersionRange range)
+        public bool Checkout(string group, string package_path, string package_name, string branch, string platform, XVersionRange range)
         {
-            return mLayout.CheckoutVersion(group, package_path, package_name, branch, platform, range);
+            return mLayout.Checkout(group, package_path, package_name, branch, platform, range);
         }
-        public string CommitVersion(string group, string package_path, string package_name, string branch, string platform, XVersion version)
+        public bool Commit(string group, string package_path, string package_name, string branch, string platform, XVersion version)
         {
-            return mLayout.CommitVersion(group, package_path, package_name, branch, platform, version);
+            return mLayout.Commit(group, package_path, package_name, branch, platform, version);
         }
-        public void SyncTo(string group, string package_name, string branch, string platform, XVersionRange range, XPackageRepository to)
+        public XVersion Sync(string group, string package_name, string branch, string platform, XVersionRange range, XPackageRepository to)
         {
-            mLayout.SyncTo(group, package_name, branch, platform, range, to.mLayout);
+            return mLayout.Sync(group, package_name, branch, platform, range, to.mLayout);
+        }
+        public XPackage Info(string group, string package_name, string branch, string platform, XVersion version)
+        {
+            return mLayout.Info(group, package_name, branch, platform, version);
         }
     }
 }

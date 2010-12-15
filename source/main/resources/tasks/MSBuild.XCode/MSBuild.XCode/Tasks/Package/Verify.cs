@@ -16,6 +16,8 @@ namespace MSBuild.XCode
     public class PackageVerify : Task
     {
         public string Path { get; set; }
+        public string Platform { get; set; }
+        public string Branch { get; set; }
 
         public override bool Execute()
         {
@@ -26,10 +28,16 @@ namespace MSBuild.XCode
 
             Environment.CurrentDirectory = Path;
 
-            XPackage package = new XPackage();
-            package.Load(Path + "package.xml");
+            if (!File.Exists(Path + "package.xml"))
+                return false;
 
-            string md5_file = Path + package.Name + ".MD5";
+            XPackage package = new XPackage();
+            package.Load("package.xml");
+
+            string dir = Path + "target\\";
+            Environment.CurrentDirectory = dir;
+            string subDir = package.Name + "\\" + Platform + "\\";
+            string md5_file = subDir + package.Name + ".MD5";
             if (File.Exists(md5_file))
             {
                 MD5CryptoServiceProvider md5_provider = new MD5CryptoServiceProvider();
@@ -37,6 +45,10 @@ namespace MSBuild.XCode
                 // Load MD5 file
                 ok = true;
                 string[] lines = File.ReadAllLines(md5_file);
+
+                // MD5 is relative to its own location
+                Environment.CurrentDirectory = Path + "target\\" + package.Name + "\\" + Platform + "\\";
+
                 foreach (string entry in lines) 
                 {
                     if (entry.Trim().StartsWith(";"))

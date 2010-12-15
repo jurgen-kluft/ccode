@@ -86,6 +86,9 @@
       <DesignTime>True</DesignTime>
       <DependentUpon>Resources.resx</DependentUpon>
     </Compile>
+    <Compile Include="Tasks\CodeGen\XDependencyTreeNode.cs" />
+    <Compile Include="Tasks\CodeGen\XDependencyTree.cs" />
+    <Compile Include="Tasks\CodeGen\XVersions.cs" />
     <Compile Include="Tasks\CodeGen\XPackageRepositoryLayout.cs" />
     <Compile Include="Tasks\CodeGen\XVersionRange.cs" />
     <Compile Include="Tasks\CodeGen\XDependency.cs" />

@@ -76,12 +76,12 @@ namespace MSBuild.XCode
         {
             Merge(main.groups, template.groups);
             
-            foreach (KeyValuePair<string, XPlatform> p in main.platforms)
+            foreach (KeyValuePair<string, XPlatform> p in main.Platforms)
             {
                 Merge(p.Value.groups, main.groups);
 
                 XPlatform x;
-                if (template.platforms.TryGetValue(p.Key, out x))
+                if (template.Platforms.TryGetValue(p.Key, out x))
                 {
                     Merge(p.Value, x);
                 }

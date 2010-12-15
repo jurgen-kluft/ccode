@@ -24,7 +24,7 @@ namespace MSBuild.XCode
         public Dictionary<string, List<XElement>> groups { get { return mGroups; } }
         public Dictionary<string, XConfig> configs { get { return mConfigs; } }
         public Dictionary<string, string> types { get { return mTypes; } }
-        public Dictionary<string, XPlatform> platforms { get { return mPlatforms; } }
+        public Dictionary<string, XPlatform> Platforms { get { return mPlatforms; } }
 
         public string Name { get; set; }
         public string Language { get; set; }
@@ -94,11 +94,11 @@ namespace MSBuild.XCode
                     string p = XAttribute.Get("Name", child, "Unknown");
 
                     XPlatform platform;
-                    if (!this.platforms.TryGetValue(p, out platform))
+                    if (!this.Platforms.TryGetValue(p, out platform))
                     {
                         platform = new XPlatform();
                         platform.Initialize(p);
-                        this.platforms.Add(p, platform);
+                        this.Platforms.Add(p, platform);
                     }
                     platform.Read(child);
                     do_continue = true;

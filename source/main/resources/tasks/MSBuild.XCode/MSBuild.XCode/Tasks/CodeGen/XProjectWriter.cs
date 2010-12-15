@@ -101,7 +101,7 @@ namespace MSBuild.XCode
             List<string> lines = new List<string>();
 
             XPlatform xplatform;
-            if (mProject.platforms.TryGetValue(platform, out xplatform))
+            if (mProject.Platforms.TryGetValue(platform, out xplatform))
             {
                 XConfig xconfig;
                 if (xplatform.configs.TryGetValue(config, out xconfig))
