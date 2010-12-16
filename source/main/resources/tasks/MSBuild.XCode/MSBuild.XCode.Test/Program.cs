@@ -14,67 +14,79 @@ namespace MSBuild.XCode.Test
         [STAThread]
         static void Main()
         {
-            {
-                XPackageRepository repo = new XPackageRepository(@"d:\SCM_PACKAGE_REPO\");
-                repo.Checkout("com.virtuos.tnt", @"i:\temp\", "xbase", "default", "Win32", new XVersionRange("[,2.0]"));
-                XPackage info = repo.Info("com.virtuos.tnt", "xbase", "default", "Win32", new XVersion("2.0.0"));
-            }
+            XGlobal.TemplateDir = @"D:\SCM_PACKAGE_REPO\com\virtuos\xcode\templates\";
+            XGlobal.LocalRepoDir = @"d:\SCM_PACKAGE_REPO\";
+            XGlobal.RemoteRepoDir = @"\\cnshasap2\Hg_Repo\SCM_PACKAGE_REPO\";
+
+            XGlobal.Initialize();
 
             {
-                XVersionRange xrange1 = new XVersionRange("(,1.0],[1.2,)");
-                bool in_range = xrange1.IsInRange(new XVersion("1.1.2"));
-                in_range = xrange1.IsInRange(new XVersion("0.9"));
+                XPackage package = new XPackage();
+                package.Name = "xbase";
+                package.Group = new XGroup("com.virtuos.tnt");
+                package.Path = string.Empty;
+                package.Local = true;
+                package.Version = null;
+                package.Branch = "default";
+                package.Platform = "Win32";
 
-                XVersion xversion1 = new XVersion("1.2.23.0");
-                string[] version_components1 = xversion1.ToStrings();
-                XVersion xversion2 = new XVersion("1.0.0.0");
-            }
+                XGlobal.LocalRepo.Checkout(package, new XVersionRange("[,2.0]"));
+                if (package.LoadPom())
+                {
+                    package.Pom.BuildDependencies("Win32", XGlobal.LocalRepo, XGlobal.RemoteRepo);
+                    package.Pom.PrintDependencies("Win32");
+                    package.Pom.CheckoutDependencies(@"i:\temp\target\", "Win32", XGlobal.LocalRepo);
 
-            {
-                XProject template = new XProject();
-                template.Load(@"D:\SCM_PACKAGE_REPO\com\virtuos\xcode\templates\vcxproj.xml.template");
-
-                XPackage xpack = new XPackage();
-                xpack.Templates.Add(template);
-                xpack.Load(@"D:\SCM_PACKAGE_REPO\com\virtuos\xcode\templates\package.xml.template");
+                    string[] categories = package.Pom.GetCategories();
+                    string[] platforms = package.Pom.GetPlatformsForCategory("Main");
+                    string[] configs = package.Pom.GetConfigsForPlatformsForCategory("Win32", "Main");
+                    foreach (string category in categories)
+                    {
+                        foreach (string platform in platforms)
+                            foreach (string config in configs)
+                                package.Pom.CollectProjectInformation(category, platform, config);
+                    }
+                }
             }
 
             PackageConstruct construct = new PackageConstruct();
             construct.Name = "xproject";
-            construct.Path = @"i:\HgDev.Modules\";
+            construct.RootDir = @"i:\HgDev.Modules\";
             construct.Language = "cpp";
-            construct.TemplatePath = @"d:\SCM_PACKAGE_REPO\com\virtuos\xcode\templates\";
-            construct.Execute();
-            construct.Path = construct.Path + construct.Name + "\\";
-            construct.Execute();
+            construct.TemplateDir = XGlobal.LocalRepoDir + @"com\virtuos\xcode\templates\";
+            construct.Execute();    //1st
+            construct.RootDir = construct.RootDir + construct.Name + "\\";
+            construct.Execute();    //2nd
 
             PackageCreate create = new PackageCreate();
-            create.Path = @"i:\HgDev.Modules\xbase\";
+            create.RootDir = @"i:\HgDev.Modules\xbase\";
             create.Platform = "Win32";
             create.Branch = "default";
             bool result1 = create.Execute();
 
             PackageVerify verify = new PackageVerify();
-            verify.Path = @"i:\HgDev.Modules\xbase\";
+            verify.RootDir = @"i:\HgDev.Modules\xbase\";
             verify.Platform = "Win32";
             verify.Branch = "default";
             bool result2 = verify.Execute();
 
             PackageSync sync = new PackageSync();
-            sync.Path = @"i:\HgDev.Modules\xbase\";
+            sync.RootDir = @"i:\HgDev.Modules\xbase\";
             sync.Platform = "Win32";
-            sync.LocalRepoPath = @"D:\SCM_PACKAGE_REPO\";
-            sync.RemoteRepoPath = @"\\cnshasap2\Hg_Repo\SCM_PACKAGE_REPO\";
+            sync.LocalRepoDir = XGlobal.LocalRepoDir;
+            sync.RemoteRepoDir = XGlobal.RemoteRepoDir;
             sync.Execute();
 
             PackageInstall install = new PackageInstall();
-            install.Path = @"i:\HgDev.Modules\xbase\";
-            install.RepoPath = @"D:\SCM_PACKAGE_REPO\com\virtuos\tnt\xbase\";
+            install.RootDir = @"i:\HgDev.Modules\xbase\";
+            install.LocalRepoDir = XGlobal.LocalRepoDir;
+            install.RemoteRepoDir = XGlobal.RemoteRepoDir;
             bool result3 = install.Execute();
 
             PackageDeploy deploy = new PackageDeploy();
-            deploy.Path = @"i:\HgDev.Modules\xbase\";
-            deploy.RepoPath = @"\\cnshasap2\Hg_Repo\SCM_PACKAGE_REPO\com\virtuos\tnt\xbase\";
+            deploy.RootDir = @"i:\HgDev.Modules\xbase\";
+            deploy.LocalRepoDir = XGlobal.LocalRepoDir;
+            deploy.RemoteRepoDir = XGlobal.RemoteRepoDir;
             bool result4 = deploy.Execute();
 
         }

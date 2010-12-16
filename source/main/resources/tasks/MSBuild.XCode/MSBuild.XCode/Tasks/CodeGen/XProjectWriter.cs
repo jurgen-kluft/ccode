@@ -21,6 +21,8 @@ namespace MSBuild.XCode
             mProjectConfigs = configs;
         }
 
+        public XProject Project { get; set; }
+
         public void Write(string filename, XProject project, string[] platforms, string[] configs)
         {
             mProject = project;

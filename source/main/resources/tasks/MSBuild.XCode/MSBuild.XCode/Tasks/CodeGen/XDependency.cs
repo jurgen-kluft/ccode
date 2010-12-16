@@ -40,9 +40,9 @@ namespace MSBuild.XCode
             return GetBranch(platform, "default");
         }
 
-        private delegate XVersionRange ReturnDefaultVersionRangeDelegate();
+        private delegate XVersionRange ReturnVersionRangeDelegate();
 
-        private XVersionRange GetVersionRange(string platform, ReturnDefaultVersionRangeDelegate returnDefaultVersionRangeDelegate)
+        private XVersionRange GetVersionRange(string platform, ReturnVersionRangeDelegate returnDefaultVersionRangeDelegate)
         {
             string branch = GetBranch(platform);
             XVersionRange versionRange;
@@ -50,13 +50,22 @@ namespace MSBuild.XCode
             if (mPlatformBranchVersions.TryGetValue(platformBranch, out versionRange))
                 return versionRange;
 
+            if (platform != "*")
+            {
+                platform = "*";
+                branch = GetBranch(platform);
+                platformBranch = (platform + "|" + branch);
+                if (mPlatformBranchVersions.TryGetValue(platformBranch, out versionRange))
+                    return versionRange;
+            }
+
             // By default return x >= 1.0
             return returnDefaultVersionRangeDelegate();
         }
 
         public XVersionRange GetVersionRange(string platform)
         {
-            return GetVersionRange(platform, { return new XVersionRange("[1.0,)" } ));
+            return GetVersionRange(platform, delegate() { return new XVersionRange("[1.0,)"); } );
         }
 
         public bool IsEqual(XDependency dependency)
@@ -88,8 +97,8 @@ namespace MSBuild.XCode
                             {
                                 foreach (string ap in mPlatformBranch.Keys)
                                 {
-                                    XVersionRange a = GetVersionRange(ap, { return null });
-                                    XVersionRange b = dependency.GetVersionRange(ap, {return null});
+                                    XVersionRange a = GetVersionRange(ap, delegate() { return null; });
+                                    XVersionRange b = dependency.GetVersionRange(ap, delegate() { return null; });
                                     if (a != b)
                                         return false;
                                 }
@@ -105,8 +114,30 @@ namespace MSBuild.XCode
         // Return True when merge resulted in an updated dependency (A change in XVersionRange)
         public bool Merge(XDependency dependency)
         {
+            bool modified = false;
+            if (String.Compare(Name, dependency.Name, true) != 0)
+                return modified;
 
-            return false;
+            // Merge the type
+            if (String.Compare(Type, dependency.Type, true) != 0)
+            {
+                // Currently there are only 2 types, Package and Source
+                if (String.Compare(Type, "Package", true) != 0)
+                {
+                    Type = "Package";
+                    modified = true;
+                }
+            }
+
+            // Merge the version range
+            foreach (KeyValuePair<string,string> Platform_Branch in mPlatformBranch)
+            {
+                XVersionRange thisRange = GetVersionRange(Platform_Branch.Key);
+                XVersionRange thatRange = dependency.GetVersionRange(Platform_Branch.Key);
+                if (thisRange.Merge(thatRange))
+                    modified = true;
+            }
+            return modified;
         }
 
         public void Read(XmlNode node)
@@ -130,6 +161,8 @@ namespace MSBuild.XCode
                         {
                             string platform = XAttribute.Get("Platform", child, "*").ToLower();
                             string branch = XAttribute.Get("Branch", child, "default").ToLower();
+                            if (branch == "*")
+                                branch = "default";
                             XVersionRange versionRange = new XVersionRange(XElement.sGetXmlNodeValueAsText(child));
 
                             if (mPlatformBranch.ContainsKey(platform))

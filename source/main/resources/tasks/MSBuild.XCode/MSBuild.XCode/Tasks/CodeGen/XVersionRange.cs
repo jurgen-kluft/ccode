@@ -66,8 +66,8 @@ namespace MSBuild.XCode
             public bool IncludeFrom { get { return mIFrom == 1; } set { mIFrom = value ? 1 : 0; } }
             public bool IncludeTo { get { return mITo == 1; } set { mITo = value ? 1 : 0; } }
 
-            public XVersion From { get { return mFrom; } }
-            public XVersion To { get { return mTo; } }
+            public XVersion From { get { return mFrom; } set { mFrom = value; } }
+            public XVersion To { get { return mTo; } set { mTo = value; } }
             public bool IsFromNull { get { return mFrom.IsNull; } }
             public bool IsToNull { get { return mTo.IsNull; } }
 
@@ -268,6 +268,10 @@ namespace MSBuild.XCode
                         return mRanges[0].To;
                 }
             }
+            set
+            {
+                mRanges[0].From = value;
+            }
         }
 
         public bool IncludeFrom
@@ -308,6 +312,10 @@ namespace MSBuild.XCode
                     case EKind.UnboundToVersionOrVersionToUnbound:
                         return mRanges[1].From;
                 }
+            }
+            set
+            {
+                mRanges[0].To = value;
             }
         }
 
@@ -400,6 +408,89 @@ namespace MSBuild.XCode
             outRanges = ranges.ToArray();
         }
 
+        private void SetKind()
+        {
+            // See if we have 2 ranges which are actually a case #4, if so combine them into one range
+            if (mRanges.Count == 2)
+            {
+                if ((!mRanges[0].IsFromNull && mRanges[0].IsToNull && mRanges[1].IsFromNull && !mRanges[1].IsToNull))
+                {
+                    Range combined = new Range(mRanges[0].From, mRanges[1].To, mRanges[0].IncludeFrom, mRanges[1].IncludeTo);
+                    mRanges.Clear();
+                    mRanges.Add(combined);
+                    Kind = EKind.VersionToVersion;
+                }
+                else if (mRanges[0].IsFromNull && !mRanges[0].IsToNull && !mRanges[1].IsFromNull && mRanges[1].IsToNull)
+                {
+                    Kind = EKind.UnboundToVersionOrVersionToUnbound;
+                }
+            }
+            else if (mRanges.Count == 1)
+            {
+                if (!mRanges[0].IsRange)
+                    Kind = EKind.UniqueVersion;
+                else if (!mRanges[0].IsFromNull && mRanges[0].IsToNull)
+                    Kind = EKind.VersionToUnbound;
+                else if (mRanges[0].IsFromNull && !mRanges[0].IsToNull)
+                    Kind = EKind.UnboundToVersion;
+                else if (!mRanges[0].IsFromNull && !mRanges[0].IsToNull)
+                    Kind = EKind.VersionToVersion;
+            }
+        }
+
+        public bool Merge(XVersionRange other)
+        {
+            // @TODO: finalize
+            bool merged = false;
+            if (Kind == EKind.VersionToUnbound)
+            {
+                if (other.Kind == EKind.UnboundToVersion)
+                {
+                    // this wins!
+                }
+                else if (other.Kind == EKind.VersionToUnbound)
+                {
+                    if (IncludeFrom == other.IncludeFrom)
+                    {
+                        if (From < other.From)
+                        {
+                            // this wins!
+                        }
+                        else
+                        {
+                            From = other.From;
+                            merged = true;
+                        }
+                    }
+                }
+                else if (other.Kind == EKind.VersionToVersion)
+                {
+                    if (From < other.From)
+                    {
+                        // this wins!
+                    }
+                    else
+                    {
+                        From = other.From;
+                        merged = true;
+                    }
+                }
+                else if (other.Kind == EKind.UnboundToVersionOrVersionToUnbound)
+                {
+                    if (other.To.LessThan(From, false))
+                    {
+                        // this wins!
+                    }
+                    else
+                    {
+                        From = other.To;
+                        merged = true;
+                    }
+                }
+            }
+            return merged;
+        }
+
         public void FromString(string range)
         {
             int cursor = 0;
@@ -436,36 +527,6 @@ namespace MSBuild.XCode
                 ++cursor;
             }
             SetKind();
-        }
-
-        private void SetKind()
-        {
-            // See if we have 2 ranges which are actually a case #4, if so combine them into one range
-            if (mRanges.Count == 2)
-            {
-                if ((!mRanges[0].IsFromNull && mRanges[0].IsToNull && mRanges[1].IsFromNull && !mRanges[1].IsToNull))
-                {
-                    Range combined = new Range(mRanges[0].From, mRanges[1].To, mRanges[0].IncludeFrom, mRanges[1].IncludeTo);
-                    mRanges.Clear();
-                    mRanges.Add(combined);
-                    Kind = EKind.VersionToVersion;
-                }
-                else if (mRanges[0].IsFromNull && !mRanges[0].IsToNull && !mRanges[1].IsFromNull && mRanges[1].IsToNull)
-                {
-                    Kind = EKind.UnboundToVersionOrVersionToUnbound;
-                }
-            }
-            else if (mRanges.Count == 1)
-            {
-                if (!mRanges[0].IsRange)
-                    Kind = EKind.UniqueVersion;
-                else if (!mRanges[0].IsFromNull && mRanges[0].IsToNull)
-                    Kind = EKind.VersionToUnbound;
-                else if (mRanges[0].IsFromNull && !mRanges[0].IsToNull)
-                    Kind = EKind.UnboundToVersion;
-                else if (!mRanges[0].IsFromNull && !mRanges[0].IsToNull)
-                    Kind = EKind.VersionToVersion;
-            }
         }
 
         public override String ToString()

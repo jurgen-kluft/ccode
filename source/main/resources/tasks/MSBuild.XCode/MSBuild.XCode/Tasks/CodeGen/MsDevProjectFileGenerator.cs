@@ -65,7 +65,28 @@ namespace MSBuild.XCode
                 _p(indent, "<" + group + ">");
                 {
                     foreach (string line in lines)
+                    {
+                        if (line.Contains("#("))
+                        {
+                            if (line.Contains("#(IncludeDirectories)"))
+                            {
+                                string content = mXProjectWriter.Project.GetIncludeDir(platform, config);
+                                line.Replace("#(IncludeDirectories)", content);
+                            }
+                            else if (line.Contains("#(LibraryDirectories)"))
+                            {
+                                string content = mXProjectWriter.Project.GetLibraryDir(platform, config);
+                                line.Replace("#(LibraryDirectories)", content);
+                            }
+                            else if (line.Contains("#(LibraryDependencies)"))
+                            {
+                                string content = mXProjectWriter.Project.GetLibraryDep(platform, config);
+                                line.Replace("#(LibraryDependencies)", content);
+                            }
+                        }
+
                         _p(indent + 1, line);
+                    }
                 }
                 _p(indent, "</" + group + ">");
             }

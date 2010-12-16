@@ -10,11 +10,19 @@ namespace MSBuild.XCode
 {
     public class XElement
     {
+        private XElement()
+        {
+
+        }
+
         public XElement(string name, List<XElement> elements, List<XAttribute> attributes)
         {
             Name = name;
             Attributes = attributes;
             Elements = elements;
+            Value = string.Empty;
+            Concat = false;
+            Separator = ";";
         }
 
         public string Name { get; set; }
@@ -24,20 +32,12 @@ namespace MSBuild.XCode
         public string Separator { get; set; }
         public List<XElement> Elements { get; set; }
 
-        public void Init()
-        {
-            Name = string.Empty;
-            Attributes = new List<XAttribute>();
-            Value = string.Empty;
-            Concat = false;
-            Separator = ";";
-            Elements = new List<XElement>();
-        }
-
         public XElement Copy()
         {
             XElement c = new XElement(Name, new List<XElement>(), new List<XAttribute>());
             c.Value = Value;
+            c.Concat = Concat;
+            c.Separator = Separator;
             foreach (XAttribute a in Attributes)
                 c.Attributes.Add(a.Copy());
             foreach (XElement e in Elements)

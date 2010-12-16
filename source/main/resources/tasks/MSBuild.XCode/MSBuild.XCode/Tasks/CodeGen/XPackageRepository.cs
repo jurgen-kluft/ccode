@@ -17,38 +17,27 @@ namespace MSBuild.XCode
             Default,
         }
 
-        private XPackageRepositoryLayout mLayout;
+        private IPackageRepository mRepository;
 
         public XPackageRepository(string path)
         {
-            mLayout = new XPackageRepositoryLayoutDefault(path);
-        }
-
-        public XPackageRepository(string path, ELayout layout)
-        {
-            if (layout == ELayout.Default)
-                mLayout = new XPackageRepositoryLayoutDefault(path);
-            else
-                mLayout = new XPackageRepositoryLayoutDefault(path);
+            mRepository = new XPackageRepositoryFileSystem(path);
         }
 
         public string RepoPath { get; set; }
 
-        public bool Checkout(string group, string package_path, string package_name, string branch, string platform, XVersionRange range)
+        public bool Checkout(XPackage package, XVersionRange range)
         {
-            return mLayout.Checkout(group, package_path, package_name, branch, platform, range);
+            return mRepository.Checkout(package, range);
         }
-        public bool Commit(string group, string package_path, string package_name, string branch, string platform, XVersion version)
+        public bool Checkout(XPackage package)
         {
-            return mLayout.Commit(group, package_path, package_name, branch, platform, version);
+            return mRepository.Checkout(package);
         }
-        public XVersion Sync(string group, string package_name, string branch, string platform, XVersionRange range, XPackageRepository to)
+        public bool Checkin(XPackage package)
         {
-            return mLayout.Sync(group, package_name, branch, platform, range, to.mLayout);
+            return mRepository.Checkin(package);
         }
-        public XPackage Info(string group, string package_name, string branch, string platform, XVersion version)
-        {
-            return mLayout.Info(group, package_name, branch, platform, version);
-        }
+
     }
 }

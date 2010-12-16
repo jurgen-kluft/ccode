@@ -15,7 +15,7 @@ namespace MSBuild.XCode
     /// </summary>
     public class PackageVerify : Task
     {
-        public string Path { get; set; }
+        public string RootDir { get; set; }
         public string Platform { get; set; }
         public string Branch { get; set; }
 
@@ -23,18 +23,18 @@ namespace MSBuild.XCode
         {
             bool ok = false;
 
-            if (!Path.EndsWith("\\"))
-                Path = Path + "\\";
+            if (!RootDir.EndsWith("\\"))
+                RootDir = RootDir + "\\";
 
-            Environment.CurrentDirectory = Path;
+            Environment.CurrentDirectory = RootDir;
 
-            if (!File.Exists(Path + "package.xml"))
+            if (!File.Exists(RootDir + "pom.xml"))
                 return false;
 
-            XPackage package = new XPackage();
-            package.Load("package.xml");
+            XPom package = new XPom();
+            package.Load("pom.xml");
 
-            string dir = Path + "target\\";
+            string dir = RootDir + "target\\";
             Environment.CurrentDirectory = dir;
             string subDir = package.Name + "\\" + Platform + "\\";
             string md5_file = subDir + package.Name + ".MD5";
@@ -47,7 +47,7 @@ namespace MSBuild.XCode
                 string[] lines = File.ReadAllLines(md5_file);
 
                 // MD5 is relative to its own location
-                Environment.CurrentDirectory = Path + "target\\" + package.Name + "\\" + Platform + "\\";
+                Environment.CurrentDirectory = RootDir + "target\\" + package.Name + "\\" + Platform + "\\";
 
                 foreach (string entry in lines) 
                 {

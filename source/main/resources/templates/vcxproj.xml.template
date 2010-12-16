@@ -10,9 +10,9 @@
   <ImportGroup>
     <Import Condition="exists('$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props')" Project="$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props" Label="LocalAppDataPlatform"/>
   </ImportGroup>
-  <OutDir Condition="'$(Configuration)|$(Platform)'=='#(Configuration)|#(Platform)'">$(SolutionDir)\target\outdir\$(ProjectName)_$(Configuration)_$(PlatformName)\</OutDir>
-  <IntDir Condition="'$(Configuration)|$(Platform)'=='#(Configuration)|#(Platform)'">$(SolutionDir)\target\outdir\$(ProjectName)_$(Configuration)_$(PlatformName)\</IntDir>
-  <TargetName Condition="'$(Configuration)|$(Platform)'=='#(Configuration)|#(Platform)'">$(ProjectName)_$(Configuration)_$(PlatformName)_$(PlatformToolset)</TargetName>
+  <OutDir Condition="'$(Configuration)|$(Platform)'=='#(Configuration)|#(Platform)'">$(SolutionDir)\target\outdir\$(ProjectName)_$(Configuration)$(Target)_$(PlatformName)\</OutDir>
+  <IntDir Condition="'$(Configuration)|$(Platform)'=='#(Configuration)|#(Platform)'">$(SolutionDir)\target\outdir\$(ProjectName)_$(Configuration)$(Target)_$(PlatformName)\</IntDir>
+  <TargetName Condition="'$(Configuration)|$(Platform)'=='#(Configuration)|#(Platform)'">$(ProjectName)_$(Configuration)$(Target)_$(PlatformName)</TargetName>
   <IgnoreImportLibrary Condition="'$(Configuration)|$(Platform)'=='#(Configuration)|#(Platform)'"/>
   <GenerateManifest Condition="'$(Configuration)|$(Platform)'=='#(Configuration)|#(Platform)'">false</GenerateManifest>
   <LinkIncremental Condition="'$(Configuration)|$(Platform)'=='#(Configuration)|#(Platform)'">false</LinkIncremental>
@@ -21,7 +21,7 @@
     <Optimization>Disabled</Optimization>
     <PreprocessorDefinitions Concat="true">%(PreprocessorDefinitions)</PreprocessorDefinitions>
     <PrecompiledHeader>NotUsing</PrecompiledHeader>
-    <AdditionalIncludeDirectories Concat="true">%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+    <AdditionalIncludeDirectories Concat="true">#(IncludeDirectories);%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
     <ExceptionHandling>false</ExceptionHandling>
     <FavorSizeOrSpeed>Size</FavorSizeOrSpeed>
     <RuntimeTypeInfo>false</RuntimeTypeInfo>
@@ -29,8 +29,8 @@
   </ClCompile>
   <Link>
     <GenerateDebugInformation>true</GenerateDebugInformation>
-    <AdditionalDependencies Concat="true" Separator=" "/>
-    <AdditionalLibraryDirectories Concat="true"/>
+    <AdditionalDependencies Concat="true">#(LibraryDependencies)</AdditionalDependencies>
+    <AdditionalLibraryDirectories Concat="true">#(LibraryDirectories)</AdditionalLibraryDirectories>
     <SubSystem/>
   </Link>
   <ResourceCompile>
@@ -46,24 +46,24 @@
       <PreprocessorDefinitions>WIN32</PreprocessorDefinitions>
     </ClCompile>
     <!-- Debug will inherit all properties -->
-    <Config Name="Debug">
+    <Config Name="DevDebug">
       <ClCompile>
         <PreprocessorDefinitions>Target_Dev_Debug_Win32;DEBUG</PreprocessorDefinitions>
       </ClCompile>
     </Config>
-    <Config Name="Release">
+    <Config Name="DevRelease">
       <ClCompile>
         <Optimization>O2</Optimization>
         <PreprocessorDefinitions>Target_Dev_Release_Win32;NDEBUG</PreprocessorDefinitions>
       </ClCompile>
     </Config>
-    <Config Name="Profile">
+    <Config Name="DevProfile">
       <ClCompile>
         <Optimization>O2</Optimization>
         <PreprocessorDefinitions>NDEBUG;Target_Dev_Profile_Win32</PreprocessorDefinitions>
       </ClCompile>
     </Config>
-    <Config Name="Final">
+    <Config Name="DevFinal">
       <ClCompile>
         <Optimization>O3</Optimization>
         <PreprocessorDefinitions>NDEBUG;Target_Dev_Final_Win32</PreprocessorDefinitions>
@@ -74,4 +74,6 @@
     </Config>
   </Platform>
 </Project>
+
+
 

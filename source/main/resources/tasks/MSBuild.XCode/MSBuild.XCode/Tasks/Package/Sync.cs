@@ -13,32 +13,32 @@ namespace MSBuild.XCode
     /// </summary>
     public class PackageSync : Task
     {
-        public string Path { get; set; }
+        public string RootDir { get; set; }
         public string Platform { get; set; }
-        public string LocalRepoPath { get; set; }
-        public string RemoteRepoPath { get; set; }
+        public string LocalRepoDir { get; set; }
+        public string RemoteRepoDir { get; set; }
 
         public override bool Execute()
         {
-            // Load package.xml of main package
+            // Load pom.xml of main package
             // Add dependencies to the dependency list
             // 1
             // For every dependency copy it from remote to local repository if necessary
-            // For every dependency load its package.xml and add it to the dependency list
+            // For every dependency load its pom.xml and add it to the dependency list
             // Go back to 1 until no new dependencies (watch out for cyclic dependencies)
             // Analyze the dependency list and resolve version conflicts
             // Install the dependency packages in the target folder
             // Verify the installed packages
             // Done
 
-            if (!Path.EndsWith("\\"))
-                Path = Path + "\\";
+            if (!RootDir.EndsWith("\\"))
+                RootDir = RootDir + "\\";
 
-            if (!File.Exists(Path + "package.xml"))
+            if (!File.Exists(RootDir + "pom.xml"))
                 return false;
 
-            XPackage package = new XPackage();
-            package.Load(Path + "package.xml");
+            XPom package = new XPom();
+            package.Load(RootDir + "pom.xml");
 
             return true;
         }

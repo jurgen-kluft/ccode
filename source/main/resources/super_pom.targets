@@ -4,62 +4,62 @@
   <Import Project="super_pom.inline"/>
 
   <!-- These are the XCode lifecycle targets that can be overriden -->
-  <Target Name = "__Validate"></Target>
-  <Target Name = "__Initialize"></Target>
-  <Target Name = "__SourcesGenerate"></Target>
-  <Target Name = "__SourcesProcess"></Target>
-  <Target Name = "__ResourcesGenerate"></Target>
-  <Target Name = "__ResourcesProcess"></Target>
-  <Target Name = "__Sync"></Target>
-  <Target Name = "__Compile"></Target>
-  <Target Name = "__CompilePost"></Target>
-  <Target Name = "__TestSourcesGenerate"></Target>
-  <Target Name = "__TestSourcesProcess"></Target>
-  <Target Name = "__TestResourcesGenerate"></Target>
-  <Target Name = "__TestResourcesProcess"></Target>
-  <Target Name = "__TestCompile"></Target>
-  <Target Name = "__TestCompile_post"></Target>
-  <Target Name = "__TestRun"></Target>
-  <Target Name = "__PackagePrepare"></Target>
-  <Target Name = "__Package"></Target>
-  <Target Name = "__IntegrationTestPre"></Target>
-  <Target Name = "__IntegrationTestRun"></Target>
-  <Target Name = "__IntegrationTestPost"></Target>
-  <Target Name = "__Verify"></Target>
-  <Target Name = "__Install"></Target>
-  <Target Name = "__Deploy"></Target>
+  <Target Name = "__Validate"/>
+  <Target Name = "__Initialize"/>
+  <Target Name = "__SourcesGenerate"/>
+  <Target Name = "__SourcesProcess"/>
+  <Target Name = "__ResourcesGenerate"/>
+  <Target Name = "__ResourcesProcess"/>
+  <Target Name = "__Sync"/>
+  <Target Name = "__Compile"/>
+  <Target Name = "__CompilePost"/>
+  <Target Name = "__TestSourcesGenerate"/>
+  <Target Name = "__TestSourcesProcess"/>
+  <Target Name = "__TestResourcesGenerate"/>
+  <Target Name = "__TestResourcesProcess"/>
+  <Target Name = "__TestCompile"/>
+  <Target Name = "__TestCompile_post"/>
+  <Target Name = "__TestRun"/>
+  <Target Name = "__PackagePrepare"/>
+  <Target Name = "__Package"/>
+  <Target Name = "__IntegrationTestPre"/>
+  <Target Name = "__IntegrationTestRun"/>
+  <Target Name = "__IntegrationTestPost"/>
+  <Target Name = "__Verify"/>
+  <Target Name = "__Install"/>
+  <Target Name = "__Deploy"/>
 
   <!-- These are the core xcode lifecycle targets and should not be overriden!! -->
-  <Target Name = "Validate" DependsOnTargets=""><CallTarget Targets="__Validate" /></Target>
+  <Target Name = "Validate" DependsOnTargets=""><CallTarget Targets="__Validate"/></Target>
   <Target Name = "Initialize" DependsOnTargets="Validate">
-    <CallTarget Targets="XCodePackageGroupSplit" />
-    <CallTarget Targets="XCodePackageVersionTime" />
-    <CallTarget Targets="__Initialize" />
+    <CallTarget Targets="XCodePackageGroupSplit"/>
+    <CallTarget Targets="XCodePackageVersionTime"/>
+    <CallTarget Targets="__Initialize"/>
   </Target>
-  <Target Name = "SourcesGenerate" DependsOnTargets="Initialize"><CallTarget Targets="__SourcesGenerate" /></Target>
-  <Target Name = "SourcesProcess" DependsOnTargets="SourcesGenerate"><CallTarget Targets="__SourcesProcess" /></Target>
-  <Target Name = "ResourcesGenerate" DependsOnTargets="SourcesProcess"><CallTarget Targets="__ResourcesGenerate" /></Target>
-  <Target Name = "ResourcesProcess" DependsOnTargets="ResourcesGenerate"><CallTarget Targets="__ResourcesProcess" /></Target>
+  <Target Name = "SourcesGenerate" DependsOnTargets="Initialize"><CallTarget Targets="__SourcesGenerate"/></Target>
+  <Target Name = "SourcesProcess" DependsOnTargets="SourcesGenerate"><CallTarget Targets="__SourcesProcess"/></Target>
+  <Target Name = "ResourcesGenerate" DependsOnTargets="SourcesProcess"><CallTarget Targets="__ResourcesGenerate"/></Target>
+  <Target Name = "ResourcesProcess" DependsOnTargets="ResourcesGenerate"><CallTarget Targets="__ResourcesProcess"/></Target>
   <Target Name = "Compile" DependsOnTargets="ResourcesProcess">
-    <CallTarget Targets="__Sync" />
-    <CallTarget Targets="__Compile" />
+    <CallTarget Targets="__Sync"/>
+    <CallTarget Targets="__Compile"/>
   </Target>
-  <Target Name = "CompilePost" DependsOnTargets="Compile"><CallTarget Targets="__CompilePost" /></Target>
-  <Target Name = "TestSourcesGenerate" DependsOnTargets="CompilePost"><CallTarget Targets="__TestSourcesGenerate" /></Target>
-  <Target Name = "TestSourcesProcess" DependsOnTargets="TestSourcesGenerate"><CallTarget Targets="__TestSourcesProcess" /></Target>
-  <Target Name = "TestResourcesGenerate" DependsOnTargets="TestSourcesProcess"><CallTarget Targets="__TestResourcesGenerate" /></Target>
-  <Target Name = "TestResourcesProcess" DependsOnTargets="TestResourcesGenerate"><CallTarget Targets="__TestResourcesProcess" /></Target>
-  <Target Name = "TestCompile" DependsOnTargets="TestResourcesProcess"><CallTarget Targets="__TestCompile" /></Target>
-  <Target Name = "TestCompilePost" DependsOnTargets="TestCompile"><CallTarget Targets="__TestCompilePost" /></Target>
-  <Target Name = "TestRun" DependsOnTargets="TestCompilePost"><CallTarget Targets="__TestRun" /></Target>
-  <Target Name = "PackagePrepare" DependsOnTargets="TestRun"><CallTarget Targets="__PackagePrepare" /></Target>
-  <Target Name = "Package" DependsOnTargets="PackagePrepare"><CallTarget Targets="__Package" /></Target>
-  <Target Name = "IntegrationTestPre" DependsOnTargets="Package"><CallTarget Targets="__IntegrationTestPre" /></Target>
-  <Target Name = "IntegrationTestRun" DependsOnTargets="IntegrationTestPre"><CallTarget Targets="__IntegrationTestRun" /></Target>
-  <Target Name = "IntegrationTestPost" DependsOnTargets="IntegrationTestRun"><CallTarget Targets="__IntegrationTestPost" /></Target>
-  <Target Name = "Verify" DependsOnTargets="IntegrationTestPost"><CallTarget Targets="__Verify" /></Target>
-  <Target Name = "Install" DependsOnTargets="Verify"><CallTarget Targets="__Install" /></Target>
-  <Target Name = "Deploy" DependsOnTargets="Install"><CallTarget Targets="__Deploy" /></Target>
+  <Target Name = "CompilePost" DependsOnTargets="Compile"><CallTarget Targets="__CompilePost"/></Target>
+  <Target Name = "TestSourcesGenerate" DependsOnTargets="CompilePost"><CallTarget Targets="__TestSourcesGenerate"/></Target>
+  <Target Name = "TestSourcesProcess" DependsOnTargets="TestSourcesGenerate"><CallTarget Targets="__TestSourcesProcess"/></Target>
+  <Target Name = "TestResourcesGenerate" DependsOnTargets="TestSourcesProcess"><CallTarget Targets="__TestResourcesGenerate"/></Target>
+  <Target Name = "TestResourcesProcess" DependsOnTargets="TestResourcesGenerate"><CallTarget Targets="__TestResourcesProcess"/></Target>
+  <Target Name = "TestCompile" DependsOnTargets="TestResourcesProcess"><CallTarget Targets="__TestCompile"/></Target>
+  <Target Name = "TestCompilePost" DependsOnTargets="TestCompile"><CallTarget Targets="__TestCompilePost"/></Target>
+  <Target Name = "TestRun" DependsOnTargets="TestCompilePost"><CallTarget Targets="__TestRun"/></Target>
+  <Target Name = "PackagePrepare" DependsOnTargets="TestRun"><CallTarget Targets="__PackagePrepare"/></Target>
+  <Target Name = "Package" DependsOnTargets="PackagePrepare"><CallTarget Targets="__Package"/></Target>
+  <Target Name = "IntegrationTestPre" DependsOnTargets="Package"><CallTarget Targets="__IntegrationTestPre"/></Target>
+  <Target Name = "IntegrationTestRun" DependsOnTargets="IntegrationTestPre"><CallTarget Targets="__IntegrationTestRun"/></Target>
+  <Target Name = "IntegrationTestPost" DependsOnTargets="IntegrationTestRun"><CallTarget Targets="__IntegrationTestPost"/></Target>
+  <Target Name = "Verify" DependsOnTargets="IntegrationTestPost"><CallTarget Targets="__Verify"/></Target>
+  <Target Name = "Install" DependsOnTargets="Verify"><CallTarget Targets="__Install"/></Target>
+  <Target Name = "Deploy" DependsOnTargets="Install"><CallTarget Targets="__Deploy"/></Target>
 
   <Target Name = "Info" />
   <Target Name = "Clean" />
@@ -67,35 +67,35 @@
   <Target Name="PackageCreate" DependsOnTargets="HgExtractRevision;XCodePackageVersionTime">
     <Message Text="Package Filename: $(XCodePackageName)_$(XCodePackageVersionMajor).$(XCodePackageVersionMinor).$(XCodePackageBuildDate).$(XCodePackageBuildRev)_$(XCodePackagePlatform)"/>
     <MSBuild.XCode.PackageCreate Path="@(XCodePackageDir)" Platform="$(XCodePackagePlatform)">
-      <Output PropertyName="XCodePackageFile" TaskParameter="Filename" />
+      <Output PropertyName="XCodePackageFile" TaskParameter="Filename"/>
     </MSBuild.XCode.PackageCreate>
   </Target>
 
   <Target Name="PackageCreatePrep">
     <!-- Delete the file in the target folder -->
     <ItemGroup>
-      <XCodeCleanFiles Include="target\$(XCodePackageName)\$(XCodePackagePlatform)\**\*.*" />
+      <XCodeCleanFiles Include="target\$(XCodePackageName)\$(XCodePackagePlatform)\**\*.*"/>
     </ItemGroup>
     <Delete Files="@(XCodeCleanFiles)"/>
 
     <ItemGroup>
-      <XCodePackageSrcFiles Include="source\**\*.*" Exclude="source\**\*.user;source\**\*.suo;source\**\*.sdf;source\**\*.opensdf;source\**\*.ipch" />
-      <XCodePackageLibFiles Include="target\outdir\$(XCodePackageName)*\*$(XCodePackagePlatform)*.lib" />
-      <XCodePackageToolsFiles Include="tools\**\*.*" />
-      <XCodePackageDocFiles Include="docs\**\*.*" />
-      <XCodePackagePomFiles Include="package.xml;pom.targets;pom.props" />
+      <XCodePackageSrcFiles Include="source\**\*.*" Exclude="source\**\*.user;source\**\*.suo;source\**\*.sdf;source\**\*.opensdf;source\**\*.ipch"/>
+      <XCodePackageLibFiles Include="target\outdir\$(XCodePackageName)*\*$(XCodePackagePlatform)*.lib"/>
+      <XCodePackageToolsFiles Include="tools\**\*.*"/>
+      <XCodePackageDocFiles Include="docs\**\*.*"/>
+      <XCodePackagePomFiles Include="pom.xml;pom.targets;pom.props"/>
     </ItemGroup>
 
     <Copy SourceFiles="@(XCodePackageSrcFiles)" DestinationFolder="target\$(XCodePackageName)\$(XCodePackagePlatform)\source\%(RecursiveDir)"/>
-    <Copy SourceFiles="@(XCodePackageLibFiles)" DestinationFolder="target\$(XCodePackageName)\$(XCodePackagePlatform)\libs\$(XCodePackageName)"/>
+    <Copy SourceFiles="@(XCodePackageLibFiles)" DestinationFolder="target\$(XCodePackageName)\$(XCodePackagePlatform)\libs"/>
     <Copy SourceFiles="@(XCodePackageToolsFiles)" DestinationFolder="target\$(XCodePackageName)\$(XCodePackagePlatform)\tools\%(RecursiveDir)"/>
     <Copy SourceFiles="@(XCodePackageDocFiles)" DestinationFolder="target\$(XCodePackageName)\$(XCodePackagePlatform)\docs\%(RecursiveDir)"/>
     <Copy SourceFiles="@(XCodePackagePomFiles)" DestinationFolder="target\$(XCodePackageName)\$(XCodePackagePlatform)\"/>
   </Target>
 
   <Target Name="__Package">
-    <CallTarget Targets="PackageCreatePrep"></CallTarget>
-    <CallTarget Targets="PackageCreate"></CallTarget>
+    <CallTarget Targets="PackageCreatePrep"/>
+    <CallTarget Targets="PackageCreate"/>
   </Target>
 
   <!-- This will call msbuild multiple times for every item in PackageConfigTargets -->
@@ -104,7 +104,7 @@
   </Target>
 
   <Target Name="__Compile">
-    <CallTarget Targets="CompilePlatformForEveryTarget"></CallTarget>
+    <CallTarget Targets="CompilePlatformForEveryTarget"/>
   </Target>
 
   <!-- This will call msbuild multiple times for every item in PackageConfigTargets -->
@@ -113,34 +113,35 @@
   </Target>
   
   <Target Name="Clean">
-    <CallTarget Targets="CleanPlatformForEveryTarget"></CallTarget>
+    <CallTarget Targets="CleanPlatformForEveryTarget"/>
   </Target>
 
   <Target Name="Construct">
-    <MSBuild.XCode.Construct TemplatePath="$(XCodePackageLocalRepoURL)com\virtuos\xcode\templates\" Path="$(XCodePackageDir)" />
+    <MSBuild.XCode.Construct TemplatePath="$(XCodePackageLocalRepoURL)com\virtuos\xcode\templates\" Path="$(XCodePackageDir)"/>
   </Target>
 
   <Target Name="Info" DependsOnTargets="HgExtractRevision;XCodePackageVersionTime">
-    <MSBuild.XCode.Info Path="$(XCodePackageDir)" />
+    <MSBuild.XCode.Info Path="$(XCodePackageDir)"/>
   </Target>
 
   <Target Name="PackageInstall">
-    <MSBuild.XCode.PackageInstall SourcePath="$(XCodePackageDir)" SourceFilename="$(XCodePackageFilename)" RepoPath="$(XCodePackageLocalRepoURL)" />
+    <MSBuild.XCode.PackageInstall SourcePath="$(XCodePackageDir)" SourceFilename="$(XCodePackageFilename)" RepoPath="$(XCodePackageLocalRepoURL)"/>
   </Target>
   <Target Name="__Install" DependsOnTargets="PackageInstall">
   </Target>
 
   <Target Name="PackageDeploy">
-    <MSBuild.XCode.PackageDeploy SourcePath="$(XCodePackageDir)" SourceFilename="$(XCodePackageFilename)" RepoPath="$(XCodePackageRemoteRepoURL)" />
+    <MSBuild.XCode.PackageDeploy SourcePath="$(XCodePackageDir)" SourceFilename="$(XCodePackageFilename)" RepoPath="$(XCodePackageRemoteRepoURL)"/>
   </Target>
   <Target Name="__Deploy" DependsOnTargets="PackageDeploy">
   </Target>
 
   <Target Name="PackageSync">
-    <MSBuild.XCode.PackageSync SourcePath="$(XCodePackageDir)" LocalRepoPath="$(XCodePackageLocalRepoURL)" RemoteRepoPath="$(XCodePackageRemoteRepoURL)" />
+    <MSBuild.XCode.PackageSync SourcePath="$(XCodePackageDir)" LocalRepoPath="$(XCodePackageLocalRepoURL)" RemoteRepoPath="$(XCodePackageRemoteRepoURL)"/>
   </Target>
   <Target Name="__Sync" DependsOnTargets="PackageSync">
   </Target>
 
 </Project>
+
 

@@ -1,5 +1,6 @@
 ﻿using System;
 using System.IO;
+using System.Collections;
 using System.Collections.Generic;
 using System.Text;
 using Microsoft.Build.Framework;
@@ -14,10 +15,13 @@ namespace MSBuild.XCode
     public class PackageDeploy : Task
     {
         [Required]
-        public string Path { get; set; }
+        public string RootDir { get; set; }
         [Required]
-        public string RepoPath { get; set; }
-
+        public string Filename { get; set; }
+        [Required]
+        public string LocalRepoDir { get; set; }
+        [Required]
+        public string RemoteRepoDir { get; set; }
         [Required]
         public string Platform { get; set; }
         [Required]
@@ -27,20 +31,44 @@ namespace MSBuild.XCode
 
         public override bool Execute()
         {
-            if (!Path.EndsWith("\\"))
-                Path = Path + "\\";
+            if (!RootDir.EndsWith("\\"))
+                RootDir = RootDir + "\\";
 
-            XPackage package = new XPackage();
-            package.Load(Path + "package.xml");
+            XPom pom = new XPom();
+            pom.Load(RootDir + "pom.xml");
+
+            XGlobal.TemplateDir = string.Empty;
+            XGlobal.LocalRepoDir = LocalRepoDir;
+            XGlobal.RemoteRepoDir = RemoteRepoDir;
+            XGlobal.Initialize();
 
             // - Verify that there are no local changes 
             // - Verify that there are no outgoing changes
-            // - Strip (Year).(Month).(Day).(Minute).(Second) from version of filename
-            // - Commit version to remote package repository
+            Mercurial.Repository hg_repo = new Mercurial.Repository(RootDir);
+            Mercurial.StatusCommand hg_status = new Mercurial.StatusCommand();
+            hg_status.AddArgument("-m");
+            hg_status.AddArgument("-r");
+            hg_status.AddArgument("-a");
+            IEnumerable<Mercurial.FileStatus> repo_status = hg_repo.Status(hg_status);
+            if (!repo_status.IsEmpty())
+                return false;
 
-            // - Commit version to local package repository
-            XPackageRepository repo = new XPackageRepository(RepoPath);
-            bool ok = repo.Commit(package.Group.Full, Path, package.Name, Branch, Platform, new XVersion(Version));
+            IEnumerable<Mercurial.Changeset> repo_outgoing = hg_repo.Outgoing();
+            if (!repo_outgoing.IsEmpty())
+                return false;
+
+            XPackage package = new XPackage();
+            package.Group = new XGroup(pom.Group);
+            package.Name = pom.Name;
+            package.Branch = Branch;
+            package.Version = new XVersion(Version);
+            package.Platform = Platform;
+
+            // - Strip (Year).(Month).(Day).(Minute).(Second) from version of filename
+            package.Path = RootDir + "target\\" + Filename;
+
+            // - Commit version to remote package repository
+            bool ok = XGlobal.RemoteRepo.Checkin(package);
 
             return ok;
         }

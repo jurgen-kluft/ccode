@@ -23,6 +23,23 @@ namespace MSBuild.XCode
             Config = c;
         }
 
+        public XElement FindElement(string group, string element)
+        {
+            List<XElement> elements;
+            if (groups.TryGetValue(group, out elements))
+            {
+                if (elements.Count > 0)
+                {
+                    foreach (XElement e in elements[0].Elements)
+                    {
+                        if (String.Compare(e.Name, element, true) == 0)
+                            return e;
+                    }
+                }
+            }
+            return null;
+        }
+
         public void Read(XmlNode node)
         {
             if (!node.HasChildNodes)

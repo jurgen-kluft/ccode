@@ -13,6 +13,11 @@ namespace MSBuild.XCode
             Full = group;
         }
 
+        public XGroup(XGroup group)
+        {
+            Full = group.Full;
+        }
+
         public string Full 
         {
             get
@@ -45,6 +50,11 @@ namespace MSBuild.XCode
                     mGroup = string.Empty;
                 }
             }
+        }
+
+        public override string ToString()
+        {
+            return mGroup;
         }
     }
 }

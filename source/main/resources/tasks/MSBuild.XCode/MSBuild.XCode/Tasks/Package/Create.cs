@@ -15,7 +15,7 @@ namespace MSBuild.XCode
 {
     public class PackageCreate : Task
     {
-        public string Path { get; set; }
+        public string RootDir { get; set; }
         public string Platform { get; set; }
         public string Branch { get; set; }
 
@@ -33,16 +33,16 @@ namespace MSBuild.XCode
             if (String.IsNullOrEmpty(Branch))
                 Branch = "default";
 
-            if (!Path.EndsWith("\\"))
-                Path = Path + "\\";
+            if (!RootDir.EndsWith("\\"))
+                RootDir = RootDir + "\\";
 
-            Environment.CurrentDirectory = Path;
+            Environment.CurrentDirectory = RootDir;
 
-            if (!File.Exists("package.xml"))
+            if (!File.Exists("pom.xml"))
                 return false;
 
-            XPackage package = new XPackage();
-            package.Load(Path + "package.xml");
+            XPom package = new XPom();
+            package.Load(RootDir + "pom.xml");
 
             /// Delete the .sfv file
             string sfv_filename = package.Name + "\\" + Platform + "\\" + package.Name + ".md5";
@@ -56,8 +56,8 @@ namespace MSBuild.XCode
             /// 5) Add files to zip
             /// 6) Close
             /// 
-            Environment.CurrentDirectory = Path;
-            xDirname dir = new xDirname(Path + "target\\");
+            Environment.CurrentDirectory = RootDir;
+            xDirname dir = new xDirname(RootDir + "target\\");
             DirectoryScanner scanner = new DirectoryScanner(dir);
             scanner.scanSubDirs = true;
             xDirname subDir = new xDirname(package.Name + "\\" + Platform);
@@ -98,10 +98,9 @@ namespace MSBuild.XCode
             // - Get package.Version
             // - Build = (DateTime.Year).(DateTime.Month).(DateTime.Day).(DateTime.Hour).(DateTime.Minute).(DateTime.Second)
 
-            // VCS:
-            // - Get revision information and write it into a file
-            // - Add that file to the source file list to include it into the zip package
-            // @TODO
+            // @TODO - 
+            // - VCS: Get revision information and write it into a file and add that file to the source file list to include it into the zip package
+            // - Write a 'marker' in the 
 
             XVersion version = package.Versions.GetForPlatformWithBranch(Platform, Branch);
 
@@ -118,7 +117,7 @@ namespace MSBuild.XCode
             using (ZipFile zip = new ZipFile("target\\" + Filename))
             {
                 foreach (KeyValuePair<string, string> p in sourceFilenames)
-                    zip.AddFile(Path + "target\\" + p.Key, p.Value);
+                    zip.AddFile(RootDir + "target\\" + p.Key, p.Value);
 
                 zip.Save();
                 success = true;

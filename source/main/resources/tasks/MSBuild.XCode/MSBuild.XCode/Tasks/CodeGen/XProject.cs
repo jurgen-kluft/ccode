@@ -14,11 +14,96 @@ namespace MSBuild.XCode
                                                                             "Lib" 
         };
 
+        public class Settings  // For every platform
+        {
+            // TargetConfig
+            private Dictionary<string, HashSet<string>> mIncludeDirs;
+            private Dictionary<string, HashSet<string>> mLibraryDirs;
+            private Dictionary<string, HashSet<string>> mLibraryDeps;
+
+            public Settings()
+            {
+                mIncludeDirs = new Dictionary<string, HashSet<string>>();
+                mLibraryDirs = new Dictionary<string, HashSet<string>>();
+                mLibraryDeps = new Dictionary<string, HashSet<string>>();
+            }
+
+            private void Add(string config, string value, bool concat, string seperator, Dictionary<string, HashSet<string>> items)
+            {
+                HashSet<string> content;
+                if (items.TryGetValue(config, out content))
+                {
+                    if (!concat)
+                        content.Clear();
+                }
+                else
+                {
+                    content = new HashSet<string>();
+                    items.Add(config, content);
+                }
+
+                if (!String.IsNullOrEmpty(value))
+                {
+                    string[] values = value.Split(new string[] { seperator }, StringSplitOptions.RemoveEmptyEntries);
+                    foreach (string v in values)
+                    {
+                        if (v.StartsWith("#"))  // Skip any variable
+                            continue;
+
+                        if (!content.Contains(v))
+                            content.Add(v);
+                    }
+                }
+            }
+
+            private string Get(string config, Dictionary<string, HashSet<string>> items)
+            {
+                HashSet<string> content;
+                string str = string.Empty;
+                if (items.TryGetValue(config, out content))
+                {
+                    string seperator = string.Empty;
+                    foreach (string s in content)
+                    {
+                        str = str + seperator + s;
+                        seperator = ";";
+                    }
+                }
+                return str;
+            }
+
+            public void AddIncludeDir(string config, string value, bool concat, string seperator)
+            {
+                Add(config, value, concat, seperator, mIncludeDirs);
+            }
+            public void AddLibraryDir(string config, string value, bool concat, string seperator)
+            {
+                Add(config, value, concat, seperator, mLibraryDirs);
+            }
+            public void AddLibraryDep(string config, string value, bool concat, string seperator)
+            {
+                Add(config, value, concat, seperator, mLibraryDeps);
+            }
+            public string GetIncludeDir(string config)
+            {
+                return Get(config, mIncludeDirs);
+            }
+            public string GetLibraryDir(string config)
+            {
+                return Get(config, mLibraryDirs);
+            }
+            public string GetLibraryDep(string config)
+            {
+                return Get(config, mLibraryDeps);
+            }
+        }
+
         protected Dictionary<string, XElement> mElements = new Dictionary<string, XElement>();
         protected Dictionary<string, List<XElement>> mGroups = new Dictionary<string, List<XElement>>();
         protected Dictionary<string, XConfig> mConfigs = new Dictionary<string, XConfig>();
         protected Dictionary<string, string> mTypes = new Dictionary<string, string>();
         protected Dictionary<string, XPlatform> mPlatforms = new Dictionary<string, XPlatform>();
+        protected Dictionary<string, Settings> mSettings = new Dictionary<string, Settings>();
 
         public Dictionary<string, XElement> elements { get { return mElements; } }
         public Dictionary<string, List<XElement>> groups { get { return mGroups; } }
@@ -27,6 +112,7 @@ namespace MSBuild.XCode
         public Dictionary<string, XPlatform> Platforms { get { return mPlatforms; } }
 
         public string Name { get; set; }
+        public string Category { get; set; }
         public string Language { get; set; }
         public string Location { get; set; }
         public string UUID { get; set; }
@@ -43,6 +129,7 @@ namespace MSBuild.XCode
         public XProject()
         {
             Name = "Unknown";
+            Category = "Main";
             Language = "cpp";   /// "cs"
             Location = @"source\main\cpp";
             UUID = string.Empty;
@@ -51,6 +138,7 @@ namespace MSBuild.XCode
         public void Initialize()
         {
             Name = "Unknown";
+            Category = "Main";
             Language = "cpp";
             Location = @"source\main\cpp";
             UUID = Guid.NewGuid().ToString();
@@ -66,6 +154,7 @@ namespace MSBuild.XCode
         public void Load(string filename)
         {
             Name = string.Empty;
+            Category = "Main";
             Language = string.Empty;
             Location = string.Empty;
 
@@ -79,6 +168,7 @@ namespace MSBuild.XCode
             Initialize();
 
             this.Name = XAttribute.Get("Name", node, "Unknown");
+            this.Category = XAttribute.Get("Category", node, "Main");
             this.Language = XAttribute.Get("Language", node, "cpp");
             this.Location = XAttribute.Get("Location", node, "source\\main\\cpp");
 
@@ -173,6 +263,59 @@ namespace MSBuild.XCode
                     }
                 }
             }
+        }
+
+        public void AddIncludeDir(string platform, string targetconfig, string value, bool concat, string seperator)
+        {
+            Settings settings;
+            if (!mSettings.TryGetValue(platform, out settings))
+            {
+                settings = new Settings();
+                mSettings.Add(platform, settings);
+            }
+            settings.AddIncludeDir(targetconfig, value, concat, seperator);
+        }
+        public void AddLibraryDir(string platform, string targetconfig, string value, bool concat, string seperator)
+        {
+            Settings settings;
+            if (!mSettings.TryGetValue(platform, out settings))
+            {
+                settings = new Settings();
+                mSettings.Add(platform, settings);
+            }
+            settings.AddLibraryDir(targetconfig, value, concat, seperator);
+        }
+        public void AddLibraryDep(string platform, string targetconfig, string value, bool concat, string seperator)
+        {
+            Settings settings;
+            if (!mSettings.TryGetValue(platform, out settings))
+            {
+                settings = new Settings();
+                mSettings.Add(platform, settings);
+            }
+            settings.AddLibraryDep(targetconfig, value, concat, seperator);
+        }
+
+        public string GetIncludeDir(string platform, string config)
+        {
+            Settings settings;
+            if (!mSettings.TryGetValue(platform, out settings))
+                return string.Empty;
+            return settings.GetIncludeDir(config);
+        }
+        public string GetLibraryDir(string platform, string config)
+        {
+            Settings settings;
+            if (!mSettings.TryGetValue(platform, out settings))
+                return string.Empty;
+            return settings.GetLibraryDir(config);
+        }
+        public string GetLibraryDep(string platform, string config)
+        {
+            Settings settings;
+            if (!mSettings.TryGetValue(platform, out settings))
+                return string.Empty;
+            return settings.GetLibraryDep(config);
         }
     }
 }

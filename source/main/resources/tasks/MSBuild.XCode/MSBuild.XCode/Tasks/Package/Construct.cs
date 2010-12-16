@@ -10,103 +10,103 @@ namespace MSBuild.XCode
     public class PackageConstruct : Task
     {
         [Required]
-        public string Path { get; set; }
-        [Required]
         public string Name { get; set; }
         [Required]
         public string Language { get; set; }
         [Required]
-        public string TemplatePath { get; set; }
+        public string RootDir { get; set; }
         [Required]
-        public string LocalRepoPath { get; set; }
+        public string TemplateDir { get; set; }
         [Required]
-        public string RemoteRepoPath { get; set; }
+        public string LocalRepoDir { get; set; }
+        [Required]
+        public string RemoteRepoDir { get; set; }
 
         public override bool Execute()
         {
-            // Check for the availability of package.xml, pom.props and pom.targets
+            // Check for the availability of pom.xml, pom.props and pom.targets
             // If they do not exist then
             //   Initialize the package dir using a name
             //   Copy files from the template directory
             //   Replace patterns (${Name}, ${GUID}, ${Language})
             // Else
-            //   Load package.xml
+            //   Load pom.xml
             //   Verify that the directory structure exists
             //   If not then create them
+            //   Sync all dependend packages
+            //   Create Developer Studio project and solution files
             // Endif
-            if (!Path.EndsWith("\\"))
-                Path = Path + "\\";
+            if (!RootDir.EndsWith("\\"))
+                RootDir = RootDir + "\\";
 
-            if (File.Exists(Path + "package.xml"))
+            if (!TemplateDir.EndsWith("\\"))
+                TemplateDir = TemplateDir + "\\";
+
+            if (!Directory.Exists(TemplateDir))
+                return false;
+
+            XGlobal.TemplateDir = TemplateDir;
+            XGlobal.LocalRepoDir = LocalRepoDir;
+            XGlobal.RemoteRepoDir = RemoteRepoDir;
+
+            if (!Directory.Exists(RootDir))
             {
-                // For C++
-                XProject CppProjectTemplate = new XProject();
-                CppProjectTemplate.Language = "cpp";
-                CppProjectTemplate.Load(TemplatePath + "vcxproj.xml.template");
-
-                // For C#
-                //XProject CsProjectTemplate = new XProject();
-                //CsProjectTemplate.Language = "cs";
-                //CsProjectTemplate.Load(TemplatePath + "csproj.xml.template");
-
-                XPackage package = new XPackage();
-                package.Templates.Add(CppProjectTemplate);
-                //package.Templates.Add(CsProjectTemplate);
-                package.Load(Path + "package.xml");
-
-                // Check directory structure
-                foreach (XAttribute xa in package.DirectoryStructure)
-                {
-                    if (xa.Name == "Folder")
-                    {
-                        if (!Directory.Exists(Path + xa.Value))
-                            Directory.CreateDirectory(Path + xa.Value);
-                    }
-                }
-
-                // Sync dependencies
-                // Here we need to sync for one platform since the package
-                // structure for the include directory and library directory
-                // should stay the same!
-                PackageSync sync = new PackageSync();
-                sync.Path = Path;
-                sync.LocalRepoPath = LocalRepoPath;
-                sync.RemoteRepoPath = RemoteRepoPath;
-
-                foreach (XProject project in package.Projects)
-                {
-                    foreach (XPlatform platform in project.Platforms.Values)
-                    {
-
-                        sync.Platform = platform.Name;
-                        bool sync_ok = sync.Execute();
-                    }
-                }
-
-                // @TODO: Obtain all XPackage objects
-                // - Concat the include directories   (target\package_name\platform + include_dir)
-                // - Concat the library directories   (target\package_name\platform + lib_dir)
-                // - Concat the library dependencies  
-
-                // Generate the projects and solution
-                package.GenerateProjects(Path);
-                package.GenerateSolution(Path);
-            }
-            else 
-            {
-                if (!TemplatePath.EndsWith("\\"))
-                    TemplatePath = TemplatePath + "\\";
-
-                string DstPath = Path + Name + "\\";
+                string DstPath = RootDir + Name + "\\";
                 Directory.CreateDirectory(DstPath);
 
                 // pom.targets.template ==> pom.targets
                 // pom.props.template ==> pom.props
-                // package.xml.template ==> package.xml
-                FileCopy(TemplatePath + "pom.targets.template", DstPath + "pom.targets");
-                FileCopy(TemplatePath + "pom.props.template", DstPath + "pom.props");
-                FileCopy(TemplatePath + "package.xml.template", DstPath + "package.xml");
+                // pom.xml.template ==> pom.xml
+                FileCopy(TemplateDir + "pom.targets.template", DstPath + "pom.targets");
+                FileCopy(TemplateDir + "pom.props.template", DstPath + "pom.props");
+                FileCopy(TemplateDir + "pom.xml.template", DstPath + "pom.xml");
             }
+            else if (File.Exists(RootDir + "pom.xml"))
+            {
+                XGlobal.Initialize();
+
+                XPom pom = new XPom();
+                pom.Load(RootDir + "pom.xml");
+                pom.PostLoad();
+
+                // Check directory structure
+                foreach (XAttribute xa in pom.DirectoryStructure)
+                {
+                    if (xa.Name == "Folder")
+                    {
+                        if (!Directory.Exists(RootDir + xa.Value))
+                            Directory.CreateDirectory(RootDir + xa.Value);
+                    }
+                }
+
+                string[] categories = pom.GetCategories();
+
+                foreach (string category in categories)
+                {
+                    string[] platforms = pom.GetPlatformsForCategory(category);
+
+                    Console.WriteLine(String.Format("Project, Category={0}", category));
+
+                    foreach (string platform in platforms)
+                    {
+                        pom.BuildDependencies(platform, XGlobal.LocalRepo, XGlobal.RemoteRepo);
+                        pom.PrintDependencies(platform);
+                        pom.CheckoutDependencies(RootDir, platform, XGlobal.LocalRepo);
+                    }
+
+                    foreach (string platform in platforms)
+                    {
+                        string[] configs = pom.GetConfigsForPlatformsForCategory(category, platform);
+                        foreach (string config in configs)
+                            pom.CollectProjectInformation(category, platform, config);
+                    }
+                }
+
+                // Generate the projects and solution
+                pom.GenerateProjects(RootDir);
+                pom.GenerateSolution(RootDir);
+            }
+
             return true;
         }
 

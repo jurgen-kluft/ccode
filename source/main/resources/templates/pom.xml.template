@@ -3,9 +3,10 @@
     <Version>1.0.0</Version>
   </Versions>
 
-  <IncludePath>source\main\include</IncludePath>
-  <LibraryPath>libs\${Name}</LibraryPath>
-
+  <IncludePath>$(SolutionDir)target\${Name}\${Platform}\source\main\include</IncludePath>
+  <LibraryPath>$(SolutionDir)target\${Name}\${Platform}\libs</LibraryPath>
+  <LibraryDep>${Name}_${Config}_${Platform}.lib</LibraryDep>
+  
   <DirectoryStructure>
     <Item Folder="docs\manuals"/>
     <Item Folder="docs\references"/>
@@ -25,49 +26,41 @@
     <Type>Package</Type>
   </Dependency>
 
-  <Project Name="${Name}" Language="${Language}" Location="source\main\${Language}">
+  <Project Name="${Name}" Category="Main" Language="${Language}" Location="source\main\${Language}">
     <UUID>${GUID}</UUID>
     <Dependency Package="example_package_name"/>
 
     <!-- Here list the Configurations of this Project -->
-    <Config Name="Debug"/>
-    <Config Name="Release"/>
-    <Config Name="Profile"/>
-    <Config Name="Final"/>
+    <Config Name="DevDebug"/>
+    <Config Name="DevRelease"/>
+    <Config Name="DevProfile"/>
+    <Config Name="DevFinal"/>
 
-    <!-- Here list the Types/Targets of the Configurations -->
-    <Type Name="Dev"/>
-    <Type Name="Client"/>
-    <Type Name="Retail"/>
-    
     <Platform Name="Win32">
-      <Config Name="Debug"> </Config>
-      <Config Name="Release"> </Config>
-      <Config Name="Profile"> </Config>
-      <Config Name="Final"> </Config>
+      <Config Name="DevDebug"> </Config>
+      <Config Name="DevRelease"> </Config>
+      <Config Name="DevProfile"> </Config>
+      <Config Name="DevFinal"> </Config>
     </Platform>
   </Project>
 
-  <Project Name="${Name}_test" Language="${Language}" Location="source\test\${Language}">
+  <Project Name="${Name}_test" Category="UnitTest" Language="${Language}" Location="source\test\${Language}">
     <UUID>${GUID}</UUID>
     <Dependency Project="${Name}"/>
 
     <!-- Here list the Configurations of this Project -->
-    <Config Name="Debug"/>
-    <Config Name="Release"/>
+    <Config Name="DevDebug"/>
+    <Config Name="DevRelease"/>
 
-    <!-- Here list the Types/Targets of the Configurations -->
-    <Type Name="Dev"/>
-    
     <Platform Name="Win32">
       <Configuration>
         <ConfigurationType>Application</ConfigurationType>
       </Configuration>
-      <Config Name="Debug"> </Config>
-      <Config Name="Release"> </Config>
-      <Config Name="Profile"> </Config>
-      <Config Name="Final"> </Config>
+      <Config Name="DevDebug"> </Config>
+      <Config Name="DevRelease"> </Config>
     </Platform>
   </Project>
 </Package>
+
+
 
