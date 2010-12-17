@@ -9,17 +9,17 @@ namespace MSBuild.XCode
 {
     public interface ILayout
     {
-        string VersionToDir(XVersion version);
-        string VersionToFilename(string package_name, string branch, string platform, XVersion version);
-        string VersionToFilenameWithoutExtension(string package_name, string branch, string platform, XVersion version);
+        string VersionToDir(ComparableVersion version);
+        string VersionToFilename(string package_name, string branch, string platform, ComparableVersion version);
+        string VersionToFilenameWithoutExtension(string package_name, string branch, string platform, ComparableVersion version);
         string FilenameToVersion(string filename);
         string PackageRootDir(string repoPath, string group, string package_name);
-        string PackageVersionDir(string repoPath, string group, string package_name, XVersion version);
+        string PackageVersionDir(string repoPath, string group, string package_name, ComparableVersion version);
     }
 
     public class XLayoutDefault : ILayout
     {
-        public string VersionToDir(XVersion version)
+        public string VersionToDir(ComparableVersion version)
         {
             string path = string.Empty;
             string[] components = version.ToStrings(3);
@@ -29,12 +29,12 @@ namespace MSBuild.XCode
             return path;
         }
 
-        public string VersionToFilename(string package_name, string branch, string platform, XVersion version)
+        public string VersionToFilename(string package_name, string branch, string platform, ComparableVersion version)
         {
             return VersionToFilenameWithoutExtension(package_name, branch, platform, version) + ".zip";
         }
         
-        public string VersionToFilenameWithoutExtension(string package_name, string branch, string platform, XVersion version)
+        public string VersionToFilenameWithoutExtension(string package_name, string branch, string platform, ComparableVersion version)
         {
             return String.Format("{0}+{1}+{2}+{3}", package_name, version.ToString(), branch, platform);
         }
@@ -61,7 +61,7 @@ namespace MSBuild.XCode
             return fullPath;
         }
 
-        public string PackageVersionDir(string repoPath, string group, string package_name, XVersion version)
+        public string PackageVersionDir(string repoPath, string group, string package_name, ComparableVersion version)
         {
             // Path = group[] \ group[] ... \ package_name \ version.cache
             string[] splitted_group = group.Split(new char[] { '.' }, StringSplitOptions.RemoveEmptyEntries);
@@ -82,62 +82,65 @@ namespace MSBuild.XCode
     public interface IPackageRepository
     {
         string RepoDir { get; set; }
+        ELocation Location { get; set; }
         ILayout Layout { get; set; }
 
-        bool Checkout(XPackage package, XVersionRange versionRange);
-        bool Checkout(XPackage package);
-        bool Checkin(XPackage package);
+        bool Update(Package package, VersionRange versionRange);
+        bool Update(Package package);
+        bool Add(Package package, ELocation from);
     }
 
-    public class XPackageRepositoryFileSystem : IPackageRepository
+    public class PackageRepositoryFileSystem : IPackageRepository
     {
-        public XPackageRepositoryFileSystem(string repoDir)
+        public PackageRepositoryFileSystem(string repoDir, ELocation location)
         {
             RepoDir = repoDir;
             Layout = new XLayoutDefault();
+            Location = location;
         }
 
         public string RepoDir { get; set; }
+        public ELocation Location { get; set; }
         public ILayout Layout { get; set; }
 
-        public bool Checkout(XPackage package)
+        public bool Update(Package package)
         {
             string src_dir = Layout.PackageVersionDir(RepoDir, package.Group.ToString(), package.Name, package.Version);
             string src_filename = Layout.VersionToFilename(package.Name, package.Branch, package.Platform, package.Version);
             string src_path = src_dir + src_filename;
             if (File.Exists(src_path))
             {
-                package.Path = src_path;
-                package.Local = true;
+                package.SetURL(Location, src_path);
                 return true;
             }
             return false;
         }
 
-        public bool Checkout(XPackage package, XVersionRange versionRange)
+        public bool Update(Package package, VersionRange versionRange)
         {
             if (FindBestVersion(package, versionRange))
             {
-                return Checkout(package);
+                return Update(package);
             }
             return false;
         }
 
-        public bool Checkin(XPackage package)
+        public bool Add(Package package, ELocation from)
         {
-            string package_filename = Layout.VersionToFilename(package.Name, package.Branch, package.Platform, package.Version);
-            if (File.Exists(package.Path))
+            if (File.Exists(package.GetURL(from)))
             {
                 string dest_dir = Layout.PackageVersionDir(RepoDir, package.Group.ToString(), package.Name, package.Version);
                 if (!Directory.Exists(dest_dir))
                 {
                     Directory.CreateDirectory(dest_dir);
                 }
+                string package_filename = Layout.VersionToFilename(package.Name, package.Branch, package.Platform, package.Version);
                 if (!File.Exists(dest_dir + package_filename))
                 {
-                    File.Copy(package.Path, dest_dir + package_filename, true);
+                    File.Copy(package.GetURL(from), dest_dir + package_filename, true);
                     DirtyVersionCache(package.Group.ToString(), package.Name);
                 }
+                package.SetURL(Location, dest_dir + package_filename);
                 return true;
             }
             return false;
@@ -187,19 +190,19 @@ namespace MSBuild.XCode
                         catch (SystemException) { }
                     }
                     string[] packages = Directory.GetFiles(root_dir + "version\\", "*.zip", SearchOption.AllDirectories);
-                    SortedDictionary<XVersion, bool> sortedVersions = new SortedDictionary<XVersion, bool>();
+                    SortedDictionary<ComparableVersion, bool> sortedVersions = new SortedDictionary<ComparableVersion, bool>();
                     foreach (string package in packages)
                     {
                         string[] c = Path.GetFileNameWithoutExtension(package).Split(new char[] { '+' }, StringSplitOptions.RemoveEmptyEntries);
                         if (c.Length == 4)
                         {
-                            XVersion version = new XVersion(c[1]);
+                            ComparableVersion version = new ComparableVersion(c[1]);
                             if (!sortedVersions.ContainsKey(version))
                                 sortedVersions.Add(version, true);
                         }
                     }
 
-                    foreach (XVersion v in sortedVersions.Keys)
+                    foreach (ComparableVersion v in sortedVersions.Keys)
                         writer.WriteLine(v.ToString());
                     writer.Close();
                     stream.Close();
@@ -248,7 +251,7 @@ namespace MSBuild.XCode
             }
         }
 
-        private XVersion LowerBound(List<XVersion> all, XVersion value, bool lessOrEqual)
+        private ComparableVersion LowerBound(List<ComparableVersion> all, ComparableVersion value, bool lessOrEqual)
         {
             // LowerBound will return the index of the version that is higher than the lower bound
             int i = all.LowerBound(value, lessOrEqual) - 1;
@@ -258,38 +261,38 @@ namespace MSBuild.XCode
             return null;
         }
 
-        private List<XVersion> Construct(string[] versions)
+        private List<ComparableVersion> Construct(string[] versions)
         {
-            List<XVersion> all = new List<XVersion>();
+            List<ComparableVersion> all = new List<ComparableVersion>();
             foreach (string v in versions)
-                all.Add(new XVersion(v));
+                all.Add(new ComparableVersion(v));
             return all;
         }
 
-        private bool FindBestVersion(XPackage package, XVersionRange versionRange)
+        private bool FindBestVersion(Package package, VersionRange versionRange)
         {
             string[] versions = RetrieveVersionsFor(package.Group.ToString(), package.Name, package.Branch, package.Platform);
             if (versions.Length > 1)
             {
-                if (versionRange.Kind == XVersionRange.EKind.UniqueVersion)
+                if (versionRange.Kind == VersionRange.EKind.UniqueVersion)
                 {
-                    List<XVersion> all = Construct(versions);
+                    List<ComparableVersion> all = Construct(versions);
                     package.Version = LowerBound(all, versionRange.From, versionRange.IncludeFrom);
                     // This might not be a match, but we have to return the best possible match
                     return true;
                 }
                 else
                 {
-                    XVersion highest = new XVersion(versions[versions.Length - 1]);
+                    ComparableVersion highest = new ComparableVersion(versions[versions.Length - 1]);
 
                     // High probability that the highest version will match
                     if (versionRange.IsInRange(highest))
                     {
-                        package.Version = new XVersion(highest);
+                        package.Version = new ComparableVersion(highest);
                         return true;
                     }
 
-                    if (versionRange.Kind == XVersionRange.EKind.VersionToUnbound)
+                    if (versionRange.Kind == VersionRange.EKind.VersionToUnbound)
                     {
                         // lowest ---------------------------------------------------------- highest
                         // xxxxxxxxxxxxxxxx from >-----------------------------------------------------------
@@ -299,29 +302,29 @@ namespace MSBuild.XCode
                     else
                     {
                         // Search for a matching version
-                        if (versionRange.Kind == XVersionRange.EKind.UnboundToVersionOrVersionToUnbound)
+                        if (versionRange.Kind == VersionRange.EKind.UnboundToVersionOrVersionToUnbound)
                         {
                             // highest failed and this can only be in the following case:
                             //      lowest ------------------------------------- highest
                             //      ---------------------< from xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx to >--------------------------
                             // Find a version in the UnboundToVersion, where Version is 'from'
-                            List<XVersion> all = Construct(versions);
-                            XVersion version = LowerBound(all, versionRange.From, versionRange.IncludeFrom);
+                            List<ComparableVersion> all = Construct(versions);
+                            ComparableVersion version = LowerBound(all, versionRange.From, versionRange.IncludeFrom);
                             package.Version = version;
                             return true;
                         }
-                        else if (versionRange.Kind == XVersionRange.EKind.UnboundToVersion)
+                        else if (versionRange.Kind == VersionRange.EKind.UnboundToVersion)
                         {
                             // highest failed and this can only be in the following case:
                             //     lowest ---------------------------------------------------------- highest
                             //     ----------------------< to xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx
                             // Find a version in the UnboundToVersion, where Version is 'to'
-                            List<XVersion> all = Construct(versions);
-                            XVersion version = LowerBound(all, versionRange.To, versionRange.IncludeTo);
+                            List<ComparableVersion> all = Construct(versions);
+                            ComparableVersion version = LowerBound(all, versionRange.To, versionRange.IncludeTo);
                             package.Version = version;
                             return true;
                         }
-                        else if (versionRange.Kind == XVersionRange.EKind.VersionToVersion)
+                        else if (versionRange.Kind == VersionRange.EKind.VersionToVersion)
                         {
                             // highest failed and this can only be in the following two cases:
                             // 1)
@@ -333,8 +336,8 @@ namespace MSBuild.XCode
                             // Only case 1 might give as a version
                             if (!highest.LessThan(versionRange.From, !versionRange.IncludeFrom))
                             {
-                                List<XVersion> all = Construct(versions);
-                                XVersion version = LowerBound(all, versionRange.To, versionRange.IncludeTo);
+                                List<ComparableVersion> all = Construct(versions);
+                                ComparableVersion version = LowerBound(all, versionRange.To, versionRange.IncludeTo);
                                 if (version != null && versionRange.IsInRange(version))
                                 {
                                     package.Version = version;
@@ -347,7 +350,7 @@ namespace MSBuild.XCode
             }
             else if (versions.Length == 1)
             {
-                XVersion version = new XVersion(versions[0]);
+                ComparableVersion version = new ComparableVersion(versions[0]);
                 if (versionRange.IsInRange(version))
                 {
                     package.Version = version;

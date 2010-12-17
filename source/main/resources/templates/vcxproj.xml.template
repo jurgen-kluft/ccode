@@ -19,7 +19,7 @@
   <ClCompile>
     <WarningLevel>Level3</WarningLevel>
     <Optimization>Disabled</Optimization>
-    <PreprocessorDefinitions Concat="true">%(PreprocessorDefinitions)</PreprocessorDefinitions>
+    <PreprocessorDefinitions Concat="true">#(PreprocessorDefinitions);%(PreprocessorDefinitions)</PreprocessorDefinitions>
     <PrecompiledHeader>NotUsing</PrecompiledHeader>
     <AdditionalIncludeDirectories Concat="true">#(IncludeDirectories);%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
     <ExceptionHandling>false</ExceptionHandling>
@@ -74,6 +74,7 @@
     </Config>
   </Platform>
 </Project>
+
 
 
 

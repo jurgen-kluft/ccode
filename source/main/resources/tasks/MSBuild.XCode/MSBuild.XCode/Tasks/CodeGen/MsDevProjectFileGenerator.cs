@@ -64,28 +64,34 @@ namespace MSBuild.XCode
             {
                 _p(indent, "<" + group + ">");
                 {
-                    foreach (string line in lines)
+                    foreach (string _line in lines)
                     {
+                        string line = _line;
                         if (line.Contains("#("))
                         {
-                            if (line.Contains("#(IncludeDirectories)"))
+                            if (line.Contains("#(PreprocessorDefinitions)"))
+                            {
+                                string content = mXProjectWriter.Project.GetPreprocessorDefinitions(platform, config);
+                                line = line.Replace("#(PreprocessorDefinitions)", content);
+                            }
+                            else if (line.Contains("#(IncludeDirectories)"))
                             {
                                 string content = mXProjectWriter.Project.GetIncludeDir(platform, config);
-                                line.Replace("#(IncludeDirectories)", content);
+                                line = line.Replace("#(IncludeDirectories)", content);
                             }
                             else if (line.Contains("#(LibraryDirectories)"))
                             {
                                 string content = mXProjectWriter.Project.GetLibraryDir(platform, config);
-                                line.Replace("#(LibraryDirectories)", content);
+                                line = line.Replace("#(LibraryDirectories)", content);
                             }
                             else if (line.Contains("#(LibraryDependencies)"))
                             {
                                 string content = mXProjectWriter.Project.GetLibraryDep(platform, config);
-                                line.Replace("#(LibraryDependencies)", content);
+                                line = line.Replace("#(LibraryDependencies)", content);
                             }
                         }
 
-                        _p(indent + 1, line);
+                        _p(indent+1, line);
                     }
                 }
                 _p(indent, "</" + group + ">");

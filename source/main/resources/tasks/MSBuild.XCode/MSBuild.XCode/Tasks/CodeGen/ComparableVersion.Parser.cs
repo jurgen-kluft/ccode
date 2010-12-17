@@ -7,7 +7,7 @@ namespace MSBuild.XCode
     ///
     /// Generic implementation of a comparable version (see Version.docx in docs\manuals)
     /// 
-    public partial class XVersion : IComparable<XVersion>
+    public partial class ComparableVersion : IComparable<ComparableVersion>
     {
         private string mCanonical;
         private ListItem mItems;

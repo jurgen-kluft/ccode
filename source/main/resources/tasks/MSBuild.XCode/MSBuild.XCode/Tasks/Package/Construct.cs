@@ -18,7 +18,7 @@ namespace MSBuild.XCode
         [Required]
         public string TemplateDir { get; set; }
         [Required]
-        public string LocalRepoDir { get; set; }
+        public string CacheRepoDir { get; set; }
         [Required]
         public string RemoteRepoDir { get; set; }
 
@@ -45,32 +45,27 @@ namespace MSBuild.XCode
             if (!Directory.Exists(TemplateDir))
                 return false;
 
-            XGlobal.TemplateDir = TemplateDir;
-            XGlobal.LocalRepoDir = LocalRepoDir;
-            XGlobal.RemoteRepoDir = RemoteRepoDir;
+            Global.TemplateDir = TemplateDir;
+            Global.CacheRepoDir = CacheRepoDir;
+            Global.RemoteRepoDir = RemoteRepoDir;
 
-            if (!Directory.Exists(RootDir))
+            if (File.Exists(RootDir + "pom.xml"))
             {
-                string DstPath = RootDir + Name + "\\";
-                Directory.CreateDirectory(DstPath);
+                Global.Initialize();
 
-                // pom.targets.template ==> pom.targets
-                // pom.props.template ==> pom.props
-                // pom.xml.template ==> pom.xml
-                FileCopy(TemplateDir + "pom.targets.template", DstPath + "pom.targets");
-                FileCopy(TemplateDir + "pom.props.template", DstPath + "pom.props");
-                FileCopy(TemplateDir + "pom.xml.template", DstPath + "pom.xml");
-            }
-            else if (File.Exists(RootDir + "pom.xml"))
-            {
-                XGlobal.Initialize();
+                Package package = new Package();
+                package.IsRoot = true;
+                package.RootDir = RootDir;
+                package.LoadFinalPom();
 
-                XPom pom = new XPom();
-                pom.Load(RootDir + "pom.xml");
-                pom.PostLoad();
+                package.Name = package.Pom.Name;
+                package.Group = package.Pom.Group;
+                package.Version = null;
+                package.Branch = string.Empty;
+                package.Platform = string.Empty;
 
                 // Check directory structure
-                foreach (XAttribute xa in pom.DirectoryStructure)
+                foreach (Attribute xa in package.Pom.DirectoryStructure)
                 {
                     if (xa.Name == "Folder")
                     {
@@ -79,32 +74,47 @@ namespace MSBuild.XCode
                     }
                 }
 
-                string[] categories = pom.GetCategories();
+                string[] categories = package.Pom.GetCategories();
 
                 foreach (string category in categories)
                 {
-                    string[] platforms = pom.GetPlatformsForCategory(category);
+                    string[] platforms = package.Pom.GetPlatformsForCategory(category);
 
                     Console.WriteLine(String.Format("Project, Category={0}", category));
 
                     foreach (string platform in platforms)
                     {
-                        pom.BuildDependencies(platform, XGlobal.LocalRepo, XGlobal.RemoteRepo);
-                        pom.PrintDependencies(platform);
-                        pom.CheckoutDependencies(RootDir, platform, XGlobal.LocalRepo);
+                        package.Pom.BuildDependencies(platform, Global.CacheRepo, Global.RemoteRepo);
+                        package.Pom.PrintDependencies(platform);
+                        package.Pom.SyncDependencies(platform, Global.CacheRepo);
                     }
 
                     foreach (string platform in platforms)
                     {
-                        string[] configs = pom.GetConfigsForPlatformsForCategory(category, platform);
+                        string[] configs = package.Pom.GetConfigsForPlatformsForCategory(platform, category);
                         foreach (string config in configs)
-                            pom.CollectProjectInformation(category, platform, config);
+                            package.Pom.CollectProjectInformation(category, platform, config);
                     }
                 }
 
                 // Generate the projects and solution
-                pom.GenerateProjects(RootDir);
-                pom.GenerateSolution(RootDir);
+                package.GenerateProjects();
+                package.GenerateSolution();
+            }
+            else
+            {
+                string DstPath = RootDir + Name + "\\";
+                if (!Directory.Exists(DstPath))
+                {
+                    Directory.CreateDirectory(DstPath);
+
+                    // pom.targets.template ==> pom.targets
+                    // pom.props.template ==> pom.props
+                    // pom.xml.template ==> pom.xml
+                    FileCopy(TemplateDir + "pom.targets.template", DstPath + "pom.targets");
+                    FileCopy(TemplateDir + "pom.props.template", DstPath + "pom.props");
+                    FileCopy(TemplateDir + "pom.xml.template", DstPath + "pom.xml");
+                }
             }
 
             return true;

@@ -154,31 +154,30 @@
       <DesignTime>True</DesignTime>
       <DependentUpon>Resources.resx</DependentUpon>
     </Compile>
-    <Compile Include="Tasks\CodeGen\XPackage.cs" />
-    <Compile Include="Tasks\CodeGen\XGlobal.cs" />
-    <Compile Include="Tasks\CodeGen\XVersion.Parser.cs" />
+    <Compile Include="Tasks\CodeGen\Package.cs" />
+    <Compile Include="Tasks\CodeGen\Global.cs" />
+    <Compile Include="Tasks\CodeGen\ComparableVersion.Parser.cs" />
     <Compile Include="Tasks\CodeGen\IPackageFilename.cs" />
-    <Compile Include="Tasks\CodeGen\XDependencyTreeNode.cs" />
-    <Compile Include="Tasks\CodeGen\XDependencyTree.cs" />
-    <Compile Include="Tasks\CodeGen\XVersions.cs" />
-    <Compile Include="Tasks\CodeGen\XPackageRepositoryFileSystem.cs" />
-    <Compile Include="Tasks\CodeGen\XVersionRange.cs" />
-    <Compile Include="Tasks\CodeGen\XDependency.cs" />
-    <Compile Include="Tasks\CodeGen\XGroup.cs" />
-    <Compile Include="Tasks\CodeGen\XElement.cs" />
-    <Compile Include="Tasks\CodeGen\XAttribute.cs" />
-    <Compile Include="Tasks\CodeGen\XConfig.cs" />
-    <Compile Include="Tasks\CodeGen\XPom.cs" />
-    <Compile Include="Tasks\CodeGen\XPackageRepository.cs" />
-    <Compile Include="Tasks\CodeGen\XPlatform.cs" />
-    <Compile Include="Tasks\CodeGen\XProject.cs" />
-    <Compile Include="Tasks\CodeGen\XProjectMerge.cs" />
-    <Compile Include="Tasks\CodeGen\XProjectWriter.cs" />
+    <Compile Include="Tasks\CodeGen\DependencyTreeNode.cs" />
+    <Compile Include="Tasks\CodeGen\DependencyTree.cs" />
+    <Compile Include="Tasks\CodeGen\Versions.cs" />
+    <Compile Include="Tasks\CodeGen\PackageRepositoryFileSystem.cs" />
+    <Compile Include="Tasks\CodeGen\VersionRange.cs" />
+    <Compile Include="Tasks\CodeGen\Dependency.cs" />
+    <Compile Include="Tasks\CodeGen\Group.cs" />
+    <Compile Include="Tasks\CodeGen\Element.cs" />
+    <Compile Include="Tasks\CodeGen\Attribute.cs" />
+    <Compile Include="Tasks\CodeGen\Config.cs" />
+    <Compile Include="Tasks\CodeGen\Pom.cs" />
+    <Compile Include="Tasks\CodeGen\PackageRepository.cs" />
+    <Compile Include="Tasks\CodeGen\Platform.cs" />
+    <Compile Include="Tasks\CodeGen\Project.cs" />
+    <Compile Include="Tasks\CodeGen\ProjectMerge.cs" />
+    <Compile Include="Tasks\CodeGen\ProjectWriter.cs" />
     <Compile Include="Tasks\CodeGen\GenerateSolution.cs" />
     <Compile Include="Tasks\CodeGen\MsDevProjectFileGenerator.cs" />
     <Compile Include="Tasks\CodeGen\MsDevProjectFileGenerator.Public.cs" />
     <Compile Include="Tasks\CodeGen\MsDevSolutionGenerator.cs" />
-    <Compile Include="Tasks\CodeGen\TextTemplate.cs" />
     <Compile Include="Tasks\CodeGen\GenerateProject.cs" />
     <Compile Include="Helpers\Math.cs" />
     <Compile Include="Helpers\StringScan.cs" />
@@ -189,7 +188,7 @@
     <Compile Include="Tasks\Package\Install.cs" />
     <Compile Include="Tasks\Package\Create.cs" />
     <Compile Include="Tasks\Package\Sync.cs" />
-    <Compile Include="Tasks\CodeGen\XVersion.cs" />
+    <Compile Include="Tasks\CodeGen\ComparableVersion.cs" />
   </ItemGroup>
   <ItemGroup>
     <EmbeddedResource Include="Properties\Resources.resx">

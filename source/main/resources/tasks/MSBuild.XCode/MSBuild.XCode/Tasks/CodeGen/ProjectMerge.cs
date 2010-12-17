@@ -10,30 +10,30 @@ namespace MSBuild.XCode
 {
     public static class XProjectMerge
     {
-        private static void Merge(Dictionary<string, List<XElement>> main, Dictionary<string, List<XElement>> template)
+        private static void Merge(Dictionary<string, List<Element>> main, Dictionary<string, List<Element>> template)
         {
-            foreach (KeyValuePair<string, List<XElement>> template_group in template)
+            foreach (KeyValuePair<string, List<Element>> template_group in template)
             {
                 if (main.ContainsKey(template_group.Key))
                 {
                     // Merge
-                    List<XElement> mainElementsList;
+                    List<Element> mainElementsList;
                     main.TryGetValue(template_group.Key, out mainElementsList);
 
-                    Dictionary<string, XElement> mainElementsDict = new Dictionary<string, XElement>();
-                    foreach (XElement e in mainElementsList)
+                    Dictionary<string, Element> mainElementsDict = new Dictionary<string, Element>();
+                    foreach (Element e in mainElementsList)
                     {
                         mainElementsDict.Add(e.Name, e);
                     }
 
-                    foreach (XElement e in template_group.Value)
+                    foreach (Element e in template_group.Value)
                     {
                         if (mainElementsDict.ContainsKey(e.Name))
                         {
                             // Merge element if concatenation of the values is required
                             if (e.Concat)
                             {
-                                XElement this_e;
+                                Element this_e;
                                 mainElementsDict.TryGetValue(e.Name, out this_e);
                                 this_e.Value = this_e.Value + e.Separator + e.Value;
                             }
@@ -48,23 +48,23 @@ namespace MSBuild.XCode
                 else
                 {
                     // Clone
-                    List<XElement> elements = new List<XElement>();
+                    List<Element> elements = new List<Element>();
                     main.Add(template_group.Key, elements);
-                    foreach (XElement e in template_group.Value)
+                    foreach (Element e in template_group.Value)
                         elements.Add(e.Copy());
                 }
             }
         }
 
-        private static void Merge(XPlatform main, XPlatform template)
+        private static void Merge(Platform main, Platform template)
         {
             Merge(main.groups, template.groups);
 
-            foreach (KeyValuePair<string, XConfig> p in main.configs)
+            foreach (KeyValuePair<string, Config> p in main.configs)
             {
                 Merge(p.Value.groups, main.groups);
 
-                XConfig x;
+                Config x;
                 if (template.configs.TryGetValue(p.Key, out x))
                 {
                     Merge(p.Value.groups, x.groups);
@@ -72,15 +72,15 @@ namespace MSBuild.XCode
             }
         }
 
-        public static void Merge(XProject main, XProject template)
+        public static void Merge(Project main, Project template)
         {
             Merge(main.groups, template.groups);
             
-            foreach (KeyValuePair<string, XPlatform> p in main.Platforms)
+            foreach (KeyValuePair<string, Platform> p in main.Platforms)
             {
                 Merge(p.Value.groups, main.groups);
 
-                XPlatform x;
+                Platform x;
                 if (template.Platforms.TryGetValue(p.Key, out x))
                 {
                     Merge(p.Value, x);

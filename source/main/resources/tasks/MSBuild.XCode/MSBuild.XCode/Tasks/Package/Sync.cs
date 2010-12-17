@@ -15,7 +15,7 @@ namespace MSBuild.XCode
     {
         public string RootDir { get; set; }
         public string Platform { get; set; }
-        public string LocalRepoDir { get; set; }
+        public string CacheRepoDir { get; set; }
         public string RemoteRepoDir { get; set; }
 
         public override bool Execute()
@@ -34,13 +34,30 @@ namespace MSBuild.XCode
             if (!RootDir.EndsWith("\\"))
                 RootDir = RootDir + "\\";
 
-            if (!File.Exists(RootDir + "pom.xml"))
-                return false;
+            Package package = new Package();
+            package.IsRoot = true;
+            package.RootDir = RootDir;
+            if (package.LoadFinalPom())
+            {
+                package.Name = package.Pom.Name;
+                package.Group = new Group(package.Pom.Group);
+                package.Version = package.Pom.Versions.GetForPlatform(Platform);
+                package.Platform = Platform;
+                {
+                    string package_filename;
+                    package.Create(out package_filename);
 
-            XPom package = new XPom();
-            package.Load(RootDir + "pom.xml");
+                    if (package.BuildDependencies(Platform, Global.CacheRepo, Global.RemoteRepo))
+                    {
+                        if (package.SyncDependencies(Platform, Global.CacheRepo))
+                        {
+                            return true;
+                        }
+                    }
+                }
+            }
 
-            return true;
+            return false;
         }
     }
 }

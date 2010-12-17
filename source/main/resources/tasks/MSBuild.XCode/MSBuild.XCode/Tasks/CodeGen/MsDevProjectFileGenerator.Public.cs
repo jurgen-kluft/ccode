@@ -18,7 +18,7 @@ namespace MSBuild.XCode
             CPP,
         }
 
-        public MsDevProjectFileGenerator(string name, string guid, EVersion version, ELanguage language, XProject project)
+        public MsDevProjectFileGenerator(string name, string guid, EVersion version, ELanguage language, Project project)
         {
             mProjectName = name;
             mProjectGuid = guid;
@@ -26,11 +26,11 @@ namespace MSBuild.XCode
             mLanguage = language;
 
             List<string> platforms = new List<string>();
-            foreach (KeyValuePair<string, XPlatform> p in project.Platforms)
+            foreach (KeyValuePair<string, Platform> p in project.Platforms)
                 platforms.Add(p.Key);
             mPlatforms = platforms.ToArray();
             List<string> configs = new List<string>();
-            foreach (KeyValuePair<string, XConfig> c in project.configs)
+            foreach (KeyValuePair<string, Config> c in project.configs)
                 configs.Add(c.Key);
             mConfigs = configs.ToArray();
 

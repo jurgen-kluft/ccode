@@ -4,16 +4,16 @@ using System.Collections.Generic;
 
 namespace MSBuild.XCode
 {
-    public class XGroup
+    public class Group
     {
         private string mGroup = string.Empty;
 
-        public XGroup(string group)
+        public Group(string group)
         {
             Full = group;
         }
 
-        public XGroup(XGroup group)
+        public Group(Group group)
         {
             Full = group.Full;
         }

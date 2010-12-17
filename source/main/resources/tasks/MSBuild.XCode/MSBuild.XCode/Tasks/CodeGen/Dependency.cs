@@ -5,21 +5,21 @@ using System.Collections.Generic;
 
 namespace MSBuild.XCode
 {
-    public class XDependency
+    public class Dependency
     {
         private Dictionary<string, string> mPlatformBranch;
-        private Dictionary<string, XVersionRange> mPlatformBranchVersions;
+        private Dictionary<string, VersionRange> mPlatformBranchVersions;
 
-        public XDependency()
+        public Dependency()
         {
-            Group = new XGroup("com.virtuos.tnt");
+            Group = new Group("com.virtuos.tnt");
             Type = "Package";
             mPlatformBranch = new Dictionary<string, string>();
-            mPlatformBranchVersions = new Dictionary<string, XVersionRange>();
+            mPlatformBranchVersions = new Dictionary<string, VersionRange>();
         }
 
         public string Name { get; set; }
-        public XGroup Group { get; set; }
+        public Group Group { get; set; }
         public string Type { get; set; }
 
         private string GetBranch(string platform, string defaultBranch)
@@ -40,12 +40,12 @@ namespace MSBuild.XCode
             return GetBranch(platform, "default");
         }
 
-        private delegate XVersionRange ReturnVersionRangeDelegate();
+        private delegate VersionRange ReturnVersionRangeDelegate();
 
-        private XVersionRange GetVersionRange(string platform, ReturnVersionRangeDelegate returnDefaultVersionRangeDelegate)
+        private VersionRange GetVersionRange(string platform, ReturnVersionRangeDelegate returnDefaultVersionRangeDelegate)
         {
             string branch = GetBranch(platform);
-            XVersionRange versionRange;
+            VersionRange versionRange;
             string platformBranch = (platform.ToLower() + "|" + branch);
             if (mPlatformBranchVersions.TryGetValue(platformBranch, out versionRange))
                 return versionRange;
@@ -63,12 +63,12 @@ namespace MSBuild.XCode
             return returnDefaultVersionRangeDelegate();
         }
 
-        public XVersionRange GetVersionRange(string platform)
+        public VersionRange GetVersionRange(string platform)
         {
-            return GetVersionRange(platform, delegate() { return new XVersionRange("[1.0,)"); } );
+            return GetVersionRange(platform, delegate() { return new VersionRange("[1.0,)"); } );
         }
 
-        public bool IsEqual(XDependency dependency)
+        public bool IsEqual(Dependency dependency)
         {
             if (String.Compare(Name, dependency.Name, true)==0)
             {
@@ -97,8 +97,8 @@ namespace MSBuild.XCode
                             {
                                 foreach (string ap in mPlatformBranch.Keys)
                                 {
-                                    XVersionRange a = GetVersionRange(ap, delegate() { return null; });
-                                    XVersionRange b = dependency.GetVersionRange(ap, delegate() { return null; });
+                                    VersionRange a = GetVersionRange(ap, delegate() { return null; });
+                                    VersionRange b = dependency.GetVersionRange(ap, delegate() { return null; });
                                     if (a != b)
                                         return false;
                                 }
@@ -112,7 +112,7 @@ namespace MSBuild.XCode
 
         // Merge with same package dependency
         // Return True when merge resulted in an updated dependency (A change in XVersionRange)
-        public bool Merge(XDependency dependency)
+        public bool Merge(Dependency dependency)
         {
             bool modified = false;
             if (String.Compare(Name, dependency.Name, true) != 0)
@@ -132,8 +132,8 @@ namespace MSBuild.XCode
             // Merge the version range
             foreach (KeyValuePair<string,string> Platform_Branch in mPlatformBranch)
             {
-                XVersionRange thisRange = GetVersionRange(Platform_Branch.Key);
-                XVersionRange thatRange = dependency.GetVersionRange(Platform_Branch.Key);
+                VersionRange thisRange = GetVersionRange(Platform_Branch.Key);
+                VersionRange thatRange = dependency.GetVersionRange(Platform_Branch.Key);
                 if (thisRange.Merge(thatRange))
                     modified = true;
             }
@@ -144,7 +144,7 @@ namespace MSBuild.XCode
         {
             if (node.Name == "Dependency")
             {
-                Name = XAttribute.Get("Package", node, "Unknown");
+                Name = Attribute.Get("Package", node, "Unknown");
 
                 if (node.HasChildNodes)
                 {
@@ -155,15 +155,15 @@ namespace MSBuild.XCode
 
                         if (child.Name == "Group")
                         {
-                            Group.Full = XElement.sGetXmlNodeValueAsText(child);
+                            Group.Full = Element.sGetXmlNodeValueAsText(child);
                         }
                         else if (child.Name == "Version")
                         {
-                            string platform = XAttribute.Get("Platform", child, "*").ToLower();
-                            string branch = XAttribute.Get("Branch", child, "default").ToLower();
+                            string platform = Attribute.Get("Platform", child, "*").ToLower();
+                            string branch = Attribute.Get("Branch", child, "default").ToLower();
                             if (branch == "*")
                                 branch = "default";
-                            XVersionRange versionRange = new XVersionRange(XElement.sGetXmlNodeValueAsText(child));
+                            VersionRange versionRange = new VersionRange(Element.sGetXmlNodeValueAsText(child));
 
                             if (mPlatformBranch.ContainsKey(platform))
                                 mPlatformBranch.Remove(platform);
@@ -176,7 +176,7 @@ namespace MSBuild.XCode
                         }
                         else if (child.Name == "Type")
                         {
-                            Type = XElement.sGetXmlNodeValueAsText(child);
+                            Type = Element.sGetXmlNodeValueAsText(child);
                         }
                     }
                 }

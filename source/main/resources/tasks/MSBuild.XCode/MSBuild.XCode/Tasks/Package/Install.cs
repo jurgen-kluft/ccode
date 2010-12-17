@@ -16,16 +16,10 @@ namespace MSBuild.XCode
         [Required]
         public string RootDir { get; set; }
         [Required]
-        public string LocalRepoDir { get; set; }
+        public string CacheRepoDir { get; set; }
         [Required]
         public string RemoteRepoDir { get; set; }
 
-        [Required]
-        public string Platform { get; set; }
-        [Required]
-        public string Branch { get; set; }
-        [Required]
-        public string Version { get; set; }
         [Required]
         public string Filename { get; set; }
 
@@ -34,26 +28,22 @@ namespace MSBuild.XCode
             if (!RootDir.EndsWith("\\"))
                 RootDir = RootDir + "\\";
 
-            XPom pom = new XPom();
-            pom.Load(RootDir + "pom.xml");
+            Global.TemplateDir = string.Empty;
+            Global.CacheRepoDir = CacheRepoDir;
+            Global.RemoteRepoDir = RemoteRepoDir;
+            Global.Initialize();
 
-            XGlobal.TemplateDir = string.Empty;
-            XGlobal.LocalRepoDir = LocalRepoDir;
-            XGlobal.RemoteRepoDir = RemoteRepoDir;
-            XGlobal.Initialize();
-
-            XPackage package = new XPackage();
-            package.Name = pom.Name;
-            package.Group = pom.Group;
-            package.Path = RootDir + "target\\" + Filename;
-            package.Target = true;
-            package.Version = pom.Versions.GetForPlatformWithBranch(Platform, Branch);
-            package.Branch = Branch;
-            package.Platform = Platform;
+            Package package = new Package();
+            package.IsRoot = true;
+            package.RootDir = RootDir;
+            package.LoadPom();
+            package.SetPropertiesFromFilename(Filename);
+            package.Name = package.Pom.Name;
+            package.Group = package.Pom.Group;
+            package.LocalURL = RootDir + "target\\" + Filename;
 
             // - Commit version to local package repository
-            bool ok = XGlobal.LocalRepo.Checkin(package);
-
+            bool ok = package.Install();
             return ok;
         }
     }

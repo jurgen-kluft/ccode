@@ -5,21 +5,21 @@ using System.Text;
 
 namespace MSBuild.XCode
 {
-    public class XDependencyTree
+    public class DependencyTree
     {
         private List<XDepNode> mRootNodes;
         private List<XDepNode> mAllNodes;
 
         public string Name { get; set; }
-        public XVersion Version { get; set; }
-        public XPom Package { get; set; }
-        public List<XDependency> Dependencies { get; set; }
+        public ComparableVersion Version { get; set; }
+        public Pom Package { get; set; }
+        public List<Dependency> Dependencies { get; set; }
 
         public bool Build(string Platform)
         {
             Queue<XDepNode> dependencyQueue = new Queue<XDepNode>();
             Dictionary<string, XDepNode> dependencyFlatMap = new Dictionary<string, XDepNode>();
-            foreach (XDependency d in Dependencies)
+            foreach (Dependency d in Dependencies)
             {
                 XDepNode depNode = new XDepNode(d, 1);
                 dependencyQueue.Enqueue(depNode);
@@ -41,6 +41,10 @@ namespace MSBuild.XCode
                     foreach (XDepNode n in newDepNodes)
                         dependencyQueue.Enqueue(n);
                 }
+                else
+                {
+                    // Error building dependencies !!
+                }
             }
 
             // Store all dependency nodes in a list
@@ -51,55 +55,56 @@ namespace MSBuild.XCode
             return true;
         }
 
-
-        public bool Checkout(string Path, string Platform, XPackageRepository localRepo)
+        // Synchronize dependencies
+        public bool Sync(string Platform, PackageRepository localRepo)
         {
             bool result = true;
 
             // Checkout all dependencies
             foreach (XDepNode depNode in mAllNodes)
             {
-                XDependency dependency = depNode.Dependency;
-
-                XPackage package = new XPackage();
-                package.Group = new XGroup(dependency.Group);
-                package.Name = dependency.Name;
-                package.Branch = dependency.GetBranch(Platform);
-                package.Version = new XVersion(depNode.Version);
-                package.Platform = Platform;
-
-                if (!localRepo.Checkout(package))
+                if (!localRepo.Update(depNode.Package))
                 {
                     // Failed to checkout!
                     result = false;
                     break;
+                }
+                else
+                {
+                    if (!depNode.Package.VerifyBeforeExtract())
+                    {
+                        result = false;
+                        break;
+                    }
                 }
             }
 
             return result;
         }
 
-        private void CollectPlatformInformation(XProject MainProject, XPlatform Platform, string Config)
+        private void CollectPlatformInformation(Project MainProject, Platform Platform, string Config)
         {
-            var e1 = new { GroupName = "ClCompile", ElementName = "AdditionalIncludeDirectories", Index = 0 };
-            var e2 = new { GroupName = "Link", ElementName = "AdditionalLibraryDirectories", Index = 1 };
-            var e3 = new { GroupName = "Link", ElementName = "AdditionalDependencies", Index = 2 };
+            var e1 = new { GroupName = "ClCompile", ElementName = "PreprocessorDefinitions", Index = 0 };
+            var e2 = new { GroupName = "ClCompile", ElementName = "AdditionalIncludeDirectories", Index = 1 };
+            var e3 = new { GroupName = "Link", ElementName = "AdditionalLibraryDirectories", Index = 2 };
+            var e4 = new { GroupName = "Link", ElementName = "AdditionalDependencies", Index = 3 };
 
-            var el = new[] { e1, e2, e3 };
+            var el = new[] { e1, e2, e3, e4 };
 
-            XConfig config;
+            Config config;
             if (Platform.configs.TryGetValue(Config, out config))
             {
                 foreach (var v in el)
                 {
-                    XElement e = config.FindElement(v.GroupName, v.ElementName);
+                    Element e = config.FindElement(v.GroupName, v.ElementName);
                     if (e != null)
                     {
                         switch (v.Index)
                         {
-                            case 0: MainProject.AddIncludeDir(Platform.Name, Config, e.Value, true, e.Separator); break;
-                            case 1: MainProject.AddLibraryDir(Platform.Name, Config, e.Value, true, e.Separator); break;
-                            case 2: MainProject.AddLibraryDep(Platform.Name, Config, e.Value, true, e.Separator); break;
+                            case 0: MainProject.AddPreprocessorDefinitions(Platform.Name, Config, e.Value, true, e.Separator); break;
+                            case 1: MainProject.AddIncludeDir(Platform.Name, Config, e.Value, true, e.Separator); break;
+                            case 2: MainProject.AddLibraryDir(Platform.Name, Config, e.Value, true, e.Separator); break;
+                            case 3: MainProject.AddLibraryDep(Platform.Name, Config, e.Value, true, e.Separator); break;
                         }
                     }
                 }
@@ -108,16 +113,16 @@ namespace MSBuild.XCode
 
         public void CollectProjectInformation(string Category, string Platform, string Config)
         {
-            XProject mainProject = Package.GetProjectByCategory(Category);
-            XPlatform mainPlatform;
+            Project mainProject = Package.GetProjectByCategory(Category);
+            Platform mainPlatform;
             if (mainProject.Platforms.TryGetValue(Platform, out mainPlatform))
             {
-                XConfig mainConfig;
+                Config mainConfig;
                 if (mainPlatform.configs.TryGetValue(Config, out mainConfig))
                 {
                     foreach (XDepNode node in mAllNodes)
                     {
-                        XProject dep_project = node.Package.Pom.GetProjectByCategory(Category);
+                        Project dep_project = node.Package.Pom.GetProjectByCategory(Category);
 
                         // Prepend with $(SolutionDir)target\package_name\platform\
                         // Where should this be configured ? in the pom.xml ?
@@ -130,7 +135,7 @@ namespace MSBuild.XCode
 
                         if (dep_project != null)
                         {
-                            XPlatform platform;
+                            Platform platform;
                             if (dep_project.Platforms.TryGetValue(Platform, out platform))
                             {
                                 CollectPlatformInformation(mainProject, platform, Config);

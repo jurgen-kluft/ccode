@@ -52,6 +52,11 @@ namespace Mercurial
         /// <summary>
         /// Include all states.
         /// </summary>
+        MARM = Modified | Added | Removed | Missing,
+
+        /// <summary>
+        /// Include all states.
+        /// </summary>
         All = Modified | Added | Removed | Missing | Clean | Unknown | Ignored,
 
         /// <summary>

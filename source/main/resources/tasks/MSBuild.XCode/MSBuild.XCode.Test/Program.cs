@@ -14,80 +14,94 @@ namespace MSBuild.XCode.Test
         [STAThread]
         static void Main()
         {
-            XGlobal.TemplateDir = @"D:\SCM_PACKAGE_REPO\com\virtuos\xcode\templates\";
-            XGlobal.LocalRepoDir = @"d:\SCM_PACKAGE_REPO\";
-            XGlobal.RemoteRepoDir = @"\\cnshasap2\Hg_Repo\SCM_PACKAGE_REPO\";
+            Global.TemplateDir = @"D:\SCM_PACKAGE_REPO\com\virtuos\xcode\templates\";
+            Global.CacheRepoDir = @"d:\SCM_PACKAGE_REPO\";
+            Global.RemoteRepoDir = @"\\cnshasap2\Hg_Repo\SCM_PACKAGE_REPO\";
+            Global.Initialize();
 
-            XGlobal.Initialize();
+            Global.RootDir = @"I:\HgDev.Modules\xbase\";
 
+            if (false)
             {
-                XPackage package = new XPackage();
+                Package package = new Package();
+                package.IsRoot = true;
                 package.Name = "xbase";
-                package.Group = new XGroup("com.virtuos.tnt");
-                package.Path = string.Empty;
-                package.Local = true;
+                package.Group = new Group("com.virtuos.tnt");
+                package.RootDir = Global.RootDir;
                 package.Version = null;
                 package.Branch = "default";
                 package.Platform = "Win32";
 
-                XGlobal.LocalRepo.Checkout(package, new XVersionRange("[,2.0]"));
-                if (package.LoadPom())
+                Global.RemoteRepo.Update(package, new VersionRange("[,2.0]"));
+                Global.CacheRepo.Update(package, new VersionRange("[,2.0]"));
+                if (package.LoadFinalPom())
                 {
-                    package.Pom.BuildDependencies("Win32", XGlobal.LocalRepo, XGlobal.RemoteRepo);
-                    package.Pom.PrintDependencies("Win32");
-                    package.Pom.CheckoutDependencies(@"i:\temp\target\", "Win32", XGlobal.LocalRepo);
+                    string package_filename;
+                    package.Create(out package_filename);
+
+                    package.BuildDependencies("Win32", Global.CacheRepo, Global.RemoteRepo);
+                    package.PrintDependencies("Win32");
+                    package.SyncDependencies("Win32", Global.CacheRepo);
 
                     string[] categories = package.Pom.GetCategories();
-                    string[] platforms = package.Pom.GetPlatformsForCategory("Main");
-                    string[] configs = package.Pom.GetConfigsForPlatformsForCategory("Win32", "Main");
                     foreach (string category in categories)
                     {
+                        string[] platforms = package.Pom.GetPlatformsForCategory(category);
                         foreach (string platform in platforms)
+                        {
+                            string[] configs = package.Pom.GetConfigsForPlatformsForCategory(platform, category);
                             foreach (string config in configs)
                                 package.Pom.CollectProjectInformation(category, platform, config);
+                        }
                     }
                 }
             }
+
+            // Our test project is xproject
+            Global.RootDir = @"I:\HgDev.Modules\xproject\";
 
             PackageConstruct construct = new PackageConstruct();
             construct.Name = "xproject";
             construct.RootDir = @"i:\HgDev.Modules\";
             construct.Language = "cpp";
-            construct.TemplateDir = XGlobal.LocalRepoDir + @"com\virtuos\xcode\templates\";
+            construct.CacheRepoDir = Global.CacheRepoDir;
+            construct.RemoteRepoDir = Global.RemoteRepoDir;
+            construct.TemplateDir = Global.TemplateDir;
             construct.Execute();    //1st
             construct.RootDir = construct.RootDir + construct.Name + "\\";
             construct.Execute();    //2nd
 
             PackageCreate create = new PackageCreate();
-            create.RootDir = @"i:\HgDev.Modules\xbase\";
+            create.RootDir = Global.RootDir;
             create.Platform = "Win32";
-            create.Branch = "default";
             bool result1 = create.Execute();
 
+            PackageInstall install = new PackageInstall();
+            install.RootDir = Global.RootDir;
+            install.CacheRepoDir = Global.CacheRepoDir;
+            install.RemoteRepoDir = Global.RemoteRepoDir;
+            install.Filename = create.Filename;
+            bool result3 = install.Execute();
+
+            PackageDeploy deploy = new PackageDeploy();
+            deploy.RootDir = Global.RootDir;
+            deploy.CacheRepoDir = Global.CacheRepoDir;
+            deploy.RemoteRepoDir = Global.RemoteRepoDir;
+            deploy.Filename = create.Filename;
+            bool result4 = deploy.Execute();
+
             PackageVerify verify = new PackageVerify();
-            verify.RootDir = @"i:\HgDev.Modules\xbase\";
+            verify.RootDir = Global.RootDir;
             verify.Platform = "Win32";
             verify.Branch = "default";
             bool result2 = verify.Execute();
 
             PackageSync sync = new PackageSync();
-            sync.RootDir = @"i:\HgDev.Modules\xbase\";
+            sync.RootDir = Global.RootDir;
             sync.Platform = "Win32";
-            sync.LocalRepoDir = XGlobal.LocalRepoDir;
-            sync.RemoteRepoDir = XGlobal.RemoteRepoDir;
+            sync.CacheRepoDir = Global.CacheRepoDir;
+            sync.RemoteRepoDir = Global.RemoteRepoDir;
             sync.Execute();
-
-            PackageInstall install = new PackageInstall();
-            install.RootDir = @"i:\HgDev.Modules\xbase\";
-            install.LocalRepoDir = XGlobal.LocalRepoDir;
-            install.RemoteRepoDir = XGlobal.RemoteRepoDir;
-            bool result3 = install.Execute();
-
-            PackageDeploy deploy = new PackageDeploy();
-            deploy.RootDir = @"i:\HgDev.Modules\xbase\";
-            deploy.LocalRepoDir = XGlobal.LocalRepoDir;
-            deploy.RemoteRepoDir = XGlobal.RemoteRepoDir;
-            bool result4 = deploy.Execute();
 
         }
     }

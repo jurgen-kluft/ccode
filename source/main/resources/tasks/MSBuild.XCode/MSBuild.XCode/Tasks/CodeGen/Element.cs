@@ -8,14 +8,14 @@ using Microsoft.Build.Evaluation;
 
 namespace MSBuild.XCode
 {
-    public class XElement
+    public class Element
     {
-        private XElement()
+        private Element()
         {
 
         }
 
-        public XElement(string name, List<XElement> elements, List<XAttribute> attributes)
+        public Element(string name, List<Element> elements, List<Attribute> attributes)
         {
             Name = name;
             Attributes = attributes;
@@ -23,24 +23,27 @@ namespace MSBuild.XCode
             Value = string.Empty;
             Concat = false;
             Separator = ";";
+            IsGroup = false;
         }
 
         public string Name { get; set; }
-        public List<XAttribute> Attributes { get; set; }
+        public List<Attribute> Attributes { get; set; }
         public string Value { get; set; }
         public bool Concat { get; set; }
         public string Separator { get; set; }
-        public List<XElement> Elements { get; set; }
+        public bool IsGroup { get; set; }
+        public List<Element> Elements { get; set; }
 
-        public XElement Copy()
+        public Element Copy()
         {
-            XElement c = new XElement(Name, new List<XElement>(), new List<XAttribute>());
+            Element c = new Element(Name, new List<Element>(), new List<Attribute>());
             c.Value = Value;
             c.Concat = Concat;
             c.Separator = Separator;
-            foreach (XAttribute a in Attributes)
+            foreach (Attribute a in Attributes)
                 c.Attributes.Add(a.Copy());
-            foreach (XElement e in Elements)
+            c.IsGroup = IsGroup;
+            foreach (Element e in Elements)
                 c.Elements.Add(e.Copy());
             return c;
         }
@@ -62,7 +65,7 @@ namespace MSBuild.XCode
                     else
                     {
                         // A real attribute
-                        Attributes.Add(new XAttribute(a.Name, a.Value));
+                        Attributes.Add(new Attribute(a.Name, a.Value));
                     }
                 }
             }
@@ -77,7 +80,7 @@ namespace MSBuild.XCode
                     continue;
                 }
 
-                XElement e = new XElement(child.Name, new List<XElement>(), new List<XAttribute>());
+                Element e = new Element(child.Name, new List<Element>(), new List<Attribute>());
                 Elements.Add(e);
                 e.Read(child);
             }
@@ -109,7 +112,7 @@ namespace MSBuild.XCode
             else
             {
                 string attributes = string.Empty;
-                foreach (XAttribute a in this.Attributes)
+                foreach (Attribute a in this.Attributes)
                 {
                     string attribute = a.Name + "=\"" + a.Value + "\"";
                     if (String.IsNullOrEmpty(attributes))

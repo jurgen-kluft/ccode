@@ -5,7 +5,7 @@ using System.Collections.Generic;
 
 namespace MSBuild.XCode
 {
-    public class XPackageRepository
+    public class PackageRepository
     {
         public enum ELayout
         {
@@ -19,24 +19,24 @@ namespace MSBuild.XCode
 
         private IPackageRepository mRepository;
 
-        public XPackageRepository(string path)
+        public PackageRepository(string path, ELocation location)
         {
-            mRepository = new XPackageRepositoryFileSystem(path);
+            mRepository = new PackageRepositoryFileSystem(path, location);
         }
 
         public string RepoPath { get; set; }
 
-        public bool Checkout(XPackage package, XVersionRange range)
+        public bool Update(Package package, VersionRange range)
         {
-            return mRepository.Checkout(package, range);
+            return mRepository.Update(package, range);
         }
-        public bool Checkout(XPackage package)
+        public bool Update(Package package)
         {
-            return mRepository.Checkout(package);
+            return mRepository.Update(package);
         }
-        public bool Checkin(XPackage package)
+        public bool Add(Package package, ELocation from)
         {
-            return mRepository.Checkin(package);
+            return mRepository.Add(package, from);
         }
 
     }

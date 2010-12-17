@@ -6,23 +6,50 @@ using System.Xml;
 
 namespace MSBuild.XCode
 {
-    public class XProject
+    public class Project
     {
-        public static readonly string[] AllGroups = new string[] {"Configuration","ImportGroup","OutDir","IntDir",
-                                                                   "TargetName","IgnoreImportLibrary","GenerateManifest",
-                                                                        "LinkIncremental","ClCompile","Link","ResourceCompile",
-                                                                            "Lib" 
+        public static readonly List<string> AllGroups = new List<string>
+        {
+            "Configuration",
+            "ImportGroup",
+            "OutDir",
+            "IntDir",
+            "TargetName",
+            "IgnoreImportLibrary",
+            "GenerateManifest",
+            "LinkIncremental",
+            "ClCompile",
+            "Link",
+            "ResourceCompile",
+            "Lib" 
+        };
+        public static readonly List<bool> IsGroup = new List<bool>
+        {
+            true,    /// "Configuration",
+            true,    /// "ImportGroup",
+            false,   /// "OutDir",
+            false,   /// "IntDir",
+            false,   /// "TargetName",
+            false,   /// "IgnoreImportLibrary",
+            false,   /// "GenerateManifest",
+            false,   /// "LinkIncremental",
+            true,    /// "ClCompile",
+            true,    /// "Link",
+            true,    /// "ResourceCompile",
+            true,    /// "Lib" 
         };
 
         public class Settings  // For every platform
         {
             // TargetConfig
+            private Dictionary<string, HashSet<string>> mPreprocessorDefinitions;
             private Dictionary<string, HashSet<string>> mIncludeDirs;
             private Dictionary<string, HashSet<string>> mLibraryDirs;
             private Dictionary<string, HashSet<string>> mLibraryDeps;
 
             public Settings()
             {
+                mPreprocessorDefinitions = new Dictionary<string, HashSet<string>>();
                 mIncludeDirs = new Dictionary<string, HashSet<string>>();
                 mLibraryDirs = new Dictionary<string, HashSet<string>>();
                 mLibraryDeps = new Dictionary<string, HashSet<string>>();
@@ -45,13 +72,25 @@ namespace MSBuild.XCode
                 if (!String.IsNullOrEmpty(value))
                 {
                     string[] values = value.Split(new string[] { seperator }, StringSplitOptions.RemoveEmptyEntries);
+                    bool skip = false;
                     foreach (string v in values)
                     {
                         if (v.StartsWith("#"))  // Skip any variable
-                            continue;
+                        {
+                            skip = true;
+                            break;
+                        }
+                    }
+                    if (!skip)
+                    {
+                        foreach (string v in values)
+                        {
+                            if (v.StartsWith("#"))  // Skip any variable
+                                continue;
 
-                        if (!content.Contains(v))
-                            content.Add(v);
+                            if (!content.Contains(v))
+                                content.Add(v);
+                        }
                     }
                 }
             }
@@ -72,6 +111,10 @@ namespace MSBuild.XCode
                 return str;
             }
 
+            public void AddPreprocessorDefinitions(string config, string value, bool concat, string seperator)
+            {
+                Add(config, value, concat, seperator, mPreprocessorDefinitions);
+            }
             public void AddIncludeDir(string config, string value, bool concat, string seperator)
             {
                 Add(config, value, concat, seperator, mIncludeDirs);
@@ -83,6 +126,10 @@ namespace MSBuild.XCode
             public void AddLibraryDep(string config, string value, bool concat, string seperator)
             {
                 Add(config, value, concat, seperator, mLibraryDeps);
+            }
+            public string GetPreprocessorDefinitions(string config)
+            {
+                return Get(config, mPreprocessorDefinitions);
             }
             public string GetIncludeDir(string config)
             {
@@ -98,18 +145,18 @@ namespace MSBuild.XCode
             }
         }
 
-        protected Dictionary<string, XElement> mElements = new Dictionary<string, XElement>();
-        protected Dictionary<string, List<XElement>> mGroups = new Dictionary<string, List<XElement>>();
-        protected Dictionary<string, XConfig> mConfigs = new Dictionary<string, XConfig>();
+        protected Dictionary<string, Element> mElements = new Dictionary<string, Element>();
+        protected Dictionary<string, List<Element>> mGroups = new Dictionary<string, List<Element>>();
+        protected Dictionary<string, Config> mConfigs = new Dictionary<string, Config>();
         protected Dictionary<string, string> mTypes = new Dictionary<string, string>();
-        protected Dictionary<string, XPlatform> mPlatforms = new Dictionary<string, XPlatform>();
+        protected Dictionary<string, Platform> mPlatforms = new Dictionary<string, Platform>();
         protected Dictionary<string, Settings> mSettings = new Dictionary<string, Settings>();
 
-        public Dictionary<string, XElement> elements { get { return mElements; } }
-        public Dictionary<string, List<XElement>> groups { get { return mGroups; } }
-        public Dictionary<string, XConfig> configs { get { return mConfigs; } }
+        public Dictionary<string, Element> elements { get { return mElements; } }
+        public Dictionary<string, List<Element>> groups { get { return mGroups; } }
+        public Dictionary<string, Config> configs { get { return mConfigs; } }
         public Dictionary<string, string> types { get { return mTypes; } }
-        public Dictionary<string, XPlatform> Platforms { get { return mPlatforms; } }
+        public Dictionary<string, Platform> Platforms { get { return mPlatforms; } }
 
         public string Name { get; set; }
         public string Category { get; set; }
@@ -126,7 +173,7 @@ namespace MSBuild.XCode
             }
         }
 
-        public XProject()
+        public Project()
         {
             Name = "Unknown";
             Category = "Main";
@@ -143,11 +190,11 @@ namespace MSBuild.XCode
             Location = @"source\main\cpp";
             UUID = Guid.NewGuid().ToString();
 
-            mElements = new Dictionary<string, XElement>();
+            mElements = new Dictionary<string, Element>();
 
             foreach (string g in AllGroups)
             {
-                mGroups.Add(g, new List<XElement>());
+                mGroups.Add(g, new List<Element>());
             }
         }
 
@@ -167,89 +214,81 @@ namespace MSBuild.XCode
         {
             Initialize();
 
-            this.Name = XAttribute.Get("Name", node, "Unknown");
-            this.Category = XAttribute.Get("Category", node, "Main");
-            this.Language = XAttribute.Get("Language", node, "cpp");
-            this.Location = XAttribute.Get("Location", node, "source\\main\\cpp");
+            this.Name = Attribute.Get("Name", node, "Unknown");
+            this.Category = Attribute.Get("Category", node, "Main");
+            this.Language = Attribute.Get("Language", node, "cpp");
+            this.Location = Attribute.Get("Location", node, "source\\main\\cpp");
 
             foreach (XmlNode child in node.ChildNodes)
             {
                 if (child.NodeType == XmlNodeType.Comment)
                     continue;
 
-                bool do_continue = false;
+                bool _continue = false;
 
                 if (String.Compare(child.Name, "Platform", true) == 0)
                 {
-                    string p = XAttribute.Get("Name", child, "Unknown");
+                    string p = Attribute.Get("Name", child, "Unknown");
 
-                    XPlatform platform;
+                    Platform platform;
                     if (!this.Platforms.TryGetValue(p, out platform))
                     {
-                        platform = new XPlatform();
+                        platform = new Platform();
                         platform.Initialize(p);
                         this.Platforms.Add(p, platform);
                     }
                     platform.Read(child);
-                    do_continue = true;
+                    _continue = true;
                 }
 
-                if (do_continue)
+                if (_continue)
                     continue;
 
                 if (String.Compare(child.Name, "Config", true) == 0)
                 {
-                    string c = XAttribute.Get("Name", child, "Unknown");
+                    string c = Attribute.Get("Name", child, "Unknown");
 
-                    XConfig config;
+                    Config config;
                     if (!this.configs.TryGetValue(c, out config))
                     {
-                        config = new XConfig();
+                        config = new Config();
                         config.Initialize("Any", c);
                         this.configs.Add(c, config);
                     }
                     config.Read(child);
-                    do_continue = true;
+                    _continue = true;
                 }
 
-                if (do_continue)
+                if (_continue)
                     continue;
 
-                if (String.Compare(child.Name, "Type", true) == 0)
+                if (String.Compare(child.Name, "UUID", true) == 0)
                 {
-                    string t = XAttribute.Get("Name", child, "Unknown");
-
-                    string type;
-                    if (!this.types.TryGetValue(t, out type))
-                    {
-                        this.types.Add(t, t);
-                    }
-
-                    do_continue = true;
+                    UUID = Element.sGetXmlNodeValueAsText(child);
+                    _continue = true;
                 }
 
-                if (do_continue)
+                if (_continue)
                     continue;
 
-                foreach (string g in XProject.AllGroups)
+                int index = Project.AllGroups.IndexOf(child.Name);
+                if (index >= 0)
                 {
-                    if (String.Compare(child.Name, g, true) == 0)
-                    {
-                        XElement e = new XElement(g, new List<XElement>(), new List<XAttribute>());
-                        List<XElement> elements;
-                        this.groups.TryGetValue(g, out elements);
-                        elements.Add(e);
-                        e.Read(child);
-                        do_continue = true;
-                        break;
-                    }
+                    string g = Project.AllGroups[index];
+                    Element e = new Element(g, new List<Element>(), new List<Attribute>());
+                    e.IsGroup = Project.IsGroup[index];
+                    List<Element> elements;
+                    this.groups.TryGetValue(g, out elements);
+                    elements.Add(e);
+                    e.Read(child);
+                    _continue = true;
                 }
 
-                if (do_continue)
+                if (_continue)
                     continue;
 
                 // It is an element
-                XElement element = new XElement(child.Name, new List<XElement>(), new List<XAttribute>());
+                Element element = new Element(child.Name, new List<Element>(), new List<Attribute>());
                 {
                     if (child.HasChildNodes && child.FirstChild.NodeType == XmlNodeType.Text)
                         element.Value = child.FirstChild.Value;
@@ -258,13 +297,23 @@ namespace MSBuild.XCode
                     {
                         foreach (XmlAttribute a in child.Attributes)
                         {
-                            element.Attributes.Add(new XAttribute(a.Name, a.Value));
+                            element.Attributes.Add(new Attribute(a.Name, a.Value));
                         }
                     }
                 }
             }
         }
 
+        public void AddPreprocessorDefinitions(string platform, string targetconfig, string value, bool concat, string seperator)
+        {
+            Settings settings;
+            if (!mSettings.TryGetValue(platform, out settings))
+            {
+                settings = new Settings();
+                mSettings.Add(platform, settings);
+            }
+            settings.AddPreprocessorDefinitions(targetconfig, value, concat, seperator);
+        }
         public void AddIncludeDir(string platform, string targetconfig, string value, bool concat, string seperator)
         {
             Settings settings;
@@ -296,6 +345,13 @@ namespace MSBuild.XCode
             settings.AddLibraryDep(targetconfig, value, concat, seperator);
         }
 
+        public string GetPreprocessorDefinitions(string platform, string config)
+        {
+            Settings settings;
+            if (!mSettings.TryGetValue(platform, out settings))
+                return string.Empty;
+            return settings.GetPreprocessorDefinitions(config);
+        }
         public string GetIncludeDir(string platform, string config)
         {
             Settings settings;

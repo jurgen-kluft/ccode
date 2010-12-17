@@ -4,15 +4,15 @@ using System.Collections.Generic;
 
 namespace MSBuild.XCode
 {
-    public class XPlatform
+    public class Platform
     {
-        protected Dictionary<string, List<XElement>> mGroups = new Dictionary<string, List<XElement>>();
-        protected Dictionary<string, XConfig> mConfigs = new Dictionary<string, XConfig>();
+        protected Dictionary<string, List<Element>> mGroups = new Dictionary<string, List<Element>>();
+        protected Dictionary<string, Config> mConfigs = new Dictionary<string, Config>();
 
         public string Name { get; set; }
 
-        public Dictionary<string, List<XElement>> groups { get { return mGroups; } }
-        public Dictionary<string, XConfig> configs { get { return mConfigs; } }
+        public Dictionary<string, List<Element>> groups { get { return mGroups; } }
+        public Dictionary<string, Config> configs { get { return mConfigs; } }
 
         public void Initialize(string p)
         {
@@ -33,12 +33,12 @@ namespace MSBuild.XCode
 
                 if (String.Compare(child.Name, "Config", true) == 0)
                 {
-                    string c = XAttribute.Get("Name", child, "None");
+                    string c = Attribute.Get("Name", child, "None");
 
-                    XConfig config;
+                    Config config;
                     if (!configs.TryGetValue(c, out config))
                     {
-                        config = new XConfig();
+                        config = new Config();
                         config.Initialize(Name, c);
                         configs.Add(c, config);
                     }
@@ -50,15 +50,15 @@ namespace MSBuild.XCode
                 if (do_continue)
                     continue;
 
-                foreach (string g in XProject.AllGroups)
+                foreach (string g in Project.AllGroups)
                 {
                     if (String.Compare(child.Name, g, true) == 0)
                     {
-                        XElement e = new XElement(g, new List<XElement>(), new List<XAttribute>());
-                        List<XElement> elements;
+                        Element e = new Element(g, new List<Element>(), new List<Attribute>());
+                        List<Element> elements;
                         if (!groups.TryGetValue(g, out elements))
                         {
-                            elements = new List<XElement>();
+                            elements = new List<Element>();
                             groups.Add(g, elements);
                         }
                         elements.Add(e);
@@ -72,7 +72,7 @@ namespace MSBuild.XCode
                     continue;
 
                 // It is an element
-                XElement element = new XElement(child.Name, new List<XElement>(), new List<XAttribute>());
+                Element element = new Element(child.Name, new List<Element>(), new List<Attribute>());
                 {
                     if (child.HasChildNodes && child.FirstChild.NodeType == XmlNodeType.Text)
                         element.Value = child.FirstChild.Value;
@@ -81,7 +81,7 @@ namespace MSBuild.XCode
                     {
                         foreach (XmlAttribute a in child.Attributes)
                         {
-                            element.Attributes.Add(new XAttribute(a.Name, a.Value));
+                            element.Attributes.Add(new Attribute(a.Name, a.Value));
                         }
                     }
                 }

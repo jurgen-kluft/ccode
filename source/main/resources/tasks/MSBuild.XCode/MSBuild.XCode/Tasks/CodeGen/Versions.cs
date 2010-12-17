@@ -8,9 +8,9 @@ namespace MSBuild.XCode
     ///
     /// A collection of versions, where a version falls under a platform-branch
     /// 
-    public class XVersions
+    public class Versions
     {
-        private Dictionary<String, XVersion> mPlatformBranchSpecificVersions;
+        private Dictionary<String, ComparableVersion> mPlatformBranchSpecificVersions;
 
         private string BuildTag(string platform, string branch)
         {
@@ -27,17 +27,17 @@ namespace MSBuild.XCode
             return platform + "|" + branch;
         }
 
-        public XVersions()
+        public Versions()
         {
-            mPlatformBranchSpecificVersions = new Dictionary<string, XVersion>();
+            mPlatformBranchSpecificVersions = new Dictionary<string, ComparableVersion>();
         }
 
-        public void Add(string platform, XVersion item)
+        public void Add(string platform, ComparableVersion item)
         {
             Add(platform, null, item);
         }
 
-        public void Add(string platform, string branch, XVersion item)
+        public void Add(string platform, string branch, ComparableVersion item)
         {
             if (!Contains(platform, branch))
             {
@@ -59,14 +59,14 @@ namespace MSBuild.XCode
             return mPlatformBranchSpecificVersions.ContainsKey(BuildTag(platform, branch));
         }
 
-        public XVersion GetForPlatform(string platform)
+        public ComparableVersion GetForPlatform(string platform)
         {
             return GetForPlatformWithBranch(platform, null);
         }
 
-        public XVersion GetForPlatformWithBranch(string platform, string branch)
+        public ComparableVersion GetForPlatformWithBranch(string platform, string branch)
         {
-            XVersion version;
+            ComparableVersion version;
             string tag = BuildTag(platform, branch);
             if (mPlatformBranchSpecificVersions.TryGetValue(tag, out version))
             {
@@ -103,11 +103,11 @@ namespace MSBuild.XCode
                 if (child.NodeType == XmlNodeType.Comment)
                     continue;
 
-                string v = XElement.sGetXmlNodeValueAsText(child);
+                string v = Element.sGetXmlNodeValueAsText(child);
                 v = (String.IsNullOrEmpty(v)) ? "1.0.0" : v;
-                string platform = XAttribute.Get("Platform", child, "*");
-                string branch = XAttribute.Get("Branch", child, "*");
-                Add(platform, branch, new XVersion(v));
+                string platform = Attribute.Get("Platform", child, "*");
+                string branch = Attribute.Get("Branch", child, "*");
+                Add(platform, branch, new ComparableVersion(v));
             }
         }
     }

@@ -31,6 +31,11 @@ namespace Mercurial
         {
             Include = FileStatusIncludes.Default;
         }
+        public StatusCommand(FileStatusIncludes includes)
+            : base("status")
+        {
+            Include = includes;
+        }
 
         /// <summary>
         /// Specify which kind of status codes to include. Default is

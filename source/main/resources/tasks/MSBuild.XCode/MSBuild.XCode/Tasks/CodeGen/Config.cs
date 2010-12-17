@@ -6,31 +6,31 @@ using System.Xml;
 
 namespace MSBuild.XCode
 {
-    public class XConfig
+    public class Config
     {
-        protected Dictionary<string, List<XElement>> mGroups = new Dictionary<string, List<XElement>>();
+        protected Dictionary<string, List<Element>> mGroups = new Dictionary<string, List<Element>>();
 
         public string Name { get; set; }
-        public string Config { get; set; }
+        public string Configuration { get; set; }
         public string Platform { get; set; }
 
-        public Dictionary<string, List<XElement>> groups { get { return mGroups; } }
+        public Dictionary<string, List<Element>> groups { get { return mGroups; } }
 
         public void Initialize(string p, string c)
         {
             Name = c + "|" + p;
             Platform = p;
-            Config = c;
+            Configuration = c;
         }
 
-        public XElement FindElement(string group, string element)
+        public Element FindElement(string group, string element)
         {
-            List<XElement> elements;
+            List<Element> elements;
             if (groups.TryGetValue(group, out elements))
             {
                 if (elements.Count > 0)
                 {
-                    foreach (XElement e in elements[0].Elements)
+                    foreach (Element e in elements[0].Elements)
                     {
                         if (String.Compare(e.Name, element, true) == 0)
                             return e;
@@ -50,15 +50,15 @@ namespace MSBuild.XCode
                 if (child.NodeType == XmlNodeType.Comment)
                     continue;
 
-                foreach (string g in XProject.AllGroups)
+                foreach (string g in Project.AllGroups)
                 {
                     if (String.Compare(child.Name, g, true) == 0)
                     {
-                        XElement e = new XElement(g, new List<XElement>(), new List<XAttribute>());
-                        List<XElement> elements;
+                        Element e = new Element(g, new List<Element>(), new List<Attribute>());
+                        List<Element> elements;
                         if (!groups.TryGetValue(g, out elements))
                         {
-                            elements = new List<XElement>();
+                            elements = new List<Element>();
                             groups.Add(g, elements);
                         }
                         elements.Add(e);

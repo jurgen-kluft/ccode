@@ -10,20 +10,20 @@ namespace MSBuild.XCode
 {
     public class XProjectWriter
     {
-        private XProject mProject;
+        private Project mProject;
         private string[] mProjectPlatforms;
         private string[] mProjectConfigs;
 
-        public XProjectWriter(XProject project, string[] platforms, string[] configs)
+        public XProjectWriter(Project project, string[] platforms, string[] configs)
         {
             mProject = project;
             mProjectPlatforms = platforms;
             mProjectConfigs = configs;
         }
 
-        public XProject Project { get; set; }
+        public Project Project { get { return mProject; } }
 
-        public void Write(string filename, XProject project, string[] platforms, string[] configs)
+        public void Write(string filename, Project project, string[] platforms, string[] configs)
         {
             mProject = project;
             mProjectPlatforms = platforms;
@@ -54,40 +54,40 @@ namespace MSBuild.XCode
             return string.Empty;
         }
 
-        private void ConvertElementsToLines(List<XElement> elements, List<string> lines)
+        private void ConvertElementsToLines(List<Element> elements, List<string> lines, string platform, string config)
         {
             // Build the lines
             // If contains #(Configuration) and/or #(Platform) then iterate
-            foreach (XElement e in elements)
+            foreach (Element e in elements)
             {
                 string line = e.ToString();
                 bool iterator_platform = line.Contains("#(Platform)");
                 bool iterator_config = line.Contains("#(Configuration)");
                 if (iterator_platform && iterator_config)
                 {
-                    foreach (string p in mProjectPlatforms)
+                    //foreach (string platform in mProjectPlatforms)
                     {
-                        string l1 = line.Replace("#(Platform)", p);
-                        foreach (string c in mProjectConfigs)
+                        string l1 = line.Replace("#(Platform)", platform);
+                        //foreach (string config in mProjectConfigs)
                         {
-                            string l2 = l1.Replace("#(Configuration)", c);
+                            string l2 = l1.Replace("#(Configuration)", config);
                             lines.Add(l2);
                         }
                     }
                 }
                 else if (iterator_platform)
                 {
-                    foreach (string p in mProjectPlatforms)
+                    //foreach (string platform in mProjectPlatforms)
                     {
-                        string l1 = line.Replace("#(Platform)", p);
+                        string l1 = line.Replace("#(Platform)", platform);
                         lines.Add(l1);
                     }
                 }
                 else if (iterator_config)
                 {
-                    foreach (string c in mProjectConfigs)
+                    //foreach (string config in mProjectConfigs)
                     {
-                        string l1 = line.Replace("#(Configuration)", c);
+                        string l1 = line.Replace("#(Configuration)", config);
                         lines.Add(l1);
                     }
                 }
@@ -102,23 +102,27 @@ namespace MSBuild.XCode
         {
             List<string> lines = new List<string>();
 
-            XPlatform xplatform;
+            Platform xplatform;
             if (mProject.Platforms.TryGetValue(platform, out xplatform))
             {
-                XConfig xconfig;
+                Config xconfig;
                 if (xplatform.configs.TryGetValue(config, out xconfig))
                 {
-                    List<XElement> elements;
+                    List<Element> elements;
                     if (xconfig.groups.TryGetValue(group, out elements))
                     {
-                        if (elements.Count == 1 && elements[0].Name == group)
-                            ConvertElementsToLines(elements[0].Elements, lines);
-                        else
-                            ConvertElementsToLines(elements, lines);
+                        if (elements.Count > 0)
+                        {
+                            if (elements[0].IsGroup)
+                                ConvertElementsToLines(elements[0].Elements, lines, platform, config);
+                            else
+                                ConvertElementsToLines(elements, lines, platform, config);
+                        }
                     }
                 }
             }
             return lines;
         }
+       
     }
 }

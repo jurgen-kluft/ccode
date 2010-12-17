@@ -8,7 +8,7 @@ namespace MSBuild.XCode
     /// Generic implementation of version range (see Version.docx in docs\manuals)
     /// Examples:
     ///   [1.2.0,], is version 1.2.0 and higher
-    public class XVersionRange
+    public class VersionRange
     {
         private List<Range> mRanges;
 
@@ -17,16 +17,16 @@ namespace MSBuild.XCode
             private static string[,] sDelimiters = new string[2, 2] { { "(", ")" }, { "[", "]" } };
 
             private int mIFrom;
-            private XVersion mFrom;
+            private ComparableVersion mFrom;
             private int mITo;
-            private XVersion mTo;
+            private ComparableVersion mTo;
 
             public Range()
             {
                 mIFrom = 1;
-                mFrom = new XVersion("1.0");
+                mFrom = new ComparableVersion("1.0");
                 mITo = 1;
-                mTo = new XVersion("");
+                mTo = new ComparableVersion("");
             }
 
             public Range(string range)
@@ -34,16 +34,16 @@ namespace MSBuild.XCode
                 FromString(range);
             }
 
-            public Range(XVersion unique)
+            public Range(ComparableVersion unique)
             {
-                mFrom = new XVersion(unique);
+                mFrom = new ComparableVersion(unique);
                 IncludeFrom = true;
-                mTo = new XVersion(string.Empty);
+                mTo = new ComparableVersion(string.Empty);
                 IncludeTo = false;
                 IsRange = false;
             }
 
-            public Range(XVersion from, XVersion to, bool includeFrom, bool includeTo)
+            public Range(ComparableVersion from, ComparableVersion to, bool includeFrom, bool includeTo)
             {
                 mFrom = from;
                 mTo = to;
@@ -52,7 +52,7 @@ namespace MSBuild.XCode
 
                 if (mFrom == mTo)
                 {
-                    mTo = new XVersion(string.Empty);
+                    mTo = new ComparableVersion(string.Empty);
                     IsRange = false;
                 }
                 else
@@ -66,13 +66,13 @@ namespace MSBuild.XCode
             public bool IncludeFrom { get { return mIFrom == 1; } set { mIFrom = value ? 1 : 0; } }
             public bool IncludeTo { get { return mITo == 1; } set { mITo = value ? 1 : 0; } }
 
-            public XVersion From { get { return mFrom; } set { mFrom = value; } }
-            public XVersion To { get { return mTo; } set { mTo = value; } }
+            public ComparableVersion From { get { return mFrom; } set { mFrom = value; } }
+            public ComparableVersion To { get { return mTo; } set { mTo = value; } }
             public bool IsFromNull { get { return mFrom.IsNull; } }
             public bool IsToNull { get { return mTo.IsNull; } }
 
 
-            public void Split(XVersion lowest, XVersion highest, out XVersionRange outRange, out XVersion outVersion)
+            public void Split(ComparableVersion lowest, ComparableVersion highest, out VersionRange outRange, out ComparableVersion outVersion)
             {
                 // Range cases (5):
                 // 1) Unique version
@@ -93,17 +93,17 @@ namespace MSBuild.XCode
                     {
                         // #2, From=Version ==> To=Unbounded
                         if (lowest < mFrom && highest > mFrom)  // Clamp lowest
-                            outRange = new XVersionRange(new XVersion(mFrom), new XVersion(highest), IncludeFrom, true);
+                            outRange = new VersionRange(new ComparableVersion(mFrom), new ComparableVersion(highest), IncludeFrom, true);
                         else if (lowest > mFrom)
-                            outRange = new XVersionRange(new XVersion(lowest), new XVersion(highest), true, true);
+                            outRange = new VersionRange(new ComparableVersion(lowest), new ComparableVersion(highest), true, true);
                     }
                     else if (mFrom.IsNull && !mTo.IsNull)
                     {
                         // #3, From=Unbounded ==> To=Version
                         if (lowest < mTo && highest > mTo)  // Clamp highest
-                            outRange = new XVersionRange(lowest, mTo, true, IncludeTo);
+                            outRange = new VersionRange(lowest, mTo, true, IncludeTo);
                         else if (highest < mTo)
-                            outRange = new XVersionRange(lowest, highest, true, true);
+                            outRange = new VersionRange(lowest, highest, true, true);
                     }
                     else if (!mFrom.IsNull && !mTo.IsNull)
                     {
@@ -114,7 +114,7 @@ namespace MSBuild.XCode
                         }
                         else
                         {
-                            XVersion f, t;
+                            ComparableVersion f, t;
                             bool fi = true, ti = true;
                             if (lowest < mFrom)
                             {
@@ -136,13 +136,13 @@ namespace MSBuild.XCode
                                 t = highest;
                             }
 
-                            outRange = new XVersionRange(new XVersion(f), new XVersion(t), fi, ti);
+                            outRange = new VersionRange(new ComparableVersion(f), new ComparableVersion(t), fi, ti);
                         }
                     }
                 }
             }
 
-            public bool IsInRange(XVersion version)
+            public bool IsInRange(ComparableVersion version)
             {
                 bool from = false, to = false;
                 if (IsRange)
@@ -185,8 +185,8 @@ namespace MSBuild.XCode
                     IncludeFrom = true;
                     IncludeTo = true;
                     IsRange = false;
-                    mFrom = new XVersion("1.0");
-                    mTo = new XVersion("");
+                    mFrom = new ComparableVersion("1.0");
+                    mTo = new ComparableVersion("");
                 }
                 else if (from_to.Length == 1)
                 {
@@ -194,20 +194,20 @@ namespace MSBuild.XCode
                     IncludeFrom = true;
                     IncludeTo = true;
                     IsRange = false;
-                    mFrom = new XVersion(from_to[0]);
-                    mTo = new XVersion("");
+                    mFrom = new ComparableVersion(from_to[0]);
+                    mTo = new ComparableVersion("");
                 }
                 else if (from_to.Length == 2)
                 {
                     // A real range
                     IncludeFrom = version.StartsWith("[");
                     IncludeTo = version.EndsWith("]");
-                    mFrom = new XVersion(from_to[0]);
-                    mTo = new XVersion(from_to[1]);
+                    mFrom = new ComparableVersion(from_to[0]);
+                    mTo = new ComparableVersion(from_to[1]);
 
                     if (mFrom == mTo)
                     {
-                        mTo = new XVersion(string.Empty);
+                        mTo = new ComparableVersion(string.Empty);
                         IsRange = false;
                     }
                     else
@@ -226,31 +226,31 @@ namespace MSBuild.XCode
             }
         }
 
-        public XVersionRange()
+        public VersionRange()
         {
             mRanges = new List<Range>();
         }
 
-        public XVersionRange(string range)
+        public VersionRange(string range)
         {
             mRanges = new List<Range>();
             FromString(range);
         }
 
-        public XVersionRange(XVersion unique)
+        public VersionRange(ComparableVersion unique)
         {
             mRanges = new List<Range>();
             mRanges.Add(new Range(unique));
         }
 
-        public XVersionRange(XVersion from, XVersion to, bool includeFrom, bool includeTo)
+        public VersionRange(ComparableVersion from, ComparableVersion to, bool includeFrom, bool includeTo)
         {
             mRanges = new List<Range>();
             mRanges.Add(new Range(from, to, includeFrom, includeTo));
             SetKind();
         }
 
-        public XVersion From
+        public ComparableVersion From
         {
             get
             {
@@ -294,7 +294,7 @@ namespace MSBuild.XCode
             }
         }
 
-        public XVersion To
+        public ComparableVersion To
         {
             get
             {
@@ -351,14 +351,14 @@ namespace MSBuild.XCode
 
         public EKind Kind { get; set; }
 
-        public void Add(XVersion from, XVersion to, bool includeFrom, bool includeTo)
+        public void Add(ComparableVersion from, ComparableVersion to, bool includeFrom, bool includeTo)
         {
             mRanges = new List<Range>();
             mRanges.Add(new Range(from, to, includeFrom, includeTo));
             SetKind();
         }
 
-        public bool IsInRange(XVersion version)
+        public bool IsInRange(ComparableVersion version)
         {
             bool in_range = false;
 
@@ -374,7 +374,7 @@ namespace MSBuild.XCode
             return in_range;
         }
 
-        public void Split(XVersion lowest, XVersion highest, out XVersionRange[] outRanges, out XVersion outVersion)
+        public void Split(ComparableVersion lowest, ComparableVersion highest, out VersionRange[] outRanges, out ComparableVersion outVersion)
         {
             // XVersionRange cases (5):
             // 1) Unique version
@@ -388,11 +388,11 @@ namespace MSBuild.XCode
             // Case #5 ?
             bool isCase5 = mRanges.Count == 2;
 
-            List<XVersionRange> ranges = new List<XVersionRange>();
+            List<VersionRange> ranges = new List<VersionRange>();
             foreach (Range r in mRanges)
             {
-                XVersion version;
-                XVersionRange range;
+                ComparableVersion version;
+                VersionRange range;
                 r.Split(lowest, highest, out range, out version);
                 if (version != null)
                 {
@@ -438,7 +438,7 @@ namespace MSBuild.XCode
             }
         }
 
-        public bool Merge(XVersionRange other)
+        public bool Merge(VersionRange other)
         {
             // @TODO: finalize
             bool merged = false;
@@ -551,7 +551,7 @@ namespace MSBuild.XCode
             return base.Equals(obj);
         }
 
-        public static int Compare(XVersionRange a, XVersionRange b)
+        public static int Compare(VersionRange a, VersionRange b)
         {
             bool a_null = (object)a == null;
             bool b_null = (object)b == null;
@@ -568,27 +568,27 @@ namespace MSBuild.XCode
             return -1;
         }
 
-        public static bool operator <(XVersionRange a, XVersionRange b)
+        public static bool operator <(VersionRange a, VersionRange b)
         {
             return Compare(a, b) == -1;
         }
-        public static bool operator <=(XVersionRange a, XVersionRange b)
+        public static bool operator <=(VersionRange a, VersionRange b)
         {
             return Compare(a, b) != 1;
         }
-        public static bool operator >(XVersionRange a, XVersionRange b)
+        public static bool operator >(VersionRange a, VersionRange b)
         {
             return Compare(a, b) == 1;
         }
-        public static bool operator >=(XVersionRange a, XVersionRange b)
+        public static bool operator >=(VersionRange a, VersionRange b)
         {
             return Compare(a, b) != -1;
         }
-        public static bool operator ==(XVersionRange a, XVersionRange b)
+        public static bool operator ==(VersionRange a, VersionRange b)
         {
             return Compare(a, b) == 0;
         }
-        public static bool operator !=(XVersionRange a, XVersionRange b)
+        public static bool operator !=(VersionRange a, VersionRange b)
         {
             return Compare(a, b) != 0;
         }

@@ -6,37 +6,37 @@ using System.Collections.Generic;
 
 namespace MSBuild.XCode
 {
-    public class XPom
+    public class Pom
     {
         public string Name { get; set; }
-        public XGroup Group { get; set; }
+        public Group Group { get; set; }
 
         public string IncludePath { get; set; }
         public string LibraryPath { get; set; }
         public string LibraryDep { get; set; }
 
-        public List<XAttribute> DirectoryStructure { get; set; }
+        public List<Attribute> DirectoryStructure { get; set; }
 
-        public List<XDependency> Dependencies { get; set; }
-        public List<XProject> Projects { get; set; }
-        public XVersions Versions { get; set; }
-        public Dictionary<string, XDependencyTree> DependencyTree { get; set; }
+        public List<Dependency> Dependencies { get; set; }
+        public List<Project> Projects { get; set; }
+        public Versions Versions { get; set; }
+        public Dictionary<string, DependencyTree> DependencyTree { get; set; }
 
-        public XPom()
+        public Pom()
         {
             Name = "Unknown";
-            Group = new XGroup("com.virtuos.tnt");
+            Group = new Group("com.virtuos.tnt");
 
-            DirectoryStructure = new List<XAttribute>();
-            Dependencies = new List<XDependency>();
-            Projects = new List<XProject>();
-            Versions = new XVersions();
-            DependencyTree = new Dictionary<string, XDependencyTree>();
+            DirectoryStructure = new List<Attribute>();
+            Dependencies = new List<Dependency>();
+            Projects = new List<Project>();
+            Versions = new Versions();
+            DependencyTree = new Dictionary<string, DependencyTree>();
         }
 
-        public XProject GetProjectByCategory(string category)
+        public Project GetProjectByCategory(string category)
         {
-            foreach (XProject p in Projects)
+            foreach (Project p in Projects)
             {
                 if (String.Compare(p.Category, category, true) == 0)
                     return p;
@@ -44,13 +44,13 @@ namespace MSBuild.XCode
             return null;
         }
 
-        public XPlatform GetPlatformByCategory(string platform, string category)
+        public Platform GetPlatformByCategory(string platform, string category)
         {
-            foreach (XProject prj in Projects)
+            foreach (Project prj in Projects)
             {
                 if (String.Compare(prj.Category, category, true) == 0)
                 {
-                    XPlatform p;
+                    Platform p;
                     if (prj.Platforms.TryGetValue(platform, out p))
                         return p;
                 }
@@ -61,7 +61,7 @@ namespace MSBuild.XCode
         public string[] GetCategories()
         {
             List<string> categories = new List<string>();
-            foreach (XProject prj in Projects)
+            foreach (Project prj in Projects)
             {
                 categories.Add(prj.Category);
             }
@@ -70,19 +70,19 @@ namespace MSBuild.XCode
 
         public string[] GetPlatformsForCategory(string Category)
         {
-            XProject project = GetProjectByCategory(Category);
+            Project project = GetProjectByCategory(Category);
             List<string> platforms = new List<string>();
-            foreach (XPlatform p in project.Platforms.Values)
+            foreach (Platform p in project.Platforms.Values)
                 platforms.Add(p.Name);
             return platforms.ToArray();
         }
 
         public string[] GetConfigsForPlatformsForCategory(string Platform, string Category)
         {
-            XPlatform platform = GetPlatformByCategory(Platform, Category);
+            Platform platform = GetPlatformByCategory(Platform, Category);
             List<string> configs = new List<string>();
-            foreach (XConfig c in platform.configs.Values)
-                configs.Add(c.Config);
+            foreach (Config c in platform.configs.Values)
+                configs.Add(c.Configuration);
             return configs.ToArray();
         }
 
@@ -102,9 +102,9 @@ namespace MSBuild.XCode
 
         public void PostLoad()
         {
-            foreach (XProject p in Projects)
+            foreach (Project p in Projects)
             {
-                XProject template = XGlobal.GetTemplate(p.Language);
+                Project template = Global.GetTemplate(p.Language);
                 if (template != null)
                     XProjectMerge.Merge(p, template);
             }
@@ -139,13 +139,13 @@ namespace MSBuild.XCode
                         }
                         else if (child.Name == "Dependency")
                         {
-                            XDependency dependency = new XDependency();
+                            Dependency dependency = new Dependency();
                             dependency.Read(child);
                             Dependencies.Add(dependency);
                         }
                         else if (child.Name == "Project")
                         {
-                            XProject project = new XProject();
+                            Project project = new Project();
                             project.Read(child);
                             Projects.Add(project);
                         }
@@ -155,12 +155,12 @@ namespace MSBuild.XCode
                             {
                                 foreach (XmlNode item in child.ChildNodes)
                                 {
-                                    string folder = XAttribute.Get("Folder", item, string.Empty);
+                                    string folder = Attribute.Get("Folder", item, string.Empty);
                                     if (!String.IsNullOrEmpty(folder))
-                                        DirectoryStructure.Add(new XAttribute("Folder", folder));
-                                    string file = XAttribute.Get("File", item, string.Empty);
+                                        DirectoryStructure.Add(new Attribute("Folder", folder));
+                                    string file = Attribute.Get("File", item, string.Empty);
                                     if (!String.IsNullOrEmpty(file))
-                                        DirectoryStructure.Add(new XAttribute("File", file));
+                                        DirectoryStructure.Add(new Attribute("File", file));
                                 }
                             }
                         }
@@ -169,15 +169,15 @@ namespace MSBuild.XCode
                             // Elements: IncludePath, LibraryPath
                             if (child.Name == "IncludePath")
                             {
-                                IncludePath = XElement.sGetXmlNodeValueAsText(child);
+                                IncludePath = Element.sGetXmlNodeValueAsText(child);
                             }
                             else if (child.Name == "LibraryPath")
                             {
-                                LibraryPath = XElement.sGetXmlNodeValueAsText(child);
+                                LibraryPath = Element.sGetXmlNodeValueAsText(child);
                             }
                             else if (child.Name == "LibraryDep")
                             {
-                                LibraryDep = XElement.sGetXmlNodeValueAsText(child);
+                                LibraryDep = Element.sGetXmlNodeValueAsText(child);
                             }
                         }
                     }
@@ -190,7 +190,7 @@ namespace MSBuild.XCode
             if (!root.EndsWith("\\"))
                 root = root + "\\";
 
-            foreach (XProject p in Projects)
+            foreach (Project p in Projects)
             {
                 MsDevProjectFileGenerator generator = new MsDevProjectFileGenerator(p.Name, p.UUID, MsDevProjectFileGenerator.EVersion.VS2010, MsDevProjectFileGenerator.ELanguage.CPP, p);
                 string path = p.Location.Replace("/", "\\");
@@ -208,7 +208,7 @@ namespace MSBuild.XCode
             string filename = root + Name + ".sln";
 
             List<string> projectFilenames = new List<string>();
-            foreach (XProject prj in Projects)
+            foreach (Project prj in Projects)
             {
                 string path = prj.Location.Replace("/", "\\");
                 path = path.EndsWith("\\") ? path : (path + "\\");
@@ -220,14 +220,14 @@ namespace MSBuild.XCode
             generator.Save(filename, projectFilenames);
         }
 
-        public bool BuildDependencies(string Platform, XPackageRepository localRepo, XPackageRepository remoteRepo)
+        public bool BuildDependencies(string Platform, PackageRepository localRepo, PackageRepository remoteRepo)
         {
             bool result = true;
 
-            XDependencyTree tree;
+            DependencyTree tree;
             if (!DependencyTree.TryGetValue(Platform, out tree))
             {
-                tree = new XDependencyTree();
+                tree = new DependencyTree();
                 tree.Name = Name;
                 tree.Dependencies = Dependencies;
                 tree.Package = this;
@@ -242,23 +242,23 @@ namespace MSBuild.XCode
 
         public void PrintDependencies(string Platform)
         {
-            XDependencyTree tree;
+            DependencyTree tree;
             if (DependencyTree.TryGetValue(Platform, out tree))
                 tree.Print();
         }
 
-        public bool CheckoutDependencies(string Path, string Platform, XPackageRepository localRepo)
+        public bool SyncDependencies(string Platform, PackageRepository localRepo)
         {
             bool result = false;
-            XDependencyTree tree;
+            DependencyTree tree;
             if (DependencyTree.TryGetValue(Platform, out tree))
-                result = tree.Checkout(Path, Platform, localRepo);
+                result = tree.Sync(Platform, localRepo);
             return result;
         }
 
         public void CollectProjectInformation(string Category, string Platform, string Config)
         {
-            XDependencyTree tree;
+            DependencyTree tree;
             if (DependencyTree.TryGetValue(Platform, out tree))
                 tree.CollectProjectInformation(Category, Platform, Config);
         }

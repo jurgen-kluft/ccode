@@ -8,7 +8,7 @@ namespace MSBuild.XCode
     public interface IPackageFilename
     {
         string Name { get; set; }
-        XVersion Version { get; set; }
+        ComparableVersion Version { get; set; }
         DateTime? DateTime { get; set; }
         string Branch { get; set; }
         string Platform { get; set; }
@@ -16,7 +16,7 @@ namespace MSBuild.XCode
 
     public class PackageFilename : IPackageFilename
     {
-        public PackageFilename(string name, XVersion version, string branch, string platform)
+        public PackageFilename(string name, ComparableVersion version, string branch, string platform)
         {
             Name = name;
             Version = version;
@@ -24,14 +24,14 @@ namespace MSBuild.XCode
             Branch = branch;
             Platform = platform;
         }
-        public PackageFilename(string name, XVersion version, DateTime dateTime, string branch, string platform)
+        public PackageFilename(string name, ComparableVersion version, DateTime dateTime, string branch, string platform)
             : this(name, version, branch, platform)
         {
             DateTime = dateTime;
         }
 
         public string Name { get; set; }
-        public XVersion Version { get; set; }
+        public ComparableVersion Version { get; set; }
         public DateTime? DateTime { get; set; }
         public string Branch { get; set; }
         public string Platform { get; set; }

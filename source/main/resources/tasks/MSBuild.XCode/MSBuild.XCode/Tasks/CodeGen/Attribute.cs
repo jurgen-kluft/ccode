@@ -4,9 +4,9 @@ using System.Xml;
 
 namespace MSBuild.XCode
 {
-    public class XAttribute
+    public class Attribute
     {
-        public XAttribute(string name, string value)
+        public Attribute(string name, string value)
         {
             Name = name;
             Value = value;
@@ -15,9 +15,9 @@ namespace MSBuild.XCode
         public string Name { get; set; }
         public string Value { get; set; }
 
-        public XAttribute Copy()
+        public Attribute Copy()
         {
-            XAttribute a = new XAttribute(Name, Value);
+            Attribute a = new Attribute(Name, Value);
             return a;
         }
 

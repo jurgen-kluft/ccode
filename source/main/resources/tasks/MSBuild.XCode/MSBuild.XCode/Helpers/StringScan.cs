@@ -373,7 +373,7 @@ namespace MSBuild.XCode.Helpers
                 Console.WriteLine("Match" + (++matchCount));
 				for (int i = 0; i < m.Groups.Count; i++) 
 				{
-					Group g = m.Groups[i];
+                    System.Text.RegularExpressions.Group g = m.Groups[i];
                     Console.WriteLine("Group" + i + "='" + g + "'");
 					CaptureCollection cc = g.Captures;
 					for (int j = 0; j < cc.Count; j++) 
