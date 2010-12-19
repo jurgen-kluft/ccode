@@ -1,10 +1,12 @@
-<Package Name="xcode">
-  <Group>com.virtuos.tnt</Group>
-  <Version Major="1" Minor="0"></Version>
-  <LibraryPath>libs\${PackageName}</LibraryPath>
+<Package Name="xcode" Group="com.virtuos.tnt">
+  <Versions>
+    <Version>1.0.0</Version>
+  </Versions>
 
-  <Project Name="xcode" Language="C#" Location="source\main\cs">
-    <UUID>${GUID}</UUID>
+  <LibraryPath>$(SolutionDir)target\xcode\${Platform)\libs</LibraryPath>
+
+  <Project Name="xcode" Category="Main" Language="C#" Location="source\main\cs">
+    <UUID>c81d02a1-e933-49e5-9dba-f61317eab3be</UUID>
 
     <!-- Win32 will inherit all properties from Template/Win32 -->
     <Platform Name="Win32">
@@ -15,8 +17,8 @@
     </Platform>
   </Project>
 
-  <Project Name="${PackageName}_test" Language="C++" Location="source\test\cs">
-    <UUID>${GUID}</UUID>
+  <Project Name="xcode_test" Category="UnitTest" Language="C#" Location="source\test\cs">
+    <UUID>5ea192c2-b2e8-4ccf-8c3c-6896127b5c36</UUID>
     <Dependency Project="xcode" /> 
 
     <!-- Win32 will inherit all properties from Template/Win32 -->

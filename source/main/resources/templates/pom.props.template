@@ -2,9 +2,9 @@
   <Import Project="$(SCM_LOCAL_REPO_ROOT)\com\virtuos\xcode\super_pom.props"/>
 
   <PropertyGroup>
-    <mvpackage_dir>$(MSBuildProjectDirectory)</mvpackage_dir>
-    <mvpackage_platform>Win32</mvpackage_platform>
-    <mvpackage_name>${PackageName}</mvpackage_name>
+    <PackageDir>$(MSBuildProjectDirectory)</PackageDir>
+    <PackagePlatform>Win32</PackagePlatform>
+    <PackageName>${Name}</PackageName>
   </PropertyGroup>
 
 </Project>

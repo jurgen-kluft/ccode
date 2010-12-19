@@ -6,23 +6,23 @@
     2) SCM_REMOTE_REPO_ROOT
   -->
   <PropertyGroup>
-    <XCodePackageLocalRepoURL>$(SCM_LOCAL_REPO_ROOT)\</XCodePackageLocalRepoURL>
-    <XCodePackageRemoteRepoURL>$(SCM_REMOTE_REPO_ROOT)</XCodePackageRemoteRepoURL>
+    <PackageLocalRepoURL>$(SCM_LOCAL_REPO_ROOT)\</PackageLocalRepoURL>
+    <PackageRemoteRepoURL>$(SCM_REMOTE_REPO_ROOT)</PackageRemoteRepoURL>
   </PropertyGroup>
   
   <ItemGroup>
-    <XCodePackageRepository Include="local">
-      <URL>$(XCodePackageLocalRepoURL)</URL>
-    </XCodePackageRepository>
-    <XCodePackageRepository Include="central">
-      <URL>$(XCodePackageRemoteRepoURL)</URL>
-    </XCodePackageRepository>
+    <PackageRepository Include="local">
+      <URL>$(PackageLocalRepoURL)</URL>
+    </PackageRepository>
+    <PackageRepository Include="central">
+      <URL>$(PackageRemoteRepoURL)</URL>
+    </PackageRepository>
   </ItemGroup>
 
   <PropertyGroup>
-    <XCodePackageDir></XCodePackageDir>
-    <XCodePackagePlatform>$(Platform)</XCodePackagePlatform>
-    <XCodePackageFile></XCodePackageFile>
+    <PackageDir></PackageDir>
+    <PackagePlatform>$(Platform)</PackagePlatform>
+    <PackageFile></PackageFile>
   </PropertyGroup>
 
 </Project>
