@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Text;
 using System.IO;
 using System.Xml;
+using MSBuild.XCode.Helpers;
 
 namespace MSBuild.XCode
 {
@@ -147,16 +148,14 @@ namespace MSBuild.XCode
 
         protected Dictionary<string, Element> mElements = new Dictionary<string, Element>();
         protected Dictionary<string, List<Element>> mGroups = new Dictionary<string, List<Element>>();
-        protected Dictionary<string, Config> mConfigs = new Dictionary<string, Config>();
+        protected Dictionary<string, StringItems> mConfigs = new Dictionary<string, StringItems>();
         protected Dictionary<string, string> mTypes = new Dictionary<string, string>();
-        protected Dictionary<string, Platform> mPlatforms = new Dictionary<string, Platform>();
         protected Dictionary<string, Settings> mSettings = new Dictionary<string, Settings>();
 
         public Dictionary<string, Element> elements { get { return mElements; } }
         public Dictionary<string, List<Element>> groups { get { return mGroups; } }
-        public Dictionary<string, Config> configs { get { return mConfigs; } }
+        public Dictionary<string, StringItems> configs { get { return mConfigs; } }
         public Dictionary<string, string> types { get { return mTypes; } }
-        public Dictionary<string, Platform> Platforms { get { return mPlatforms; } }
 
         public string Name { get; set; }
         public string Category { get; set; }
@@ -198,6 +197,15 @@ namespace MSBuild.XCode
             }
         }
 
+        public void Info()
+        {
+            Logger.Add(String.Format("Project                    : {0}", Name));
+            Logger.Add(String.Format("Category                   : {0}", Category));
+            Logger.Add(String.Format("Language                   : {0}", Language));
+            Logger.Add(String.Format("Location                   : {0}", Location));
+            Logger.Add(String.Format("UUID                       : {0}", UUID));
+        }
+
         public void Load(string filename)
         {
             Name = string.Empty;
@@ -226,42 +234,29 @@ namespace MSBuild.XCode
 
                 bool _continue = false;
 
-                if (String.Compare(child.Name, "Platform", true) == 0)
+                if (String.Compare(child.Name, "Configuration", true) == 0)
                 {
-                    string p = Attribute.Get("Name", child, "Unknown");
+                    StringItems platforms = new StringItems();
+                    platforms.Add(Attribute.Get("Platform", child, string.Empty), true);
+                    StringItems configs2 = new StringItems();
+                    configs2.Add(Attribute.Get("Config", child, string.Empty), true);
 
-                    Platform platform;
-                    if (!this.Platforms.TryGetValue(p, out platform))
+                    foreach(string platform in platforms.ToArray())
                     {
-                        platform = new Platform();
-                        platform.Initialize(p);
-                        this.Platforms.Add(p, platform);
-                    }
-                    platform.Read(child);
+                        StringItems items;
+                        if (!this.configs.TryGetValue(platform, out items))
+                        {
+                            items = new StringItems();
+                            this.configs.Add(platform, items);
+                        }
+                        items.Add(configs2);
+                     }
                     _continue = true;
                 }
 
                 if (_continue)
                     continue;
-
-                if (String.Compare(child.Name, "Config", true) == 0)
-                {
-                    string c = Attribute.Get("Name", child, "Unknown");
-
-                    Config config;
-                    if (!this.configs.TryGetValue(c, out config))
-                    {
-                        config = new Config();
-                        config.Initialize("Any", c);
-                        this.configs.Add(c, config);
-                    }
-                    config.Read(child);
-                    _continue = true;
-                }
-
-                if (_continue)
-                    continue;
-
+                
                 if (String.Compare(child.Name, "UUID", true) == 0)
                 {
                     UUID = Element.sGetXmlNodeValueAsText(child);
@@ -304,6 +299,33 @@ namespace MSBuild.XCode
             }
         }
 
+        public string[] GetPlatforms()
+        {
+            string[] platforms = new string[mConfigs.Keys.Count];
+            mConfigs.Keys.CopyTo(platforms, 0);
+            return platforms;
+        }
+
+        public string[] GetConfigsForPlatform(string platform)
+        {
+            StringItems items;
+            if (mConfigs.TryGetValue(platform, out items))
+            {
+                return items.ToArray();
+            }
+            return new string[0];
+        }
+
+        public bool HasPlatformWithConfig(string platform, string config)
+        {
+            StringItems items;
+            if (mConfigs.TryGetValue(platform, out items))
+            {
+                return items.Contains(config);
+            }
+            return false;
+        }
+
         public void AddPreprocessorDefinitions(string platform, string targetconfig, string value, bool concat, string seperator)
         {
             Settings settings;
@@ -344,7 +366,6 @@ namespace MSBuild.XCode
             }
             settings.AddLibraryDep(targetconfig, value, concat, seperator);
         }
-
         public string GetPreprocessorDefinitions(string platform, string config)
         {
             Settings settings;

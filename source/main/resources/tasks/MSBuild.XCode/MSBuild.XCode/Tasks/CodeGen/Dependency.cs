@@ -2,6 +2,7 @@
 using System.Xml;
 using System.Text;
 using System.Collections.Generic;
+using MSBuild.XCode.Helpers;
 
 namespace MSBuild.XCode
 {
@@ -21,6 +22,23 @@ namespace MSBuild.XCode
         public string Name { get; set; }
         public Group Group { get; set; }
         public string Type { get; set; }
+
+        public void Info()
+        {
+            Logger.Add(String.Format("Dependency                 : {0}", Name));
+            Logger.Add(String.Format("Group                      : {0}", Group.ToString()));
+            Logger.Add(String.Format("Type                       : {0}", Type));
+
+            bool first = true;
+            foreach (KeyValuePair<string, VersionRange> pair in mPlatformBranchVersions)
+            {
+                if (first)
+                    Logger.Add(String.Format("Versions[]                 : {0} = {1}", pair.Key, pair.Value.ToString()));
+                else
+                    Logger.Add(String.Format("                             {0} = {1}", pair.Key, pair.Value.ToString()));
+                first = false;
+            }
+        }
 
         private string GetBranch(string platform, string defaultBranch)
         {

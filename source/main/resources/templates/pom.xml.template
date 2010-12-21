@@ -3,18 +3,16 @@
     <Version>1.0.0</Version>
   </Versions>
 
-  <IncludePath>$(SolutionDir)target\${Name}\${Platform}\source\main\include</IncludePath>
-  <LibraryPath>$(SolutionDir)target\${Name}\${Platform}\libs</LibraryPath>
-  <LibraryDep>${Name}_${Config}_${Platform}.lib</LibraryDep>
-  
   <DirectoryStructure>
     <Item Folder="docs\manuals"/>
     <Item Folder="docs\references"/>
-    <Item Folder="source\main\${Language}"/>
-    <Item Folder="source\main\include"/>
+    <Item Folder="source\main\cpp"/>
+    <Item Folder="source\main\include\${Name}"/>
+    <Item Folder="source\main\include\${Name}\private"/>
     <Item Folder="source\main\resources"/>
-    <Item Folder="source\test\${Language}"/>
-    <Item Folder="source\test\include"/>
+    <Item Folder="source\test\cpp"/>
+    <Item Folder="source\test\include\${Name}"/>
+    <Item Folder="source\test\include\${Name}\private"/>
     <Item Folder="source\test\resources"/>
     <Item Folder="target"/>
     <Item Folder="tools"/>
@@ -26,39 +24,33 @@
     <Type>Package</Type>
   </Dependency>
 
-  <Project Name="${Name}" Category="Main" Language="${Language}" Location="source\main\${Language}">
+  <Project Name="${Name}" Category="main" Language="${Language}" Location="source\main\cpp">
     <UUID>${GUID}</UUID>
-    <Dependency Package="example_package_name"/>
-
-    <!-- Here list the Configurations of this Project -->
-    <Config Name="DevDebug"/>
-    <Config Name="DevRelease"/>
-    <Config Name="DevProfile"/>
-    <Config Name="DevFinal"/>
-
-    <Platform Name="Win32">
-      <Config Name="DevDebug"> </Config>
-      <Config Name="DevRelease"> </Config>
-      <Config Name="DevProfile"> </Config>
-      <Config Name="DevFinal"> </Config>
-    </Platform>
+    <Configuration Platform="Win32" Config="DevDebug;DevRelease;DevProfile;DevFinal"/>
+    <FileSet Include="source\main\cpp\*\*.cpp"/>
+    <FileSet Include="source\main\include\${Name}\*\*.h"/>
+    <ProjectFile MsDev="2010">
+		  <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='DevDebug|Win32'">
+		    <ClCompile>
+		      <PreprocessorDefinitions>WIN32;_DEBUG;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+		      <AdditionalIncludeDirectories>#target\${Name}\Win32\source\main\include;$(SolutionDir)source\main\include;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+				</ClCompile>
+			</ItemDefinitionGroup>
+    </ProjectFile>
   </Project>
-
-  <Project Name="${Name}_test" Category="UnitTest" Language="${Language}" Location="source\test\${Language}">
+  <Project Name="${Name}_test" Category="unittest" Language="${Language}" Location="source\test\cpp">
     <UUID>${GUID}</UUID>
-    <Dependency Project="${Name}"/>
-
-    <!-- Here list the Configurations of this Project -->
-    <Config Name="DevDebug"/>
-    <Config Name="DevRelease"/>
-
-    <Platform Name="Win32">
-      <Configuration>
-        <ConfigurationType>Application</ConfigurationType>
-      </Configuration>
-      <Config Name="DevDebug"> </Config>
-      <Config Name="DevRelease"> </Config>
-    </Platform>
+    <Configuration Platform="Win32" Config="DevDebug;DevRelease"/>
+    <FileSet Include="source\test\cpp\*\*.cpp"/>
+    <FileSet Include="source\test\include\${Name}\*\*.h"/>
+    <ProjectFile MsDev="2010">
+		  <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='DevDebug|Win32'">
+		    <ClCompile>
+		      <PreprocessorDefinitions>WIN32;_DEBUG;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+		      <AdditionalIncludeDirectories>$(SolutionDir)source\test\include;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+				</ClCompile>
+			</ItemDefinitionGroup>
+    </ProjectFile>
   </Project>
 </Package>
 

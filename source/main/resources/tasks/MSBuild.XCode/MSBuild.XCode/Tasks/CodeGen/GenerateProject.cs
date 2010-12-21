@@ -15,102 +15,20 @@ namespace MSBuild.XCode
     /// </summary>
     public class GenerateProject : Task
     {
-        #region Private instance fields
-
-        private string _templatePath;
-        private string _projectPath;
-        private string _outputPath;
-
-        private ITaskItem[] _configs = new ITaskItem[0];
-        private ITaskItem[] _platforms = new ITaskItem[0];
-        private ITaskItem[] _configurations = new ITaskItem[0];
-
-        private string _guid;
-        private string _name;
-
-        #endregion
         #region Public properties
 
         /// <summary>
-        /// Path to the xml project template
+        /// Path to the package
         /// </summary>
         [Required()]
-        public string TemplatePath
-        {
-            get { return this._templatePath; }
-            set { this._templatePath = value; }
-        }
+        public string RootDir { get; set; }
 
         /// <summary>
-        /// Path to the xml project description
+        /// Path to the templates
         /// </summary>
         [Required()]
-        public string ProjectPath
-        {
-            get { return this._projectPath; }
-            set { this._projectPath = value; }
-        }
-
-        /// <summary>
-        /// Path where the executed T4 output should be created
-        /// </summary>
-        [Required()]
-        public string OutputPath
-        {
-            get { return this._outputPath; }
-            set { this._outputPath = value; }
-        }
-
-        /// <summary>
-        /// The configurations, Debug,Release,Profile,Final
-        /// </summary>
-        [Required()]
-        public ITaskItem[] Configs
-        {
-            get { return this._configs; }
-            set { this._configs = value; }
-        }
-
-        /// <summary>
-        /// The platforms, Win32,NintendoWII,Nintendo3DS,...
-        /// </summary>
-        [Required()]
-        public ITaskItem[] Platforms
-        {
-            get { return this._platforms; }
-            set { this._platforms = value; }
-        }
-
-        /// <summary>
-        /// The configuration blocks
-        /// </summary>
-        [Required()]
-        public ITaskItem[] Configurations
-        {
-            get { return this._configurations; }
-            set { this._configurations = value; }
-        }
-
-        /// <summary>
-        /// The project name
-        /// </summary>
-        [Required()]
-        public string ProjectName
-        {
-            get { return this._name; }
-            set { this._name = value; }
-        }
-
-        /// <summary>
-        /// The project GUID
-        /// </summary>
-        [Required()]
-        public string ProjectGuid
-        {
-            get { return this._guid; }
-            set { this._guid = value; }
-        }
-
+        public string TemplateDir { get; set; }
+       
         #endregion
         #region Public instance methods
 
@@ -123,44 +41,11 @@ namespace MSBuild.XCode
         {
             bool success = false;
 #if DEBUG
-            Log.LogMessage("Template path = " + TemplatePath);
-            Log.LogMessage("Output path = " + OutputPath);
-            Log.LogMessage("Project name = " + ProjectName);
-            Log.LogMessage("Project guid = " + ProjectGuid);
+            Log.LogMessage("Template directory = " + TemplateDir);
 #endif
-
-            int i = 0;
-            string[] configs = new string[_configs.Length];
-#if DEBUG
-            Log.LogMessage("Configs " + _configs.Length.ToString());
-#endif
-            foreach (ITaskItem item in _configs)
-            {
-                Log.LogMessage(item.ToString());
-                configs[i++] = item.ToString();
-            }
-
-            i = 0;
-            string[] platforms = new string[_platforms.Length];
-#if DEBUG
-            Log.LogMessage("Platforms " + _platforms.Length.ToString());
-#endif
-            foreach (ITaskItem item in _platforms)
-            {
-                Log.LogMessage(item.ToString());
-                platforms[i++] = item.ToString();
-            }
-
-#if DEBUG
-            Log.LogMessage("Configurations " + _configurations.Length.ToString());
-#endif
-//            XProjectMerge.Merge(project, template);
-//            ProjectFileGenerator generator = new ProjectFileGenerator(ProjectName, ProjectGuid, ProjectFileGenerator.EVersion.VS2010, ProjectFileGenerator.ELanguage.CPP, platforms, configs, project);
-            _outputPath = OutputPath;
-            if (!_outputPath.EndsWith("\\"))
-                _outputPath = _outputPath + "\\";
-            _outputPath = _outputPath + ProjectName + ".vcxproj";
-
+            // Load package
+            // Load full pom
+            // Save project(s)
 
             return success;
         }

@@ -3,6 +3,7 @@ using System.IO;
 using System.Xml;
 using System.Text;
 using System.Collections.Generic;
+using MSBuild.XCode.Helpers;
 
 namespace MSBuild.XCode
 {
@@ -10,10 +11,6 @@ namespace MSBuild.XCode
     {
         public string Name { get; set; }
         public Group Group { get; set; }
-
-        public string IncludePath { get; set; }
-        public string LibraryPath { get; set; }
-        public string LibraryDep { get; set; }
 
         public List<Attribute> DirectoryStructure { get; set; }
 
@@ -34,26 +31,34 @@ namespace MSBuild.XCode
             DependencyTree = new Dictionary<string, DependencyTree>();
         }
 
+        public bool Info()
+        {
+            Logger.Add(String.Format("Name                       : {0}", Name));
+            Logger.Add(String.Format("Group                      : {0}", Group.ToString()));
+            Versions.Info();
+            {
+                Logger.Indent += 1;
+                foreach (Project p in Projects)
+                {
+                    Logger.Add(String.Format("----------------------------"));
+                    p.Info();
+                }
+
+                Logger.Add(String.Format("----------------------------"));
+                foreach (Dependency d in Dependencies)
+                    d.Info();
+
+                Logger.Indent -= 1;
+            }
+            return true;
+        }
+
         public Project GetProjectByCategory(string category)
         {
             foreach (Project p in Projects)
             {
                 if (String.Compare(p.Category, category, true) == 0)
                     return p;
-            }
-            return null;
-        }
-
-        public Platform GetPlatformByCategory(string platform, string category)
-        {
-            foreach (Project prj in Projects)
-            {
-                if (String.Compare(prj.Category, category, true) == 0)
-                {
-                    Platform p;
-                    if (prj.Platforms.TryGetValue(platform, out p))
-                        return p;
-                }
             }
             return null;
         }
@@ -71,19 +76,17 @@ namespace MSBuild.XCode
         public string[] GetPlatformsForCategory(string Category)
         {
             Project project = GetProjectByCategory(Category);
-            List<string> platforms = new List<string>();
-            foreach (Platform p in project.Platforms.Values)
-                platforms.Add(p.Name);
-            return platforms.ToArray();
+            if (project != null)
+                return project.GetPlatforms();
+            return new string[0];
         }
 
         public string[] GetConfigsForPlatformsForCategory(string Platform, string Category)
         {
-            Platform platform = GetPlatformByCategory(Platform, Category);
-            List<string> configs = new List<string>();
-            foreach (Config c in platform.configs.Values)
-                configs.Add(c.Configuration);
-            return configs.ToArray();
+            Project project = GetProjectByCategory(Category);
+            if (project!=null)
+                return project.GetConfigsForPlatform(Platform);
+            return new string[0];
         }
 
         public void Load(string filename)
@@ -102,12 +105,7 @@ namespace MSBuild.XCode
 
         public void PostLoad()
         {
-            foreach (Project p in Projects)
-            {
-                Project template = Global.GetTemplate(p.Language);
-                if (template != null)
-                    XProjectMerge.Merge(p, template);
-            }
+
         }
 
         public void Read(XmlNode node)
@@ -164,22 +162,6 @@ namespace MSBuild.XCode
                                 }
                             }
                         }
-                        else
-                        {
-                            // Elements: IncludePath, LibraryPath
-                            if (child.Name == "IncludePath")
-                            {
-                                IncludePath = Element.sGetXmlNodeValueAsText(child);
-                            }
-                            else if (child.Name == "LibraryPath")
-                            {
-                                LibraryPath = Element.sGetXmlNodeValueAsText(child);
-                            }
-                            else if (child.Name == "LibraryDep")
-                            {
-                                LibraryDep = Element.sGetXmlNodeValueAsText(child);
-                            }
-                        }
                     }
                 }
             }
@@ -192,11 +174,11 @@ namespace MSBuild.XCode
 
             foreach (Project p in Projects)
             {
-                MsDevProjectFileGenerator generator = new MsDevProjectFileGenerator(p.Name, p.UUID, MsDevProjectFileGenerator.EVersion.VS2010, MsDevProjectFileGenerator.ELanguage.CPP, p);
+                //MsDevProjectFileGenerator generator = new MsDevProjectFileGenerator(p.Name, p.UUID, MsDevProjectFileGenerator.EVersion.VS2010, MsDevProjectFileGenerator.ELanguage.CPP, p);
                 string path = p.Location.Replace("/", "\\");
                 path = path.EndsWith("\\") ? path : (path + "\\");
                 string filename = root + path + p.Name + p.Extension;
-                generator.Save(filename);
+                //generator.Save(filename);
             }
         }
 
@@ -216,8 +198,8 @@ namespace MSBuild.XCode
                 projectFilenames.Add(f);
             }
 
-            MsDevSolutionGenerator generator = new MsDevSolutionGenerator(MsDevSolutionGenerator.EVersion.VS2010, MsDevSolutionGenerator.ELanguage.CPP);
-            generator.Save(filename, projectFilenames);
+            //MsDevSolutionGenerator generator = new MsDevSolutionGenerator(MsDevSolutionGenerator.EVersion.VS2010, MsDevSolutionGenerator.ELanguage.CPP);
+            //generator.Save(filename, projectFilenames);
         }
 
         public bool BuildDependencies(string Platform, PackageRepository localRepo, PackageRepository remoteRepo)
@@ -256,11 +238,5 @@ namespace MSBuild.XCode
             return result;
         }
 
-        public void CollectProjectInformation(string Category, string Platform, string Config)
-        {
-            DependencyTree tree;
-            if (DependencyTree.TryGetValue(Platform, out tree))
-                tree.CollectProjectInformation(Category, Platform, Config);
-        }
     }
 }

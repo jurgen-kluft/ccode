@@ -2,6 +2,7 @@
 using System.Xml;
 using System.Text;
 using System.Collections.Generic;
+using MSBuild.XCode.Helpers;
 
 namespace MSBuild.XCode
 {
@@ -30,6 +31,19 @@ namespace MSBuild.XCode
         public Versions()
         {
             mPlatformBranchSpecificVersions = new Dictionary<string, ComparableVersion>();
+        }
+
+        public void Info()
+        {
+            bool first = true;
+            foreach (KeyValuePair<string, ComparableVersion> pair in mPlatformBranchSpecificVersions)
+            {
+                if (first)
+                    Logger.Add(String.Format("Versions[]                 : {0}={1}", pair.Key, pair.Value.ToString()));
+                else
+                    Logger.Add(String.Format("                             {0}={1}", pair.Key, pair.Value.ToString()));
+                first = false;
+            }
         }
 
         public void Add(string platform, ComparableVersion item)

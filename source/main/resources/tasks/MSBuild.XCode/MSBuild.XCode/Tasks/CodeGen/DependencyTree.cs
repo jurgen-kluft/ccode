@@ -2,6 +2,7 @@
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
+using MSBuild.XCode.Helpers;
 
 namespace MSBuild.XCode
 {
@@ -82,74 +83,10 @@ namespace MSBuild.XCode
             return result;
         }
 
-        private void CollectPlatformInformation(Project MainProject, Platform Platform, string Config)
-        {
-            var e1 = new { GroupName = "ClCompile", ElementName = "PreprocessorDefinitions", Index = 0 };
-            var e2 = new { GroupName = "ClCompile", ElementName = "AdditionalIncludeDirectories", Index = 1 };
-            var e3 = new { GroupName = "Link", ElementName = "AdditionalLibraryDirectories", Index = 2 };
-            var e4 = new { GroupName = "Link", ElementName = "AdditionalDependencies", Index = 3 };
-
-            var el = new[] { e1, e2, e3, e4 };
-
-            Config config;
-            if (Platform.configs.TryGetValue(Config, out config))
-            {
-                foreach (var v in el)
-                {
-                    Element e = config.FindElement(v.GroupName, v.ElementName);
-                    if (e != null)
-                    {
-                        switch (v.Index)
-                        {
-                            case 0: MainProject.AddPreprocessorDefinitions(Platform.Name, Config, e.Value, true, e.Separator); break;
-                            case 1: MainProject.AddIncludeDir(Platform.Name, Config, e.Value, true, e.Separator); break;
-                            case 2: MainProject.AddLibraryDir(Platform.Name, Config, e.Value, true, e.Separator); break;
-                            case 3: MainProject.AddLibraryDep(Platform.Name, Config, e.Value, true, e.Separator); break;
-                        }
-                    }
-                }
-            }
-        }
-
-        public void CollectProjectInformation(string Category, string Platform, string Config)
-        {
-            Project mainProject = Package.GetProjectByCategory(Category);
-            Platform mainPlatform;
-            if (mainProject.Platforms.TryGetValue(Platform, out mainPlatform))
-            {
-                Config mainConfig;
-                if (mainPlatform.configs.TryGetValue(Config, out mainConfig))
-                {
-                    foreach (XDepNode node in mAllNodes)
-                    {
-                        Project dep_project = node.Package.Pom.GetProjectByCategory(Category);
-
-                        // Prepend with $(SolutionDir)target\package_name\platform\
-                        // Where should this be configured ? in the pom.xml ?
-                        string includeDir = node.Package.Pom.IncludePath.Replace("${Platform}", Platform).Replace("${Config}", Config);
-                        mainProject.AddIncludeDir(Platform, Config, includeDir, true, ";");
-                        string libraryDir = node.Package.Pom.LibraryPath.Replace("${Platform}", Platform).Replace("${Config}", Config);
-                        mainProject.AddLibraryDir(Platform, Config, libraryDir, true, ";");
-                        string libraryDep = node.Package.Pom.LibraryDep.Replace("${Platform}", Platform).Replace("${Config}", Config);
-                        mainProject.AddLibraryDep(Platform, Config, libraryDep, true, ";");
-
-                        if (dep_project != null)
-                        {
-                            Platform platform;
-                            if (dep_project.Platforms.TryGetValue(Platform, out platform))
-                            {
-                                CollectPlatformInformation(mainProject, platform, Config);
-                            }
-                        }
-                    }
-                }
-            }
-        }
-
         public void Print()
         {
             string indent = "+";
-            Console.WriteLine(String.Format("{0} {1}, version={2}, type=Main", indent, Name, Version.ToString()));
+            Logger.Add(String.Format("{0} {1}, version={2}, type=Main", indent, Name, Version.ToString()));
             foreach (XDepNode node in mRootNodes)
                 node.Print(indent);
         }

@@ -2,6 +2,7 @@
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
+using MSBuild.XCode.Helpers;
 
 namespace MSBuild.XCode
 {
@@ -19,6 +20,9 @@ namespace MSBuild.XCode
 
         public static void Initialize()
         {
+            Logger.ToConsole = true;
+            Logger.Indentor = "\t";
+
             RemoteRepo = new PackageRepository(RemoteRepoDir, ELocation.Remote);
             CacheRepo = new PackageRepository(CacheRepoDir, ELocation.Cache);
 

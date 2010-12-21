@@ -74,32 +74,35 @@ namespace MSBuild.XCode
                     }
                 }
 
-                string[] categories = package.Pom.GetCategories();
-
-                foreach (string category in categories)
+                if (false)
                 {
-                    string[] platforms = package.Pom.GetPlatformsForCategory(category);
+                    string[] categories = package.Pom.GetCategories();
 
-                    Console.WriteLine(String.Format("Project, Category={0}", category));
-
-                    foreach (string platform in platforms)
+                    foreach (string category in categories)
                     {
-                        package.Pom.BuildDependencies(platform, Global.CacheRepo, Global.RemoteRepo);
-                        package.Pom.PrintDependencies(platform);
-                        package.Pom.SyncDependencies(platform, Global.CacheRepo);
+                        string[] platforms = package.Pom.GetPlatformsForCategory(category);
+
+                        Console.WriteLine(String.Format("Project, Category={0}", category));
+
+                        foreach (string platform in platforms)
+                        {
+                            package.Pom.BuildDependencies(platform, Global.CacheRepo, Global.RemoteRepo);
+                            package.Pom.PrintDependencies(platform);
+                            package.Pom.SyncDependencies(platform, Global.CacheRepo);
+                        }
+
+                        foreach (string platform in platforms)
+                        {
+                            string[] configs = package.Pom.GetConfigsForPlatformsForCategory(platform, category);
+                            //foreach (string config in configs)
+                            //  package.Pom.CollectProjectInformation(category, platform, config);
+                        }
                     }
 
-                    foreach (string platform in platforms)
-                    {
-                        string[] configs = package.Pom.GetConfigsForPlatformsForCategory(platform, category);
-                        foreach (string config in configs)
-                            package.Pom.CollectProjectInformation(category, platform, config);
-                    }
+                    // Generate the projects and solution
+                    package.GenerateProjects();
+                    package.GenerateSolution();
                 }
-
-                // Generate the projects and solution
-                package.GenerateProjects();
-                package.GenerateSolution();
             }
             else
             {

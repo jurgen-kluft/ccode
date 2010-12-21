@@ -3,6 +3,7 @@ using System.Configuration;
 using System.Collections.Generic;
 using Microsoft.Win32;
 using MSBuild.XCode;
+using MSBuild.XCode.Helpers;
 
 namespace MSBuild.XCode.Test
 {
@@ -20,7 +21,7 @@ namespace MSBuild.XCode.Test
             Global.Initialize();
 
             Global.RootDir = @"I:\HgDev.Modules\xbase\";
-
+            
             if (false)
             {
                 Package package = new Package();
@@ -50,8 +51,8 @@ namespace MSBuild.XCode.Test
                         foreach (string platform in platforms)
                         {
                             string[] configs = package.Pom.GetConfigsForPlatformsForCategory(platform, category);
-                            foreach (string config in configs)
-                                package.Pom.CollectProjectInformation(category, platform, config);
+                            //foreach (string config in configs)
+                              //  package.Pom.CollectProjectInformation(category, platform, config);
                         }
                     }
                 }
@@ -70,6 +71,10 @@ namespace MSBuild.XCode.Test
             construct.Execute();    //1st
             construct.RootDir = construct.RootDir + construct.Name + "\\";
             construct.Execute();    //2nd
+
+            PackageInfo info = new PackageInfo();
+            info.RootDir = Global.RootDir;
+            info.Execute();
 
             PackageCreate create = new PackageCreate();
             create.RootDir = Global.RootDir;

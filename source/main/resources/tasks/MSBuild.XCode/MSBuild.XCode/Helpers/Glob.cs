@@ -5,6 +5,7 @@ using System.Collections.Generic;
 
 namespace MSBuild.XCode.Helpers
 {
+
     public static class Globber
     {
         /// <summary>
@@ -26,7 +27,7 @@ namespace MSBuild.XCode.Helpers
         /// <param name="head">wildcard-expanded</param>
         /// <param name="tail">not yet wildcard-expanded</param>
         /// <returns></returns>
-        public static IEnumerable<string> Glob(string head, string tail)
+        private static IEnumerable<string> Glob(string head, string tail)
         {
             if (PathTail(tail) == tail)
                 foreach (string path in Directory.GetFiles(head, tail).OrderBy(s => s))

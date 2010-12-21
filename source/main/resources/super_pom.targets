@@ -64,33 +64,33 @@
   <Target Name = "Info" />
   <Target Name = "Clean" />
   
-  <Target Name="PackageCreate" DependsOnTargets="HgExtractRevision;XCodePackageVersionTime">
-    <Message Text="Package Filename: $(XCodePackageName)_$(XCodePackageVersionMajor).$(XCodePackageVersionMinor).$(XCodePackageBuildDate).$(XCodePackageBuildRev)_$(XCodePackagePlatform)"/>
-    <MSBuild.XCode.PackageCreate Path="@(XCodePackageDir)" Platform="$(XCodePackagePlatform)">
-      <Output PropertyName="XCodePackageFile" TaskParameter="Filename"/>
+  <Target Name="PackageCreate">
+    <Message Text="Package Filename: $(PackageName)_$(PackageVersionMajor).$(PackageVersionMinor).$(PackageBuildDate).$(PackageBuildRev)_$(PackagePlatform)"/>
+    <MSBuild.XCode.PackageCreate Path="@(PackageDir)" Platform="$(PackagePlatform)">
+      <Output PropertyName="PackageFile" TaskParameter="Filename"/>
     </MSBuild.XCode.PackageCreate>
   </Target>
 
   <Target Name="PackageCreatePrep">
     <!-- Delete the file in the target folder -->
     <ItemGroup>
-      <XCodeCleanFiles Include="target\$(XCodePackageName)\$(XCodePackagePlatform)\**\*.*"/>
+      <CleanFiles Include="target\$(PackageName)\$(PackagePlatform)\**\*.*"/>
     </ItemGroup>
-    <Delete Files="@(XCodeCleanFiles)"/>
+    <Delete Files="@(CleanFiles)"/>
 
     <ItemGroup>
-      <XCodePackageSrcFiles Include="source\**\*.*" Exclude="source\**\*.user;source\**\*.suo;source\**\*.sdf;source\**\*.opensdf;source\**\*.ipch"/>
-      <XCodePackageLibFiles Include="target\outdir\$(XCodePackageName)*\*$(XCodePackagePlatform)*.lib"/>
-      <XCodePackageToolsFiles Include="tools\**\*.*"/>
-      <XCodePackageDocFiles Include="docs\**\*.*"/>
-      <XCodePackagePomFiles Include="pom.xml;pom.targets;pom.props"/>
+      <PackageSrcFiles Include="source\**\*.*" Exclude="source\**\*.user;source\**\*.suo;source\**\*.sdf;source\**\*.opensdf;source\**\*.ipch"/>
+      <PackageLibFiles Include="target\outdir\$(PackageName)*\*$(PackagePlatform)*.lib"/>
+      <PackageToolsFiles Include="tools\**\*.*"/>
+      <PackageDocFiles Include="docs\**\*.*"/>
+      <PackagePomFiles Include="pom.xml;pom.targets;pom.props"/>
     </ItemGroup>
 
-    <Copy SourceFiles="@(XCodePackageSrcFiles)" DestinationFolder="target\$(XCodePackageName)\$(XCodePackagePlatform)\source\%(RecursiveDir)"/>
-    <Copy SourceFiles="@(XCodePackageLibFiles)" DestinationFolder="target\$(XCodePackageName)\$(XCodePackagePlatform)\libs"/>
-    <Copy SourceFiles="@(XCodePackageToolsFiles)" DestinationFolder="target\$(XCodePackageName)\$(XCodePackagePlatform)\tools\%(RecursiveDir)"/>
-    <Copy SourceFiles="@(XCodePackageDocFiles)" DestinationFolder="target\$(XCodePackageName)\$(XCodePackagePlatform)\docs\%(RecursiveDir)"/>
-    <Copy SourceFiles="@(XCodePackagePomFiles)" DestinationFolder="target\$(XCodePackageName)\$(XCodePackagePlatform)\"/>
+    <Copy SourceFiles="@(PackageSrcFiles)" DestinationFolder="target\$(PackageName)\$(PackagePlatform)\source\%(RecursiveDir)"/>
+    <Copy SourceFiles="@(PackageLibFiles)" DestinationFolder="target\$(PackageName)\$(PackagePlatform)\libs"/>
+    <Copy SourceFiles="@(PackageToolsFiles)" DestinationFolder="target\$(PackageName)\$(PackagePlatform)\tools\%(RecursiveDir)"/>
+    <Copy SourceFiles="@(PackageDocFiles)" DestinationFolder="target\$(PackageName)\$(PackagePlatform)\docs\%(RecursiveDir)"/>
+    <Copy SourceFiles="@(PackagePomFiles)" DestinationFolder="target\$(PackageName)\$(PackagePlatform)\"/>
   </Target>
 
   <Target Name="__Package">
@@ -100,7 +100,7 @@
 
   <!-- This will call msbuild multiple times for every item in PackageConfigTargets -->
   <Target Name="CompilePlatformForEveryTarget" Outputs="%(Package_config_targets.Identity)">
-    <MSBuild Condition=" '$(XCodePackageSolution)' != ''" Projects="$(XCodePackageSolution)" Properties="Configuration=%(XCodePackageTargets.Identity);Platform=$(XCodePackagePlatform)"/>
+    <MSBuild Condition=" '$(PackageSolution)' != ''" Projects="$(PackageSolution)" Properties="Configuration=%(PackageTargets.Identity);Platform=$(PackagePlatform)"/>
   </Target>
 
   <Target Name="__Compile">
@@ -109,7 +109,7 @@
 
   <!-- This will call msbuild multiple times for every item in PackageConfigTargets -->
   <Target Name="CleanPlatformForEveryTarget" Outputs="%(Package_config_targets.Identity)">
-    <MSBuild Projects="$(XCodePackageSolution)" Targets="Clean" Properties="Configuration=%(XCodePackageTargets.Identity);Platform=$(XCodePackagePlatform)"/>
+    <MSBuild Projects="$(PackageSolution)" Targets="Clean" Properties="Configuration=%(PackageTargets.Identity);Platform=$(PackagePlatform)"/>
   </Target>
   
   <Target Name="Clean">
@@ -117,27 +117,27 @@
   </Target>
 
   <Target Name="Construct">
-    <MSBuild.XCode.Construct TemplatePath="$(XCodePackageLocalRepoURL)com\virtuos\xcode\templates\" Path="$(XCodePackageDir)"/>
+    <MSBuild.XCode.Construct TemplatePath="$(PackageLocalRepoURL)com\virtuos\xcode\templates\" Path="$(PackageDir)"/>
   </Target>
 
-  <Target Name="Info" DependsOnTargets="HgExtractRevision;XCodePackageVersionTime">
-    <MSBuild.XCode.Info Path="$(XCodePackageDir)"/>
+  <Target Name="Info">
+    <MSBuild.XCode.Info Path="$(PackageDir)"/>
   </Target>
 
   <Target Name="PackageInstall">
-    <MSBuild.XCode.PackageInstall SourcePath="$(XCodePackageDir)" SourceFilename="$(XCodePackageFilename)" RepoPath="$(XCodePackageLocalRepoURL)"/>
+    <MSBuild.XCode.PackageInstall SourcePath="$(PackageDir)" SourceFilename="$(PackageFilename)" RepoPath="$(PackageLocalRepoURL)"/>
   </Target>
   <Target Name="__Install" DependsOnTargets="PackageInstall">
   </Target>
 
   <Target Name="PackageDeploy">
-    <MSBuild.XCode.PackageDeploy SourcePath="$(XCodePackageDir)" SourceFilename="$(XCodePackageFilename)" RepoPath="$(XCodePackageRemoteRepoURL)"/>
+    <MSBuild.XCode.PackageDeploy SourcePath="$(PackageDir)" SourceFilename="$(PackageFilename)" RepoPath="$(PackageRemoteRepoURL)"/>
   </Target>
   <Target Name="__Deploy" DependsOnTargets="PackageDeploy">
   </Target>
 
   <Target Name="PackageSync">
-    <MSBuild.XCode.PackageSync SourcePath="$(XCodePackageDir)" LocalRepoPath="$(XCodePackageLocalRepoURL)" RemoteRepoPath="$(XCodePackageRemoteRepoURL)"/>
+    <MSBuild.XCode.PackageSync SourcePath="$(PackageDir)" LocalRepoPath="$(PackageLocalRepoURL)" RemoteRepoPath="$(PackageRemoteRepoURL)"/>
   </Target>
   <Target Name="__Sync" DependsOnTargets="PackageSync">
   </Target>

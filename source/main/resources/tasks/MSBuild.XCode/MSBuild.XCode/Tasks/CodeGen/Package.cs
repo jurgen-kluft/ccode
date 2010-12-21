@@ -79,6 +79,13 @@ namespace MSBuild.XCode
             return url;
         }
 
+        public bool Info()
+        {
+            if (HasPom)
+                return Pom.Info();
+            return false;
+        }
+
         public bool Extract()
         {
             if (IsRoot)

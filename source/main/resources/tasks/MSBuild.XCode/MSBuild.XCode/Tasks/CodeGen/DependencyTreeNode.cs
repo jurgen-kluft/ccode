@@ -2,6 +2,7 @@
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
+using MSBuild.XCode.Helpers;
 
 namespace MSBuild.XCode
 {
@@ -134,7 +135,7 @@ namespace MSBuild.XCode
             else if (indent == "+") indent = "|----+";
             else indent = "     " + indent;
 
-            Console.WriteLine(String.Format("{0} {1}, version={2}, type={3}", indent, Name, Package.Version.ToString(), Dependency.Type));
+            Logger.Add(String.Format("{0} {1}, version={2}, type={3}", indent, Name, Package.Version.ToString(), Dependency.Type));
 
             if (Children != null)
             {
