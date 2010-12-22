@@ -25,8 +25,7 @@ namespace MSBuild.XCode
 
         public override bool Execute()
         {
-            if (!RootDir.EndsWith("\\"))
-                RootDir = RootDir + "\\";
+            RootDir = RootDir.EndWith('\\');
 
             Global.TemplateDir = string.Empty;
             Global.CacheRepoDir = CacheRepoDir;

@@ -21,8 +21,7 @@ namespace MSBuild.XCode
         {
             bool success = false;
 
-            if (!RootDir.EndsWith("\\"))
-                RootDir = RootDir + "\\";
+            RootDir = RootDir.EndWith('\\');
 
             Environment.CurrentDirectory = RootDir;
 

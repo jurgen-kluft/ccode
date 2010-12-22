@@ -31,8 +31,7 @@ namespace MSBuild.XCode
             // Verify the installed packages
             // Done
 
-            if (!RootDir.EndsWith("\\"))
-                RootDir = RootDir + "\\";
+            RootDir = RootDir.EndWith('\\');
 
             Package package = new Package();
             package.IsRoot = true;

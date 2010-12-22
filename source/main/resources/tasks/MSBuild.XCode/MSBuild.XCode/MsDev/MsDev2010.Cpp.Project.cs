@@ -50,9 +50,16 @@ namespace MsDev2010.Cpp.XCode
             return copy;
         }
 
-        public void Create()
+        public Project()
         {
             mXmlDocMain = new XmlDocument();
+        }
+
+        public Project(XmlNodeList nodes)
+        {
+            mXmlDocMain = new XmlDocument();
+            foreach(XmlNode node in nodes)
+                CopyTo(mXmlDocMain, null, node);
         }
 
         public bool Load(string filename)
@@ -100,6 +107,131 @@ namespace MsDev2010.Cpp.XCode
             mAllowRemoval = false;
         }
 
+        public void RemoveAllBut(Dictionary<string, StringItems> platformConfigs)
+        {
+            XmlDocument result = new XmlDocument();
+            mAllowRemoval = true;
+            string platform, config;
+            Merge(result, mXmlDocMain,
+                delegate(XmlNode node)
+                {
+                    if (GetPlatformConfig(node, out platform, out config))
+                    {
+                        StringItems items;
+                        if (platformConfigs.TryGetValue(platform, out items))
+                        {
+                            return (items.Contains(config));
+                        }
+                        return false;
+                    }
+                    return true;
+                },
+                delegate(XmlNode main, XmlNode other)
+                {
+                });
+
+            mXmlDocMain = result;
+            mAllowRemoval = false;
+        }
+
+        public bool ExpandGlobs(string rootdir, string reldir)
+        {
+            List<XmlNode> globs = new List<XmlNode>();
+
+            Merge(mXmlDocMain, mXmlDocMain,
+                delegate(XmlNode node)
+                {
+                    if (node.Name == "ClCompile" || node.Name == "ClInclude" || node.Name == "None")
+                    {
+                        foreach (XmlAttribute a in node.Attributes)
+                        {
+                            if (a.Name == "Include")
+                            {
+                                if (a.Value.Contains('*'))
+                                {
+                                    globs.Add(node);
+                                }
+                            }
+                        }
+
+                    }
+                    return true;
+                },
+                delegate(XmlNode main, XmlNode other)
+                {
+                });
+
+            // Now do the globbing
+            foreach (XmlNode node in globs)
+            {
+                XmlNode parent = node.ParentNode;
+                parent.RemoveChild(node);
+
+                string glob = node.Attributes[0].Value;
+                int index = glob.IndexOf('*');
+
+                foreach (string filename in Globber.Glob(rootdir + glob))
+                {
+                    XmlNode newNode = node.CloneNode(false);
+                    string filedir = PathUtil.RelativePathTo(reldir, Path.GetDirectoryName(filename));
+                    if (!String.IsNullOrEmpty(filedir) && !filedir.EndsWith("\\"))
+                        filedir += "\\";
+
+                    newNode.Attributes[0].Value = filedir + Path.GetFileName(filename);
+                    parent.AppendChild(newNode);
+                }
+            }
+
+            return true;
+        }
+
+        private bool GetPlatformConfig(XmlNode node, out string platform, out string config)
+        {
+            if (node.Attributes != null)
+            {
+                foreach (XmlAttribute a in node.Attributes)
+                {
+                    int begin = -1;
+                    int end = -1;
+
+                    if (a.Name == "Condition")
+                    {
+                        int cursor = a.Value.IndexOf("==");
+                        if (cursor >= 0)
+                        {
+                            cursor += 2;
+                            if ((cursor + 1) < a.Value.Length && a.Value[cursor] == '\'')
+                                cursor += 1;
+                            else
+                                cursor = -1;
+                        }
+                        begin = cursor;
+                        end = begin>=0 ? a.Value.IndexOf("'", begin) : begin;
+                    }
+                    else if (a.Name == "Include")
+                    {
+                        begin = 0;
+                        end = a.Value.Length;
+                    }
+
+                    if (begin >= 0 && end > begin)
+                    {
+                        string configplatform = a.Value.Substring(begin, end - begin);
+                        string[] items = configplatform.Split(new char[] { '|' }, StringSplitOptions.RemoveEmptyEntries);
+                        if (items.Length == 2)
+                        {
+                            config = items[0];
+                            platform = items[1];
+                            return true;
+                        }
+                        break;
+                    }
+                }
+            }
+            config = null;
+            platform = null;
+            return false;
+        }
         private bool HasCondition(XmlNode node, string platform, string config)
         {
             if (node.Attributes != null)
@@ -162,6 +294,49 @@ namespace MsDev2010.Cpp.XCode
             libraryDependencies = GetItem(platform, config, "AdditionalDependencies");
             return true;
         }
+        public string[] GetPlatforms()
+        {
+            HashSet<string> platforms = new HashSet<string>();
+            string platform, config;
+
+            Merge(mXmlDocMain, mXmlDocMain,
+                delegate(XmlNode node)
+                {
+                    if (GetPlatformConfig(node, out platform, out config))
+                    {
+                        if (!platforms.Contains(platform))
+                            platforms.Add(platform);
+                    }
+                    return true;
+                },
+                delegate(XmlNode main, XmlNode other)
+                {
+                });
+            return platforms.ToArray();
+        }
+        public string[] GetPlatformConfigs(string platform)
+        {
+            HashSet<string> configs = new HashSet<string>();
+            string _platform, config;
+
+            Merge(mXmlDocMain, mXmlDocMain,
+                delegate(XmlNode node)
+                {
+                    if (GetPlatformConfig(node, out _platform, out config))
+                    {
+                        if (String.Compare(platform, _platform, true) == 0)
+                        {
+                            if (!configs.Contains(config))
+                                configs.Add(config);
+                        }
+                    }
+                    return true;
+                },
+                delegate(XmlNode main, XmlNode other)
+                {
+                });
+            return configs.ToArray();
+        }
 
         public bool SetItem(string platform, string config, string itemName, string itemValue)
         {
@@ -216,7 +391,26 @@ namespace MsDev2010.Cpp.XCode
                 },
                 delegate(XmlNode main, XmlNode other)
                 {
-
+                    // Merge:
+                    // - PreprocessorDefinitions
+                    // - AdditionalIncludeDirectories
+                    // - AdditionalLibraryDirectories
+                    // - AdditionalDependencies
+                    if (main.ParentNode.Name == "PreprocessorDefinitions" ||
+                        main.ParentNode.Name == "AdditionalIncludeDirectories" ||
+                        main.ParentNode.Name == "AdditionalLibraryDirectories" ||
+                        main.ParentNode.Name == "AdditionalDependencies")
+                    {
+                        StringItems items = new StringItems();
+                        items.Add(other.Value, true);
+                        items.Add(main.Value, true);
+                        main.Value = items.ToString();
+                    }
+                    else
+                    {
+                        // Replace
+                        main.Value = other.Value;
+                    }
                 });
             return false;
         }

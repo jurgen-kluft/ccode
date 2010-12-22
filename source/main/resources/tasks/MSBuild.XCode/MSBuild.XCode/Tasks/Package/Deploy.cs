@@ -25,8 +25,7 @@ namespace MSBuild.XCode
 
         public override bool Execute()
         {
-            if (!RootDir.EndsWith("\\"))
-                RootDir = RootDir + "\\";
+            RootDir = RootDir.EndWith('\\');
 
             // - Verify that there are no local changes 
             // - Verify that there are no outgoing changes

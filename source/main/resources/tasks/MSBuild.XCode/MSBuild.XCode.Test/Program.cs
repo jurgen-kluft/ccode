@@ -1,4 +1,5 @@
 ﻿using System;
+using System.IO;
 using System.Configuration;
 using System.Collections.Generic;
 using Microsoft.Win32;
@@ -19,45 +20,7 @@ namespace MSBuild.XCode.Test
             Global.CacheRepoDir = @"d:\SCM_PACKAGE_REPO\";
             Global.RemoteRepoDir = @"\\cnshasap2\Hg_Repo\SCM_PACKAGE_REPO\";
             Global.Initialize();
-
-            Global.RootDir = @"I:\HgDev.Modules\xbase\";
-            
-            if (false)
-            {
-                Package package = new Package();
-                package.IsRoot = true;
-                package.Name = "xbase";
-                package.Group = new Group("com.virtuos.tnt");
-                package.RootDir = Global.RootDir;
-                package.Version = null;
-                package.Branch = "default";
-                package.Platform = "Win32";
-
-                Global.RemoteRepo.Update(package, new VersionRange("[,2.0]"));
-                Global.CacheRepo.Update(package, new VersionRange("[,2.0]"));
-                if (package.LoadFinalPom())
-                {
-                    string package_filename;
-                    package.Create(out package_filename);
-
-                    package.BuildDependencies("Win32", Global.CacheRepo, Global.RemoteRepo);
-                    package.PrintDependencies("Win32");
-                    package.SyncDependencies("Win32", Global.CacheRepo);
-
-                    string[] categories = package.Pom.GetCategories();
-                    foreach (string category in categories)
-                    {
-                        string[] platforms = package.Pom.GetPlatformsForCategory(category);
-                        foreach (string platform in platforms)
-                        {
-                            string[] configs = package.Pom.GetConfigsForPlatformsForCategory(platform, category);
-                            //foreach (string config in configs)
-                              //  package.Pom.CollectProjectInformation(category, platform, config);
-                        }
-                    }
-                }
-            }
-
+           
             // Our test project is xproject
             Global.RootDir = @"I:\HgDev.Modules\xproject\";
 
@@ -68,9 +31,13 @@ namespace MSBuild.XCode.Test
             construct.CacheRepoDir = Global.CacheRepoDir;
             construct.RemoteRepoDir = Global.RemoteRepoDir;
             construct.TemplateDir = Global.TemplateDir;
-            construct.Execute();    //1st
+            construct.Action = "init";
+            construct.Execute();
             construct.RootDir = construct.RootDir + construct.Name + "\\";
-            construct.Execute();    //2nd
+            construct.Action = "dir";
+            construct.Execute();
+            construct.Action = "vs2010";
+            construct.Execute();
 
             PackageInfo info = new PackageInfo();
             info.RootDir = Global.RootDir;

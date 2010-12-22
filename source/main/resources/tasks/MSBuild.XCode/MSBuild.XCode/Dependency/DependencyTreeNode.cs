@@ -135,7 +135,7 @@ namespace MSBuild.XCode
             else if (indent == "+") indent = "|----+";
             else indent = "     " + indent;
 
-            Logger.Add(String.Format("{0} {1}, version={2}, type={3}", indent, Name, Package.Version.ToString(), Dependency.Type));
+            Loggy.Add(String.Format("{0} {1}, version={2}, type={3}", indent, Name, Package.Version.ToString(), Dependency.Type));
 
             if (Children != null)
             {

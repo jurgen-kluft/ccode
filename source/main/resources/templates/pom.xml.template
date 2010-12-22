@@ -25,31 +25,37 @@
   </Dependency>
 
   <Project Name="${Name}" Category="main" Language="${Language}" Location="source\main\cpp">
-    <UUID>${GUID}</UUID>
-    <Configuration Platform="Win32" Config="DevDebug;DevRelease;DevProfile;DevFinal"/>
     <FileSet Include="source\main\cpp\*\*.cpp"/>
     <FileSet Include="source\main\include\${Name}\*\*.h"/>
-    <ProjectFile MsDev="2010">
-		  <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='DevDebug|Win32'">
-		    <ClCompile>
-		      <PreprocessorDefinitions>WIN32;_DEBUG;%(PreprocessorDefinitions)</PreprocessorDefinitions>
-		      <AdditionalIncludeDirectories>#target\${Name}\Win32\source\main\include;$(SolutionDir)source\main\include;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
-				</ClCompile>
-			</ItemDefinitionGroup>
+    <ProjectFile>
+			<Project DefaultTargets="Build" ToolsVersion="4.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+			  <PropertyGroup Label="Globals">
+			    <ProjectGuid>{${GUID}}</ProjectGuid>
+			  </PropertyGroup>
+			  <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='DevDebug|Win32'">
+			    <ClCompile>
+			      <PreprocessorDefinitions>WIN32;_DEBUG;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+			      <AdditionalIncludeDirectories>#target\${Name}\Win32\source\main\include;$(SolutionDir)source\main\include;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+					</ClCompile>
+				</ItemDefinitionGroup>
+			</Project>
     </ProjectFile>
   </Project>
   <Project Name="${Name}_test" Category="unittest" Language="${Language}" Location="source\test\cpp">
-    <UUID>${GUID}</UUID>
-    <Configuration Platform="Win32" Config="DevDebug;DevRelease"/>
     <FileSet Include="source\test\cpp\*\*.cpp"/>
     <FileSet Include="source\test\include\${Name}\*\*.h"/>
-    <ProjectFile MsDev="2010">
-		  <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='DevDebug|Win32'">
-		    <ClCompile>
-		      <PreprocessorDefinitions>WIN32;_DEBUG;%(PreprocessorDefinitions)</PreprocessorDefinitions>
-		      <AdditionalIncludeDirectories>$(SolutionDir)source\test\include;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
-				</ClCompile>
-			</ItemDefinitionGroup>
+    <ProjectFile>
+			<Project DefaultTargets="Build" ToolsVersion="4.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+			  <PropertyGroup Label="Globals">
+			    <ProjectGuid>{${GUID}}</ProjectGuid>
+			  </PropertyGroup>
+			  <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='DevDebug|Win32'">
+			    <ClCompile>
+			      <PreprocessorDefinitions>WIN32;_DEBUG;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+			      <AdditionalIncludeDirectories>$(SolutionDir)source\test\include;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+					</ClCompile>
+				</ItemDefinitionGroup>
+			</Project>
     </ProjectFile>
   </Project>
 </Package>

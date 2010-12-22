@@ -5,7 +5,7 @@ using System.Collections.Generic;
 
 namespace MSBuild.XCode.Helpers
 {
-    public static class Logger
+    public static class Loggy
     {
         public static bool ToConsole { get; set; }
         public static int Indent { get; set; }

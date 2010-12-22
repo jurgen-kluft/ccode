@@ -86,7 +86,7 @@ namespace MSBuild.XCode
         public void Print()
         {
             string indent = "+";
-            Logger.Add(String.Format("{0} {1}, version={2}, type=Main", indent, Name, Version.ToString()));
+            Loggy.Add(String.Format("{0} {1}, version={2}, type=Main", indent, Name, Version.ToString()));
             foreach (XDepNode node in mRootNodes)
                 node.Print(indent);
         }

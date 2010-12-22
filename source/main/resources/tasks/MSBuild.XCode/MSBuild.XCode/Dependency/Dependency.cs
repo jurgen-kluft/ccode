@@ -25,17 +25,17 @@ namespace MSBuild.XCode
 
         public void Info()
         {
-            Logger.Add(String.Format("Dependency                 : {0}", Name));
-            Logger.Add(String.Format("Group                      : {0}", Group.ToString()));
-            Logger.Add(String.Format("Type                       : {0}", Type));
+            Loggy.Add(String.Format("Dependency                 : {0}", Name));
+            Loggy.Add(String.Format("Group                      : {0}", Group.ToString()));
+            Loggy.Add(String.Format("Type                       : {0}", Type));
 
             bool first = true;
             foreach (KeyValuePair<string, VersionRange> pair in mPlatformBranchVersions)
             {
                 if (first)
-                    Logger.Add(String.Format("Versions[]                 : {0} = {1}", pair.Key, pair.Value.ToString()));
+                    Loggy.Add(String.Format("Versions[]                 : {0} = {1}", pair.Key, pair.Value.ToString()));
                 else
-                    Logger.Add(String.Format("                             {0} = {1}", pair.Key, pair.Value.ToString()));
+                    Loggy.Add(String.Format("                             {0} = {1}", pair.Key, pair.Value.ToString()));
                 first = false;
             }
         }

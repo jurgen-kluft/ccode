@@ -90,19 +90,12 @@ namespace MSBuild.XCode
         /// </summary>
         private class StringItem : Item
         {
-            private readonly static String[] QUALIFIERS = { "snapshot", "alpha", "beta", "milestone", "rc", "", "sp" };
-            private readonly static List<String> _QUALIFIERS = new List<String>() { "snapshot", "alpha", "beta", "milestone", "rc", "", "sp" };
-
-            private readonly static Dictionary<string, string> ALIASES = new Dictionary<string, string>()
-            {
-                { "ga", "" },
-                { "const", "" },
-                { "cr", "rc" }
-            };
+            private readonly static List<String> msQualifiers = new List<String>() { "snapshot", "alpha", "beta", "milestone", "rc", "", "sp" };
+            private readonly static Dictionary<string, string> msAliases = new Dictionary<string, string>() { { "ga", "" }, { "const", "" }, { "cr", "rc" } };
 
             /// A comparable for the empty-string qualifier. This one is used to determine if a given qualifier makes the
             /// version older than one without a qualifier, or more recent.
-            private static string RELEASE_VERSION_INDEX = _QUALIFIERS.IndexOf("").ToString();
+            private static string msReleaseVersionIndex = msQualifiers.IndexOf("").ToString();
 
             private string mValue;
 
@@ -125,7 +118,7 @@ namespace MSBuild.XCode
                     }
                 }
                 string v;
-                if (ALIASES.TryGetValue(value, out v))
+                if (msAliases.TryGetValue(value, out v))
                     mValue = v;
                 else
                     mValue = value;
@@ -146,7 +139,7 @@ namespace MSBuild.XCode
 
             public bool IsNull()
             {
-                return (ComparableQualifier(mValue).CompareTo(RELEASE_VERSION_INDEX) == 0);
+                return (ComparableQualifier(mValue).CompareTo(msReleaseVersionIndex) == 0);
             }
 
             /// 
@@ -164,8 +157,8 @@ namespace MSBuild.XCode
             /// 
             public static string ComparableQualifier(String qualifier)
             {
-                int i = _QUALIFIERS.IndexOf(qualifier);
-                return i == -1 ? _QUALIFIERS.Count + "-" + qualifier : i.ToString();
+                int i = msQualifiers.IndexOf(qualifier);
+                return i == -1 ? msQualifiers.Count + "-" + qualifier : i.ToString();
             }
 
             public int CompareTo(Item item)
@@ -173,7 +166,7 @@ namespace MSBuild.XCode
                 if (item == null)
                 {
                     // 1-rc < 1, 1-ga > 1
-                    return ComparableQualifier(mValue).CompareTo(RELEASE_VERSION_INDEX);
+                    return ComparableQualifier(mValue).CompareTo(msReleaseVersionIndex);
                 }
                 switch (item.GetItemType())
                 {

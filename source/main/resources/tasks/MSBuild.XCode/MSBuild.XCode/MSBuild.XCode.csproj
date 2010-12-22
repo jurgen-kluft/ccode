@@ -72,6 +72,8 @@
     <Reference Include="System.Xml" />
   </ItemGroup>
   <ItemGroup>
+    <Compile Include="Extensions\StringExt.cs" />
+    <Compile Include="Helpers\PathUtils.cs" />
     <Compile Include="Helpers\StringItems.cs" />
     <Compile Include="Helpers\Logger.cs" />
     <Compile Include="Helpers\Glob.cs" />
@@ -156,10 +158,10 @@
       <DesignTime>True</DesignTime>
       <DependentUpon>Resources.resx</DependentUpon>
     </Compile>
-    <Compile Include="Tasks\CodeGen\Attribute.cs">
+    <Compile Include="Pom\Attribute.cs">
       <SubType>Code</SubType>
     </Compile>
-    <Compile Include="Tasks\CodeGen\Element.cs">
+    <Compile Include="Pom\Element.cs">
       <SubType>Code</SubType>
     </Compile>
     <Compile Include="Tasks\CodeGen\GenerateProject.cs">
@@ -168,25 +170,25 @@
     <Compile Include="Tasks\CodeGen\GenerateSolution.cs">
       <SubType>Code</SubType>
     </Compile>
-    <Compile Include="Tasks\CodeGen\PackageRepositoryLayoutDefault.cs" />
-    <Compile Include="Tasks\CodeGen\IPackageRepositoryLayout.cs" />
-    <Compile Include="Tasks\CodeGen\IPackageRepository.cs" />
-    <Compile Include="Tasks\CodeGen\Package.cs" />
-    <Compile Include="Tasks\CodeGen\Global.cs" />
-    <Compile Include="Tasks\CodeGen\ComparableVersion.Parser.cs" />
-    <Compile Include="Tasks\CodeGen\IPackageFilename.cs" />
-    <Compile Include="Tasks\CodeGen\DependencyTreeNode.cs" />
-    <Compile Include="Tasks\CodeGen\DependencyTree.cs" />
-    <Compile Include="Tasks\CodeGen\Project.cs">
+    <Compile Include="PackageRepository\PackageRepositoryLayoutDefault.cs" />
+    <Compile Include="PackageRepository\IPackageRepositoryLayout.cs" />
+    <Compile Include="PackageRepository\IPackageRepository.cs" />
+    <Compile Include="Package\Package.cs" />
+    <Compile Include="Package\Global.cs" />
+    <Compile Include="Version\ComparableVersion.Parser.cs" />
+    <Compile Include="Package\IPackageFilename.cs" />
+    <Compile Include="Dependency\DependencyTreeNode.cs" />
+    <Compile Include="Dependency\DependencyTree.cs" />
+    <Compile Include="Pom\Project.cs">
       <SubType>Code</SubType>
     </Compile>
-    <Compile Include="Tasks\CodeGen\Versions.cs" />
-    <Compile Include="Tasks\CodeGen\PackageRepositoryFileSystem.cs" />
-    <Compile Include="Tasks\CodeGen\VersionRange.cs" />
-    <Compile Include="Tasks\CodeGen\Dependency.cs" />
-    <Compile Include="Tasks\CodeGen\Group.cs" />
-    <Compile Include="Tasks\CodeGen\Pom.cs" />
-    <Compile Include="Tasks\CodeGen\PackageRepository.cs" />
+    <Compile Include="Version\Versions.cs" />
+    <Compile Include="PackageRepository\PackageRepositoryFileSystem.cs" />
+    <Compile Include="Version\VersionRange.cs" />
+    <Compile Include="Dependency\Dependency.cs" />
+    <Compile Include="Package\Group.cs" />
+    <Compile Include="Pom\Pom.cs" />
+    <Compile Include="PackageRepository\PackageRepository.cs" />
     <Compile Include="Helpers\Math.cs" />
     <Compile Include="Helpers\StringScan.cs" />
     <Compile Include="Helpers\StringTools.cs" />
@@ -197,7 +199,7 @@
     <Compile Include="Tasks\Package\Install.cs" />
     <Compile Include="Tasks\Package\Create.cs" />
     <Compile Include="Tasks\Package\Sync.cs" />
-    <Compile Include="Tasks\CodeGen\ComparableVersion.cs" />
+    <Compile Include="Version\ComparableVersion.cs" />
   </ItemGroup>
   <ItemGroup>
     <EmbeddedResource Include="Properties\Resources.resx">

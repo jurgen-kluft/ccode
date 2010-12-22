@@ -24,8 +24,8 @@ namespace MSBuild.XCode
                 Platform = "Win32";
             if (String.IsNullOrEmpty(Branch))
                 Branch = "default";
-            if (!RootDir.EndsWith("\\"))
-                RootDir = RootDir + "\\";
+
+            RootDir = RootDir.EndWith('\\');
 
             Package package = new Package();
             package.RootDir = RootDir;

@@ -14,6 +14,12 @@ namespace MSBuild.XCode.Helpers
         {
             mItems = new HashSet<string>();
         }
+        public StringItems(string[] items)
+        {
+            mItems = new HashSet<string>();
+            foreach(string item in items)
+                AddOne(item, mItems);
+        }
 
         public void Add(string value, bool concat)
         {
@@ -44,6 +50,12 @@ namespace MSBuild.XCode.Helpers
             return mItems.ToArray();
         }
 
+        private static void AddOne(string value, HashSet<string> content)
+        {
+            if (!content.Contains(value))
+                content.Add(value);
+        }
+
         private static void Add(string value, bool concat, char seperator, HashSet<string> content)
         {
             if (!String.IsNullOrEmpty(value))
@@ -51,10 +63,7 @@ namespace MSBuild.XCode.Helpers
                 string[] values = value.Split(new char[] { seperator }, StringSplitOptions.RemoveEmptyEntries);
                 {
                     foreach (string v in values)
-                    {
-                        if (!content.Contains(v))
-                            content.Add(v);
-                    }
+                        AddOne(v, content);
                 }
             }
         }
@@ -68,6 +77,11 @@ namespace MSBuild.XCode.Helpers
                 str = str.TrimEnd(seperator);
             }
             return str;
+        }
+
+        public override string ToString()
+        {
+            return Get();
         }
     }
 }

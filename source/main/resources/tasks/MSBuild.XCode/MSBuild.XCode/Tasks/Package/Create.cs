@@ -30,8 +30,7 @@ namespace MSBuild.XCode
             if (String.IsNullOrEmpty(Platform))
                 Platform = "Win32";
 
-            if (!RootDir.EndsWith("\\"))
-                RootDir = RootDir + "\\";
+            RootDir = RootDir.EndWith('\\');
 
             Environment.CurrentDirectory = RootDir;
 

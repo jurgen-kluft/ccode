@@ -33,22 +33,22 @@ namespace MSBuild.XCode
 
         public bool Info()
         {
-            Logger.Add(String.Format("Name                       : {0}", Name));
-            Logger.Add(String.Format("Group                      : {0}", Group.ToString()));
+            Loggy.Add(String.Format("Name                       : {0}", Name));
+            Loggy.Add(String.Format("Group                      : {0}", Group.ToString()));
             Versions.Info();
             {
-                Logger.Indent += 1;
+                Loggy.Indent += 1;
                 foreach (Project p in Projects)
                 {
-                    Logger.Add(String.Format("----------------------------"));
+                    Loggy.Add(String.Format("----------------------------"));
                     p.Info();
                 }
 
-                Logger.Add(String.Format("----------------------------"));
+                Loggy.Add(String.Format("----------------------------"));
                 foreach (Dependency d in Dependencies)
                     d.Info();
 
-                Logger.Indent -= 1;
+                Loggy.Indent -= 1;
             }
             return true;
         }
@@ -105,7 +105,10 @@ namespace MSBuild.XCode
 
         public void PostLoad()
         {
-
+            foreach (Project prj in Projects)
+            {
+                prj.ConstructFullMsDevProject();
+            }
         }
 
         public void Read(XmlNode node)
@@ -169,23 +172,20 @@ namespace MSBuild.XCode
 
         public void GenerateProjects(string root)
         {
-            if (!root.EndsWith("\\"))
-                root = root + "\\";
+            root = root.EndWith('\\');
 
             foreach (Project p in Projects)
             {
-                //MsDevProjectFileGenerator generator = new MsDevProjectFileGenerator(p.Name, p.UUID, MsDevProjectFileGenerator.EVersion.VS2010, MsDevProjectFileGenerator.ELanguage.CPP, p);
                 string path = p.Location.Replace("/", "\\");
-                path = path.EndsWith("\\") ? path : (path + "\\");
-                string filename = root + path + p.Name + p.Extension;
-                //generator.Save(filename);
+                path = path.EndWith('\\');
+                string filename = path + p.Name + p.Extension;
+                p.Save(root, filename);
             }
         }
 
         public void GenerateSolution(string root)
         {
-            if (!root.EndsWith("\\"))
-                root = root + "\\";
+            root = root.EndWith('\\');
 
             string filename = root + Name + ".sln";
 
@@ -193,13 +193,13 @@ namespace MSBuild.XCode
             foreach (Project prj in Projects)
             {
                 string path = prj.Location.Replace("/", "\\");
-                path = path.EndsWith("\\") ? path : (path + "\\");
+                path = path.EndWith('\\');
                 string f = path + prj.Name + prj.Extension;
                 projectFilenames.Add(f);
             }
 
-            //MsDevSolutionGenerator generator = new MsDevSolutionGenerator(MsDevSolutionGenerator.EVersion.VS2010, MsDevSolutionGenerator.ELanguage.CPP);
-            //generator.Save(filename, projectFilenames);
+            MsDev2010.Cpp.XCode.Solution solution = new MsDev2010.Cpp.XCode.Solution(MsDev2010.Cpp.XCode.Solution.EVersion.VS2010, MsDev2010.Cpp.XCode.Solution.ELanguage.CPP);
+            solution.Save(filename, projectFilenames);
         }
 
         public bool BuildDependencies(string Platform, PackageRepository localRepo, PackageRepository remoteRepo)
