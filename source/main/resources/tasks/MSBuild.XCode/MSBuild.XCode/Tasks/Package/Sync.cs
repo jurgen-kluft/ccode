@@ -4,6 +4,7 @@ using System.IO;
 using System.Collections.Generic;
 using System.Text;
 using Microsoft.Build.Utilities;
+using MSBuild.XCode.Helpers;
 
 namespace MSBuild.XCode
 {
@@ -20,17 +21,6 @@ namespace MSBuild.XCode
 
         public override bool Execute()
         {
-            // Load pom.xml of main package
-            // Add dependencies to the dependency list
-            // 1
-            // For every dependency copy it from remote to local repository if necessary
-            // For every dependency load its pom.xml and add it to the dependency list
-            // Go back to 1 until no new dependencies (watch out for cyclic dependencies)
-            // Analyze the dependency list and resolve version conflicts
-            // Install the dependency packages in the target folder
-            // Verify the installed packages
-            // Done
-
             RootDir = RootDir.EndWith('\\');
 
             Package package = new Package();
@@ -46,9 +36,9 @@ namespace MSBuild.XCode
                     string package_filename;
                     package.Create(out package_filename);
 
-                    if (package.BuildDependencies(Platform, Global.CacheRepo, Global.RemoteRepo))
+                    if (package.BuildDependencies(Platform))
                     {
-                        if (package.SyncDependencies(Platform, Global.CacheRepo))
+                        if (package.SyncDependencies(Platform))
                         {
                             return true;
                         }

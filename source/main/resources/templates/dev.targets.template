@@ -1,0 +1,4 @@
+<Project ToolsVersion="4.0" DefaultTargets="Info" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+  <Import Project="dev.props"/>
+  <Import Project="$(REMOTE_REPO_ROOT)\com\virtuos\xcode\publish\super_pom.targets"/>
+</Project>

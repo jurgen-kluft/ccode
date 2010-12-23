@@ -57,14 +57,14 @@ namespace MSBuild.XCode
         }
 
         // Synchronize dependencies
-        public bool Sync(string Platform, PackageRepository localRepo)
+        public bool Sync(string Platform)
         {
             bool result = true;
 
             // Checkout all dependencies
             foreach (XDepNode depNode in mAllNodes)
             {
-                if (!localRepo.Update(depNode.Package))
+                if (!Global.CacheRepo.Update(depNode.Package))
                 {
                     // Failed to checkout!
                     result = false;

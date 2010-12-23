@@ -134,8 +134,33 @@ namespace MsDev2010.Cpp.XCode
             mAllowRemoval = false;
         }
 
+        public bool FilterItems(string[] to_remove, string[] to_keep)
+        {
+            Merge(mXmlDocMain, mXmlDocMain,
+                delegate(XmlNode node)
+                {
+                    return true;
+                },
+                delegate(XmlNode main, XmlNode other)
+                {
+                    if (main.ParentNode.Name == "PreprocessorDefinitions" ||
+                        main.ParentNode.Name == "AdditionalDependencies" ||
+                        main.ParentNode.Name == "AdditionalLibraryDirectories" ||
+                        main.ParentNode.Name == "AdditionalIncludeDirectories")
+                    {
+                        StringItems items = new StringItems();
+                        items.Add(main.Value, true);
+                        items.Filter(to_remove, to_keep);
+                        main.Value = items.ToString();
+                    }
+                });
+
+            return true;
+        }
+
         public bool ExpandGlobs(string rootdir, string reldir)
         {
+            List<XmlNode> removals = new List<XmlNode>();
             List<XmlNode> globs = new List<XmlNode>();
 
             Merge(mXmlDocMain, mXmlDocMain,
@@ -151,6 +176,10 @@ namespace MsDev2010.Cpp.XCode
                                 {
                                     globs.Add(node);
                                 }
+                                else if (String.IsNullOrEmpty(a.Value))
+                                {
+                                    removals.Add(node);
+                                }
                             }
                         }
 
@@ -160,6 +189,18 @@ namespace MsDev2010.Cpp.XCode
                 delegate(XmlNode main, XmlNode other)
                 {
                 });
+
+            // Removal
+            foreach (XmlNode node in removals)
+            {
+                XmlNode parent = node.ParentNode;
+                parent.RemoveChild(node);
+                if (parent.ChildNodes.Count == 0)
+                {
+                    XmlNode grandparent = parent.ParentNode;
+                    grandparent.RemoveChild(parent);
+                }
+            }
 
             // Now do the globbing
             foreach (XmlNode node in globs)

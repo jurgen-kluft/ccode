@@ -16,9 +16,9 @@ namespace MSBuild.XCode.Test
         [STAThread]
         static void Main()
         {
-            Global.TemplateDir = @"D:\SCM_PACKAGE_REPO\com\virtuos\xcode\templates\";
-            Global.CacheRepoDir = @"d:\SCM_PACKAGE_REPO\";
-            Global.RemoteRepoDir = @"\\cnshasap2\Hg_Repo\SCM_PACKAGE_REPO\";
+            Global.TemplateDir = @"\\cnshasap2\Hg_Repo\PACKAGE_REPO\com\virtuos\xcode\data\templates\";
+            Global.CacheRepoDir = @"d:\PACKAGE_REPO\";
+            Global.RemoteRepoDir = @"\\cnshasap2\Hg_Repo\PACKAGE_REPO\";
             Global.Initialize();
            
             // Our test project is xproject

@@ -25,8 +25,6 @@
   </Dependency>
 
   <Project Name="${Name}" Category="main" Language="${Language}" Location="source\main\cpp">
-    <FileSet Include="source\main\cpp\*\*.cpp"/>
-    <FileSet Include="source\main\include\${Name}\*\*.h"/>
     <ProjectFile>
 			<Project DefaultTargets="Build" ToolsVersion="4.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
 			  <PropertyGroup Label="Globals">
@@ -35,15 +33,45 @@
 			  <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='DevDebug|Win32'">
 			    <ClCompile>
 			      <PreprocessorDefinitions>WIN32;_DEBUG;%(PreprocessorDefinitions)</PreprocessorDefinitions>
-			      <AdditionalIncludeDirectories>#target\${Name}\Win32\source\main\include;$(SolutionDir)source\main\include;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+			      <AdditionalIncludeDirectories>#target\${Name}\Win32\source\main\include;@$(SolutionDir)source\main\include;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
 					</ClCompile>
+			    <Link>
+			      <AdditionalLibraryDirectories>#target\${Name}\Win32\libs</AdditionalLibraryDirectories>
+			      <AdditionalDependencies>#${Name}_DevDebug_Win32.lib</AdditionalDependencies>
+			    </Link>
 				</ItemDefinitionGroup>
-			</Project>
+			  <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='DevRelease|Win32'">
+			    <ClCompile>
+			      <PreprocessorDefinitions>WIN32;NDEBUG;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+			      <AdditionalIncludeDirectories>#target\${Name}\Win32\source\main\include;@$(SolutionDir)source\main\include;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+					</ClCompile>
+			    <Link>
+			      <AdditionalLibraryDirectories>#target\${Name}\Win32\libs</AdditionalLibraryDirectories>
+			      <AdditionalDependencies>#${Name}_DevRelease_Win32.lib</AdditionalDependencies>
+			    </Link>
+				</ItemDefinitionGroup>
+			  <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='DevFinal|Win32'">
+			    <ClCompile>
+			      <PreprocessorDefinitions>WIN32;NDEBUG;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+			      <AdditionalIncludeDirectories>#target\${Name}\Win32\source\main\include;@$(SolutionDir)source\main\include;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+					</ClCompile>
+			    <Link>
+			      <AdditionalLibraryDirectories>#target\${Name}\Win32\libs</AdditionalLibraryDirectories>
+			      <AdditionalDependencies>#${Name}_DevFinal_Win32.lib</AdditionalDependencies>
+			    </Link>
+				</ItemDefinitionGroup>
+			  <ItemGroup>
+			    <ClCompile Include="source\main\cpp\*.cpp" />
+			    <ClCompile Include="source\main\cpp\*\*.cpp" />
+			  </ItemGroup>
+			  <ItemGroup>
+			    <ClInclude Include="source\main\include\${Name}\*.h" />
+			    <ClInclude Include="source\main\include\${Name}\*\*.h" />
+			  </ItemGroup>
+			</Project>				
     </ProjectFile>
   </Project>
   <Project Name="${Name}_test" Category="unittest" Language="${Language}" Location="source\test\cpp">
-    <FileSet Include="source\test\cpp\*\*.cpp"/>
-    <FileSet Include="source\test\include\${Name}\*\*.h"/>
     <ProjectFile>
 			<Project DefaultTargets="Build" ToolsVersion="4.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
 			  <PropertyGroup Label="Globals">
@@ -51,10 +79,24 @@
 			  </PropertyGroup>
 			  <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='DevDebug|Win32'">
 			    <ClCompile>
-			      <PreprocessorDefinitions>WIN32;_DEBUG;%(PreprocessorDefinitions)</PreprocessorDefinitions>
-			      <AdditionalIncludeDirectories>$(SolutionDir)source\test\include;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+			      <PreprocessorDefinitions>@WIN32;@_DEBUG;@%(PreprocessorDefinitions)</PreprocessorDefinitions>
+			      <AdditionalIncludeDirectories>@$(SolutionDir)source\test\include;@%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
 					</ClCompile>
 				</ItemDefinitionGroup>
+			  <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='DevRelease|Win32'">
+			    <ClCompile>
+			      <PreprocessorDefinitions>@WIN32;@NDEBUG;@%(PreprocessorDefinitions)</PreprocessorDefinitions>
+			      <AdditionalIncludeDirectories>@$(SolutionDir)source\test\include;@%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+					</ClCompile>
+				</ItemDefinitionGroup>
+			  <ItemGroup>
+			    <ClCompile Include="source\test\cpp\*.cpp" />
+			    <ClCompile Include="source\test\cpp\*\*.cpp" />
+			  </ItemGroup>
+			  <ItemGroup>
+			    <ClInclude Include="source\test\include\*.h" />
+			    <ClInclude Include="source\test\include\*\*.h" />
+			  </ItemGroup>				
 			</Project>
     </ProjectFile>
   </Project>

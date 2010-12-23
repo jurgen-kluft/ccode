@@ -33,7 +33,10 @@ namespace MSBuild.XCode
             Mercurial.StatusCommand hg_status = new Mercurial.StatusCommand(Mercurial.FileStatusIncludes.MARM);
             IEnumerable<Mercurial.FileStatus> repo_status = hg_repo.Status(hg_status);
             if (!repo_status.IsEmpty())
+            {
+                Loggy.Add("Not everything checked-in!");
                 return false;
+            }
 
             Global.TemplateDir = string.Empty;
             Global.CacheRepoDir = CacheRepoDir;

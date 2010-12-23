@@ -292,7 +292,7 @@ namespace MSBuild.XCode
                     string pomPath = RootDir + "pom.xml";
                     if (File.Exists(pomPath))
                     {
-                        Pom = new Pom();
+                        Pom = new Pom(Pom.EType.Main);
                         Pom.Load(pomPath);
                         return true;
                     }
@@ -315,7 +315,7 @@ namespace MSBuild.XCode
                                 string xml = reader.ReadToEnd();
                                 reader.Close();
                                 stream.Close();
-                                Pom = new Pom();
+                                Pom = new Pom(Pom.EType.Dependency);
                                 Pom.LoadXml(xml);
                                 return true;
                             }
@@ -337,11 +337,25 @@ namespace MSBuild.XCode
             return false;
         }
 
-        public bool BuildDependencies(string Platform, PackageRepository localRepo, PackageRepository remoteRepo)
+        public bool BuildDependencies(string Platform)
         {
             if (HasPom && IsRoot)
             {
-                Pom.BuildDependencies(Platform, localRepo, remoteRepo);
+                Pom.BuildDependencies(Platform);
+            }
+            return false;
+        }
+
+        public bool BuildAllDependencies()
+        {
+            if (HasPom && IsRoot)
+            {
+                foreach (string platform in Pom.Platforms)
+                {
+                    if (!Pom.BuildDependencies(platform))
+                        return false;
+                }
+                return true;
             }
             return false;
         }
@@ -356,13 +370,45 @@ namespace MSBuild.XCode
             }
             return false;
         }
+
+        public bool PrintAllDependencies()
+        {
+            if (HasPom && IsRoot)
+            {
+                foreach (string p in Pom.Platforms)
+                {
+                    Loggy.Add(String.Format("Dependencies for platform : {0}", p));
+                    Loggy.Indent += 1;
+                    // Has valid dependency tree ?
+                    Pom.PrintDependencies(p);
+                    Loggy.Indent -= 1;
+                }
+                return true;
+            }
+            return false;
+        }
  
-        public bool SyncDependencies(string Platform, PackageRepository localRepo)
+        public bool SyncDependencies(string Platform)
         {
             if (HasPom && IsRoot)
             {
                 // Has valid dependency tree ?
-                Pom.SyncDependencies(Platform, localRepo);
+                Pom.SyncDependencies(Platform);
+            }
+            return false;
+        }
+
+        public bool SyncAllDependencies()
+        {
+            if (HasPom && IsRoot)
+            {
+                foreach (string platform in Pom.Platforms)
+                {
+                    // Has valid dependency tree ?
+                    if (!Pom.SyncDependencies(platform))
+                        return false;
+                }
+                return true;
             }
             return false;
         }

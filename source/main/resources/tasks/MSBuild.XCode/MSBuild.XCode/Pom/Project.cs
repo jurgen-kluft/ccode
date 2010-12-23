@@ -20,6 +20,7 @@ namespace MSBuild.XCode
         public Dictionary<string, StringItems> Configs { get { return mConfigs; } }
 
         public string Name { get; set; }
+        public bool Main { get; set; }
         public string Category { get; set; }
         public string Language { get; set; }
         public string Location { get; set; }
@@ -65,18 +66,6 @@ namespace MSBuild.XCode
             Loggy.Add(String.Format("Location                   : {0}", Location));
         }
 
-        public void Load(string filename)
-        {
-            Name = string.Empty;
-            Category = "Main";
-            Language = string.Empty;
-            Location = string.Empty;
-
-            XmlDocument xmlDoc = new XmlDocument();
-            xmlDoc.Load(filename);
-            Read(xmlDoc.FirstChild);
-        }
-
         public void Read(XmlNode node)
         {
             Initialize();
@@ -113,6 +102,25 @@ namespace MSBuild.XCode
                         }
                     }
                 }
+            }
+
+            // Filter items:
+            //    If Main
+            //       Remove '#' items
+            //       Keep '@' items
+            //       Keep non-tagged items
+            //    Else
+            //       Remove '@' items
+            //       Keep '#' items
+            //       Keep non-tagged items
+            //    Endif
+            if (Main)
+            {
+                mMsDevProject.FilterItems(new string[] { "#" }, new string[] { "@" });
+            }
+            else
+            {
+                mMsDevProject.FilterItems(new string[] { "@" }, new string[] { "#" });
             }
 
             // Now extract the platforms and configs from the ProjectFile

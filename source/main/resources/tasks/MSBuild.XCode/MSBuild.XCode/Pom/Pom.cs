@@ -12,21 +12,33 @@ namespace MSBuild.XCode
         public string Name { get; set; }
         public Group Group { get; set; }
 
+        public EType Type { get; set; }
+        public bool Main { get { return Type == EType.Main; } set { if (value) Type = EType.Main; else Type = EType.Dependency; } }
+
         public List<Attribute> DirectoryStructure { get; set; }
 
         public List<Dependency> Dependencies { get; set; }
         public List<Project> Projects { get; set; }
+        public List<string> Platforms { get; set; }
         public Versions Versions { get; set; }
         public Dictionary<string, DependencyTree> DependencyTree { get; set; }
 
-        public Pom()
+        public enum EType
+        {
+            Main,
+            Dependency,
+        }
+
+        public Pom(EType type)
         {
             Name = "Unknown";
             Group = new Group("com.virtuos.tnt");
+            Type = type;
 
             DirectoryStructure = new List<Attribute>();
             Dependencies = new List<Dependency>();
             Projects = new List<Project>();
+            Platforms = new List<string>();
             Versions = new Versions();
             DependencyTree = new Dictionary<string, DependencyTree>();
         }
@@ -147,6 +159,7 @@ namespace MSBuild.XCode
                         else if (child.Name == "Project")
                         {
                             Project project = new Project();
+                            project.Main = Main;
                             project.Read(child);
                             Projects.Add(project);
                         }
@@ -168,11 +181,32 @@ namespace MSBuild.XCode
                     }
                 }
             }
+
+            HashSet<string> all_platforms = new HashSet<string>();
+            string[] categories = GetCategories();
+            foreach (string category in categories)
+            {
+                string[] platforms = GetPlatformsForCategory(category);
+                foreach (string platform in platforms)
+                {
+                    if (!all_platforms.Contains(platform))
+                        all_platforms.Add(platform);
+                }
+            }
+            foreach (string platform in all_platforms)
+                Platforms.Add(platform);
         }
 
         public void GenerateProjects(string root)
         {
             root = root.EndWith('\\');
+
+            // Here merge with all Projects of the dependency packages, but only:
+            ///    1) PreprocessorDefinitions
+            ///    2) AdditionalIncludeDirectories
+            ///    3) AdditionalDependencies
+            ///    4) AdditionalLibraryDirectories
+            /// Also, missing nodes should not be added!
 
             foreach (Project p in Projects)
             {
@@ -202,7 +236,7 @@ namespace MSBuild.XCode
             solution.Save(filename, projectFilenames);
         }
 
-        public bool BuildDependencies(string Platform, PackageRepository localRepo, PackageRepository remoteRepo)
+        public bool BuildDependencies(string Platform)
         {
             bool result = true;
 
@@ -229,12 +263,12 @@ namespace MSBuild.XCode
                 tree.Print();
         }
 
-        public bool SyncDependencies(string Platform, PackageRepository localRepo)
+        public bool SyncDependencies(string Platform)
         {
             bool result = false;
             DependencyTree tree;
             if (DependencyTree.TryGetValue(Platform, out tree))
-                result = tree.Sync(Platform, localRepo);
+                result = tree.Sync(Platform);
             return result;
         }
 

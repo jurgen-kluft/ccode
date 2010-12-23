@@ -35,6 +35,41 @@ namespace MSBuild.XCode.Helpers
             }           
         }
 
+        private string Filter(string str, string[] prefixes, bool remove)
+        {
+            foreach (string prefix in prefixes)
+            {
+                if (str.StartsWith(prefix))
+                {
+                    if (remove)
+                        return null;
+
+                    string f = str.Substring(prefix.Length, str.Length - prefix.Length);
+                    return f;
+                }
+            }
+            return str;
+        }
+
+        public void Filter(string[] remove, string[] keep)
+        {
+            HashSet<string> filteredItems = new HashSet<string>();
+            foreach (string s in mItems)
+            {
+                string f = Filter(s, remove, true);
+                if (!String.IsNullOrEmpty(f))
+                {
+                    f = Filter(f, keep, false);
+                    if (!String.IsNullOrEmpty(f))
+                    {
+                        if (!filteredItems.Contains(f))
+                            filteredItems.Add(f);
+                    }
+                }
+            }
+            mItems = filteredItems;
+        }
+
         public string Get()
         {
             return Get(mItems, mSeperator);

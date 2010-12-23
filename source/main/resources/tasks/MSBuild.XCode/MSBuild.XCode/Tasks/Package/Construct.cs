@@ -60,6 +60,10 @@ namespace MSBuild.XCode
                     package.Branch = string.Empty;
                     package.Platform = string.Empty;
 
+                    package.BuildAllDependencies();
+                    package.SyncAllDependencies();
+                    package.PrintAllDependencies();
+
                     // Generate the projects and solution
                     package.GenerateProjects();
                     package.GenerateSolution();
