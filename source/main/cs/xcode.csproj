@@ -126,7 +126,6 @@
   </ItemGroup>
   <ItemGroup>
     <Content Include="App.ico" />
-    <None Include="Resources\XCode-Large.png" />
   </ItemGroup>
   <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />
   <PropertyGroup>
