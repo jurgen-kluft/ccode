@@ -1,26 +1,17 @@
 <Project ToolsVersion="4.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
   <!-- 
     Package repository configuration
-    The system needs to define 2 environment variables:
-    1) SCM_LOCAL_REPO_ROOT
-    2) SCM_REMOTE_REPO_ROOT
+    1) CACHE_REPO_ROOT
+    2) REMOTE_REPO_ROOT
   -->
   <PropertyGroup>
-    <PackageLocalRepoURL>$(SCM_LOCAL_REPO_ROOT)\</PackageLocalRepoURL>
-    <PackageRemoteRepoURL>$(SCM_REMOTE_REPO_ROOT)</PackageRemoteRepoURL>
+    <PackageLocalRepoURL>$(CACHE_REPO_ROOT)\</PackageLocalRepoURL>
+    <PackageRemoteRepoURL>$(REMOTE_REPO_ROOT)</PackageRemoteRepoURL>
   </PropertyGroup>
   
-  <ItemGroup>
-    <PackageRepository Include="local">
-      <URL>$(PackageLocalRepoURL)</URL>
-    </PackageRepository>
-    <PackageRepository Include="central">
-      <URL>$(PackageRemoteRepoURL)</URL>
-    </PackageRepository>
-  </ItemGroup>
-
   <PropertyGroup>
-    <PackageDir></PackageDir>
+    <PackageName></PackageName>
+    <PackageDir>$(MSBuildProjectDirectory)</PackageDir>
     <PackagePlatform>$(Platform)</PackagePlatform>
     <PackageFile></PackageFile>
   </PropertyGroup>

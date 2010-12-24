@@ -1,5 +1,5 @@
 <Project ToolsVersion="4.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
-  <Import Project="$(SCM_LOCAL_REPO_ROOT)\com\virtuos\xcode\super_pom.props"/>
+  <Import Project="..\dev.props"/>
 
   <PropertyGroup>
     <PackageDir>$(MSBuildProjectDirectory)</PackageDir>

@@ -15,7 +15,12 @@ namespace MSBuild.XCode
 {
     public class PackageInfo : Task
     {
+        [Required]
         public string RootDir { get; set; }
+        [Required]
+        public string CacheRepoDir { get; set; }
+        [Required]
+        public string RemoteRepoDir { get; set; }
 
         public override bool Execute()
         {
@@ -23,12 +28,14 @@ namespace MSBuild.XCode
             Loggy.TaskLogger = Log;
 
             RootDir = RootDir.EndWith('\\');
+            CacheRepoDir = CacheRepoDir.EndWith('\\');
+            RemoteRepoDir = RemoteRepoDir.EndWith('\\');
 
             Environment.CurrentDirectory = RootDir;
 
             Global.TemplateDir = string.Empty;
-            Global.CacheRepoDir = Global.CacheRepoDir;
-            Global.RemoteRepoDir = Global.RemoteRepoDir;
+            Global.CacheRepoDir = CacheRepoDir;
+            Global.RemoteRepoDir = RemoteRepoDir;
             Global.Initialize();
 
             // - Verify that there are no local changes 

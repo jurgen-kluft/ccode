@@ -66,7 +66,7 @@
   
   <Target Name="PackageCreate">
     <Message Text="Package Filename: $(PackageName)_$(PackageVersionMajor).$(PackageVersionMinor).$(PackageBuildDate).$(PackageBuildRev)_$(PackagePlatform)"/>
-    <MSBuild.XCode.PackageCreate Path="@(PackageDir)" Platform="$(PackagePlatform)">
+    <MSBuild.XCode.PackageCreate RootDir="@(PackageDir)" Platform="$(PackagePlatform)">
       <Output PropertyName="PackageFile" TaskParameter="Filename"/>
     </MSBuild.XCode.PackageCreate>
   </Target>
@@ -116,28 +116,34 @@
     <CallTarget Targets="CleanPlatformForEveryTarget"/>
   </Target>
 
+  <Target Name="Init">
+    <MSBuild.XCode.PackageConstruct Name="$(PackageName)" Action="init" Language="C++" RootDir="$(PackageDir)" TemplateDir="$(PackageLocalRepoURL)com\virtuos\xcode\publish\templates\" CacheRepoDir="$(PackageLocalRepoURL)" RemoteRepoDir="$(PackageRemoteRepoURL)"/>
+  </Target>
+  <Target Name="InitDirs">
+    <MSBuild.XCode.PackageConstruct Name="" Action="dir" RootDir="$(PackageDir)" TemplateDir="$(PackageLocalRepoURL)com\virtuos\xcode\publish\templates\" CacheRepoDir="$(PackageLocalRepoURL)" RemoteRepoDir="$(PackageRemoteRepoURL)"/>
+  </Target>
   <Target Name="Construct">
-    <MSBuild.XCode.Construct TemplatePath="$(PackageLocalRepoURL)com\virtuos\xcode\templates\" Path="$(PackageDir)"/>
+    <MSBuild.XCode.PackageConstruct Name="" Action="vs2010" RootDir="$(PackageDir)" TemplateDir="$(PackageLocalRepoURL)com\virtuos\xcode\publish\templates\" CacheRepoDir="$(PackageLocalRepoURL)" RemoteRepoDir="$(PackageRemoteRepoURL)"/>
   </Target>
 
   <Target Name="Info">
-    <MSBuild.XCode.Info Path="$(PackageDir)"/>
+    <MSBuild.XCode.PackageInfo RootDir="$(PackageDir)" CacheRepoDir="$(PackageLocalRepoURL)" RemoteRepoDir="$(PackageRemoteRepoURL)"/>
   </Target>
 
   <Target Name="PackageInstall">
-    <MSBuild.XCode.PackageInstall SourcePath="$(PackageDir)" SourceFilename="$(PackageFilename)" RepoPath="$(PackageLocalRepoURL)"/>
+    <MSBuild.XCode.PackageInstall RootDir="$(PackageDir)" Filename="$(PackageFilename)" LocalRepoDir="$(PackageLocalRepoURL)" RemoteRepoDir="$(PackageRemoteRepoURL)"/>
   </Target>
   <Target Name="__Install" DependsOnTargets="PackageInstall">
   </Target>
 
   <Target Name="PackageDeploy">
-    <MSBuild.XCode.PackageDeploy SourcePath="$(PackageDir)" SourceFilename="$(PackageFilename)" RepoPath="$(PackageRemoteRepoURL)"/>
+    <MSBuild.XCode.PackageDeploy RootDir="$(PackageDir)" Filename="$(PackageFilename)" LocalRepoDir="$(PackageLocalRepoURL)" RemoteRepoDir="$(PackageRemoteRepoURL)"/>
   </Target>
   <Target Name="__Deploy" DependsOnTargets="PackageDeploy">
   </Target>
 
   <Target Name="PackageSync">
-    <MSBuild.XCode.PackageSync SourcePath="$(PackageDir)" LocalRepoPath="$(PackageLocalRepoURL)" RemoteRepoPath="$(PackageRemoteRepoURL)"/>
+    <MSBuild.XCode.PackageSync RootDir="$(PackageDir)" Platform="$(PackagePlatform)" LocalRepoDir="$(PackageLocalRepoURL)" RemoteRepoDir="$(PackageRemoteRepoURL)"/>
   </Target>
   <Target Name="__Sync" DependsOnTargets="PackageSync">
   </Target>

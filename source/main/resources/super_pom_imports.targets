@@ -4,7 +4,7 @@
     Include MSBuild XCode Tasks.
   -->
   <Choose>
-    <When Condition="Exists('$(SCM_LOCAL_REPO_ROOT)\com\virtuos\xcode\tasks\MSBuild.XCode.dll')">
+    <When Condition="Exists('$(CACHE_REPO_ROOT)\com\virtuos\xcode\publish\MSBuild.XCode.dll')">
       <PropertyGroup>
         <MSBuildXCodeTasksAvailable>true</MSBuildXCodeTasksAvailable>
     </PropertyGroup>
@@ -15,7 +15,7 @@
     </PropertyGroup>
     </Otherwise>
   </Choose>
-  <Import Project="$(SCM_LOCAL_REPO_ROOT)\com\virtuos\xcode\tasks\MSBuild.XCode.Targets" Condition="'$(MSBuildXCodeTasksAvailable)' == 'true'" />
+  <Import Project="$(CACHE_REPO_ROOT)\com\virtuos\xcode\publish\MSBuild.XCode.Targets" Condition="'$(MSBuildXCodeTasksAvailable)' == 'true'" />
    
   <!-- 
     Generate messages (informations, warnings and errors) depending of
