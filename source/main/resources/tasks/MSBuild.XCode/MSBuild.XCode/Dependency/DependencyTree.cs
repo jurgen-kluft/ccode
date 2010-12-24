@@ -8,8 +8,8 @@ namespace MSBuild.XCode
 {
     public class DependencyTree
     {
-        private List<XDepNode> mRootNodes;
-        private List<XDepNode> mAllNodes;
+        private List<DependencyTreeNode> mRootNodes;
+        private List<DependencyTreeNode> mAllNodes;
 
         public string Name { get; set; }
         public ComparableVersion Version { get; set; }
@@ -18,28 +18,28 @@ namespace MSBuild.XCode
 
         public bool Build(string Platform)
         {
-            Queue<XDepNode> dependencyQueue = new Queue<XDepNode>();
-            Dictionary<string, XDepNode> dependencyFlatMap = new Dictionary<string, XDepNode>();
+            Queue<DependencyTreeNode> dependencyQueue = new Queue<DependencyTreeNode>();
+            Dictionary<string, DependencyTreeNode> dependencyFlatMap = new Dictionary<string, DependencyTreeNode>();
             foreach (Dependency d in Dependencies)
             {
-                XDepNode depNode = new XDepNode(d, 1);
+                DependencyTreeNode depNode = new DependencyTreeNode(d, 1);
                 dependencyQueue.Enqueue(depNode);
                 dependencyFlatMap.Add(depNode.Name, depNode);
             }
 
             // These are the root nodes of the tree
-            mRootNodes = new List<XDepNode>();
-            foreach (XDepNode node in dependencyFlatMap.Values)
+            mRootNodes = new List<DependencyTreeNode>();
+            foreach (DependencyTreeNode node in dependencyFlatMap.Values)
                 mRootNodes.Add(node);
 
             // Breadth-First 
             while (dependencyQueue.Count > 0)
             {
-                XDepNode node = dependencyQueue.Dequeue();
-                List<XDepNode> newDepNodes = node.Build(dependencyFlatMap, Platform);
+                DependencyTreeNode node = dependencyQueue.Dequeue();
+                List<DependencyTreeNode> newDepNodes = node.Build(dependencyFlatMap, Platform);
                 if (newDepNodes != null)
                 {
-                    foreach (XDepNode n in newDepNodes)
+                    foreach (DependencyTreeNode n in newDepNodes)
                         dependencyQueue.Enqueue(n);
                 }
                 else
@@ -49,8 +49,8 @@ namespace MSBuild.XCode
             }
 
             // Store all dependency nodes in a list
-            mAllNodes = new List<XDepNode>();
-            foreach (XDepNode node in dependencyFlatMap.Values)
+            mAllNodes = new List<DependencyTreeNode>();
+            foreach (DependencyTreeNode node in dependencyFlatMap.Values)
                 mAllNodes.Add(node);
 
             return true;
@@ -62,7 +62,7 @@ namespace MSBuild.XCode
             bool result = true;
 
             // Checkout all dependencies
-            foreach (XDepNode depNode in mAllNodes)
+            foreach (DependencyTreeNode depNode in mAllNodes)
             {
                 if (!Global.CacheRepo.Update(depNode.Package))
                 {
@@ -87,7 +87,7 @@ namespace MSBuild.XCode
         {
             string indent = "+";
             Loggy.Add(String.Format("{0} {1}, version={2}, type=Main", indent, Name, Version.ToString()));
-            foreach (XDepNode node in mRootNodes)
+            foreach (DependencyTreeNode node in mRootNodes)
                 node.Print(indent);
         }
     }

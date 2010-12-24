@@ -20,6 +20,7 @@ namespace MSBuild.XCode
         public override bool Execute()
         {
             bool success = false;
+            Loggy.TaskLogger = Log;
 
             RootDir = RootDir.EndWith('\\');
 

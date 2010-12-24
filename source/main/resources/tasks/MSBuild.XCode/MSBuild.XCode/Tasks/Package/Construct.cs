@@ -10,11 +10,11 @@ namespace MSBuild.XCode
 {
     public class PackageConstruct : Task
     {
-        [Required]
+
         public string Name { get; set; }
         [Required]
         public string Action { get; set; }      ///< init, dir, vs2010
-        [Required]
+
         public string Language { get; set; }
         [Required]
         public string RootDir { get; set; }
@@ -27,9 +27,13 @@ namespace MSBuild.XCode
 
         public override bool Execute()
         {
+            Loggy.TaskLogger = Log;
+
             if (String.IsNullOrEmpty(Action))
                 Action = "dir";
             Action = Action.ToLower();
+            if (String.IsNullOrEmpty(Language))
+                Language = "cpp";
 
             RootDir = RootDir.EndWith('\\');
             TemplateDir = TemplateDir.EndWith('\\');
@@ -105,21 +109,29 @@ namespace MSBuild.XCode
             }
             else if (Action.StartsWith("init"))
             {
-                string DstPath = RootDir + Name + "\\";
-                if (!Directory.Exists(DstPath))
+                if (!String.IsNullOrEmpty(Name))
                 {
-                    Directory.CreateDirectory(DstPath);
+                    string DstPath = RootDir + Name + "\\";
+                    if (!Directory.Exists(DstPath))
+                    {
+                        Directory.CreateDirectory(DstPath);
 
-                    // pom.targets.template ==> pom.targets
-                    // pom.props.template ==> pom.props
-                    // pom.xml.template ==> pom.xml
-                    FileCopy(TemplateDir + "pom.targets.template", DstPath + "pom.targets");
-                    FileCopy(TemplateDir + "pom.props.template", DstPath + "pom.props");
-                    FileCopy(TemplateDir + "pom.xml.template", DstPath + "pom.xml");
+                        // pom.targets.template ==> pom.targets
+                        // pom.props.template ==> pom.props
+                        // pom.xml.template ==> pom.xml
+                        FileCopy(TemplateDir + "pom.targets.template", DstPath + "pom.targets");
+                        FileCopy(TemplateDir + "pom.props.template", DstPath + "pom.props");
+                        FileCopy(TemplateDir + "pom.xml.template", DstPath + "pom.xml");
+                    }
+                    else
+                    {
+                        Loggy.Add(String.Format("Error: Action {0} failed in Package::Construct since directory already exists", Action));
+                        return false;
+                    }
                 }
                 else
                 {
-                    Loggy.Add(String.Format("Error: Action {0} failed in Package::Construct since directory already exists", Action));
+                    Loggy.Add(String.Format("Error: Action {0} failed in Package::Construct since 'Name' was not specified", Action));
                     return false;
                 }
             }

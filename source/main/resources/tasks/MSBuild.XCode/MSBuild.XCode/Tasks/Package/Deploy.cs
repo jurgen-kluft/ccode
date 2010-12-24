@@ -25,8 +25,10 @@ namespace MSBuild.XCode
 
         public override bool Execute()
         {
-            RootDir = RootDir.EndWith('\\');
+            Loggy.TaskLogger = Log;
 
+            RootDir = RootDir.EndWith('\\');
+            
             // - Verify that there are no local changes 
             // - Verify that there are no outgoing changes
             Mercurial.Repository hg_repo = new Mercurial.Repository(RootDir);

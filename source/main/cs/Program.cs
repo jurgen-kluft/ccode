@@ -1,10 +1,17 @@
 ﻿using System;
-using System.Configuration;
+using System.Reflection;
+using System.Runtime;
+using System.Drawing;
 using System.Windows;
-using System.Collections.Generic;
-using System.Linq;
 using System.Windows.Forms;
+using System.Diagnostics;
+using System.Globalization;
+using System.IO;
+using System.Collections;
+using System.Collections.Generic;
+using System.Diagnostics.CodeAnalysis;
 using Microsoft.Win32;
+using Microsoft.Build.BuildEngine;
 
 namespace xcode
 {
@@ -16,6 +23,7 @@ namespace xcode
         [STAThread]
         static void Main()
         {
+           
             Application.EnableVisualStyles();
             Application.SetCompatibleTextRenderingDefault(false);
             Application.Run(new Main());

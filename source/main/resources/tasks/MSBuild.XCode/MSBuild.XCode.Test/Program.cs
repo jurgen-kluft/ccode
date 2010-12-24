@@ -27,7 +27,6 @@ namespace MSBuild.XCode.Test
             PackageConstruct construct = new PackageConstruct();
             construct.Name = "xproject";
             construct.RootDir = @"i:\HgDev.Modules\";
-            construct.Language = "cpp";
             construct.CacheRepoDir = Global.CacheRepoDir;
             construct.RemoteRepoDir = Global.RemoteRepoDir;
             construct.TemplateDir = Global.TemplateDir;

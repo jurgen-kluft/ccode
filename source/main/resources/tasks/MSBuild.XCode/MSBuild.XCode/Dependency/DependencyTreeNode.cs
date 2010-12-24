@@ -6,16 +6,16 @@ using MSBuild.XCode.Helpers;
 
 namespace MSBuild.XCode
 {
-    public class XDepNode
+    public class DependencyTreeNode
     {
         public string Name { get { return Dependency.Name; } }
         public bool Done { get; set; }
         public int Depth { get; set; }
         public Dependency Dependency { get; set; }
-        public Dictionary<string, XDepNode> Children { get; set; }
+        public Dictionary<string, DependencyTreeNode> Children { get; set; }
         public Package Package { get; set; }
 
-        public XDepNode(Dependency dep, int depth)
+        public DependencyTreeNode(Dependency dep, int depth)
         {
             Done = false;
             Depth = depth;
@@ -24,13 +24,13 @@ namespace MSBuild.XCode
             Package = null;
         }
 
-        public List<XDepNode> Build(Dictionary<string, XDepNode> dependencyFlatMap, string Platform)
+        public List<DependencyTreeNode> Build(Dictionary<string, DependencyTreeNode> dependencyFlatMap, string Platform)
         {
             // Sync remote repo to local repo which will cache the best version in our local repo
             // Obtain the package from the local repo of the best version
             // Get the dependencies of that package and add them as children
             // - Some dependencies already have been processed, maybe resulting in a different best version due to a different branch of version range
-            List<XDepNode> newDepNodes = null;
+            List<DependencyTreeNode> newDepNodes = null;
 
             if (!Done)
             {
@@ -48,16 +48,16 @@ namespace MSBuild.XCode
                     Global.CacheRepo.Add(Package, ELocation.Remote);
                     if (Package.LoadFinalPom())
                     {
-                        newDepNodes = new List<XDepNode>();
+                        newDepNodes = new List<DependencyTreeNode>();
 
-                        Children = new Dictionary<string, XDepNode>();
-                        Dictionary<string, XDepNode> dependencyTreeMap = Children;
+                        Children = new Dictionary<string, DependencyTreeNode>();
+                        Dictionary<string, DependencyTreeNode> dependencyTreeMap = Children;
                         foreach (Dependency d in Package.Pom.Dependencies)
                         {
-                            XDepNode depNode;
+                            DependencyTreeNode depNode;
                             if (!dependencyFlatMap.TryGetValue(d.Name, out depNode))
                             {
-                                depNode = new XDepNode(d, Depth + 1);
+                                depNode = new DependencyTreeNode(d, Depth + 1);
                                 newDepNodes.Add(depNode);
                                 dependencyTreeMap.Add(depNode.Name, depNode);
                                 dependencyFlatMap.Add(depNode.Name, depNode);
@@ -135,11 +135,13 @@ namespace MSBuild.XCode
             else if (indent == "+") indent = "|----+";
             else indent = "     " + indent;
 
-            Loggy.Add(String.Format("{0} {1}, version={2}, type={3}", indent, Name, Package.Version.ToString(), Dependency.Type));
+            string versionStr = Package.Version == null ? "?" : Package.Version.ToString();
+
+            Loggy.Add(String.Format("{0} {1}, version={2}, type={3}", indent, Name, versionStr, Dependency.Type));
 
             if (Children != null)
             {
-                foreach (XDepNode child in Children.Values)
+                foreach (DependencyTreeNode child in Children.Values)
                     child.Print(indent);
             }
         }

@@ -20,6 +20,8 @@ namespace MSBuild.XCode
 
         public override bool Execute()
         {
+            Loggy.TaskLogger = Log;
+
             if (String.IsNullOrEmpty(Platform))
                 Platform = "Win32";
             if (String.IsNullOrEmpty(Branch))

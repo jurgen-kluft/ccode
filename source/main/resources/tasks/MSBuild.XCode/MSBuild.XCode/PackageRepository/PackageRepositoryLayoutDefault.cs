@@ -11,6 +11,9 @@ namespace MSBuild.XCode
     {
         public string VersionToDir(ComparableVersion version)
         {
+            if (version == null)
+                return "1.0.0";
+
             string path = string.Empty;
             string[] components = version.ToStrings(3);
             // Keep it to X.Y.Z
@@ -26,7 +29,8 @@ namespace MSBuild.XCode
         
         public string VersionToFilenameWithoutExtension(string package_name, string branch, string platform, ComparableVersion version)
         {
-            return String.Format("{0}+{1}+{2}+{3}", package_name, version.ToString(), branch, platform);
+            string versionStr = (version == null) ? "1.0.0" : version.ToString();
+            return String.Format("{0}+{1}+{2}+{3}", package_name, versionStr, branch, platform);
         }
 
         public string FilenameToVersion(string filename)

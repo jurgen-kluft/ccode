@@ -3,34 +3,11 @@
     <Version>1.0.0</Version>
   </Versions>
 
-  <LibraryPath>$(SolutionDir)target\xcode\${Platform)\libs</LibraryPath>
-
   <Project Name="xcode" Category="Main" Language="C#" Location="source\main\cs">
-    <UUID>c81d02a1-e933-49e5-9dba-f61317eab3be</UUID>
 
-    <!-- Win32 will inherit all properties from Template/Win32 -->
-    <Platform Name="Win32">
-      <!-- Debug will inherit all properties from Template/Win32/Debug -->
-      <Config Name="Debug"> </Config>
-      <!-- Release will inherit all properties from Template/Win32/Release -->
-      <Config Name="Release"> </Config>
-    </Platform>
   </Project>
 
   <Project Name="xcode_test" Category="UnitTest" Language="C#" Location="source\test\cs">
-    <UUID>5ea192c2-b2e8-4ccf-8c3c-6896127b5c36</UUID>
-    <Dependency Project="xcode" /> 
 
-    <!-- Win32 will inherit all properties from Template/Win32 -->
-    <Platform Name="Win32">
-      <Configuration>
-        <ConfigurationType>Application</ConfigurationType>
-      </Configuration>
-      <!-- Debug will inherit all properties from Template/Win32/Debug -->
-      <Config Name="Debug"> </Config>
-      <!-- Release will inherit all properties from Template/Win32/Release -->
-      <Config Name="Release"> </Config>
-    </Platform>
   </Project>
-
 </Package>

@@ -25,6 +25,7 @@ namespace MSBuild.XCode
 
         public override bool Execute()
         {
+            Loggy.TaskLogger = Log;
             RootDir = RootDir.EndWith('\\');
 
             Global.TemplateDir = string.Empty;

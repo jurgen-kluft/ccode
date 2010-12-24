@@ -19,13 +19,12 @@ namespace MSBuild.XCode
         public string Platform { get; set; }
 
         [Output]
-        public string Version{ get; set; }
-        [Output]
         public string Filename { get; set; }
 
         public override bool Execute()
         {
             bool success = false;
+            Loggy.TaskLogger = Log;
 
             if (String.IsNullOrEmpty(Platform))
                 Platform = "Win32";
@@ -60,6 +59,11 @@ namespace MSBuild.XCode
             {
                 Filename = filename;
                 success = true;
+            }
+            else
+            {
+                Filename = string.Empty;
+                success = false;
             }
 
             return success;
