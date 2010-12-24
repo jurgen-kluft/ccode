@@ -16,17 +16,17 @@ namespace MSBuild.XCode.Test
         [STAThread]
         static void Main()
         {
-            Global.TemplateDir = @"\\cnshasap2\Hg_Repo\PACKAGE_REPO\com\virtuos\xcode\data\templates\";
+            Global.TemplateDir = @"\\cnshasap2\Hg_Repo\PACKAGE_REPO\com\virtuos\xcode\publish\templates\";
             Global.CacheRepoDir = @"d:\PACKAGE_REPO\";
             Global.RemoteRepoDir = @"\\cnshasap2\Hg_Repo\PACKAGE_REPO\";
             Global.Initialize();
            
             // Our test project is xproject
-            Global.RootDir = @"I:\HgDev.Modules\xproject\";
+            Global.RootDir = @"I:\Packages\xproject\";
 
             PackageConstruct construct = new PackageConstruct();
             construct.Name = "xproject";
-            construct.RootDir = @"i:\HgDev.Modules\";
+            construct.RootDir = @"i:\Packages\";
             construct.CacheRepoDir = Global.CacheRepoDir;
             construct.RemoteRepoDir = Global.RemoteRepoDir;
             construct.TemplateDir = Global.TemplateDir;

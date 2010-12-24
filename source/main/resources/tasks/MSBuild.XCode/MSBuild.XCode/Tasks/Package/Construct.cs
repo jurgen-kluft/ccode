@@ -10,7 +10,6 @@ namespace MSBuild.XCode
 {
     public class PackageConstruct : Task
     {
-
         public string Name { get; set; }
         [Required]
         public string Action { get; set; }      ///< init, dir, vs2010
@@ -119,9 +118,27 @@ namespace MSBuild.XCode
                         // pom.targets.template ==> pom.targets
                         // pom.props.template ==> pom.props
                         // pom.xml.template ==> pom.xml
-                        FileCopy(TemplateDir + "pom.targets.template", DstPath + "pom.targets");
-                        FileCopy(TemplateDir + "pom.props.template", DstPath + "pom.props");
-                        FileCopy(TemplateDir + "pom.xml.template", DstPath + "pom.xml");
+                        bool file_copy_result = false;
+                        if (FileCopy(TemplateDir + "pom.targets.template", DstPath + "pom.targets"))
+                        {
+                            if (FileCopy(TemplateDir + "pom.props.template", DstPath + "pom.props"))
+                            {
+                                if (FileCopy(TemplateDir + "pom.xml.template", DstPath + "pom.xml"))
+                                {
+                                    file_copy_result = true;
+                                }
+                            }
+                        }
+                        if (!file_copy_result)
+                        {
+                            Loggy.Add(String.Format("Error: Action {0} failed in Package::Construct to copy the template (pom.targets, pom.props and pom.xml) files", Action));
+                        }
+
+                        // Init the Mercurial repository, add the above files and commit
+                        Mercurial.Repository hg_repo = new Mercurial.Repository(DstPath);
+                        hg_repo.Init();
+                        hg_repo.Add(".");
+                        hg_repo.Commit("init (xcode)");
                     }
                     else
                     {

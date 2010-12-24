@@ -24,6 +24,7 @@ namespace MSBuild.XCode
         public static bool Initialize()
         {
             Loggy.ToConsole = true;
+            Loggy.TaskLogger = null;
             Loggy.Indentor = "\t";
 
             if (!Directory.Exists(CacheRepoDir))
@@ -36,10 +37,13 @@ namespace MSBuild.XCode
                 Loggy.Add(String.Format("Error: Initialization of Global failed since remote repo {0} doesn't exist", RemoteRepoDir));
                 return false;
             }
-            if (!Directory.Exists(TemplateDir))
+            if (!String.IsNullOrEmpty(TemplateDir))
             {
-                Loggy.Add(String.Format("Error: Initialization of Global failed since template dir {0} doesn't exist", TemplateDir));
-                return false;
+                if (!Directory.Exists(TemplateDir))
+                {
+                    Loggy.Add(String.Format("Error: Initialization of Global failed since template dir {0} doesn't exist", TemplateDir));
+                    return false;
+                }
             }
 
             RemoteRepo = new PackageRepository(RemoteRepoDir, ELocation.Remote);

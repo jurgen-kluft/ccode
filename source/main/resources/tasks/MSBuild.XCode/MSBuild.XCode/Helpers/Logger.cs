@@ -18,7 +18,7 @@ namespace MSBuild.XCode.Helpers
 
         public static void Add(string line)
         {
-            if (TaskLogger != null)
+            if (TaskLogger != null && TaskLogger.TaskResources!=null)
             {
                 TaskLogger.LogMessage(line);
             }
