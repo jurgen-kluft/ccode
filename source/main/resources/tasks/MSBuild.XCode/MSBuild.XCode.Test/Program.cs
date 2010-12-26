@@ -16,6 +16,15 @@ namespace MSBuild.XCode.Test
         [STAThread]
         static void Main()
         {
+            MsDev2010.Cs.XCode.Project p1 = new MsDev2010.Cs.XCode.Project();
+            p1.Load(@"d:\Dev\HgDev.Modules\xcode\source\main\resources\templates\main.csproj");
+            MsDev2010.Cs.XCode.Project p2 = new MsDev2010.Cs.XCode.Project();
+            p2.Load(@"d:\temp\test_cs_project\package.csproj");
+
+            p2.Merge(p1);
+            p2.ExpandGlobs(@"d:\temp\test_cs_project\", @"d:\temp\test_cs_project\");
+
+
             Global.TemplateDir = @"\\cnshasap2\Hg_Repo\PACKAGE_REPO\com\virtuos\xcode\publish\templates\";
             Global.CacheRepoDir = @"d:\PACKAGE_REPO\";
             Global.RemoteRepoDir = @"\\cnshasap2\Hg_Repo\PACKAGE_REPO\";
