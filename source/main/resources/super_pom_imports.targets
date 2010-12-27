@@ -1,0 +1,30 @@
+<Project ToolsVersion="4.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+ 
+  <!-- 
+    Include MSBuild XCode Tasks.
+  -->
+  <Choose>
+    <When Condition="Exists('$(CACHE_REPO_ROOT)\com\virtuos\xcode\publish\MSBuild.XCode.dll')">
+      <PropertyGroup>
+        <MSBuildXCodeTasksAvailable>true</MSBuildXCodeTasksAvailable>
+    </PropertyGroup>
+    </When>
+    <Otherwise>
+      <PropertyGroup>
+        <MSBuildXCodeTasksAvailable>false</MSBuildXCodeTasksAvailable>
+    </PropertyGroup>
+    </Otherwise>
+  </Choose>
+  <Import Project="$(CACHE_REPO_ROOT)\com\virtuos\xcode\publish\MSBuild.XCode.Targets" Condition="'$(MSBuildXCodeTasksAvailable)' == 'true'" />
+   
+  <!-- 
+    Generate messages (informations, warnings and errors) depending of
+    the current configuration and environment.
+  -->
+  
+  <Target Name="CodEnvironmentExtensionChecks">
+    <Warning Condition="'$(MSBuildXCodeTasksAvailable)' == 'false'" Text="MSBuild XCode tasks are not available" />
+  </Target>
+
+</Project>
+
