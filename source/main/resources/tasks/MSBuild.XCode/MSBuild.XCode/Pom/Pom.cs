@@ -17,6 +17,7 @@ namespace MSBuild.XCode
 
         public List<Attribute> DirectoryStructure { get; set; }
 
+        public Dictionary<string, List<KeyValuePair<string,string>>> Content { get; set; }
         public List<Dependency> Dependencies { get; set; }
         public List<Project> Projects { get; set; }
         public List<string> Platforms { get; set; }
@@ -36,6 +37,7 @@ namespace MSBuild.XCode
             Type = type;
 
             DirectoryStructure = new List<Attribute>();
+            Content = new Dictionary<string, List<KeyValuePair<string, string>>>();
             Dependencies = new List<Dependency>();
             Projects = new List<Project>();
             Platforms = new List<string>();
@@ -149,6 +151,31 @@ namespace MSBuild.XCode
                         if (child.Name == "Versions")
                         {
                             Versions.Read(child);
+                        }
+                        else if (child.Name == "Content")
+                        {
+                            if (child.HasChildNodes)
+                            {
+                                foreach (XmlNode item in child.ChildNodes)
+                                {
+                                    string platform = Attribute.Get("Platform", item, "*");
+                                    string src = Attribute.Get("Src", item, string.Empty);
+                                    if (!String.IsNullOrEmpty(src))
+                                    {
+                                        string dst = Attribute.Get("Dst", item, string.Empty);
+                                        if (!String.IsNullOrEmpty(dst))
+                                        {
+                                            List<KeyValuePair<string,string>> items;
+                                            if (!Content.TryGetValue(platform, out items))
+                                            {
+                                                items = new List<KeyValuePair<string, string>>();
+                                                Content.Add(platform, items);
+                                            }
+                                            items.Add(new KeyValuePair<string, string>(src, dst));
+                                        }
+                                    }
+                                }
+                            }
                         }
                         else if (child.Name == "Dependency")
                         {

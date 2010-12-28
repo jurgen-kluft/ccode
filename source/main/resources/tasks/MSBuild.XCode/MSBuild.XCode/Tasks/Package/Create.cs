@@ -15,7 +15,9 @@ namespace MSBuild.XCode
 {
     public class PackageCreate : Task
     {
+        [Required]
         public string RootDir { get; set; }
+        [Required]
         public string Platform { get; set; }
 
         [Output]
@@ -34,14 +36,45 @@ namespace MSBuild.XCode
             Environment.CurrentDirectory = RootDir;
 
             Global.TemplateDir = string.Empty;
-            Global.CacheRepoDir = Global.CacheRepoDir;
-            Global.RemoteRepoDir = Global.RemoteRepoDir;
+            Global.CacheRepoDir = string.Empty;
+            Global.RemoteRepoDir = string.Empty;
             Global.Initialize();
 
             // - Verify that there are no local changes 
             // - Verify that there are no outgoing changes
             Mercurial.Repository hg_repo = new Mercurial.Repository(RootDir);
-            string branch = hg_repo.Branch();
+            if (!hg_repo.Exists)
+            {
+                Loggy.Add(String.Format("Error: Package::Create failed since there is no Hg (Mercurial) repository!"));
+                return false;
+            }
+            if (hg_repo.HasOutstandingChanges)
+            {
+                Loggy.Add(String.Format("Error: Package::Create failed since there are still outstanding (non commited) changes!"));
+                return false;
+            }
+
+            Mercurial.Changeset hg_changeset = hg_repo.GetChangeSet();
+
+            // Write a vcs.info file containing VCS information, this will be included in the package
+            dynamic x = new MSBuild.XCode.Helpers.Xml();
+            x.Vcs(MSBuild.XCode.Helpers.Xml.Fragment(u => 
+            { 
+                u.Type("Hg"); 
+                u.Branch(hg_changeset.Branch);
+                u.Revision(hg_changeset.Hash);
+                u.AuthorName(hg_changeset.AuthorName);
+                u.AuthorEmail(hg_changeset.AuthorEmailAddress);
+            }));
+            using (FileStream fs = new FileStream(Global.RootDir + "vcs.info", FileMode.Create))
+            {
+                using (StreamWriter sw = new StreamWriter(fs))
+                {
+                    sw.Write(x.ToString(true));
+                    sw.Close();
+                    fs.Close();
+                }
+            }
 
             Package package = new Package();
             package.IsRoot = true;
@@ -50,8 +83,8 @@ namespace MSBuild.XCode
 
             package.Name = package.Pom.Name;
             package.Group = package.Pom.Group;
-            package.Version = package.Pom.Versions.GetForPlatformWithBranch(Platform, branch);
-            package.Branch = branch;
+            package.Version = package.Pom.Versions.GetForPlatformWithBranch(Platform, hg_changeset.Branch);
+            package.Branch = hg_changeset.Branch;
             package.Platform = Platform;
 
             string filename;

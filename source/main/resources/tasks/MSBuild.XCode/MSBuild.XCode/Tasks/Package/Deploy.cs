@@ -32,11 +32,11 @@ namespace MSBuild.XCode
             // - Verify that there are no local changes 
             // - Verify that there are no outgoing changes
             Mercurial.Repository hg_repo = new Mercurial.Repository(RootDir);
-            Mercurial.StatusCommand hg_status = new Mercurial.StatusCommand(Mercurial.FileStatusIncludes.MARM);
+            Mercurial.StatusCommand hg_status = new Mercurial.StatusCommand(Mercurial.FileStatusIncludes.Tracked);
             IEnumerable<Mercurial.FileStatus> repo_status = hg_repo.Status(hg_status);
             if (!repo_status.IsEmpty())
             {
-                Loggy.Add("Not everything checked-in!");
+                Loggy.Add("Error: Package::Deploy requires you to commit all outstanding changes into VCS!");
                 return false;
             }
 

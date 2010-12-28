@@ -45,69 +45,75 @@ namespace MSBuild.XCode
 
                 if (Global.RemoteRepo.Update(Package, Dependency.GetVersionRange(Package.Platform)))
                 {
-                    Global.CacheRepo.Add(Package, ELocation.Remote);
-                    if (Package.LoadFinalPom())
+                    if (Global.CacheRepo.Add(Package, ELocation.Remote))
                     {
-                        newDepNodes = new List<DependencyTreeNode>();
-
-                        Children = new Dictionary<string, DependencyTreeNode>();
-                        Dictionary<string, DependencyTreeNode> dependencyTreeMap = Children;
-                        foreach (Dependency d in Package.Pom.Dependencies)
+                        if (Package.LoadFinalPom())
                         {
-                            DependencyTreeNode depNode;
-                            if (!dependencyFlatMap.TryGetValue(d.Name, out depNode))
-                            {
-                                depNode = new DependencyTreeNode(d, Depth + 1);
-                                newDepNodes.Add(depNode);
-                                dependencyTreeMap.Add(depNode.Name, depNode);
-                                dependencyFlatMap.Add(depNode.Name, depNode);
-                            }
-                            else
-                            {
-                                // Check if we need to process it again, the criteria are:
-                                // - If ((Depth + 1) < depNode.Depth)
-                                //   - Replace Dependency with this one
-                                // - If ((Depth + 1) == depNode.Depth)
-                                //   - prefer default branch
-                                //   - prefer latest version
-                                if (depNode.Depth > (Depth + 1))
-                                {
-                                    // Take this dependency
-                                    if (depNode.ReplaceDependency(d, Depth + 1))
-                                    {
-                                        // Dependency is modified, we have to process it again
-                                        newDepNodes.Add(depNode);
-                                    }
-                                }
-                                else if (depNode.Depth == (Depth + 1))
-                                {
-                                    // If merging these dependencies results in a modified dependency then we have to build it again
-                                    if (depNode.Dependency.Merge(d))
-                                    {
-                                        // Name is still the same
-                                        depNode.Depth = Depth + 1;
-                                        depNode.Children = null;
-                                        depNode.Done = false;
+                            newDepNodes = new List<DependencyTreeNode>();
 
-                                        // For now register it as a new DepNode
-                                        newDepNodes.Add(depNode);
-                                    }
+                            Children = new Dictionary<string, DependencyTreeNode>();
+                            Dictionary<string, DependencyTreeNode> dependencyTreeMap = Children;
+                            foreach (Dependency d in Package.Pom.Dependencies)
+                            {
+                                DependencyTreeNode depNode;
+                                if (!dependencyFlatMap.TryGetValue(d.Name, out depNode))
+                                {
+                                    depNode = new DependencyTreeNode(d, Depth + 1);
+                                    newDepNodes.Add(depNode);
+                                    dependencyTreeMap.Add(depNode.Name, depNode);
+                                    dependencyFlatMap.Add(depNode.Name, depNode);
                                 }
                                 else
                                 {
-                                    dependencyTreeMap.Add(depNode.Name, depNode);
+                                    // Check if we need to process it again, the criteria are:
+                                    // - If ((Depth + 1) < depNode.Depth)
+                                    //   - Replace Dependency with this one
+                                    // - If ((Depth + 1) == depNode.Depth)
+                                    //   - prefer default branch
+                                    //   - prefer latest version
+                                    if (depNode.Depth > (Depth + 1))
+                                    {
+                                        // Take this dependency
+                                        if (depNode.ReplaceDependency(d, Depth + 1))
+                                        {
+                                            // Dependency is modified, we have to process it again
+                                            newDepNodes.Add(depNode);
+                                        }
+                                    }
+                                    else if (depNode.Depth == (Depth + 1))
+                                    {
+                                        // If merging these dependencies results in a modified dependency then we have to build it again
+                                        if (depNode.Dependency.Merge(d))
+                                        {
+                                            // Name is still the same
+                                            depNode.Depth = Depth + 1;
+                                            depNode.Children = null;
+                                            depNode.Done = false;
+
+                                            // For now register it as a new DepNode
+                                            newDepNodes.Add(depNode);
+                                        }
+                                    }
+                                    else
+                                    {
+                                        dependencyTreeMap.Add(depNode.Name, depNode);
+                                    }
                                 }
                             }
+                        }
+                        else
+                        {
+                            Loggy.Add(String.Format("Error, Dependency Tree : Build, Node={0}, Group={1}, reason: unable to load final pom of package", Package.Name, Package.Group.ToString()));
                         }
                     }
                     else
                     {
-                        return newDepNodes;
+                        Loggy.Add(String.Format("Error, Dependency Tree : Build, Node={0}, Group={1}, reason: unable to find package in cache package repo", Package.Name, Package.Group.ToString()));
                     }
                 }
                 else
                 {
-                    // Error, Dependency Tree : Build, Node=Name, unable to load dependency package for Name/Group/Branch/Platform/Version
+                    Loggy.Add(String.Format("Error, Dependency Tree : Build, Node={0}, Group={1}, reason: unable to find package in remote package repo", Package.Name, Package.Group.ToString()));
                 }
                 Done = true;
                 return newDepNodes;

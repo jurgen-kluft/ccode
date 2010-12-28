@@ -29,9 +29,15 @@ namespace MSBuild.XCode.Helpers
                 else
                 {
                     m = Regex.Match(dir, @"([^*]*)\\([^\\]*\*[^\\]*)\\?(.*)");
-                    string[] ds = Directory.GetDirectories(m.Groups[1].Value, m.Groups[2].Value, m.Groups[2].Value == "**" ? SearchOption.AllDirectories : SearchOption.TopDirectoryOnly);
-                    foreach (string d in ds)
-                        dirs.Push(d + '\\' + m.Groups[3].Value);
+                    if (Directory.Exists(m.Groups[1].Value))
+                    {
+                        string[] ds = Directory.GetDirectories(m.Groups[1].Value, m.Groups[2].Value, m.Groups[2].Value == "**" ? SearchOption.AllDirectories : SearchOption.TopDirectoryOnly);
+                        foreach (string d in ds)
+                            dirs.Push(d + '\\' + m.Groups[3].Value);
+
+                        if (m.Groups[2].Value == "**")
+                            dirs.Push(m.Groups[1].Value + '\\' + m.Groups[3].Value);
+                    }
                 }
             }
 

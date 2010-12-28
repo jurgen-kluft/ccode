@@ -27,15 +27,21 @@ namespace MSBuild.XCode
             Loggy.TaskLogger = null;
             Loggy.Indentor = "\t";
 
-            if (!Directory.Exists(CacheRepoDir))
+            if (!String.IsNullOrEmpty(CacheRepoDir))
             {
-                Loggy.Add(String.Format("Error: Initialization of Global failed since cache repo {0} doesn't exist", CacheRepoDir));
-                return false;
+                if (!Directory.Exists(CacheRepoDir))
+                {
+                    Loggy.Add(String.Format("Error: Initialization of Global failed since cache repo {0} doesn't exist", CacheRepoDir));
+                    return false;
+                }
             }
-            if (!Directory.Exists(RemoteRepoDir))
+            if (!String.IsNullOrEmpty(RemoteRepoDir))
             {
-                Loggy.Add(String.Format("Error: Initialization of Global failed since remote repo {0} doesn't exist", RemoteRepoDir));
-                return false;
+                if (!Directory.Exists(RemoteRepoDir))
+                {
+                    Loggy.Add(String.Format("Error: Initialization of Global failed since remote repo {0} doesn't exist", RemoteRepoDir));
+                    return false;
+                }
             }
             if (!String.IsNullOrEmpty(TemplateDir))
             {

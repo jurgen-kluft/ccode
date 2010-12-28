@@ -18,6 +18,16 @@
     <Item Folder="tools"/>
   </DirectoryStructure>
   
+  <Content>
+    <Item Src="source\main\cpp\**\*.cpp" Dst="source\main\cpp\" />
+    <Item Src="source\main\include\**\*.h" Dst="source\main\include\" />
+    <Item Src="source\main\resources\**\*.*" Dst="source\main\resources\" />
+    <Item Src="libs\**\*.*" Dst="libs\" />
+    <Item Src="docs\**\*.*" Dst="docs\" />
+    <Item Src="tools\**\*.*" Dst="Tools\" />
+    <Item Src="target\outdir\${Name}_*\${Name}_*_${Platform}.lib" Dst="libs\" />
+  </Content>
+  
   <Dependency Package="example_package_name">
     <Group>com.virtuos.tnt</Group>
     <Version>[1.0,)</Version>
@@ -61,12 +71,10 @@
 			    </Link>
 				</ItemDefinitionGroup>
 			  <ItemGroup>
-			    <ClCompile Include="source\main\cpp\*.cpp" />
-			    <ClCompile Include="source\main\cpp\*\*.cpp" />
+			    <ClCompile Include="source\main\cpp\**\*.cpp" />
 			  </ItemGroup>
 			  <ItemGroup>
-			    <ClInclude Include="source\main\include\${Name}\*.h" />
-			    <ClInclude Include="source\main\include\${Name}\*\*.h" />
+			    <ClInclude Include="source\main\include\${Name}\**\*.h" />
 			  </ItemGroup>
 			</Project>				
     </ProjectFile>
@@ -90,12 +98,10 @@
 					</ClCompile>
 				</ItemDefinitionGroup>
 			  <ItemGroup>
-			    <ClCompile Include="source\test\cpp\*.cpp" />
-			    <ClCompile Include="source\test\cpp\*\*.cpp" />
+			    <ClCompile Include="source\test\cpp\**\*.cpp" />
 			  </ItemGroup>
 			  <ItemGroup>
-			    <ClInclude Include="source\test\include\*.h" />
-			    <ClInclude Include="source\test\include\*\*.h" />
+			    <ClInclude Include="source\test\include\**\*.h" />
 			  </ItemGroup>				
 			</Project>
     </ProjectFile>

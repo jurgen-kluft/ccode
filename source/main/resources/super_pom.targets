@@ -18,7 +18,7 @@
   <Target Name = "__TestResourcesGenerate"/>
   <Target Name = "__TestResourcesProcess"/>
   <Target Name = "__TestCompile"/>
-  <Target Name = "__TestCompile_post"/>
+  <Target Name = "__TestCompilePost"/>
   <Target Name = "__TestRun"/>
   <Target Name = "__PackagePrepare"/>
   <Target Name = "__Package"/>
@@ -31,11 +31,7 @@
 
   <!-- These are the core xcode lifecycle targets and should not be overriden!! -->
   <Target Name = "Validate" DependsOnTargets=""><CallTarget Targets="__Validate"/></Target>
-  <Target Name = "Initialize" DependsOnTargets="Validate">
-    <CallTarget Targets="XCodePackageGroupSplit"/>
-    <CallTarget Targets="XCodePackageVersionTime"/>
-    <CallTarget Targets="__Initialize"/>
-  </Target>
+  <Target Name = "Initialize" DependsOnTargets="Validate"><CallTarget Targets="__Initialize"/></Target>
   <Target Name = "SourcesGenerate" DependsOnTargets="Initialize"><CallTarget Targets="__SourcesGenerate"/></Target>
   <Target Name = "SourcesProcess" DependsOnTargets="SourcesGenerate"><CallTarget Targets="__SourcesProcess"/></Target>
   <Target Name = "ResourcesGenerate" DependsOnTargets="SourcesProcess"><CallTarget Targets="__ResourcesGenerate"/></Target>
@@ -64,43 +60,24 @@
   <Target Name = "Info" />
   <Target Name = "Clean" />
   
-  <Target Name="PackageCreate">
-    <Message Text="Package Filename: $(PackageName)_$(PackageVersionMajor).$(PackageVersionMinor).$(PackageBuildDate).$(PackageBuildRev)_$(PackagePlatform)"/>
-    <MSBuild.XCode.PackageCreate RootDir="@(PackageDir)" Platform="$(PackagePlatform)">
-      <Output PropertyName="PackageFile" TaskParameter="Filename"/>
+  <Target Name="__Package">
+    <MSBuild.XCode.PackageCreate RootDir="$(PackageDir)" Platform="$(PackagePlatform)">
+      <Output PropertyName="PackageFilename" TaskParameter="Filename"/>
     </MSBuild.XCode.PackageCreate>
   </Target>
 
-  <Target Name="PackageCreatePrep">
-    <!-- Delete the file in the target folder -->
-    <ItemGroup>
-      <CleanFiles Include="target\$(PackageName)\$(PackagePlatform)\**\*.*"/>
-    </ItemGroup>
-    <Delete Files="@(CleanFiles)"/>
-
-    <ItemGroup>
-      <PackageSrcFiles Include="source\**\*.*" Exclude="source\**\*.user;source\**\*.suo;source\**\*.sdf;source\**\*.opensdf;source\**\*.ipch"/>
-      <PackageLibFiles Include="target\outdir\$(PackageName)*\*$(PackagePlatform)*.lib"/>
-      <PackageToolsFiles Include="tools\**\*.*"/>
-      <PackageDocFiles Include="docs\**\*.*"/>
-      <PackagePomFiles Include="pom.xml;pom.targets;pom.props"/>
-    </ItemGroup>
-
-    <Copy SourceFiles="@(PackageSrcFiles)" DestinationFolder="target\$(PackageName)\$(PackagePlatform)\source\%(RecursiveDir)"/>
-    <Copy SourceFiles="@(PackageLibFiles)" DestinationFolder="target\$(PackageName)\$(PackagePlatform)\libs"/>
-    <Copy SourceFiles="@(PackageToolsFiles)" DestinationFolder="target\$(PackageName)\$(PackagePlatform)\tools\%(RecursiveDir)"/>
-    <Copy SourceFiles="@(PackageDocFiles)" DestinationFolder="target\$(PackageName)\$(PackagePlatform)\docs\%(RecursiveDir)"/>
-    <Copy SourceFiles="@(PackagePomFiles)" DestinationFolder="target\$(PackageName)\$(PackagePlatform)\"/>
+  <Target Name="Configurations">
+    <MSBuild.XCode.PackageConfigs RootDir="$(PackageDir)" Platform="$(PackagePlatform)" Category="Main">
+      <Output PropertyName="PackageConfigs" TaskParameter="Configurations"/>
+    </MSBuild.XCode.PackageConfigs>
   </Target>
-
-  <Target Name="__Package">
-    <CallTarget Targets="PackageCreatePrep"/>
-    <CallTarget Targets="PackageCreate"/>
-  </Target>
-
+  
   <!-- This will call msbuild multiple times for every item in PackageConfigTargets -->
-  <Target Name="CompilePlatformForEveryTarget" Outputs="%(Package_config_targets.Identity)">
-    <MSBuild Condition=" '$(PackageSolution)' != ''" Projects="$(PackageSolution)" Properties="Configuration=%(PackageTargets.Identity);Platform=$(PackagePlatform)"/>
+  <Target Name="CompilePlatformForEveryTarget" DependsOnTargets="Configurations">
+  	<ItemGroup>
+  		<PackageConfigsList Include="$(PackageConfigs)" />
+  	</ItemGroup>
+    <MSBuild Condition=" '$(PackageSolution)' != ''" Projects="$(PackageSolution)" Properties="Configuration=%(PackageConfigsList.Identity);Platform=$(PackagePlatform)"/>
   </Target>
 
   <Target Name="__Compile">
@@ -108,8 +85,11 @@
   </Target>
 
   <!-- This will call msbuild multiple times for every item in PackageConfigTargets -->
-  <Target Name="CleanPlatformForEveryTarget" Outputs="%(Package_config_targets.Identity)">
-    <MSBuild Projects="$(PackageSolution)" Targets="Clean" Properties="Configuration=%(PackageTargets.Identity);Platform=$(PackagePlatform)"/>
+  <Target Name="CleanPlatformForEveryTarget" DependsOnTargets="Configurations">
+  	<ItemGroup>
+  		<PackageConfigsList Include="$(PackageConfigs)" />
+  	</ItemGroup>
+    <MSBuild Projects="$(PackageSolution)" Targets="Clean" Properties="Configuration=%(PackageConfigsList.Identity);Platform=$(PackagePlatform)"/>
   </Target>
   
   <Target Name="Clean">
@@ -131,19 +111,19 @@
   </Target>
 
   <Target Name="PackageInstall">
-    <MSBuild.XCode.PackageInstall RootDir="$(PackageDir)" Filename="$(PackageFilename)" LocalRepoDir="$(PackageLocalRepoURL)" RemoteRepoDir="$(PackageRemoteRepoURL)"/>
+    <MSBuild.XCode.PackageInstall RootDir="$(PackageDir)" Filename="$(PackageFilename)" CacheRepoDir="$(PackageLocalRepoURL)" RemoteRepoDir="$(PackageRemoteRepoURL)"/>
   </Target>
   <Target Name="__Install" DependsOnTargets="PackageInstall">
   </Target>
 
   <Target Name="PackageDeploy">
-    <MSBuild.XCode.PackageDeploy RootDir="$(PackageDir)" Filename="$(PackageFilename)" LocalRepoDir="$(PackageLocalRepoURL)" RemoteRepoDir="$(PackageRemoteRepoURL)"/>
+    <MSBuild.XCode.PackageDeploy RootDir="$(PackageDir)" Filename="$(PackageFilename)" CacheRepoDir="$(PackageLocalRepoURL)" RemoteRepoDir="$(PackageRemoteRepoURL)"/>
   </Target>
   <Target Name="__Deploy" DependsOnTargets="PackageDeploy">
   </Target>
 
   <Target Name="PackageSync">
-    <MSBuild.XCode.PackageSync RootDir="$(PackageDir)" Platform="$(PackagePlatform)" LocalRepoDir="$(PackageLocalRepoURL)" RemoteRepoDir="$(PackageRemoteRepoURL)"/>
+    <MSBuild.XCode.PackageSync RootDir="$(PackageDir)" Platform="$(PackagePlatform)" TemplateDir="$(PackageLocalRepoURL)com\virtuos\xcode\publish\templates\" CacheRepoDir="$(PackageLocalRepoURL)" RemoteRepoDir="$(PackageRemoteRepoURL)"/>
   </Target>
   <Target Name="__Sync" DependsOnTargets="PackageSync">
   </Target>

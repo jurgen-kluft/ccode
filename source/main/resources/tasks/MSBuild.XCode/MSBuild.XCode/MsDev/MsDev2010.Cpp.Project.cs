@@ -209,7 +209,8 @@ namespace MsDev2010.Cpp.XCode
                 parent.RemoveChild(node);
 
                 string glob = node.Attributes[0].Value;
-                foreach (string filename in Globber.Glob(rootdir + glob))
+                List<string> globbedFiles = PathUtil.getFiles(rootdir + glob);
+                foreach (string filename in globbedFiles)
                 {
                     XmlNode newNode = node.CloneNode(false);
                     string filedir = PathUtil.RelativePathTo(reldir, Path.GetDirectoryName(filename));
