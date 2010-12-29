@@ -25,6 +25,7 @@ namespace MsDev2010.Cpp.XCode
         private ELanguage mLanguage = ELanguage.CS;
 
         private List<string> m_Configs;
+        private Dictionary<string, Guid> m_ProjectGuids;
 
         public Solution(EVersion version, ELanguage language)
         {
@@ -146,8 +147,8 @@ namespace MsDev2010.Cpp.XCode
                                 Guid projectGuid = GetProjectGuid(project);
                                 foreach (string c in m_Configs)
                                 {
-                                    writer.WriteLine("\t\t{" + projectGuid + "}." + c + ".ActiveCfg = " + c);
-                                    writer.WriteLine("\t\t{" + projectGuid + "}." + c + ".Build.0 = " + c);
+                                    writer.WriteLine("\t\t{" + projectGuid.ToString().ToUpper() + "}." + c + ".ActiveCfg = " + c);
+                                    writer.WriteLine("\t\t{" + projectGuid.ToString().ToUpper() + "}." + c + ".Build.0 = " + c);
                                 }
                             }
 
@@ -184,8 +185,8 @@ namespace MsDev2010.Cpp.XCode
                                 Guid projectGuid = GetProjectGuid(project);
                                 foreach (string c in m_Configs)
                                 {
-                                    writer.WriteLine("\t\t{" + projectGuid + "}." + c + ".ActiveCfg = " + c);
-                                    writer.WriteLine("\t\t{" + projectGuid + "}." + c + ".Build.0 = " + c);
+                                    writer.WriteLine("\t\t{" + projectGuid.ToString().ToUpper() + "}." + c + ".ActiveCfg = " + c);
+                                    writer.WriteLine("\t\t{" + projectGuid.ToString().ToUpper() + "}." + c + ".Build.0 = " + c);
                                 }
                             }
 
@@ -207,11 +208,15 @@ namespace MsDev2010.Cpp.XCode
             if (!mRootDir.EndsWith("\\"))
                 mRootDir = mRootDir + "\\";
 
+            m_ProjectGuids = new Dictionary<string, Guid>();
             foreach (string projectFilename in _ProjectFiles)
             {
                 FileInfo fi = new FileInfo(mRootDir + projectFilename);
                 if (fi.Exists)
+                {
                     m_Projects.Add(fi);
+                    m_ProjectGuids.Add(fi.FullName, Guid.NewGuid());
+                }
             }
 
             // Analyze the configurations
@@ -276,19 +281,28 @@ namespace MsDev2010.Cpp.XCode
                     {
                         if (mVersion == EVersion.VS2010)
                         {
-                            using (StreamReader reader = File.OpenText(file.FullName))
+                            Guid guid;
+                            if (m_ProjectGuids.TryGetValue(file.FullName, out guid))
+                                return guid;
+
+                            return Guid.NewGuid();
+
+                            if (false)
                             {
-                                string text = reader.ReadToEnd();
-                                string pattern = "<ProjectGuid>";
-                                int start = text.IndexOf(pattern);
-                                if (start > 0)
+                                using (StreamReader reader = File.OpenText(file.FullName))
                                 {
-                                    start += pattern.Length;
-                                    pattern = "</ProjectGuid>";
-                                    int end = text.IndexOf(pattern);
-                                    if (end > 0)
+                                    string text = reader.ReadToEnd();
+                                    string pattern = "<ProjectGuid>";
+                                    int start = text.IndexOf(pattern);
+                                    if (start > 0)
                                     {
-                                        return new Guid(text.Substring(start + 1, end - start - 2));
+                                        start += pattern.Length;
+                                        pattern = "</ProjectGuid>";
+                                        int end = text.IndexOf(pattern);
+                                        if (end > 0)
+                                        {
+                                            return new Guid(text.Substring(start + 1, end - start - 2));
+                                        }
                                     }
                                 }
                             }

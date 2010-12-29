@@ -134,6 +134,44 @@ namespace MsDev2010.Cpp.XCode
             mAllowRemoval = false;
         }
 
+        public void RemoveAllPlatformsBut(string platformToKeep)
+        {
+            XmlDocument result = new XmlDocument();
+            mAllowRemoval = true;
+            string platform, config;
+            Merge(result, mXmlDocMain,
+                delegate(XmlNode node)
+                {
+                    if (GetPlatformConfig(node, out platform, out config))
+                    {
+                        if (String.Compare(platform, platformToKeep, true) == 0)
+                        {
+                            return true;
+                        }
+                        return false;
+                    }
+                    if (node.Name == "ItemGroup")
+                    {
+                        if (node.HasChildNodes)
+                        {
+                            if (node.ChildNodes[0].Name == "ClCompile")
+                                return false;
+                            else if (node.ChildNodes[0].Name == "ClInclude")
+                                return false;
+                            else if (node.ChildNodes[0].Name == "None")
+                                return false;
+                        }
+                    }
+                    return true;
+                },
+                delegate(XmlNode main, XmlNode other)
+                {
+                });
+
+            mXmlDocMain = result;
+            mAllowRemoval = false;
+        }
+
         public bool FilterItems(string[] to_remove, string[] to_keep)
         {
             Merge(mXmlDocMain, mXmlDocMain,
@@ -203,21 +241,28 @@ namespace MsDev2010.Cpp.XCode
             }
 
             // Now do the globbing
+            HashSet<string> allGlobbedFiles = new HashSet<string>();
             foreach (XmlNode node in globs)
             {
                 XmlNode parent = node.ParentNode;
                 parent.RemoveChild(node);
 
                 string glob = node.Attributes[0].Value;
-                foreach (string filename in Globber.Glob(rootdir + glob))
+                List<string> globbedFiles = PathUtil.getFiles(rootdir + glob);
+                foreach (string filename in globbedFiles)
                 {
-                    XmlNode newNode = node.CloneNode(false);
-                    string filedir = PathUtil.RelativePathTo(reldir, Path.GetDirectoryName(filename));
-                    if (!String.IsNullOrEmpty(filedir) && !filedir.EndsWith("\\"))
-                        filedir += "\\";
+                    if (!allGlobbedFiles.Contains(filename))
+                    {
+                        allGlobbedFiles.Add(filename);
 
-                    newNode.Attributes[0].Value = filedir + Path.GetFileName(filename);
-                    parent.AppendChild(newNode);
+                        XmlNode newNode = node.CloneNode(false);
+                        string filedir = PathUtil.RelativePathTo(reldir, Path.GetDirectoryName(filename));
+                        if (!String.IsNullOrEmpty(filedir) && !filedir.EndsWith("\\"))
+                            filedir += "\\";
+
+                        newNode.Attributes[0].Value = filedir + Path.GetFileName(filename);
+                        parent.AppendChild(newNode);
+                    }
                 }
             }
 
@@ -313,26 +358,6 @@ namespace MsDev2010.Cpp.XCode
             return concat.Get();
         }
 
-        public bool GetPreprocessorDefinitions(string platform, string config, out string defines)
-        {
-            defines = GetItem(platform, config, "PreprocessorDefinitions");
-            return true;
-        }
-        public bool GetAdditionalIncludeDirectories(string platform, string config, out string includeDirectories)
-        {
-            includeDirectories = GetItem(platform, config, "AdditionalIncludeDirectories");
-            return true;
-        }
-        public bool GetAdditionalLibraryDirectories(string platform, string config, out string libraryDirectories)
-        {
-            libraryDirectories = GetItem(platform, config, "AdditionalLibraryDirectories");
-            return true;
-        }
-        public bool GetAdditionalDependencies(string platform, string config, out string libraryDependencies)
-        {
-            libraryDependencies = GetItem(platform, config, "AdditionalDependencies");
-            return true;
-        }
         public string[] GetPlatforms()
         {
             HashSet<string> platforms = new HashSet<string>();
@@ -398,22 +423,6 @@ namespace MsDev2010.Cpp.XCode
                 });
             return true;
         }
-        public bool SetPreprocessorDefinitions(string platform, string config, string defines)
-        {
-            return SetItem(platform, config, "PreprocessorDefinitions", defines);
-        }
-        public bool SetAdditionalIncludeDirectories(string platform, string config, string includeDirectories)
-        {
-            return SetItem(platform, config, "AdditionalIncludeDirectories", includeDirectories);
-        }
-        public bool SetAdditionalLibraryDirectories(string platform, string config, string libraryDirectories)
-        {
-            return SetItem(platform, config, "AdditionalLibraryDirectories", libraryDirectories);
-        }
-        public bool SetAdditionalDependencies(string platform, string config, string libraryDependencies)
-        {
-            return SetItem(platform, config, "AdditionalDependencies", libraryDependencies);
-        }
 
         public bool Save(string filename)
         {
@@ -421,7 +430,7 @@ namespace MsDev2010.Cpp.XCode
             return true;
         }
 
-        public bool Merge(Project project)
+        public bool Merge(Project project, bool replace)
         {
             Merge(mXmlDocMain, project.mXmlDocMain,
                 delegate(XmlNode node)
@@ -443,15 +452,16 @@ namespace MsDev2010.Cpp.XCode
                         StringItems items = new StringItems();
                         items.Add(other.Value, true);
                         items.Add(main.Value, true);
+                        items.Filter(new string[] { "%()" }, new string[0]);
                         main.Value = items.ToString();
                     }
                     else
                     {
-                        // Replace
-                        main.Value = other.Value;
+                        if (replace)
+                            main.Value = other.Value;
                     }
                 });
-            return false;
+            return true;
         }
 
         private bool HasSameAttributes(XmlNode a, XmlNode b)

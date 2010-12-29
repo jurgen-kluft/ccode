@@ -24,14 +24,21 @@ namespace MSBuild.XCode.Helpers
                 string dir = dirs.Pop();
                 if (dir.IndexOf('*') < 0)
                 {
-                    ret.AddRange(Directory.GetFiles(dir, FileMask));
+                    if (Directory.Exists(dir))
+                        ret.AddRange(Directory.GetFiles(dir, FileMask));
                 }
                 else
                 {
                     m = Regex.Match(dir, @"([^*]*)\\([^\\]*\*[^\\]*)\\?(.*)");
-                    string[] ds = Directory.GetDirectories(m.Groups[1].Value, m.Groups[2].Value, m.Groups[2].Value == "**" ? SearchOption.AllDirectories : SearchOption.TopDirectoryOnly);
-                    foreach (string d in ds)
-                        dirs.Push(d + '\\' + m.Groups[3].Value);
+                    if (Directory.Exists(m.Groups[1].Value))
+                    {
+                        string[] ds = Directory.GetDirectories(m.Groups[1].Value, m.Groups[2].Value, m.Groups[2].Value == "**" ? SearchOption.AllDirectories : SearchOption.TopDirectoryOnly);
+                        foreach (string d in ds)
+                            dirs.Push(d + '\\' + m.Groups[3].Value);
+
+                        if (m.Groups[2].Value == "**")
+                            dirs.Push(m.Groups[1].Value + '\\' + m.Groups[3].Value);
+                    }
                 }
             }
 

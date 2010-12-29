@@ -60,6 +60,17 @@ namespace Mercurial
             }
         }
 
+        public bool Exists
+        {
+            get
+            {
+                bool ok = Directory.Exists(_Path + "\\.hg");
+                ok = ok && Directory.Exists(_Path + "\\.hg\\store");
+                ok = ok && File.Exists(_Path + "\\.hg\\branch");
+                return ok;
+            }
+        }
+
         /// <summary>
         /// Executes the given <see cref="IMercurialCommand{TResult}"/> command against
         /// the Mercurial repository, returning the result as a typed value.
@@ -471,6 +482,29 @@ namespace Mercurial
         {
             command = command ?? new BranchCommand();
             return Execute(command);
+        }
+
+        public bool HasOutstandingChanges
+        {
+            get
+            {
+                Mercurial.StatusCommand hg_status = new StatusCommand();
+                hg_status.Include = FileStatusIncludes.Tracked;
+                IEnumerable<FileStatus> status = Status(hg_status);
+                foreach (FileStatus fs in status)
+                    return true;
+                return false;
+            }
+        }
+
+        public Changeset GetChangeSet()
+        {
+            LogCommand hg_log = new LogCommand();
+            hg_log.AddArgument("-l 1");
+            IEnumerable<Changeset> hg_changesets = Log(hg_log);
+            foreach (Changeset c in hg_changesets)
+                return c;
+            return null;
         }
 
         /// <summary>

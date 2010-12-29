@@ -3,6 +3,7 @@ using System.Xml;
 using System.IO;
 using System.Collections.Generic;
 using System.Text;
+using Microsoft.Build.Framework;
 using Microsoft.Build.Utilities;
 using MSBuild.XCode.Helpers;
 
@@ -16,13 +17,23 @@ namespace MSBuild.XCode
     {
         public string RootDir { get; set; }
         public string Platform { get; set; }
+
+        [Required]
+        public string TemplateDir { get; set; }
+        [Required]
         public string CacheRepoDir { get; set; }
+        [Required]
         public string RemoteRepoDir { get; set; }
 
         public override bool Execute()
         {
             Loggy.TaskLogger = Log;
             RootDir = RootDir.EndWith('\\');
+
+            Global.TemplateDir = TemplateDir;
+            Global.CacheRepoDir = CacheRepoDir;
+            Global.RemoteRepoDir = RemoteRepoDir;
+            Global.Initialize();
 
             Package package = new Package();
             package.IsRoot = true;
@@ -34,17 +45,26 @@ namespace MSBuild.XCode
                 package.Version = package.Pom.Versions.GetForPlatform(Platform);
                 package.Platform = Platform;
                 {
-                    string package_filename;
-                    package.Create(out package_filename);
-
                     if (package.BuildDependencies(Platform))
                     {
                         if (package.SyncDependencies(Platform))
                         {
                             return true;
                         }
+                        else
+                        {
+                            Loggy.Add(String.Format("Error: Failed to sync dependencies in Package::Sync"));
+                        }
+                    }
+                    else
+                    {
+                        Loggy.Add(String.Format("Error: Failed to build dependencies in Package::Sync"));
                     }
                 }
+            }
+            else
+            {
+                Loggy.Add(String.Format("Error: Failed to load 'pom.xml' in Package::Sync"));
             }
 
             return false;

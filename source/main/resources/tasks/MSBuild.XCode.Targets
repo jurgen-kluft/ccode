@@ -6,7 +6,9 @@
     <MSBuildXCodeTasksLib>MSBuild.XCode.dll</MSBuildXCodeTasksLib>
   </PropertyGroup>
 
+  <UsingTask AssemblyFile="$(MSBuildXCodeTasksLib)" TaskName="MSBuild.XCode.PackageConfigs" />
   <UsingTask AssemblyFile="$(MSBuildXCodeTasksLib)" TaskName="MSBuild.XCode.PackageConstruct" />
+  <UsingTask AssemblyFile="$(MSBuildXCodeTasksLib)" TaskName="MSBuild.XCode.PackageInfo" />
   <UsingTask AssemblyFile="$(MSBuildXCodeTasksLib)" TaskName="MSBuild.XCode.PackageCreate" />
   <UsingTask AssemblyFile="$(MSBuildXCodeTasksLib)" TaskName="MSBuild.XCode.PackageInstall" />
   <UsingTask AssemblyFile="$(MSBuildXCodeTasksLib)" TaskName="MSBuild.XCode.PackageDeploy" />

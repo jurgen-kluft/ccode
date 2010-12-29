@@ -47,6 +47,8 @@ namespace MSBuild.XCode
 
         public void SetPropertiesFromFilename(string filename)
         {
+            filename = Path.GetFileNameWithoutExtension(filename);
+
             string[] parts = filename.Split(new char[] { '+' }, StringSplitOptions.RemoveEmptyEntries);
             if (parts.Length == 4)
             {
@@ -96,6 +98,18 @@ namespace MSBuild.XCode
                 ZipFile zip = new ZipFile(CacheURL);
                 string path = RootDir + "target\\" + Name + "\\" + Platform + "\\";
                 zip.ExtractAll(path, ExtractExistingFileAction.OverwriteSilently);
+
+                DateTime lastWriteTime = File.GetLastWriteTime(CacheURL);
+                FileInfo fi = new FileInfo(RootDir + "target\\" + Path.GetFileNameWithoutExtension(CacheURL) + ".t");
+                if (fi.Exists)
+                {
+                    fi.LastWriteTime = lastWriteTime;
+                }
+                else
+                {
+                    fi.Create().Close();
+                    fi.LastWriteTime = lastWriteTime;
+                }
                 return true;
             }
             return false;
@@ -117,14 +131,37 @@ namespace MSBuild.XCode
             return false;
         }
 
+        private void Glob(string src, string dst, List<KeyValuePair<string,string>> files)
+        {
+            src = src.Replace("${Name}", Name);
+            src = src.Replace("${Platform}", Platform);
+
+            List<string> globbedFiles = PathUtil.getFiles(src);
+
+            int r = src.IndexOf("**");
+            string reldir = r >= 0 ? src.Substring(0, src.IndexOf("**")) : string.Empty;
+
+            foreach (string src_filename in globbedFiles)
+            {
+                string dst_filename;
+                if (r >= 0)
+                    dst_filename = dst + src_filename.Substring(reldir.Length);
+                else
+                    dst_filename = dst + Path.GetFileName(src_filename);
+
+                files.Add(new KeyValuePair<string, string>(src_filename, Path.GetDirectoryName(dst_filename)));
+            }
+        }
+
         public bool Create(out string Filename)
         {
             bool success = false;
 
             /// Delete the .sfv file
             string sfv_filename = Name + ".md5";
-            if (File.Exists(RootDir + "target\\" + Name + "\\" + Platform + "\\" + sfv_filename))
-                File.Delete(RootDir + "target\\" + Name + "\\" + Platform + "\\" + sfv_filename);
+            string dir = RootDir + "target\\" + Name + "\\" + Platform + "\\";
+            if (File.Exists(dir + sfv_filename))
+                File.Delete(dir + sfv_filename);
 
             /// 1) Create zip file
             /// 2) For every file create an MD5 and gather them into a sfv file
@@ -133,31 +170,63 @@ namespace MSBuild.XCode
             /// 5) Add files to zip
             /// 6) Close
             /// 
-            Environment.CurrentDirectory = RootDir;
-            xDirname dir = new xDirname(RootDir + "target\\" + Name + "\\" + Platform);
-            DirectoryScanner scanner = new DirectoryScanner(dir);
-            scanner.scanSubDirs = true;
-            xDirname subDir = new xDirname("");
-            scanner.collect(subDir, "*.*", DirectoryScanner.EmptyFilterDelegate);
+
+            List<KeyValuePair<string, string>> content;
+            if (!Pom.Content.TryGetValue(Platform, out content))
+            {
+                if (!Pom.Content.TryGetValue("*", out content))
+                {
+                    Filename = string.Empty;
+                    return false;
+                }
+            }
+            List<KeyValuePair<string, string>> files = new List<KeyValuePair<string,string>>();
+            foreach (KeyValuePair<string, string> pair in content)
+            {
+                Glob(RootDir + pair.Key, pair.Value, files);
+            }
+            
+            // Is pom.xml included?
+            bool includesPomXml = false;
+            foreach (KeyValuePair<string, string> pair in files)
+            {
+                if (String.Compare(Path.GetFileName(pair.Key), "pom.xml", true) == 0)
+                {
+                    includesPomXml = true;
+                    break;
+                }
+            }
+            if (!includesPomXml)
+            {
+                Loggy.Add(String.Format("Error: Package::Create, package must include pom.xml!"));
+                Filename = string.Empty;
+                return false;
+            }
 
             MD5CryptoServiceProvider md5_provider = new MD5CryptoServiceProvider();
             Dictionary<string, byte[]> md5Dictionary = new Dictionary<string, byte[]>();
-            List<KeyValuePair<string, string>> sourceFilenames = new List<KeyValuePair<string, string>>();
-            foreach (xFilename src_filename in scanner.filenames)
+            foreach (KeyValuePair<string, string> pair in files)
             {
-                FileStream fs = new FileStream("target\\" + Name + "\\" + Platform + "\\" + src_filename, FileMode.Open, FileAccess.Read);
+                string src_filename = pair.Key;
+
+                FileStream fs = new FileStream(src_filename, FileMode.Open, FileAccess.Read);
                 byte[] md5 = md5_provider.ComputeHash(fs);
                 fs.Close();
 
-                md5Dictionary.Add(src_filename, md5);
-                string zip_filename = src_filename;
-                sourceFilenames.Add(new KeyValuePair<string, string>(src_filename, System.IO.Path.GetDirectoryName(src_filename)));
+                string dst_filename;
+                if (String.IsNullOrEmpty(pair.Value))
+                    dst_filename = Path.GetFileName(src_filename);
+                else
+                    dst_filename = pair.Value.EndWith('\\') + Path.GetFileName(src_filename);
+
+                if (!md5Dictionary.ContainsKey(dst_filename))
+                    md5Dictionary.Add(dst_filename, md5);
             }
 
             if (!Directory.Exists(dir))
                 Directory.CreateDirectory(dir);
 
-            using (FileStream wfs = new FileStream(dir + "\\" + sfv_filename, FileMode.Create))
+            using (FileStream wfs = new FileStream(dir + sfv_filename, FileMode.Create))
             {
                 StreamWriter writer = new StreamWriter(wfs);
                 writer.WriteLine("; Generated by MSBuild.XCode");
@@ -168,8 +237,12 @@ namespace MSBuild.XCode
                 writer.Close();
                 wfs.Close();
 
-                sourceFilenames.Add(new KeyValuePair<string, string>(sfv_filename, System.IO.Path.GetDirectoryName(sfv_filename)));
+                files.Add(new KeyValuePair<string, string>(dir + sfv_filename, Path.GetDirectoryName(sfv_filename)));
             }
+
+            // Add VCS Information file to the package
+            if (File.Exists(RootDir + "vcs.info"))
+                files.Add(new KeyValuePair<string, string>(RootDir + "vcs.info", ""));
 
             // Versioning:
             // - Get Version
@@ -182,19 +255,19 @@ namespace MSBuild.XCode
             ComparableVersion version = Pom.Versions.GetForPlatformWithBranch(Platform, Branch);
 
             DateTime t = DateTime.Now;
-            string versionStr = version.ToString() + String.Format(".{0}.{1}.{2}.{3}.{4}.{5}", t.Year, t.Month, t.Day, t.Hour, t.Minute, t.Second);
+            string versionStr = version.ToString() + String.Format(".{0:yyyy.M.d.H.m.s}", t);
 
             Filename = Name + "+" + versionStr + "+" + Branch + "+" + Platform + ".zip";
-            if (File.Exists(Filename))
+            if (File.Exists(RootDir + "target\\" + Filename))
             {
-                try { File.Delete(Filename); }
+                try { File.Delete(RootDir + "target\\" + Filename); }
                 catch (Exception) { }
             }
 
             using (ZipFile zip = new ZipFile(RootDir + "target\\" + Filename))
             {
-                foreach (KeyValuePair<string, string> p in sourceFilenames)
-                    zip.AddFile(RootDir + "target\\" + Name + "\\" + Platform + "\\" + p.Key, p.Value);
+                foreach (KeyValuePair<string, string> p in files)
+                    zip.AddFile(p.Key, p.Value);
 
                 zip.Save();
                 success = true;
@@ -214,49 +287,56 @@ namespace MSBuild.XCode
             string md5_file = subDir + Name + ".MD5";
             if (File.Exists(targetDir + md5_file))
             {
-                MD5CryptoServiceProvider md5_provider = new MD5CryptoServiceProvider();
-
-                // Load MD5 file
-                ok = true;
-                string[] lines = File.ReadAllLines(targetDir + md5_file);
-
-                // MD5 is relative to its own location
-                foreach (string entry in lines)
+                DateTime packageLastWriteTime = File.GetLastWriteTime(CacheURL);
+                FileInfo fi = new FileInfo(targetDir + Path.GetFileNameWithoutExtension(CacheURL) + ".t");
+                bool markerFileExists = fi.Exists;
+                bool markerFileUpToDate = markerFileExists && (fi.LastWriteTime == packageLastWriteTime);
+                if (markerFileExists && markerFileUpToDate)
                 {
-                    if (entry.Trim().StartsWith(";"))
-                        continue;
+                    MD5CryptoServiceProvider md5_provider = new MD5CryptoServiceProvider();
 
-                    // Get the MD5 and Filename
-                    int s = entry.IndexOf('*');
-                    if (s == -1)
+                    // Load MD5 file
+                    ok = true;
+                    string[] lines = File.ReadAllLines(targetDir + md5_file);
+
+                    // MD5 is relative to its own location
+                    foreach (string entry in lines)
                     {
-                        ok = false;
-                        break;
-                    }
-                    string old_md5 = entry.Substring(s + 1).Trim();
-                    string filename = targetDir + subDir + entry.Substring(0, s).Trim();
+                        if (entry.Trim().StartsWith(";"))
+                            continue;
 
-                    if (File.Exists(filename))
-                    {
-                        string new_md5 = string.Empty;
-                        using (FileStream rfs = new FileStream(filename, FileMode.Open, FileAccess.Read))
-                        {
-                            byte[] new_md5_raw = md5_provider.ComputeHash(rfs);
-                            new_md5 = StringTools.MD5ToString(new_md5_raw);
-                            rfs.Close();
-                        }
-
-                        if (String.Compare(old_md5, new_md5) != 0)
+                        // Get the MD5 and Filename
+                        int s = entry.IndexOf('*');
+                        if (s == -1)
                         {
                             ok = false;
                             break;
                         }
-                    }
-                    else
-                    {
-                        // File doesn't exist anymore
-                        ok = false;
-                        break;
+                        string old_md5 = entry.Substring(s + 1).Trim();
+                        string filename = targetDir + subDir + entry.Substring(0, s).Trim();
+
+                        if (File.Exists(filename))
+                        {
+                            string new_md5 = string.Empty;
+                            using (FileStream rfs = new FileStream(filename, FileMode.Open, FileAccess.Read))
+                            {
+                                byte[] new_md5_raw = md5_provider.ComputeHash(rfs);
+                                new_md5 = StringTools.MD5ToString(new_md5_raw);
+                                rfs.Close();
+                            }
+
+                            if (String.Compare(old_md5, new_md5) != 0)
+                            {
+                                ok = false;
+                                break;
+                            }
+                        }
+                        else
+                        {
+                            // File doesn't exist anymore
+                            ok = false;
+                            break;
+                        }
                     }
                 }
                 return ok;
@@ -341,7 +421,7 @@ namespace MSBuild.XCode
         {
             if (HasPom && IsRoot)
             {
-                Pom.BuildDependencies(Platform);
+                return Pom.BuildDependencies(Platform);
             }
             return false;
         }
@@ -393,7 +473,7 @@ namespace MSBuild.XCode
             if (HasPom && IsRoot)
             {
                 // Has valid dependency tree ?
-                Pom.SyncDependencies(Platform);
+                return Pom.SyncDependencies(Platform);
             }
             return false;
         }
