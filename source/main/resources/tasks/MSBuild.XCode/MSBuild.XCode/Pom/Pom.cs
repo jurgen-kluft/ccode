@@ -238,9 +238,6 @@ namespace MSBuild.XCode
             // For every platform we have to merge in only the conditional xml elements into the final project file.
             foreach (Project rootProject in Projects)
             {
-                if (rootProject.IsPrivate)
-                    continue;
-
                 // Every platform has a dependency tree and every dependency package for that platform has filtered their
                 // project to only keep their platform specific xml elements.
                 foreach (KeyValuePair<string, DependencyTree> pair in DependencyTree)
@@ -251,7 +248,7 @@ namespace MSBuild.XCode
                     foreach (Package dependencyPackage in allDependencyPackages)
                     {
                         Project dependencyProject = dependencyPackage.Pom.GetProjectByCategory(rootProject.Category);
-                        if (dependencyProject!=null)
+                        if (dependencyProject!=null && !dependencyProject.IsPrivate)
                             rootProject.MergeWithDependencyProject(dependencyProject);
                     }
                 }

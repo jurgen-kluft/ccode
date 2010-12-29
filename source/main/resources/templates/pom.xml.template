@@ -44,30 +44,30 @@
 			  <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='DevDebug|Win32'">
 			    <ClCompile>
 			      <PreprocessorDefinitions>WIN32;_DEBUG;%(PreprocessorDefinitions)</PreprocessorDefinitions>
-			      <AdditionalIncludeDirectories>#target\${Name}\Win32\source\main\include;@$(SolutionDir)source\main\include;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+			      <AdditionalIncludeDirectories>#$(SolutionDir)target\${Name}\Win32\source\main\include;@$(SolutionDir)source\main\include;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
 					</ClCompile>
 			    <Link>
-			      <AdditionalLibraryDirectories>#target\${Name}\Win32\libs</AdditionalLibraryDirectories>
+			      <AdditionalLibraryDirectories>#$(SolutionDir)target\${Name}\Win32\libs</AdditionalLibraryDirectories>
 			      <AdditionalDependencies>#${Name}_DevDebug_Win32.lib</AdditionalDependencies>
 			    </Link>
 				</ItemDefinitionGroup>
 			  <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='DevRelease|Win32'">
 			    <ClCompile>
 			      <PreprocessorDefinitions>WIN32;NDEBUG;%(PreprocessorDefinitions)</PreprocessorDefinitions>
-			      <AdditionalIncludeDirectories>#target\${Name}\Win32\source\main\include;@$(SolutionDir)source\main\include;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+			      <AdditionalIncludeDirectories>#$(SolutionDir)target\${Name}\Win32\source\main\include;@$(SolutionDir)source\main\include;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
 					</ClCompile>
 			    <Link>
-			      <AdditionalLibraryDirectories>#target\${Name}\Win32\libs</AdditionalLibraryDirectories>
+			      <AdditionalLibraryDirectories>#$(SolutionDir)target\${Name}\Win32\libs</AdditionalLibraryDirectories>
 			      <AdditionalDependencies>#${Name}_DevRelease_Win32.lib</AdditionalDependencies>
 			    </Link>
 				</ItemDefinitionGroup>
 			  <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='DevFinal|Win32'">
 			    <ClCompile>
 			      <PreprocessorDefinitions>WIN32;NDEBUG;%(PreprocessorDefinitions)</PreprocessorDefinitions>
-			      <AdditionalIncludeDirectories>#target\${Name}\Win32\source\main\include;@$(SolutionDir)source\main\include;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+			      <AdditionalIncludeDirectories>#$(SolutionDir)target\${Name}\Win32\source\main\include;@$(SolutionDir)source\main\include;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
 					</ClCompile>
 			    <Link>
-			      <AdditionalLibraryDirectories>#target\${Name}\Win32\libs</AdditionalLibraryDirectories>
+			      <AdditionalLibraryDirectories>#$(SolutionDir)target\${Name}\Win32\libs</AdditionalLibraryDirectories>
 			      <AdditionalDependencies>#${Name}_DevFinal_Win32.lib</AdditionalDependencies>
 			    </Link>
 				</ItemDefinitionGroup>
