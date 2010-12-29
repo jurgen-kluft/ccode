@@ -53,7 +53,9 @@ namespace MSBuild.XCode
             package.Version = null;
             package.Branch = branch;
 
-            return package.Info();
+            success = package.Info();
+
+            return success;
         }
     }
 }

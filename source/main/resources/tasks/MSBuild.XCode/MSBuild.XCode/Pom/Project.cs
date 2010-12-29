@@ -21,9 +21,11 @@ namespace MSBuild.XCode
 
         public string Name { get; set; }
         public bool Main { get; set; }
+        public string Scope { get; set; }       ///< Public / Private
         public string Category { get; set; }
         public string Language { get; set; }
         public string Location { get; set; }
+
         public string Extension
         {
             get
@@ -37,24 +39,19 @@ namespace MSBuild.XCode
         public bool IsCpp { get { return (String.Compare(Language, "C++", true) == 0 || String.Compare(Language, "CPP", true) == 0); } }
         public bool IsCs { get { return (String.Compare(Language, "C#", true) == 0 || String.Compare(Language, "CS", true) == 0); } }
 
-        public Project()
+        public bool IsPrivate { get { return String.Compare(Scope, "Private") == 0; } }
+
+        public Project(bool main)
         {
             Name = "Unknown";
+            Main = main;
+            Scope = "Public";
             Category = "Main";
             Language = "cpp";   /// "cs"
-            Location = @"source\main\cpp";
-        }
-
-        public void Initialize()
-        {
-            Name = "Unknown";
-            Category = "Main";
-            Language = "cpp";
             Location = @"source\main\cpp";
 
             mMsDevProject = new MsDev2010.Cpp.XCode.Project();
             mMsDevProjectFull = new MsDev2010.Cpp.XCode.Project();
-
             mElements = new Dictionary<string, Element>();
         }
 
@@ -68,12 +65,11 @@ namespace MSBuild.XCode
 
         public void Read(XmlNode node)
         {
-            Initialize();
-
             this.Name = Attribute.Get("Name", node, "Unknown");
             this.Category = Attribute.Get("Category", node, "Main");
             this.Language = Attribute.Get("Language", node, "cpp");
             this.Location = Attribute.Get("Location", node, "source\\main\\cpp");
+            this.Scope = Attribute.Get("Scope", node, "Public");
 
             foreach (XmlNode child in node.ChildNodes)
             {
@@ -137,15 +133,36 @@ namespace MSBuild.XCode
             if (IsCpp)
             {
                 mMsDevProjectFull = new MsDev2010.Cpp.XCode.Project();
-                mMsDevProjectFull.Merge(Global.CppTemplateProject);
-                mMsDevProjectFull.Merge(mMsDevProject);
+                mMsDevProjectFull.Merge(Global.CppTemplateProject, true);
+                mMsDevProjectFull.Merge(mMsDevProject, true);
                 mMsDevProjectFull.RemoveAllBut(mConfigs);
             }
             else if (IsCs)
             {
                 mMsDevProjectFull = new MsDev2010.Cpp.XCode.Project();
-                mMsDevProjectFull.Merge(Global.CsTemplateProject);
-                mMsDevProjectFull.Merge(mMsDevProject);
+                mMsDevProjectFull.Merge(Global.CsTemplateProject, true);
+                mMsDevProjectFull.Merge(mMsDevProject, true);
+            }
+        }
+
+        public void MergeWithDependencyProject(Project dependencyProject)
+        {
+            mMsDevProjectFull.Merge(dependencyProject.mMsDevProjectFull, false);
+        }
+
+        public void OnlyKeepPlatformSpecifics(string platform)
+        {
+            if (IsCpp)
+            {
+                mMsDevProjectFull = new MsDev2010.Cpp.XCode.Project();
+                mMsDevProjectFull.Merge(mMsDevProject, true);
+                mMsDevProjectFull.RemoveAllPlatformsBut(platform);
+            }
+            else if (IsCs)
+            {
+                mMsDevProjectFull = new MsDev2010.Cpp.XCode.Project();
+                mMsDevProjectFull.Merge(mMsDevProject, true);
+                mMsDevProjectFull.RemoveAllPlatformsBut(platform);
             }
         }
 

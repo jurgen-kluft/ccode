@@ -1,10 +1,9 @@
 <Project ToolsVersion="4.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
-  <Import Project="..\dev.props"/>
-
   <PropertyGroup>
     <PackageDir>$(MSBuildProjectDirectory)</PackageDir>
     <PackagePlatform>Win32</PackagePlatform>
     <PackageName>${Name}</PackageName>
+    <PackageSolution>${Name}.sln</PackageSolution>
+    <PackageCategory>Main</PackageCategory>
   </PropertyGroup>
-
 </Project>

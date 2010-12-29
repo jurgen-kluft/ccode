@@ -5,7 +5,7 @@
     2) REMOTE_REPO_ROOT
   -->
   <PropertyGroup>
-    <PackageLocalRepoURL>$(CACHE_REPO_ROOT)\</PackageLocalRepoURL>
+    <PackageLocalRepoURL>$(CACHE_REPO_ROOT)</PackageLocalRepoURL>
     <PackageRemoteRepoURL>$(REMOTE_REPO_ROOT)</PackageRemoteRepoURL>
   </PropertyGroup>
   
@@ -14,6 +14,8 @@
     <PackageDir>$(MSBuildProjectDirectory)</PackageDir>
     <PackagePlatform>$(Platform)</PackagePlatform>
     <PackageFile></PackageFile>
+    <PackageConfigs></PackageConfigs>
+    <PackageCategory>Main</PackageCategory>
   </PropertyGroup>
 
 </Project>

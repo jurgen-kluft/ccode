@@ -18,13 +18,24 @@
     <Item Folder="tools"/>
   </DirectoryStructure>
   
+  <Content>
+		<Item Src="pom.*" Dst="" />  
+    <Item Src="source\main\cpp\**\*.cpp" Dst="source\main\cpp\" />
+    <Item Src="source\main\include\**\*.h" Dst="source\main\include\" />
+    <Item Src="source\main\resources\**\*.*" Dst="source\main\resources\" />
+    <Item Src="libs\**\*.*" Dst="libs\" />
+    <Item Src="docs\**\*.*" Dst="docs\" />
+    <Item Src="tools\**\*.*" Dst="Tools\" />
+    <Item Src="target\outdir\${Name}_*\${Name}_*_${Platform}.lib" Dst="libs\" />
+  </Content>
+  
   <Dependency Package="example_package_name">
     <Group>com.virtuos.tnt</Group>
     <Version>[1.0,)</Version>
     <Type>Package</Type>
   </Dependency>
 
-  <Project Name="${Name}" Category="main" Language="${Language}" Location="source\main\cpp">
+  <Project Name="${Name}" Category="Main" Language="${Language}" Location="source\main\cpp" Scope="Public">
     <ProjectFile>
 			<Project DefaultTargets="Build" ToolsVersion="4.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
 			  <PropertyGroup Label="Globals">
@@ -61,17 +72,15 @@
 			    </Link>
 				</ItemDefinitionGroup>
 			  <ItemGroup>
-			    <ClCompile Include="source\main\cpp\*.cpp" />
-			    <ClCompile Include="source\main\cpp\*\*.cpp" />
+			    <ClCompile Include="source\main\cpp\**\*.cpp" />
 			  </ItemGroup>
 			  <ItemGroup>
-			    <ClInclude Include="source\main\include\${Name}\*.h" />
-			    <ClInclude Include="source\main\include\${Name}\*\*.h" />
+			    <ClInclude Include="source\main\include\${Name}\**\*.h" />
 			  </ItemGroup>
 			</Project>				
     </ProjectFile>
   </Project>
-  <Project Name="${Name}_test" Category="unittest" Language="${Language}" Location="source\test\cpp">
+  <Project Name="${Name}_test" Category="UnitTest" Language="${Language}" Location="source\test\cpp" Scope="Private">
     <ProjectFile>
 			<Project DefaultTargets="Build" ToolsVersion="4.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
 			  <PropertyGroup Label="Globals">
@@ -79,23 +88,27 @@
 			  </PropertyGroup>
 			  <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='DevDebug|Win32'">
 			    <ClCompile>
-			      <PreprocessorDefinitions>@WIN32;@_DEBUG;@%(PreprocessorDefinitions)</PreprocessorDefinitions>
-			      <AdditionalIncludeDirectories>@$(SolutionDir)source\test\include;@%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+			      <PreprocessorDefinitions>WIN32;_DEBUG;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+			      <AdditionalIncludeDirectories>$(SolutionDir)source\test\include;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
 					</ClCompile>
 				</ItemDefinitionGroup>
 			  <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='DevRelease|Win32'">
 			    <ClCompile>
-			      <PreprocessorDefinitions>@WIN32;@NDEBUG;@%(PreprocessorDefinitions)</PreprocessorDefinitions>
-			      <AdditionalIncludeDirectories>@$(SolutionDir)source\test\include;@%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+			      <PreprocessorDefinitions>WIN32;NDEBUG;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+			      <AdditionalIncludeDirectories>$(SolutionDir)source\test\include;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+					</ClCompile>
+				</ItemDefinitionGroup>
+			  <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='DevFinal|Win32'">
+			    <ClCompile>
+			      <PreprocessorDefinitions>WIN32;NDEBUG;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+			      <AdditionalIncludeDirectories>$(SolutionDir)source\test\include;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
 					</ClCompile>
 				</ItemDefinitionGroup>
 			  <ItemGroup>
-			    <ClCompile Include="source\test\cpp\*.cpp" />
-			    <ClCompile Include="source\test\cpp\*\*.cpp" />
+			    <ClCompile Include="source\test\cpp\**\*.cpp" />
 			  </ItemGroup>
 			  <ItemGroup>
-			    <ClInclude Include="source\test\include\*.h" />
-			    <ClInclude Include="source\test\include\*\*.h" />
+			    <ClInclude Include="source\test\include\**\*.h" />
 			  </ItemGroup>				
 			</Project>
     </ProjectFile>

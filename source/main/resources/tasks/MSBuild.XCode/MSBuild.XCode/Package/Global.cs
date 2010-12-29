@@ -10,6 +10,8 @@ namespace MSBuild.XCode
 {
     public static class Global
     {
+        public static bool IsInitialized { get; set; }
+
         public static string CacheRepoDir { get; set; }
         public static string RemoteRepoDir { get; set; }
         public static string TemplateDir { get; set; }
@@ -21,21 +23,32 @@ namespace MSBuild.XCode
         public static MsDev2010.Cpp.XCode.Project CppTemplateProject { get; set; }
         public static MsDev2010.Cpp.XCode.Project CsTemplateProject { get; set; }
 
+        static Global()
+        {
+            IsInitialized = false;
+        }
+
         public static bool Initialize()
         {
             Loggy.ToConsole = true;
             Loggy.TaskLogger = null;
             Loggy.Indentor = "\t";
 
-            if (!Directory.Exists(CacheRepoDir))
+            if (!String.IsNullOrEmpty(CacheRepoDir))
             {
-                Loggy.Add(String.Format("Error: Initialization of Global failed since cache repo {0} doesn't exist", CacheRepoDir));
-                return false;
+                if (!Directory.Exists(CacheRepoDir))
+                {
+                    Loggy.Add(String.Format("Error: Initialization of Global failed since cache repo {0} doesn't exist", CacheRepoDir));
+                    return false;
+                }
             }
-            if (!Directory.Exists(RemoteRepoDir))
+            if (!String.IsNullOrEmpty(RemoteRepoDir))
             {
-                Loggy.Add(String.Format("Error: Initialization of Global failed since remote repo {0} doesn't exist", RemoteRepoDir));
-                return false;
+                if (!Directory.Exists(RemoteRepoDir))
+                {
+                    Loggy.Add(String.Format("Error: Initialization of Global failed since remote repo {0} doesn't exist", RemoteRepoDir));
+                    return false;
+                }
             }
             if (!String.IsNullOrEmpty(TemplateDir))
             {
@@ -64,6 +77,7 @@ namespace MSBuild.XCode
                 // CsTemplateProject.Load(TemplateDir + "main.vcxproj");
             }
 
+            IsInitialized = true;
             return true;
         }
 
