@@ -27,6 +27,10 @@ namespace MSBuild.XCode.Test
             /// p2.Merge(p1);
             /// p2.ExpandGlobs(@"d:\temp\test_cs_project\", @"d:\temp\test_cs_project\");
 
+            string str = "%()";
+            if (str.StartsWith("%()"))
+                Console.WriteLine("DFDFSDF");
+
             Global.TemplateDir = @"\\cnshasap2\Hg_Repo\PACKAGE_REPO\com\virtuos\xcode\publish\templates\";
             Global.CacheRepoDir = @"d:\PACKAGE_REPO\";
             Global.RemoteRepoDir = @"\\cnshasap2\Hg_Repo\PACKAGE_REPO\";
@@ -35,42 +39,24 @@ namespace MSBuild.XCode.Test
             // Our test project is xproject
             Global.RootDir = @"I:\Packages\xproject\";
 
-            PackageSync sync = new PackageSync();
-            sync.RootDir = Global.RootDir;
-            sync.Platform = "Win32";
-            sync.CacheRepoDir = Global.CacheRepoDir;
-            sync.RemoteRepoDir = Global.RemoteRepoDir;
-            sync.Execute();
-
-            PackageCreate create = new PackageCreate();
-            create.RootDir = Global.RootDir;
-            create.Platform = "Win32";
-            bool result1 = create.Execute();
-
-
-            PackageConfigs configs = new PackageConfigs();
-            configs.RootDir = Global.RootDir;
-            configs.Platform = "Win32";
-            configs.Category = "Main";
-            configs.Execute();
-
             PackageConstruct construct = new PackageConstruct();
             construct.Name = "xproject";
             construct.RootDir = @"i:\Packages\";
             construct.CacheRepoDir = Global.CacheRepoDir;
             construct.RemoteRepoDir = Global.RemoteRepoDir;
             construct.TemplateDir = Global.TemplateDir;
-            construct.Action = "init";
-            construct.Execute();
+            //construct.Action = "init";
+            //construct.Execute();
             construct.RootDir = construct.RootDir + construct.Name + "\\";
-            construct.Action = "dir";
-            construct.Execute();
+            //construct.Action = "dir";
+            //construct.Execute();
             construct.Action = "vs2010";
             construct.Execute();
 
-            PackageInfo info = new PackageInfo();
-            info.RootDir = Global.RootDir;
-            info.Execute();
+            PackageCreate create = new PackageCreate();
+            create.RootDir = Global.RootDir;
+            create.Platform = "Win32";
+            bool result1 = create.Execute();
 
             PackageInstall install = new PackageInstall();
             install.RootDir = Global.RootDir;
@@ -85,6 +71,23 @@ namespace MSBuild.XCode.Test
             deploy.RemoteRepoDir = Global.RemoteRepoDir;
             deploy.Filename = create.Filename;
             bool result4 = deploy.Execute();
+
+            PackageSync sync = new PackageSync();
+            sync.RootDir = Global.RootDir;
+            sync.Platform = "Win32";
+            sync.CacheRepoDir = Global.CacheRepoDir;
+            sync.RemoteRepoDir = Global.RemoteRepoDir;
+            sync.Execute();
+
+            PackageConfigs configs = new PackageConfigs();
+            configs.RootDir = Global.RootDir;
+            configs.Platform = "Win32";
+            configs.Category = "Main";
+            configs.Execute();
+
+            PackageInfo info = new PackageInfo();
+            info.RootDir = Global.RootDir;
+            info.Execute();
 
             PackageVerify verify = new PackageVerify();
             verify.RootDir = Global.RootDir;

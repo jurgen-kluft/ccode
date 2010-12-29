@@ -47,6 +47,8 @@ namespace MSBuild.XCode
 
         public void SetPropertiesFromFilename(string filename)
         {
+            filename = Path.GetFileNameWithoutExtension(filename);
+
             string[] parts = filename.Split(new char[] { '+' }, StringSplitOptions.RemoveEmptyEntries);
             if (parts.Length == 4)
             {
@@ -96,6 +98,18 @@ namespace MSBuild.XCode
                 ZipFile zip = new ZipFile(CacheURL);
                 string path = RootDir + "target\\" + Name + "\\" + Platform + "\\";
                 zip.ExtractAll(path, ExtractExistingFileAction.OverwriteSilently);
+
+                DateTime lastWriteTime = File.GetLastWriteTime(CacheURL);
+                FileInfo fi = new FileInfo(RootDir + "target\\" + Path.GetFileNameWithoutExtension(CacheURL) + ".t");
+                if (fi.Exists)
+                {
+                    fi.LastWriteTime = lastWriteTime;
+                }
+                else
+                {
+                    fi.Create().Close();
+                    fi.LastWriteTime = lastWriteTime;
+                }
                 return true;
             }
             return false;
@@ -219,7 +233,7 @@ namespace MSBuild.XCode
             ComparableVersion version = Pom.Versions.GetForPlatformWithBranch(Platform, Branch);
 
             DateTime t = DateTime.Now;
-            string versionStr = version.ToString() + String.Format(".{0}.{1}.{2}.{3}.{4}.{5}", t.Year, t.Month, t.Day, t.Hour, t.Minute, t.Second);
+            string versionStr = version.ToString() + String.Format(".{0:yyyy}.{0:M}.{0:d}.{0:H}.{0:m}.{0:s}", t);
 
             Filename = Name + "+" + versionStr + "+" + Branch + "+" + Platform + ".zip";
             if (File.Exists(Filename))
@@ -251,49 +265,56 @@ namespace MSBuild.XCode
             string md5_file = subDir + Name + ".MD5";
             if (File.Exists(targetDir + md5_file))
             {
-                MD5CryptoServiceProvider md5_provider = new MD5CryptoServiceProvider();
-
-                // Load MD5 file
-                ok = true;
-                string[] lines = File.ReadAllLines(targetDir + md5_file);
-
-                // MD5 is relative to its own location
-                foreach (string entry in lines)
+                DateTime packageLastWriteTime = File.GetLastWriteTime(CacheURL);
+                FileInfo fi = new FileInfo(targetDir + Path.GetFileNameWithoutExtension(CacheURL) + ".t");
+                bool markerFileExists = fi.Exists;
+                bool markerFileUpToDate = markerFileExists && (fi.LastWriteTime == packageLastWriteTime);
+                if (markerFileExists && markerFileUpToDate)
                 {
-                    if (entry.Trim().StartsWith(";"))
-                        continue;
+                    MD5CryptoServiceProvider md5_provider = new MD5CryptoServiceProvider();
 
-                    // Get the MD5 and Filename
-                    int s = entry.IndexOf('*');
-                    if (s == -1)
+                    // Load MD5 file
+                    ok = true;
+                    string[] lines = File.ReadAllLines(targetDir + md5_file);
+
+                    // MD5 is relative to its own location
+                    foreach (string entry in lines)
                     {
-                        ok = false;
-                        break;
-                    }
-                    string old_md5 = entry.Substring(s + 1).Trim();
-                    string filename = targetDir + subDir + entry.Substring(0, s).Trim();
+                        if (entry.Trim().StartsWith(";"))
+                            continue;
 
-                    if (File.Exists(filename))
-                    {
-                        string new_md5 = string.Empty;
-                        using (FileStream rfs = new FileStream(filename, FileMode.Open, FileAccess.Read))
-                        {
-                            byte[] new_md5_raw = md5_provider.ComputeHash(rfs);
-                            new_md5 = StringTools.MD5ToString(new_md5_raw);
-                            rfs.Close();
-                        }
-
-                        if (String.Compare(old_md5, new_md5) != 0)
+                        // Get the MD5 and Filename
+                        int s = entry.IndexOf('*');
+                        if (s == -1)
                         {
                             ok = false;
                             break;
                         }
-                    }
-                    else
-                    {
-                        // File doesn't exist anymore
-                        ok = false;
-                        break;
+                        string old_md5 = entry.Substring(s + 1).Trim();
+                        string filename = targetDir + subDir + entry.Substring(0, s).Trim();
+
+                        if (File.Exists(filename))
+                        {
+                            string new_md5 = string.Empty;
+                            using (FileStream rfs = new FileStream(filename, FileMode.Open, FileAccess.Read))
+                            {
+                                byte[] new_md5_raw = md5_provider.ComputeHash(rfs);
+                                new_md5 = StringTools.MD5ToString(new_md5_raw);
+                                rfs.Close();
+                            }
+
+                            if (String.Compare(old_md5, new_md5) != 0)
+                            {
+                                ok = false;
+                                break;
+                            }
+                        }
+                        else
+                        {
+                            // File doesn't exist anymore
+                            ok = false;
+                            break;
+                        }
                     }
                 }
                 return ok;

@@ -117,6 +117,14 @@ namespace MSBuild.XCode
             Read(xmlDoc.FirstChild);
         }
 
+        public void OnlyKeepPlatformSpecifics(string platform)
+        {
+            foreach (Project prj in Projects)
+            {
+                prj.OnlyKeepPlatformSpecifics(platform);
+            }
+        }
+
         public void PostLoad()
         {
             foreach (Project prj in Projects)
@@ -159,11 +167,11 @@ namespace MSBuild.XCode
                                 foreach (XmlNode item in child.ChildNodes)
                                 {
                                     string platform = Attribute.Get("Platform", item, "*");
-                                    string src = Attribute.Get("Src", item, string.Empty);
-                                    if (!String.IsNullOrEmpty(src))
+                                    string src = Attribute.Get("Src", item, null);
+                                    if (src != null)
                                     {
-                                        string dst = Attribute.Get("Dst", item, string.Empty);
-                                        if (!String.IsNullOrEmpty(dst))
+                                        string dst = Attribute.Get("Dst", item, null);
+                                        if (dst != null)
                                         {
                                             List<KeyValuePair<string,string>> items;
                                             if (!Content.TryGetValue(platform, out items))
@@ -185,8 +193,7 @@ namespace MSBuild.XCode
                         }
                         else if (child.Name == "Project")
                         {
-                            Project project = new Project();
-                            project.Main = Main;
+                            Project project = new Project(Main);
                             project.Read(child);
                             Projects.Add(project);
                         }
@@ -226,15 +233,31 @@ namespace MSBuild.XCode
 
         public void GenerateProjects(string root)
         {
+            // Generating project files is a bit complex in that it has to merge project definitions on a per platform basis.
+            // Every platform is considered to have its own package (zip -> pom.xml) containing the project settings for that platform.
+            // For every platform we have to merge in only the conditional xml elements into the final project file.
+            foreach (Project rootProject in Projects)
+            {
+                if (rootProject.IsPrivate)
+                    continue;
+
+                // Every platform has a dependency tree and every dependency package for that platform has filtered their
+                // project to only keep their platform specific xml elements.
+                foreach (KeyValuePair<string, DependencyTree> pair in DependencyTree)
+                {
+                    List<Package> allDependencyPackages = pair.Value.GetAllDependencyPackages();
+
+                    // Merge in all Projects of those dependency packages which are already filtered on the platform
+                    foreach (Package dependencyPackage in allDependencyPackages)
+                    {
+                        Project dependencyProject = dependencyPackage.Pom.GetProjectByCategory(rootProject.Category);
+                        if (dependencyProject!=null)
+                            rootProject.MergeWithDependencyProject(dependencyProject);
+                    }
+                }
+            }
+
             root = root.EndWith('\\');
-
-            // Here merge with all Projects of the dependency packages, but only:
-            ///    1) PreprocessorDefinitions
-            ///    2) AdditionalIncludeDirectories
-            ///    3) AdditionalDependencies
-            ///    4) AdditionalLibraryDirectories
-            /// Also, missing nodes should not be added!
-
             foreach (Project p in Projects)
             {
                 string path = p.Location.Replace("/", "\\");
@@ -248,19 +271,18 @@ namespace MSBuild.XCode
         {
             root = root.EndWith('\\');
 
-            string filename = root + Name + ".sln";
-
             List<string> projectFilenames = new List<string>();
             foreach (Project prj in Projects)
             {
                 string path = prj.Location.Replace("/", "\\");
                 path = path.EndWith('\\');
-                string f = path + prj.Name + prj.Extension;
-                projectFilenames.Add(f);
+                path = path + prj.Name + prj.Extension;
+                projectFilenames.Add(path);
             }
 
             MsDev2010.Cpp.XCode.Solution solution = new MsDev2010.Cpp.XCode.Solution(MsDev2010.Cpp.XCode.Solution.EVersion.VS2010, MsDev2010.Cpp.XCode.Solution.ELanguage.CPP);
-            solution.Save(filename, projectFilenames);
+            string solutionFilename = root + Name + ".sln";
+            solution.Save(solutionFilename, projectFilenames);
         }
 
         public bool BuildDependencies(string Platform)
@@ -271,13 +293,11 @@ namespace MSBuild.XCode
             if (!DependencyTree.TryGetValue(Platform, out tree))
             {
                 tree = new DependencyTree();
-                tree.Name = Name;
-                tree.Dependencies = Dependencies;
                 tree.Package = this;
+                tree.Platform = Platform;
+                tree.Dependencies = Dependencies;
                 DependencyTree.Add(Platform, tree);
-
-                tree.Version = Versions.GetForPlatform(Platform);
-                result = tree.Build(Platform);
+                result = tree.Build();
             }
 
             return result;
@@ -295,7 +315,7 @@ namespace MSBuild.XCode
             bool result = false;
             DependencyTree tree;
             if (DependencyTree.TryGetValue(Platform, out tree))
-                result = tree.Sync(Platform);
+                result = tree.Sync();
             return result;
         }
 

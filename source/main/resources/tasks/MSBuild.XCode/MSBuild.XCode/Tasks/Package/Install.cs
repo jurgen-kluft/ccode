@@ -28,10 +28,13 @@ namespace MSBuild.XCode
             Loggy.TaskLogger = Log;
             RootDir = RootDir.EndWith('\\');
 
-            Global.TemplateDir = string.Empty;
-            Global.CacheRepoDir = CacheRepoDir;
-            Global.RemoteRepoDir = RemoteRepoDir;
-            Global.Initialize();
+            if (!Global.IsInitialized)
+            {
+                Global.TemplateDir = string.Empty;
+                Global.CacheRepoDir = CacheRepoDir;
+                Global.RemoteRepoDir = RemoteRepoDir;
+                Global.Initialize();
+            }
 
             Package package = new Package();
             package.IsRoot = true;

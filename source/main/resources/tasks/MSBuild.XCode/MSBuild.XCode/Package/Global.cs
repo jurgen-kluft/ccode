@@ -10,6 +10,8 @@ namespace MSBuild.XCode
 {
     public static class Global
     {
+        public static bool IsInitialized { get; set; }
+
         public static string CacheRepoDir { get; set; }
         public static string RemoteRepoDir { get; set; }
         public static string TemplateDir { get; set; }
@@ -70,6 +72,7 @@ namespace MSBuild.XCode
                 // CsTemplateProject.Load(TemplateDir + "main.vcxproj");
             }
 
+            IsInitialized = true;
             return true;
         }
 

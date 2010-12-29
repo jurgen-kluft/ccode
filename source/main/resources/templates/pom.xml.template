@@ -19,6 +19,7 @@
   </DirectoryStructure>
   
   <Content>
+		<Item Src="pom.*" Dst="" />  
     <Item Src="source\main\cpp\**\*.cpp" Dst="source\main\cpp\" />
     <Item Src="source\main\include\**\*.h" Dst="source\main\include\" />
     <Item Src="source\main\resources\**\*.*" Dst="source\main\resources\" />
@@ -34,7 +35,7 @@
     <Type>Package</Type>
   </Dependency>
 
-  <Project Name="${Name}" Category="main" Language="${Language}" Location="source\main\cpp">
+  <Project Name="${Name}" Category="Main" Language="${Language}" Location="source\main\cpp" Scope="Public">
     <ProjectFile>
 			<Project DefaultTargets="Build" ToolsVersion="4.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
 			  <PropertyGroup Label="Globals">
@@ -79,7 +80,7 @@
 			</Project>				
     </ProjectFile>
   </Project>
-  <Project Name="${Name}_test" Category="unittest" Language="${Language}" Location="source\test\cpp">
+  <Project Name="${Name}_test" Category="UnitTest" Language="${Language}" Location="source\test\cpp" Scope="Private">
     <ProjectFile>
 			<Project DefaultTargets="Build" ToolsVersion="4.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
 			  <PropertyGroup Label="Globals">
@@ -87,14 +88,20 @@
 			  </PropertyGroup>
 			  <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='DevDebug|Win32'">
 			    <ClCompile>
-			      <PreprocessorDefinitions>@WIN32;@_DEBUG;@%(PreprocessorDefinitions)</PreprocessorDefinitions>
-			      <AdditionalIncludeDirectories>@$(SolutionDir)source\test\include;@%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+			      <PreprocessorDefinitions>WIN32;_DEBUG;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+			      <AdditionalIncludeDirectories>$(SolutionDir)source\test\include;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
 					</ClCompile>
 				</ItemDefinitionGroup>
 			  <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='DevRelease|Win32'">
 			    <ClCompile>
-			      <PreprocessorDefinitions>@WIN32;@NDEBUG;@%(PreprocessorDefinitions)</PreprocessorDefinitions>
-			      <AdditionalIncludeDirectories>@$(SolutionDir)source\test\include;@%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+			      <PreprocessorDefinitions>WIN32;NDEBUG;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+			      <AdditionalIncludeDirectories>$(SolutionDir)source\test\include;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+					</ClCompile>
+				</ItemDefinitionGroup>
+			  <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='DevFinal|Win32'">
+			    <ClCompile>
+			      <PreprocessorDefinitions>WIN32;NDEBUG;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+			      <AdditionalIncludeDirectories>$(SolutionDir)source\test\include;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
 					</ClCompile>
 				</ItemDefinitionGroup>
 			  <ItemGroup>

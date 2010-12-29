@@ -24,7 +24,8 @@ namespace MSBuild.XCode.Helpers
                 string dir = dirs.Pop();
                 if (dir.IndexOf('*') < 0)
                 {
-                    ret.AddRange(Directory.GetFiles(dir, FileMask));
+                    if (Directory.Exists(dir))
+                        ret.AddRange(Directory.GetFiles(dir, FileMask));
                 }
                 else
                 {

@@ -40,10 +40,13 @@ namespace MSBuild.XCode
                 return false;
             }
 
-            Global.TemplateDir = string.Empty;
-            Global.CacheRepoDir = CacheRepoDir;
-            Global.RemoteRepoDir = RemoteRepoDir;
-            Global.Initialize();
+            if (!Global.IsInitialized)
+            {
+                Global.TemplateDir = string.Empty;
+                Global.CacheRepoDir = CacheRepoDir;
+                Global.RemoteRepoDir = RemoteRepoDir;
+                Global.Initialize();
+            }
 
             Package package = new Package();
             package.IsRoot = true;
