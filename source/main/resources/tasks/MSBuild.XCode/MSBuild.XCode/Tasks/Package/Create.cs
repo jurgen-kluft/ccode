@@ -35,14 +35,6 @@ namespace MSBuild.XCode
 
             Environment.CurrentDirectory = RootDir;
 
-            if (!Global.IsInitialized)
-            {
-                Global.TemplateDir = string.Empty;
-                Global.CacheRepoDir = string.Empty;
-                Global.RemoteRepoDir = string.Empty;
-                Global.Initialize();
-            }
-
             // - Verify that there are no local changes 
             // - Verify that there are no outgoing changes
             Mercurial.Repository hg_repo = new Mercurial.Repository(RootDir);

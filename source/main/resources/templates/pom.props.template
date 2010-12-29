@@ -4,5 +4,6 @@
     <PackagePlatform>Win32</PackagePlatform>
     <PackageName>${Name}</PackageName>
     <PackageSolution>${Name}.sln</PackageSolution>
+    <PackageCategory>Main</PackageCategory>
   </PropertyGroup>
 </Project>

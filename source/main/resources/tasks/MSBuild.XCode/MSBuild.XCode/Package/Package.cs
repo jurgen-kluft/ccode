@@ -170,7 +170,6 @@ namespace MSBuild.XCode
             /// 5) Add files to zip
             /// 6) Close
             /// 
-            Environment.CurrentDirectory = RootDir;
 
             List<KeyValuePair<string, string>> content;
             if (!Pom.Content.TryGetValue(Platform, out content))
@@ -186,6 +185,23 @@ namespace MSBuild.XCode
             {
                 Glob(RootDir + pair.Key, pair.Value, files);
             }
+            
+            // Is pom.xml included?
+            bool includesPomXml = false;
+            foreach (KeyValuePair<string, string> pair in files)
+            {
+                if (String.Compare(Path.GetFileName(pair.Key), "pom.xml", true) == 0)
+                {
+                    includesPomXml = true;
+                    break;
+                }
+            }
+            if (!includesPomXml)
+            {
+                Loggy.Add(String.Format("Error: Package::Create, package must include pom.xml!"));
+                Filename = string.Empty;
+                return false;
+            }
 
             MD5CryptoServiceProvider md5_provider = new MD5CryptoServiceProvider();
             Dictionary<string, byte[]> md5Dictionary = new Dictionary<string, byte[]>();
@@ -197,8 +213,14 @@ namespace MSBuild.XCode
                 byte[] md5 = md5_provider.ComputeHash(fs);
                 fs.Close();
 
-                if (!md5Dictionary.ContainsKey(pair.Value))
-                    md5Dictionary.Add(pair.Value.EndWith('\\') + Path.GetFileName(src_filename), md5);
+                string dst_filename;
+                if (String.IsNullOrEmpty(pair.Value))
+                    dst_filename = Path.GetFileName(src_filename);
+                else
+                    dst_filename = pair.Value.EndWith('\\') + Path.GetFileName(src_filename);
+
+                if (!md5Dictionary.ContainsKey(dst_filename))
+                    md5Dictionary.Add(dst_filename, md5);
             }
 
             if (!Directory.Exists(dir))
@@ -233,12 +255,12 @@ namespace MSBuild.XCode
             ComparableVersion version = Pom.Versions.GetForPlatformWithBranch(Platform, Branch);
 
             DateTime t = DateTime.Now;
-            string versionStr = version.ToString() + String.Format(".{0:yyyy}.{0:M}.{0:d}.{0:H}.{0:m}.{0:s}", t);
+            string versionStr = version.ToString() + String.Format(".{0:yyyy.M.d.H.m.s}", t);
 
             Filename = Name + "+" + versionStr + "+" + Branch + "+" + Platform + ".zip";
-            if (File.Exists(Filename))
+            if (File.Exists(RootDir + "target\\" + Filename))
             {
-                try { File.Delete(Filename); }
+                try { File.Delete(RootDir + "target\\" + Filename); }
                 catch (Exception) { }
             }
 

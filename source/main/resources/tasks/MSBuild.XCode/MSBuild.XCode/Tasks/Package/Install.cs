@@ -28,13 +28,10 @@ namespace MSBuild.XCode
             Loggy.TaskLogger = Log;
             RootDir = RootDir.EndWith('\\');
 
-            if (!Global.IsInitialized)
-            {
-                Global.TemplateDir = string.Empty;
-                Global.CacheRepoDir = CacheRepoDir;
-                Global.RemoteRepoDir = RemoteRepoDir;
-                Global.Initialize();
-            }
+            Global.TemplateDir = string.Empty;
+            Global.CacheRepoDir = CacheRepoDir;
+            Global.RemoteRepoDir = RemoteRepoDir;
+            Global.Initialize();
 
             Package package = new Package();
             package.IsRoot = true;
@@ -47,6 +44,9 @@ namespace MSBuild.XCode
 
             // - Commit version to local package repository
             bool ok = package.Install();
+            if (!ok)
+                Loggy.Add(String.Format("Error: Package::Install, failed to add {0} to {2}", Filename, CacheRepoDir));
+
             return ok;
         }
     }

@@ -67,13 +67,13 @@
   </Target>
 
   <Target Name="Configurations">
-    <MSBuild.XCode.PackageConfigs RootDir="$(PackageDir)" Platform="$(PackagePlatform)" Category="Main">
+    <MSBuild.XCode.PackageConfigs RootDir="$(PackageDir)" Platform="$(PackagePlatform)" Category="$(PackageCategory)" TemplateDir="$(PackageLocalRepoURL)com\virtuos\xcode\publish\templates\">
       <Output PropertyName="PackageConfigs" TaskParameter="Configurations"/>
     </MSBuild.XCode.PackageConfigs>
   </Target>
   
   <!-- This will call msbuild multiple times for every item in PackageConfigTargets -->
-  <Target Name="CompilePlatformForEveryTarget" DependsOnTargets="Configurations">
+  <Target Name="CompilePlatformForEveryTarget">
   	<ItemGroup>
   		<PackageConfigsList Include="$(PackageConfigs)" />
   	</ItemGroup>
@@ -82,6 +82,9 @@
   </Target>
 
   <Target Name="__Compile">
+  	<Message Text="Platform: $(PackagePlatform)" />
+  	<Message Text="Category: $(PackageCategory)" />
+    <CallTarget Targets="Configurations"/>
     <CallTarget Targets="CompilePlatformForEveryTarget"/>
   </Target>
 
@@ -112,6 +115,7 @@
   </Target>
 
   <Target Name="PackageInstall">
+  	<Message Text="Install package $(PackageFilename) from $(PackageDir) to $(PackageLocalRepoURL)" />
     <MSBuild.XCode.PackageInstall RootDir="$(PackageDir)" Filename="$(PackageFilename)" CacheRepoDir="$(PackageLocalRepoURL)" RemoteRepoDir="$(PackageRemoteRepoURL)"/>
   </Target>
   <Target Name="__Install" DependsOnTargets="PackageInstall">

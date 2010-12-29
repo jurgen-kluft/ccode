@@ -23,6 +23,11 @@ namespace MSBuild.XCode
         public static MsDev2010.Cpp.XCode.Project CppTemplateProject { get; set; }
         public static MsDev2010.Cpp.XCode.Project CsTemplateProject { get; set; }
 
+        static Global()
+        {
+            IsInitialized = false;
+        }
+
         public static bool Initialize()
         {
             Loggy.ToConsole = true;
