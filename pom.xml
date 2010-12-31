@@ -3,11 +3,12 @@
     <Version>1.0.0</Version>
   </Versions>
 
-  <Project Name="xcode" Category="Main" Language="C#" Location="source\main\cs">
+  <Project Name="xcode" Group="Main" Language="C#" Location="source\main\cs">
 
   </Project>
 
-  <Project Name="xcode_test" Category="UnitTest" Language="C#" Location="source\test\cs">
+  <Project Name="xcode_test" Group="UnitTest" Language="C#" Location="source\test\cs">
 
   </Project>
+  
 </Package>

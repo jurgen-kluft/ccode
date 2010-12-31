@@ -150,17 +150,10 @@ namespace MsDev2010.Cpp.XCode
                         }
                         return false;
                     }
-                    if (node.Name == "ItemGroup")
+                    if (node.Name == "ItemGroup" && node.HasChildNodes)
                     {
-                        if (node.HasChildNodes)
-                        {
-                            if (node.ChildNodes[0].Name == "ClCompile")
-                                return false;
-                            else if (node.ChildNodes[0].Name == "ClInclude")
-                                return false;
-                            else if (node.ChildNodes[0].Name == "None")
-                                return false;
-                        }
+                        if (IsOneOf(node.ChildNodes[0].Name, new string[] { "ClCompile", "ClInclude", "None" }))
+                            return false;
                     }
                     return true;
                 },
@@ -181,10 +174,7 @@ namespace MsDev2010.Cpp.XCode
                 },
                 delegate(XmlNode main, XmlNode other)
                 {
-                    if (main.ParentNode.Name == "PreprocessorDefinitions" ||
-                        main.ParentNode.Name == "AdditionalDependencies" ||
-                        main.ParentNode.Name == "AdditionalLibraryDirectories" ||
-                        main.ParentNode.Name == "AdditionalIncludeDirectories")
+                    if (IsOneOf(main.ParentNode.Name, new string[] { "PreprocessorDefinitions", "AdditionalDependencies", "AdditionalLibraryDirectories", "AdditionalIncludeDirectories" }))
                     {
                         StringItems items = new StringItems();
                         items.Add(main.Value, true);
@@ -204,7 +194,7 @@ namespace MsDev2010.Cpp.XCode
             Merge(mXmlDocMain, mXmlDocMain,
                 delegate(XmlNode node)
                 {
-                    if (node.Name == "ClCompile" || node.Name == "ClInclude" || node.Name == "None")
+                    if (IsOneOf(node.Name, new string[] { "ClCompile", "ClInclude", "None" }))
                     {
                         foreach (XmlAttribute a in node.Attributes)
                         {
@@ -322,7 +312,7 @@ namespace MsDev2010.Cpp.XCode
             {
                 foreach (XmlAttribute a in node.Attributes)
                 {
-                    if (a.Name == "Condition" || a.Name == "Include")
+                    if (IsOneOf(a.Name, new string[] { "Condition", "Include" }))
                     {
                         if (a.Value.Contains(String.Format("{0}|{1}", config, platform)))
                         {
@@ -430,11 +420,47 @@ namespace MsDev2010.Cpp.XCode
             return true;
         }
 
-        public bool Merge(Project project, bool replace)
+        private static bool IsOneOf(string str, string[] strs)
+        {
+            if (String.IsNullOrEmpty(str))
+                return false;
+
+            foreach (string s in strs)
+            {
+                if ((str.Length == s.Length) && (str[0] == s[0]))
+                {
+                    if (String.Compare(str, s, true) == 0)
+                        return true;
+                }
+            }
+            return false;
+        }
+
+        public bool Merge(Project project, bool replace, bool content)
         {
             Merge(mXmlDocMain, project.mXmlDocMain,
                 delegate(XmlNode node)
                 {
+                    // If (content == False)
+                    //    do not merge these:
+                    //          <ItemGroup>
+                    //            <ClCompile Include="source.cpp">
+                    //          </ItemGroup>
+                    //          <ItemGroup>
+                    //            <ClInclude Include="source.h">
+                    //          </ItemGroup>
+                    //          <ItemGroup>
+                    //            <None Include="source.png">
+                    //          </ItemGroup>
+                    // Endif
+                    if (!content && node.Name == "ItemGroup" && node.HasChildNodes)
+                    {
+                        XmlNode child = node.ChildNodes[0];
+                        if (IsOneOf(child.Name, new string[] { "ClCompile", "ClInclude", "None" }))
+                        {
+                            return false;
+                        }
+                    }
                     return true;
                 },
                 delegate(XmlNode main, XmlNode other)
@@ -444,10 +470,7 @@ namespace MsDev2010.Cpp.XCode
                     // - AdditionalIncludeDirectories
                     // - AdditionalLibraryDirectories
                     // - AdditionalDependencies
-                    if (main.ParentNode.Name == "PreprocessorDefinitions" ||
-                        main.ParentNode.Name == "AdditionalIncludeDirectories" ||
-                        main.ParentNode.Name == "AdditionalLibraryDirectories" ||
-                        main.ParentNode.Name == "AdditionalDependencies")
+                    if (IsOneOf(main.ParentNode.Name, new string[] { "PreprocessorDefinitions", "AdditionalIncludeDirectories", "AdditionalLibraryDirectories", "AdditionalDependencies" }))
                     {
                         StringItems items = new StringItems();
                         items.Add(other.Value, true);

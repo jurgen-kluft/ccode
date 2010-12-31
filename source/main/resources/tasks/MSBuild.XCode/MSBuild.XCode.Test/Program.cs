@@ -27,13 +27,20 @@ namespace MSBuild.XCode.Test
             /// p2.Merge(p1);
             /// p2.ExpandGlobs(@"d:\temp\test_cs_project\", @"d:\temp\test_cs_project\");
 
-            Global.TemplateDir = @"\\cnshasap2\Hg_Repo\PACKAGE_REPO\com\virtuos\xcode\publish\templates\";
+            Global.TemplateDir = @"d:\REMOTE_PACKAGE_REPO\com\virtuos\xcode\publish\templates\";
             Global.CacheRepoDir = @"d:\PACKAGE_REPO\";
-            Global.RemoteRepoDir = @"\\cnshasap2\Hg_Repo\PACKAGE_REPO\";
+            Global.RemoteRepoDir = @"d:\REMOTE_PACKAGE_REPO\";
             Global.Initialize();
            
             // Our test project is xproject
-            Global.RootDir = @"I:\Packages\xunittest\";
+            Global.RootDir = @"d:\Dev\Packages\xunittest\";
+
+            Mercurial.Repository hg_repo = new Mercurial.Repository(Global.RootDir);
+            if (!hg_repo.Exists)
+            {
+                Loggy.Add(String.Format("Error: Package::Create failed since there is no Hg (Mercurial) repository!"));
+                return;
+            }
 
             PackageConfigs configs = new PackageConfigs();
             configs.RootDir = Global.RootDir;
@@ -90,7 +97,7 @@ namespace MSBuild.XCode.Test
         {
             PackageConstruct construct = new PackageConstruct();
             construct.Name = name;
-            construct.RootDir = @"i:\Packages\";
+            construct.RootDir = @"d:\Dev\Packages\";
             construct.CacheRepoDir = Global.CacheRepoDir;
             construct.RemoteRepoDir = Global.RemoteRepoDir;
             construct.TemplateDir = Global.TemplateDir;

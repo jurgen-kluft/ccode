@@ -249,7 +249,7 @@
   </Target>
   -->
   <PropertyGroup>
-    <PostBuildEvent>xcopy $(ProjectDir)bin\$(ConfigurationName)\*.dll  $(ProjectDir)..\..\*.* /R /Y /Q
-xcopy $(ProjectDir)bin\$(ConfigurationName)\*.dll  \\cnshasap2\Hg_Repo\PACKAGE_REPO\com\virtuos\xcode\publish\*.* /R /Y /Q</PostBuildEvent>
+    <PostBuildEvent>xcopy $(ProjectDir)bin\$(ConfigurationName)\*.dll  D:\REMOTE_PACKAGE_REPO\com\virtuos\xcode\publish\*.* /R /Y /Q
+</PostBuildEvent>
   </PropertyGroup>
 </Project>
