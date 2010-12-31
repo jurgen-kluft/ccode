@@ -67,37 +67,47 @@ namespace MSBuild.XCode
             return true;
         }
 
-        public Project GetProjectByCategory(string category)
+        public Project GetProjectByGroup(string group)
         {
             foreach (Project p in Projects)
             {
-                if (String.Compare(p.Category, category, true) == 0)
+                if (String.Compare(p.Group, group, true) == 0)
                     return p;
             }
             return null;
         }
 
-        public string[] GetCategories()
+        public Project GetProjectByName(string name)
+        {
+            foreach (Project p in Projects)
+            {
+                if (String.Compare(p.Name, name, true) == 0)
+                    return p;
+            }
+            return null;
+        }
+
+        public string[] GetGroups()
         {
             List<string> categories = new List<string>();
             foreach (Project prj in Projects)
             {
-                categories.Add(prj.Category);
+                categories.Add(prj.Group);
             }
             return categories.ToArray();
         }
 
-        public string[] GetPlatformsForCategory(string Category)
+        public string[] GetPlatformsForGroup(string inGroup)
         {
-            Project project = GetProjectByCategory(Category);
+            Project project = GetProjectByGroup(inGroup);
             if (project != null)
                 return project.GetPlatforms();
             return new string[0];
         }
 
-        public string[] GetConfigsForPlatformsForCategory(string Platform, string Category)
+        public string[] GetConfigsForPlatformsForGroup(string Platform, string inGroup)
         {
-            Project project = GetProjectByCategory(Category);
+            Project project = GetProjectByGroup(inGroup);
             if (project!=null)
                 return project.GetConfigsForPlatform(Platform);
             return new string[0];
@@ -217,10 +227,10 @@ namespace MSBuild.XCode
             }
 
             HashSet<string> all_platforms = new HashSet<string>();
-            string[] categories = GetCategories();
-            foreach (string category in categories)
+            string[] groups = GetGroups();
+            foreach (string group in groups)
             {
-                string[] platforms = GetPlatformsForCategory(category);
+                string[] platforms = GetPlatformsForGroup(group);
                 foreach (string platform in platforms)
                 {
                     if (!all_platforms.Contains(platform))
@@ -247,8 +257,24 @@ namespace MSBuild.XCode
                     // Merge in all Projects of those dependency packages which are already filtered on the platform
                     foreach (Package dependencyPackage in allDependencyPackages)
                     {
-                        Project dependencyProject = dependencyPackage.Pom.GetProjectByCategory(rootProject.Category);
+                        Project dependencyProject = dependencyPackage.Pom.GetProjectByGroup(rootProject.Group);
                         if (dependencyProject!=null && !dependencyProject.IsPrivate)
+                            rootProject.MergeWithDependencyProject(dependencyProject);
+                    }
+                }
+            }
+
+            // And the root package UnitTest project generally merges with Main, since UnitTest will use Main.
+            // Although the user could specify more project and different internal dependencies.
+            foreach (Project rootProject in Projects)
+            {
+                if (!String.IsNullOrEmpty(rootProject.DependsOn))
+                {
+                    string[] projectNames = rootProject.DependsOn.Split(new char[] { ';' }, StringSplitOptions.RemoveEmptyEntries);
+                    foreach (string name in projectNames)
+                    {
+                        Project dependencyProject = GetProjectByName(name);
+                        if (dependencyProject != null)
                             rootProject.MergeWithDependencyProject(dependencyProject);
                     }
                 }

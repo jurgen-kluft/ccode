@@ -44,10 +44,10 @@ namespace MSBuild.XCode
             Package package = new Package();
             package.IsRoot = true;
             package.RootDir = RootDir;
-            if (package.LoadFinalPom())
+            if (package.LoadPom())
             {
                 // Get all platforms and configs, e.g: DevDebug|Win32;DevRelease|Win32;DevFinal|Win32
-                string[] configs = package.Pom.GetConfigsForPlatformsForCategory(Platform, Category);
+                string[] configs = package.Pom.GetConfigsForPlatformsForGroup(Platform, Category);
                 Configurations = configs;
                 success = true;
             }
