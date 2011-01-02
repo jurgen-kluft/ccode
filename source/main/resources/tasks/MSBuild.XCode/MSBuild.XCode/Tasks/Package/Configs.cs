@@ -41,10 +41,8 @@ namespace MSBuild.XCode
             Global.RemoteRepoDir = string.Empty;
             Global.Initialize();
 
-            Package package = new Package();
-            package.IsRoot = true;
-            package.RootDir = RootDir;
-            if (package.LoadPom())
+            PackageInstance package = PackageInstance.LoadFromRoot(RootDir);
+            if (package.IsValid)
             {
                 // Get all platforms and configs, e.g: DevDebug|Win32;DevRelease|Win32;DevFinal|Win32
                 string[] configs = package.Pom.GetConfigsForPlatformsForGroup(Platform, Category);
@@ -53,7 +51,7 @@ namespace MSBuild.XCode
             }
             else
             {
-                Loggy.Add(String.Format("Error: Loading 'pom.xml' failed in Package::Targets"));
+                Loggy.Add(String.Format("Error: Loading package failed in Package::Configs"));
             }
 
             return success;

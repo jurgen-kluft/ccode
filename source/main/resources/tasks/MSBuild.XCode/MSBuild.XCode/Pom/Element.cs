@@ -86,7 +86,7 @@ namespace MSBuild.XCode
             }
         }
 
-        public static string sGetXmlNodeValueAsText(XmlNode node)
+        public static string GetText(XmlNode node)
         {
             if (!String.IsNullOrEmpty(node.Value))
             {

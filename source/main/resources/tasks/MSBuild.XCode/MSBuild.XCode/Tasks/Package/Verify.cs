@@ -15,8 +15,8 @@ namespace MSBuild.XCode
     public class PackageVerify : Task
     {
         public string RootDir { get; set; }
+        public string Name { get; set; }
         public string Platform { get; set; }
-        public string Branch { get; set; }
 
         public override bool Execute()
         {
@@ -24,21 +24,15 @@ namespace MSBuild.XCode
 
             if (String.IsNullOrEmpty(Platform))
                 Platform = "Win32";
-            if (String.IsNullOrEmpty(Branch))
-                Branch = "default";
 
             RootDir = RootDir.EndWith('\\');
 
-            Package package = new Package();
-            package.RootDir = RootDir;
-            package.LoadPom();
-            package.Name = package.Pom.Name;
-            package.Group = package.Pom.Group;
-            package.Version = package.Pom.Versions.GetForPlatformWithBranch(Platform, Branch);
-            package.Branch = Branch;
-            package.Platform = Platform;
-
-            bool ok = package.Verify();
+            bool ok = false;
+            PackageInstance package = PackageInstance.LoadFromTarget(RootDir + "target\\" + Name + "\\" + Platform + "\\");
+            if (package.IsValid)
+            {
+                ok = package.Verify();
+            }
             return ok;
         }
     }

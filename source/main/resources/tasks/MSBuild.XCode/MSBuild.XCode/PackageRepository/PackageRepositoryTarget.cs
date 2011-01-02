@@ -7,11 +7,11 @@ using MSBuild.XCode.Helpers;
 
 namespace MSBuild.XCode
 {
-    public class PackageRepositoryFileSystem : IPackageRepository
+    public class PackageRepositoryTarget : IPackageRepository
     {
-        public PackageRepositoryFileSystem(string repoDir, ELocation location)
+        public PackageRepositoryTarget(string targetDir, ELocation location)
         {
-            RepoDir = repoDir;
+            RepoDir = targetDir;
             Layout = new LayoutDefault();
             Location = location;
         }
@@ -22,14 +22,6 @@ namespace MSBuild.XCode
 
         public bool Update(PackageInstance package)
         {
-            string src_dir = Layout.PackageVersionDir(RepoDir, package.Group.ToString(), package.Name, package.Version);
-            string src_filename = Layout.VersionToFilename(package.Name, package.Branch, package.Platform, package.Version);
-            string src_path = src_dir + src_filename;
-            if (File.Exists(src_path))
-            {
-                package.SetURL(Location, src_path);
-                return true;
-            }
             return false;
         }
 

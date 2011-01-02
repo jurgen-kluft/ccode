@@ -43,18 +43,12 @@ namespace MSBuild.XCode
             Mercurial.Repository hg_repo = new Mercurial.Repository(RootDir);
             string branch = hg_repo.Branch();
 
-            Package package = new Package();
-            package.IsRoot = true;
-            package.RootDir = RootDir;
-            package.LoadPom();
-
-            package.Name = package.Pom.Name;
-            package.Group = package.Pom.Group;
-            package.Version = null;
-            package.Branch = branch;
-
-            success = package.Info();
-
+            PackageInstance package = PackageInstance.LoadFromRoot(RootDir);
+            if (package.IsValid)
+            {
+                package.BuildAllDependencies();
+                success = package.Info();
+            }
             return success;
         }
     }

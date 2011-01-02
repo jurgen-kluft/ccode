@@ -26,7 +26,7 @@ namespace MSBuild.XCode.Test
             /// 
             /// p2.Merge(p1);
             /// p2.ExpandGlobs(@"d:\temp\test_cs_project\", @"d:\temp\test_cs_project\");
-
+            /// 
             Global.TemplateDir = @"d:\REMOTE_PACKAGE_REPO\com\virtuos\xcode\publish\templates\";
             Global.CacheRepoDir = @"d:\PACKAGE_REPO\";
             Global.RemoteRepoDir = @"d:\REMOTE_PACKAGE_REPO\";
@@ -86,10 +86,12 @@ namespace MSBuild.XCode.Test
             info.RootDir = Global.RootDir;
             info.Execute();
 
+            Global.RootDir = @"d:\Dev\Packages\xstring\";
+
             PackageVerify verify = new PackageVerify();
             verify.RootDir = Global.RootDir;
+            verify.Name = "xbase";
             verify.Platform = "Win32";
-            verify.Branch = "default";
             bool result2 = verify.Execute();
         }
 

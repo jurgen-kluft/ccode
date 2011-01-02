@@ -7,42 +7,43 @@ using MSBuild.XCode.Helpers;
 
 namespace MSBuild.XCode
 {
-    public class Pom
+    public class PomResource
     {
-        public string Name { get; set; }
-        public Group Group { get; set; }
+        private string mName;
+        private Group mGroup;
 
-        public EType Type { get; set; }
-        public bool Main { get { return Type == EType.Main; } set { if (value) Type = EType.Main; else Type = EType.Dependency; } }
+        public string Name { get { return mName; } }
+        public Group Group { get { return mGroup; } }
+
+        public bool IsValid { get { return !String.IsNullOrEmpty(Name); } }
 
         public List<Attribute> DirectoryStructure { get; set; }
 
         public Dictionary<string, List<KeyValuePair<string,string>>> Content { get; set; }
-        public List<Dependency> Dependencies { get; set; }
+        public List<DependencyResource> Dependencies { get; set; }
         public List<Project> Projects { get; set; }
         public List<string> Platforms { get; set; }
         public Versions Versions { get; set; }
-        public Dictionary<string, DependencyTree> DependencyTree { get; set; }
 
-        public enum EType
+        public PomResource()
         {
-            Main,
-            Dependency,
-        }
-
-        public Pom(EType type)
-        {
-            Name = "Unknown";
-            Group = new Group("com.virtuos.tnt");
-            Type = type;
+            mName = string.Empty;
+            mGroup = new Group(string.Empty);
 
             DirectoryStructure = new List<Attribute>();
             Content = new Dictionary<string, List<KeyValuePair<string, string>>>();
-            Dependencies = new List<Dependency>();
+            Dependencies = new List<DependencyResource>();
             Projects = new List<Project>();
             Platforms = new List<string>();
             Versions = new Versions();
-            DependencyTree = new Dictionary<string, DependencyTree>();
+        }
+
+        public static PomResource From(string name, string group)
+        {
+            PomResource resource = new PomResource();
+            resource.mName = name;
+            resource.mGroup = new Group(group);
+            return resource;
         }
 
         public bool Info()
@@ -59,7 +60,7 @@ namespace MSBuild.XCode
                 }
 
                 Loggy.Add(String.Format("----------------------------"));
-                foreach (Dependency d in Dependencies)
+                foreach (DependencyResource d in Dependencies)
                     d.Info();
 
                 Loggy.Indent -= 1;
@@ -113,7 +114,7 @@ namespace MSBuild.XCode
             return new string[0];
         }
 
-        public void Load(string filename)
+        public void LoadFile(string filename)
         {
             XmlDocument xmlDoc = new XmlDocument();
             xmlDoc.Load(filename);
@@ -135,15 +136,7 @@ namespace MSBuild.XCode
             }
         }
 
-        public void PostLoad()
-        {
-            foreach (Project prj in Projects)
-            {
-                prj.ConstructFullMsDevProject();
-            }
-        }
-
-        public void Read(XmlNode node)
+        private void Read(XmlNode node)
         {
             if (node.Name == "Package")
             {
@@ -153,11 +146,11 @@ namespace MSBuild.XCode
                     {
                         if (a.Name == "Name")
                         {
-                            Name = a.Value;
+                            mName = a.Value;
                         }
                         else if (a.Name == "Group")
                         {
-                            Group.Full = a.Value;
+                            mGroup = new Group(a.Value);
                         }
                     }
                 }
@@ -197,13 +190,13 @@ namespace MSBuild.XCode
                         }
                         else if (child.Name == "Dependency")
                         {
-                            Dependency dependency = new Dependency();
+                            DependencyResource dependency = new DependencyResource();
                             dependency.Read(child);
                             Dependencies.Add(dependency);
                         }
                         else if (child.Name == "Project")
                         {
-                            Project project = new Project(Main);
+                            Project project = new Project();
                             project.Read(child);
                             Projects.Add(project);
                         }
@@ -240,107 +233,5 @@ namespace MSBuild.XCode
             foreach (string platform in all_platforms)
                 Platforms.Add(platform);
         }
-
-        public void GenerateProjects(string root)
-        {
-            // Generating project files is a bit complex in that it has to merge project definitions on a per platform basis.
-            // Every platform is considered to have its own package (zip -> pom.xml) containing the project settings for that platform.
-            // For every platform we have to merge in only the conditional xml elements into the final project file.
-            foreach (Project rootProject in Projects)
-            {
-                // Every platform has a dependency tree and every dependency package for that platform has filtered their
-                // project to only keep their platform specific xml elements.
-                foreach (KeyValuePair<string, DependencyTree> pair in DependencyTree)
-                {
-                    List<Package> allDependencyPackages = pair.Value.GetAllDependencyPackages();
-
-                    // Merge in all Projects of those dependency packages which are already filtered on the platform
-                    foreach (Package dependencyPackage in allDependencyPackages)
-                    {
-                        Project dependencyProject = dependencyPackage.Pom.GetProjectByGroup(rootProject.Group);
-                        if (dependencyProject!=null && !dependencyProject.IsPrivate)
-                            rootProject.MergeWithDependencyProject(dependencyProject);
-                    }
-                }
-            }
-
-            // And the root package UnitTest project generally merges with Main, since UnitTest will use Main.
-            // Although the user could specify more project and different internal dependencies.
-            foreach (Project rootProject in Projects)
-            {
-                if (!String.IsNullOrEmpty(rootProject.DependsOn))
-                {
-                    string[] projectNames = rootProject.DependsOn.Split(new char[] { ';' }, StringSplitOptions.RemoveEmptyEntries);
-                    foreach (string name in projectNames)
-                    {
-                        Project dependencyProject = GetProjectByName(name);
-                        if (dependencyProject != null)
-                            rootProject.MergeWithDependencyProject(dependencyProject);
-                    }
-                }
-            }
-
-            root = root.EndWith('\\');
-            foreach (Project p in Projects)
-            {
-                string path = p.Location.Replace("/", "\\");
-                path = path.EndWith('\\');
-                string filename = path + p.Name + p.Extension;
-                p.Save(root, filename);
-            }
-        }
-
-        public void GenerateSolution(string root)
-        {
-            root = root.EndWith('\\');
-
-            List<string> projectFilenames = new List<string>();
-            foreach (Project prj in Projects)
-            {
-                string path = prj.Location.Replace("/", "\\");
-                path = path.EndWith('\\');
-                path = path + prj.Name + prj.Extension;
-                projectFilenames.Add(path);
-            }
-
-            MsDev2010.Cpp.XCode.Solution solution = new MsDev2010.Cpp.XCode.Solution(MsDev2010.Cpp.XCode.Solution.EVersion.VS2010, MsDev2010.Cpp.XCode.Solution.ELanguage.CPP);
-            string solutionFilename = root + Name + ".sln";
-            solution.Save(solutionFilename, projectFilenames);
-        }
-
-        public bool BuildDependencies(string Platform)
-        {
-            bool result = true;
-
-            DependencyTree tree;
-            if (!DependencyTree.TryGetValue(Platform, out tree))
-            {
-                tree = new DependencyTree();
-                tree.Package = this;
-                tree.Platform = Platform;
-                tree.Dependencies = Dependencies;
-                DependencyTree.Add(Platform, tree);
-                result = tree.Build();
-            }
-
-            return result;
-        }
-
-        public void PrintDependencies(string Platform)
-        {
-            DependencyTree tree;
-            if (DependencyTree.TryGetValue(Platform, out tree))
-                tree.Print();
-        }
-
-        public bool SyncDependencies(string Platform)
-        {
-            bool result = false;
-            DependencyTree tree;
-            if (DependencyTree.TryGetValue(Platform, out tree))
-                result = tree.Sync();
-            return result;
-        }
-
     }
 }
