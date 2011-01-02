@@ -1,4 +1,5 @@
 ﻿using System;
+using System.IO;
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
@@ -12,11 +13,11 @@ namespace MSBuild.XCode
         public string Platform { get; set; }
         public bool Done { get; set; }
         public int Depth { get; set; }
-        public Package Package { get; set; }
-        public Dependency Dependency { get; set; }
+        public PackageInstance Package { get; set; }
+        public DependencyInstance Dependency { get; set; }
         public Dictionary<string, DependencyTreeNode> Children { get; set; }
 
-        public DependencyTreeNode(string platform, Dependency dep, int depth)
+        public DependencyTreeNode(string platform, DependencyInstance dep, int depth)
         {
             Platform = platform;
             Done = false;
@@ -26,65 +27,74 @@ namespace MSBuild.XCode
             Package = null;
         }
 
-        public List<DependencyTreeNode> Build(Dictionary<string, DependencyTreeNode> dependencyFlatMap)
+        public List<DependencyTreeNode> Build(DependencyTree dependencyTree)
         {
-            // Sync remote repo to cache repo which will cache the best version in our cache repo
-            // Obtain the package from the cache repo of the best version
+            // Sync remote repository to cache repository which will cache the best version in our cache repository
+            // Obtain the package from the cache repository of the best version
             // Get the dependencies of that package and add them as children
             // - Some dependencies already have been processed, maybe resulting in a different best version due to a different branch of version range
-            List<DependencyTreeNode> newDepNodes = null;
+            List<DependencyTreeNode> unprocessedDependencyNodes = null;
 
             if (!Done)
             {
-                Package = new Package();
-                Package.IsRoot = false;
-                Package.RootDir = Global.RootDir;
-                Package.LocalURL = Global.RootDir;
-                Package.Name = Dependency.Name;
-                Package.Group = Dependency.Group;
-                Package.Branch = Dependency.GetBranch(Platform);
-                Package.Platform = Platform;
+                Package = PackageInstance.From(Dependency.Name, Dependency.Group.ToString(), Dependency.Branch, Platform);
 
-                if (!Global.RemoteRepo.Update(Package, Dependency.GetVersionRange(Package.Platform)))
+                // @TODO: This procedure should be:
+                //    Negotiate with cache
+                //    If not found in cache
+                //       Negotiate with remote
+                //       If not found at remote
+                //           return error
+                //       Endif
+                //       Cache it
+                //    Else
+                //       Negotiate with remote if it has a better version than we found in the cache (Version and VersionRange)
+                //       If remote has better version
+                //           Cache it
+                //       Endif
+                //    Endif
+
+                if (!Global.RemoteRepo.Update(Package, Dependency.VersionRange))
                 {
-                    if (!Global.CacheRepo.Update(Package, Dependency.GetVersionRange(Package.Platform)))
+                    if (!Global.CacheRepo.Update(Package, Dependency.VersionRange))
                     {
                         Loggy.Add(String.Format("Error, Dependency Tree : Build, Node={0}, Group={1}, reason: unable to find package in remote and cache repository", Package.Name, Package.Group.ToString()));
                         Done = true;
-                        return newDepNodes;
+                        return unprocessedDependencyNodes;
                     }
                 }
                 else
                 {
                     if (!Global.CacheRepo.Add(Package, ELocation.Remote))
                     {
-                        if (!Global.CacheRepo.Update(Package, Dependency.GetVersionRange(Package.Platform)))
+                        if (!Global.CacheRepo.Update(Package, Dependency.VersionRange))
                         {
                             Loggy.Add(String.Format("Error, Dependency Tree : Build, Node={0}, Group={1}, reason: unable to add package from remote to cache repository and unable to find a suitable package in the cache repository", Package.Name, Package.Group.ToString()));
                         }
                     }
                 }
 
-                if (Package.LoadPom())
+                if (Package.Load())
                 {
                     Package.Pom.OnlyKeepPlatformSpecifics(Platform);
 
-                    newDepNodes = new List<DependencyTreeNode>();
+                    unprocessedDependencyNodes = new List<DependencyTreeNode>();
 
                     Children = new Dictionary<string, DependencyTreeNode>();
                     Dictionary<string, DependencyTreeNode> dependencyTreeMap = Children;
-                    foreach (Dependency d in Package.Pom.Dependencies)
+                    foreach (DependencyInstance d in dependencyTree.Dependencies)
                     {
-                        DependencyTreeNode depNode;
-                        if (!dependencyFlatMap.TryGetValue(d.Name, out depNode))
+                        if (!dependencyTree.HasNode(d.Name))
                         {
-                            depNode = new DependencyTreeNode(Platform, d, Depth + 1);
-                            newDepNodes.Add(depNode);
+                            DependencyTreeNode depNode = new DependencyTreeNode(Platform, d, Depth + 1);
+                            unprocessedDependencyNodes.Add(depNode);
                             dependencyTreeMap.Add(depNode.Name, depNode);
-                            dependencyFlatMap.Add(depNode.Name, depNode);
+                            dependencyTree.AddNode(depNode);
                         }
                         else
                         {
+                            DependencyTreeNode depNode = dependencyTree.FindNode(d.Name);
+
                             // Check if we need to process it again, the criteria are:
                             // - If ((Depth + 1) < depNode.Depth)
                             //   - Replace Dependency with this one
@@ -97,7 +107,7 @@ namespace MSBuild.XCode
                                 if (depNode.ReplaceDependency(d, Depth + 1))
                                 {
                                     // Dependency is modified, we have to process it again
-                                    newDepNodes.Add(depNode);
+                                    unprocessedDependencyNodes.Add(depNode);
                                 }
                             }
                             else if (depNode.Depth == (Depth + 1))
@@ -111,7 +121,7 @@ namespace MSBuild.XCode
                                     depNode.Done = false;
 
                                     // For now register it as a new DepNode
-                                    newDepNodes.Add(depNode);
+                                    unprocessedDependencyNodes.Add(depNode);
                                 }
                             }
                             else
@@ -127,16 +137,16 @@ namespace MSBuild.XCode
                 }
 
                 Done = true;
-                return newDepNodes;
+                return unprocessedDependencyNodes;
             }
-            return newDepNodes;
+            return unprocessedDependencyNodes;
         }
 
-        public bool ReplaceDependency(Dependency dependency, int depth)
+        public bool ReplaceDependency(DependencyInstance dependency, int depth)
         {
-            Dependency = dependency;
             if (!Dependency.IsEqual(dependency))
             {
+                Dependency = dependency;
                 bool processAgain = Done;
                 Depth = depth;
                 Children = null;
@@ -144,6 +154,23 @@ namespace MSBuild.XCode
                 return processAgain;
             }
             return false;
+        }
+
+        public void SaveInfo(StreamWriter writer, HashSet<string> register)
+        {
+            if (!register.Contains(Name))
+            {
+                register.Add(Name);
+
+                string versionStr = Package.Version == null ? "?" : Package.Version.ToString();
+                writer.WriteLine(String.Format("{0} {1}, version={2}, type={3}", Name, versionStr, Dependency.Type));
+
+                if (Children != null)
+                {
+                    foreach (DependencyTreeNode child in Children.Values)
+                        child.SaveInfo(writer, register);
+                }
+            }
         }
 
         public void Print(string indent)

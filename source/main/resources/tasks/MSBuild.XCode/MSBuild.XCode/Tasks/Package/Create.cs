@@ -71,27 +71,21 @@ namespace MSBuild.XCode
                 }
             }
 
-            Package package = new Package();
-            package.IsRoot = true;
-            package.RootDir = RootDir;
-            package.LoadPom();
-
-            package.Name = package.Pom.Name;
-            package.Group = package.Pom.Group;
-            package.Version = package.Pom.Versions.GetForPlatformWithBranch(Platform, hg_changeset.Branch);
-            package.Branch = hg_changeset.Branch;
-            package.Platform = Platform;
-
-            string filename;
-            if (package.Create(out filename))
+            // Write a dependency.info file containing dependency package info, this will be included in the package
+            PackageInstance package = PackageInstance.LoadFromRoot(RootDir);
+            if (package.IsValid)
             {
-                Filename = filename;
-                success = true;
-            }
-            else
-            {
-                Filename = string.Empty;
-                success = false;
+                IPackageFilename filename;
+                if (package.Create(hg_changeset.Branch, Platform, out filename))
+                {
+                    Filename = filename.ToString();
+                    success = true;
+                }
+                else
+                {
+                    Filename = string.Empty;
+                    success = false;
+                }
             }
 
             return success;

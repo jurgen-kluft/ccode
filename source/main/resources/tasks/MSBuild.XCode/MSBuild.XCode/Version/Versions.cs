@@ -117,7 +117,7 @@ namespace MSBuild.XCode
                 if (child.NodeType == XmlNodeType.Comment)
                     continue;
 
-                string v = Element.sGetXmlNodeValueAsText(child);
+                string v = Element.GetText(child);
                 v = (String.IsNullOrEmpty(v)) ? "1.0.0" : v;
                 string platform = Attribute.Get("Platform", child, "*");
                 string branch = Attribute.Get("Branch", child, "*");

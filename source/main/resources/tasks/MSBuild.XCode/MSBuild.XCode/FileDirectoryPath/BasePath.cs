@@ -231,5 +231,10 @@ namespace FileDirectoryPath
             if (pathTo.IsFilePath) { pathTo = pathTo.ParentDirectoryPath; }
             return InternalStringHelper.GetAbsolutePath(pathFrom.Path, pathTo.Path);
         }
+
+        public override string ToString()
+        {
+            return m_Path;
+        }
     }
 }

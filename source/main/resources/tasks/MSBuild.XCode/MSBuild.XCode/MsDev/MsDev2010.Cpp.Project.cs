@@ -230,7 +230,7 @@ namespace MsDev2010.Cpp.XCode
                 }
             }
 
-            // Now do the globbing
+            // Now do the file globbing
             HashSet<string> allGlobbedFiles = new HashSet<string>();
             foreach (XmlNode node in globs)
             {
@@ -265,39 +265,25 @@ namespace MsDev2010.Cpp.XCode
             {
                 foreach (XmlAttribute a in node.Attributes)
                 {
-                    int begin = -1;
-                    int end = -1;
-
                     if (a.Name == "Condition")
                     {
-                        int cursor = a.Value.IndexOf("==");
-                        if (cursor >= 0)
+                        string[] parts = StringTools.Between(a.Value, '\'', '\'');
+                        if (parts.Length == 2)
                         {
-                            cursor += 2;
-                            if ((cursor + 1) < a.Value.Length && a.Value[cursor] == '\'')
-                                cursor += 1;
-                            else
-                                cursor = -1;
+                            config = StringTools.LeftOf(parts[1], '|');
+                            platform = StringTools.RightOf(parts[1], '|');
+                            if (!String.IsNullOrEmpty(config) && !String.IsNullOrEmpty(platform))
+                                return true;
                         }
-                        begin = cursor;
-                        end = begin>=0 ? a.Value.IndexOf("'", begin) : begin;
+                        break;
                     }
                     else if (a.Name == "Include")
                     {
-                        begin = 0;
-                        end = a.Value.Length;
-                    }
-
-                    if (begin >= 0 && end > begin)
-                    {
-                        string configplatform = a.Value.Substring(begin, end - begin);
-                        string[] items = configplatform.Split(new char[] { '|' }, StringSplitOptions.RemoveEmptyEntries);
-                        if (items.Length == 2)
-                        {
-                            config = items[0];
-                            platform = items[1];
+                        config = StringTools.LeftOf(a.Value, '|');
+                        platform = StringTools.RightOf(a.Value, '|');
+                        if (!String.IsNullOrEmpty(config) && !String.IsNullOrEmpty(platform))
                             return true;
-                        }
+
                         break;
                     }
                 }
@@ -313,41 +299,12 @@ namespace MsDev2010.Cpp.XCode
                 foreach (XmlAttribute a in node.Attributes)
                 {
                     if (IsOneOf(a.Name, new string[] { "Condition", "Include" }))
-                    {
-                        if (a.Value.Contains(String.Format("{0}|{1}", config, platform)))
-                        {
-                            return true;
-                        }
-                        else
-                        {
-                            return false;
-                        }
-                    }
+                        return (a.Value.Contains(String.Format("{0}|{1}", config, platform)));
                 }
             }
             return true;
         }
-
-        private string GetItem(string platform, string config, string itemName)
-        {
-            StringItems concat = new StringItems();
-
-            Merge(mXmlDocMain, mXmlDocMain,
-                delegate(XmlNode node)
-                {
-                    return HasCondition(node, platform, config);
-                },
-                delegate(XmlNode main, XmlNode other)
-                {
-                    if (main.ParentNode.Name == itemName)
-                    {
-                        concat.Add(main.Value, true);
-                        concat.Add(other.Value, true);
-                    }
-                });
-            return concat.Get();
-        }
-
+        
         public string[] GetPlatforms()
         {
             HashSet<string> platforms = new HashSet<string>();
@@ -368,6 +325,7 @@ namespace MsDev2010.Cpp.XCode
                 });
             return platforms.ToArray();
         }
+
         public string[] GetPlatformConfigs(string platform)
         {
             HashSet<string> configs = new HashSet<string>();
@@ -391,29 +349,7 @@ namespace MsDev2010.Cpp.XCode
                 });
             return configs.ToArray();
         }
-
-        public bool SetItem(string platform, string config, string itemName, string itemValue)
-        {
-            StringItems concat = new StringItems();
-            concat.Add(itemValue, true);
-
-            Merge(mXmlDocMain, mXmlDocMain,
-                delegate(XmlNode node)
-                {
-                    return HasCondition(node, platform, config);
-                },
-                delegate(XmlNode main, XmlNode other)
-                {
-                    if (main.ParentNode.Name == itemName)
-                    {
-                        concat.Add(main.Value, true);
-                        concat.Add(other.Value, true);
-                        main.Value = concat.Get();
-                    }
-                });
-            return true;
-        }
-
+        
         public bool Save(string filename)
         {
             mXmlDocMain.Save(filename);
@@ -465,11 +401,6 @@ namespace MsDev2010.Cpp.XCode
                 },
                 delegate(XmlNode main, XmlNode other)
                 {
-                    // Merge:
-                    // - PreprocessorDefinitions
-                    // - AdditionalIncludeDirectories
-                    // - AdditionalLibraryDirectories
-                    // - AdditionalDependencies
                     if (IsOneOf(main.ParentNode.Name, new string[] { "PreprocessorDefinitions", "AdditionalIncludeDirectories", "AdditionalLibraryDirectories", "AdditionalDependencies" }))
                     {
                         StringItems items = new StringItems();
@@ -493,50 +424,22 @@ namespace MsDev2010.Cpp.XCode
                 return true;
             if (a.Attributes != null && b.Attributes != null)
             {
-                bool the_same = true;
-                int na = 0;
-                foreach (XmlAttribute aa in a.Attributes)
-                {
-                    if (aa.Name == "Concat")
-                        continue;
-                    ++na;
-                }
-                int nb = 0;
-                foreach (XmlAttribute ab in b.Attributes)
-                {
-                    if (ab.Name == "Concat")
-                        continue;
-                    ++nb;
-                }
-
-                the_same = (na == nb);
+                bool the_same = (a.Attributes.Count == b.Attributes.Count);
                 if (the_same)
                 {
                     foreach (XmlAttribute aa in a.Attributes)
                     {
-                        if (aa.Name == "Concat")
-                            continue;
-
-                        bool found = false;
+                        the_same = false;
                         foreach (XmlAttribute ab in b.Attributes)
                         {
-                            if (ab.Name == "Concat")
-                                continue;
-
-                            if (ab.Name == aa.Name)
+                            if ((ab.Name == aa.Name) && (ab.Value == aa.Value))
                             {
-                                if (ab.Value == aa.Value)
-                                {
-                                    found = true;
-                                    break;
-                                }
+                                the_same = true;
+                                break;
                             }
                         }
-                        if (!found)
-                        {
-                            the_same = false;
+                        if (!the_same)
                             break;
-                        }
                     }
                 }
                 return the_same;

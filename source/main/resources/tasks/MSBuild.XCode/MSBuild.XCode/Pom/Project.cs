@@ -10,7 +10,6 @@ namespace MSBuild.XCode
     public class Project
     {
         protected MsDev2010.Cpp.XCode.Project mMsDevProject;
-        protected MsDev2010.Cpp.XCode.Project mMsDevProjectFull;
 
         protected Dictionary<string, Element> mElements = new Dictionary<string, Element>();
         protected Dictionary<string, StringItems> mConfigs = new Dictionary<string, StringItems>();
@@ -42,10 +41,10 @@ namespace MSBuild.XCode
 
         public bool IsPrivate { get { return String.Compare(Scope, "Private") == 0; } }
 
-        public Project(bool main)
+        public Project()
         {
             Name = "Unknown";
-            Main = main;
+            Main = false;
             Scope = "Public";
             Group = "Main";
             Language = "cpp";   /// "cs"
@@ -53,7 +52,6 @@ namespace MSBuild.XCode
             DependsOn = "";
 
             mMsDevProject = new MsDev2010.Cpp.XCode.Project();
-            mMsDevProjectFull = new MsDev2010.Cpp.XCode.Project();
             mElements = new Dictionary<string, Element>();
         }
 
@@ -135,37 +133,41 @@ namespace MSBuild.XCode
         {
             if (IsCpp)
             {
-                mMsDevProjectFull = new MsDev2010.Cpp.XCode.Project();
-                mMsDevProjectFull.Merge(Global.CppTemplateProject, true, false);
-                mMsDevProjectFull.Merge(mMsDevProject, true, true);
-                mMsDevProjectFull.RemoveAllBut(mConfigs);
+                MsDev2010.Cpp.XCode.Project finalProject = new MsDev2010.Cpp.XCode.Project();
+                finalProject.Merge(Global.CppTemplateProject, true, false);
+                finalProject.Merge(mMsDevProject, true, true);
+                finalProject.RemoveAllBut(mConfigs);
+                mMsDevProject = finalProject;
             }
             else if (IsCs)
             {
-                mMsDevProjectFull = new MsDev2010.Cpp.XCode.Project();
-                mMsDevProjectFull.Merge(Global.CsTemplateProject, true, false);
-                mMsDevProjectFull.Merge(mMsDevProject, true, true);
+                MsDev2010.Cpp.XCode.Project finalProject = new MsDev2010.Cpp.XCode.Project();
+                finalProject.Merge(Global.CsTemplateProject, true, false);
+                finalProject.Merge(mMsDevProject, true, true);
+                mMsDevProject = finalProject;
             }
         }
 
         public void MergeWithDependencyProject(Project dependencyProject)
         {
-            mMsDevProjectFull.Merge(dependencyProject.mMsDevProjectFull, false, false);
+            mMsDevProject.Merge(dependencyProject.mMsDevProject, false, false);
         }
 
         public void OnlyKeepPlatformSpecifics(string platform)
         {
             if (IsCpp)
             {
-                mMsDevProjectFull = new MsDev2010.Cpp.XCode.Project();
-                mMsDevProjectFull.Merge(mMsDevProject, true, true);
-                mMsDevProjectFull.RemoveAllPlatformsBut(platform);
+                MsDev2010.Cpp.XCode.Project finalProject = new MsDev2010.Cpp.XCode.Project();
+                finalProject.Merge(mMsDevProject, true, true);
+                finalProject.RemoveAllPlatformsBut(platform);
+                mMsDevProject = finalProject;
             }
             else if (IsCs)
             {
-                mMsDevProjectFull = new MsDev2010.Cpp.XCode.Project();
-                mMsDevProjectFull.Merge(mMsDevProject, true, true);
-                mMsDevProjectFull.RemoveAllPlatformsBut(platform);
+                MsDev2010.Cpp.XCode.Project finalProject = new MsDev2010.Cpp.XCode.Project();
+                finalProject.Merge(mMsDevProject, true, true);
+                finalProject.RemoveAllPlatformsBut(platform);
+                mMsDevProject = finalProject;
             }
         }
 
@@ -201,8 +203,8 @@ namespace MSBuild.XCode
             string reldir = rootdir + Path.GetDirectoryName(filename);
             reldir = reldir.EndWith('\\');
 
-            mMsDevProjectFull.ExpandGlobs(rootdir, reldir);
-            mMsDevProjectFull.Save(rootdir + filename);
+            mMsDevProject.ExpandGlobs(rootdir, reldir);
+            mMsDevProject.Save(rootdir + filename);
         }
     }
 }

@@ -35,15 +35,10 @@ namespace MSBuild.XCode
             Global.RemoteRepoDir = RemoteRepoDir;
             Global.Initialize();
 
-            Package package = new Package();
-            package.IsRoot = true;
-            package.RootDir = RootDir;
-            if (package.LoadFinalPom())
+            PackageInstance package = PackageInstance.LoadFromRoot(RootDir);
+            if (package.IsValid)
             {
-                package.Name = package.Pom.Name;
-                package.Group = new Group(package.Pom.Group);
-                package.Version = package.Pom.Versions.GetForPlatform(Platform);
-                package.Platform = Platform;
+                package.SetPlatform(Platform);
                 {
                     if (package.BuildDependencies(Platform))
                     {

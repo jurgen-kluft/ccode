@@ -1,4 +1,5 @@
 ﻿using System;
+using System.IO;
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
@@ -10,14 +11,15 @@ namespace MSBuild.XCode
     {
         private List<DependencyTreeNode> mRootNodes;
         private List<DependencyTreeNode> mAllNodes;
+        private Dictionary<string, DependencyTreeNode> mAllNodesMap;
 
-        public Pom Package { get; set; }
+        public PackageInstance Package { get; set; }
         public string Platform { get; set; }
-        public List<Dependency> Dependencies { get; set; }
+        public List<DependencyInstance> Dependencies { get; set; }
 
-        public List<Package> GetAllDependencyPackages()
+        public List<PackageInstance> GetAllDependencyPackages()
         {
-            List<Package> allDependencyPackages = new List<Package>();
+            List<PackageInstance> allDependencyPackages = new List<PackageInstance>();
             foreach (DependencyTreeNode node in mAllNodes)
             {
                 allDependencyPackages.Add(node.Package);
@@ -25,27 +27,49 @@ namespace MSBuild.XCode
             return allDependencyPackages;
         }
 
+        public bool HasNode(string name)
+        {
+            return mAllNodesMap.ContainsKey(name);
+        }
+
+        public DependencyTreeNode FindNode(string name)
+        {
+            DependencyTreeNode depNode;
+            if (!mAllNodesMap.TryGetValue(name, out depNode))
+            {
+                return null;
+            }
+            return depNode;
+        }
+
+        public void AddNode(DependencyTreeNode node)
+        {
+            if (!mAllNodesMap.ContainsKey(node.Name))
+            {
+                mAllNodesMap.Add(node.Name, node);
+            }
+        }
+
         public bool Build()
         {
             Queue<DependencyTreeNode> dependencyQueue = new Queue<DependencyTreeNode>();
-            Dictionary<string, DependencyTreeNode> dependencyFlatMap = new Dictionary<string, DependencyTreeNode>();
-            foreach (Dependency d in Dependencies)
+            mAllNodesMap = new Dictionary<string, DependencyTreeNode>();
+            foreach (DependencyInstance d in Dependencies)
             {
                 DependencyTreeNode depNode = new DependencyTreeNode(Platform, d, 1);
                 dependencyQueue.Enqueue(depNode);
-                dependencyFlatMap.Add(depNode.Name, depNode);
+                mAllNodesMap.Add(depNode.Name, depNode);
             }
 
+
             // These are the root nodes of the tree
-            mRootNodes = new List<DependencyTreeNode>();
-            foreach (DependencyTreeNode node in dependencyFlatMap.Values)
-                mRootNodes.Add(node);
+            mRootNodes = new List<DependencyTreeNode>(mAllNodesMap.Values);
 
             // Breadth-First 
             while (dependencyQueue.Count > 0)
             {
                 DependencyTreeNode node = dependencyQueue.Dequeue();
-                List<DependencyTreeNode> newDepNodes = node.Build(dependencyFlatMap);
+                List<DependencyTreeNode> newDepNodes = node.Build(this);
                 if (newDepNodes != null)
                 {
                     foreach (DependencyTreeNode n in newDepNodes)
@@ -58,9 +82,7 @@ namespace MSBuild.XCode
             }
 
             // Store all dependency nodes in a list
-            mAllNodes = new List<DependencyTreeNode>();
-            foreach (DependencyTreeNode node in dependencyFlatMap.Values)
-                mAllNodes.Add(node);
+            mAllNodes = new List<DependencyTreeNode>(mAllNodesMap.Values);
 
             return true;
         }
@@ -92,12 +114,34 @@ namespace MSBuild.XCode
             return result;
         }
 
+        public void SaveInfo(FileDirectoryPath.FilePathAbsolute filepath)
+        {
+            FileStream stream = new FileStream(filepath.ToString(), FileMode.Create, FileAccess.Write);
+            StreamWriter writer = new StreamWriter(stream);
+
+            HashSet<string> register = new HashSet<string>();
+
+            ComparableVersion version = Package.Pom.Versions.GetForPlatform(Platform);
+            string versionStr = version != null ? version.ToString() : "?";
+            foreach (DependencyTreeNode node in mRootNodes)
+                node.SaveInfo(writer, register);
+        }
+
+        public void Info()
+        {
+            foreach (DependencyTreeNode node in mAllNodes)
+            {
+                Loggy.Add(String.Format("Name                       : {0}", node.Package.Name));
+                Loggy.Add(String.Format("Version                    : {0}", node.Package.Version));
+            }
+        }
+
         public void Print()
         {
             string indent = "+";
-            ComparableVersion version = Package.Versions.GetForPlatform(Platform);
+            ComparableVersion version = Package.Pom.Versions.GetForPlatform(Platform);
             string versionStr = version != null ? version.ToString() : "?";
-            Loggy.Add(String.Format("{0} {1}, version={2}, type={3}", indent, Package.Name, versionStr, Package.Type));
+            Loggy.Add(String.Format("{0} {1}, version={2}, type={3}", indent, Package.Name, versionStr, "Root"));
             foreach (DependencyTreeNode node in mRootNodes)
                 node.Print(indent);
         }
