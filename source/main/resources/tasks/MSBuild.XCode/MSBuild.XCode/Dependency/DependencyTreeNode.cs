@@ -82,18 +82,19 @@ namespace MSBuild.XCode
 
                     Children = new Dictionary<string, DependencyTreeNode>();
                     Dictionary<string, DependencyTreeNode> dependencyTreeMap = Children;
-                    foreach (DependencyInstance d in dependencyTree.Dependencies)
+                    foreach (DependencyResource dependencyResource in Package.Dependencies)
                     {
-                        if (!dependencyTree.HasNode(d.Name))
+                        if (!dependencyTree.HasNode(dependencyResource.Name))
                         {
-                            DependencyTreeNode depNode = new DependencyTreeNode(Platform, d, Depth + 1);
+                            DependencyInstance dependencyInstance = new DependencyInstance(Platform, dependencyResource);
+                            DependencyTreeNode depNode = new DependencyTreeNode(Platform, dependencyInstance, Depth + 1);
                             unprocessedDependencyNodes.Add(depNode);
                             dependencyTreeMap.Add(depNode.Name, depNode);
                             dependencyTree.AddNode(depNode);
                         }
                         else
                         {
-                            DependencyTreeNode depNode = dependencyTree.FindNode(d.Name);
+                            DependencyTreeNode depNode = dependencyTree.FindNode(dependencyResource.Name);
 
                             // Check if we need to process it again, the criteria are:
                             // - If ((Depth + 1) < depNode.Depth)
@@ -104,7 +105,8 @@ namespace MSBuild.XCode
                             if (depNode.Depth > (Depth + 1))
                             {
                                 // Take this dependency
-                                if (depNode.ReplaceDependency(d, Depth + 1))
+                                DependencyInstance dependencyInstance = new DependencyInstance(Platform, dependencyResource);
+                                if (depNode.ReplaceDependency(dependencyInstance, Depth + 1))
                                 {
                                     // Dependency is modified, we have to process it again
                                     unprocessedDependencyNodes.Add(depNode);
@@ -113,7 +115,8 @@ namespace MSBuild.XCode
                             else if (depNode.Depth == (Depth + 1))
                             {
                                 // If merging these dependencies results in a modified dependency then we have to build it again
-                                if (depNode.Dependency.Merge(d))
+                                DependencyInstance dependencyInstance = new DependencyInstance(Platform, dependencyResource);
+                                if (depNode.Dependency.Merge(dependencyInstance))
                                 {
                                     // Name is still the same
                                     depNode.Depth = Depth + 1;

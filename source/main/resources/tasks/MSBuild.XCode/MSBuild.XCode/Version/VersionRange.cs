@@ -551,6 +551,11 @@ namespace MSBuild.XCode
             return base.Equals(obj);
         }
 
+        public override int GetHashCode()
+        {
+            return ToString().GetHashCode();   
+        }
+
         public static int Compare(VersionRange a, VersionRange b)
         {
             bool a_null = (object)a == null;

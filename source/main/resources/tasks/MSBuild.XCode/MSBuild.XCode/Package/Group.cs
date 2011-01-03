@@ -51,6 +51,15 @@ namespace MSBuild.XCode
                 }
             }
         }
+        public override bool Equals(object obj)
+        {
+            return base.Equals(obj);
+        }
+
+        public override int GetHashCode()
+        {
+            return mGroup.GetHashCode();
+        }
 
         public override string ToString()
         {

@@ -284,28 +284,7 @@ namespace MsDev2010.Cpp.XCode
                             Guid guid;
                             if (m_ProjectGuids.TryGetValue(file.FullName, out guid))
                                 return guid;
-
                             return Guid.NewGuid();
-
-                            if (false)
-                            {
-                                using (StreamReader reader = File.OpenText(file.FullName))
-                                {
-                                    string text = reader.ReadToEnd();
-                                    string pattern = "<ProjectGuid>";
-                                    int start = text.IndexOf(pattern);
-                                    if (start > 0)
-                                    {
-                                        start += pattern.Length;
-                                        pattern = "</ProjectGuid>";
-                                        int end = text.IndexOf(pattern);
-                                        if (end > 0)
-                                        {
-                                            return new Guid(text.Substring(start + 1, end - start - 2));
-                                        }
-                                    }
-                                }
-                            }
                         }
                         else
                         {

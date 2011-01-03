@@ -21,7 +21,7 @@ namespace MSBuild.XCode
         public Dictionary<string, List<KeyValuePair<string, string>>> Content { get { return mPom.Content; } }
         public List<DependencyResource> Dependencies { get { return mPom.Dependencies; } }
         public List<Attribute> DirectoryStructure { get { return mPom.DirectoryStructure; } }
-        public List<Project> Projects { get { return mPom.Projects; } }
+        public List<ProjectResource> Projects { get { return mPom.Projects; } }
         public List<string> Platforms { get { return mPom.Platforms; } }
         public Versions Versions { get { return mPom.Versions; } }
 
@@ -33,6 +33,17 @@ namespace MSBuild.XCode
         public bool Info()
         {
             return mPom.Info();
+        }
+
+        internal PackageInstance CreateInstance()
+        {
+            PackageInstance instance = new PackageInstance(this, new PomInstance(mPom));
+            return instance;
+        }
+
+        internal PomInstance CreatePomInstance()
+        {
+            return new PomInstance(mPom);
         }
 
         public static PackageResource From(string name, string group)
@@ -58,10 +69,10 @@ namespace MSBuild.XCode
         {
             PackageResource resource = new PackageResource();
 
-            if (!String.IsNullOrEmpty(url) && File.Exists(url))
+            if (!String.IsNullOrEmpty(url) && File.Exists(url + "pom.xml"))
             {
                 resource.mPom = new PomResource();
-                resource.mPom.LoadFile(url);
+                resource.mPom.LoadFile(url + "pom.xml");
             }
             else
             {

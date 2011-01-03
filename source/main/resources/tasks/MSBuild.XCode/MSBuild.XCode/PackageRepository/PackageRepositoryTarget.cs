@@ -7,6 +7,25 @@ using MSBuild.XCode.Helpers;
 
 namespace MSBuild.XCode
 {
+    /// <summary>
+    /// The target repository manages the dependencies of the root package.
+    /// It stores (extracts) them to (relative to the root directory):
+    /// - Target\PackageName\Platform
+    /// 
+    /// Note: We do need a way to identify the version of the extracted package.
+    /// 
+    /// From the root pom.xml we can collect its dependencies. From there we
+    /// can load the pom.xml of those packages from the target. If one of them
+    /// doesn't exist we stop and move to using the cache repository. Under
+    /// normal circumstances we are able to load all dependency packages from
+    /// the target folder without ever using the cache and remote repository.
+    /// However we do need to query the cache and remote for a more up-to-date
+    /// version. We can however have the cache and remote give us a signature
+    /// that can tell us when a package has been installed/deployed, when the
+    /// signature differs we can move to the next phase and ask for a better
+    /// version of that package.
+    /// 
+    /// </summary>
     public class PackageRepositoryTarget : IPackageRepository
     {
         public PackageRepositoryTarget(string targetDir, ELocation location)

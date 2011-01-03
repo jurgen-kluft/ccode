@@ -27,7 +27,7 @@ namespace MSBuild.XCode
             string src_path = src_dir + src_filename;
             if (File.Exists(src_path))
             {
-                package.SetURL(Location, src_path);
+                package.SetURL(Location, src_dir, src_filename);
                 return true;
             }
             return false;
@@ -57,7 +57,7 @@ namespace MSBuild.XCode
                     File.Copy(package.GetURL(from), dest_dir + package_filename, true);
                     DirtyVersionCache(package.Group.ToString(), package.Name);
                 }
-                package.SetURL(Location, dest_dir + package_filename);
+                package.SetURL(Location, dest_dir, package_filename);
                 return true;
             }
             return false;
@@ -136,8 +136,11 @@ namespace MSBuild.XCode
         {
             string root_dir = Layout.PackageRootDir(RepoDir, group, package_name);
             string[] versions = new string[0];
-
+            if (!Directory.Exists(root_dir))
+                return versions;
             string filename = String.Format("versions.{0}.{1}.cache", branch, platform);
+            if (!File.Exists(root_dir + filename))
+                return versions;
 
             int retry = 0;
             bool exception = true;

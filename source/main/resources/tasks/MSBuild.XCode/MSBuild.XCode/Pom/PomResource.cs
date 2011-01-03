@@ -21,7 +21,7 @@ namespace MSBuild.XCode
 
         public Dictionary<string, List<KeyValuePair<string,string>>> Content { get; set; }
         public List<DependencyResource> Dependencies { get; set; }
-        public List<Project> Projects { get; set; }
+        public List<ProjectResource> Projects { get; set; }
         public List<string> Platforms { get; set; }
         public Versions Versions { get; set; }
 
@@ -33,7 +33,7 @@ namespace MSBuild.XCode
             DirectoryStructure = new List<Attribute>();
             Content = new Dictionary<string, List<KeyValuePair<string, string>>>();
             Dependencies = new List<DependencyResource>();
-            Projects = new List<Project>();
+            Projects = new List<ProjectResource>();
             Platforms = new List<string>();
             Versions = new Versions();
         }
@@ -53,7 +53,7 @@ namespace MSBuild.XCode
             Versions.Info();
             {
                 Loggy.Indent += 1;
-                foreach (Project p in Projects)
+                foreach (ProjectResource p in Projects)
                 {
                     Loggy.Add(String.Format("----------------------------"));
                     p.Info();
@@ -68,9 +68,9 @@ namespace MSBuild.XCode
             return true;
         }
 
-        public Project GetProjectByGroup(string group)
+        public ProjectResource GetProjectByGroup(string group)
         {
-            foreach (Project p in Projects)
+            foreach (ProjectResource p in Projects)
             {
                 if (String.Compare(p.Group, group, true) == 0)
                     return p;
@@ -78,9 +78,9 @@ namespace MSBuild.XCode
             return null;
         }
 
-        public Project GetProjectByName(string name)
+        public ProjectResource GetProjectByName(string name)
         {
-            foreach (Project p in Projects)
+            foreach (ProjectResource p in Projects)
             {
                 if (String.Compare(p.Name, name, true) == 0)
                     return p;
@@ -91,7 +91,7 @@ namespace MSBuild.XCode
         public string[] GetGroups()
         {
             List<string> categories = new List<string>();
-            foreach (Project prj in Projects)
+            foreach (ProjectResource prj in Projects)
             {
                 categories.Add(prj.Group);
             }
@@ -100,7 +100,7 @@ namespace MSBuild.XCode
 
         public string[] GetPlatformsForGroup(string inGroup)
         {
-            Project project = GetProjectByGroup(inGroup);
+            ProjectResource project = GetProjectByGroup(inGroup);
             if (project != null)
                 return project.GetPlatforms();
             return new string[0];
@@ -108,7 +108,7 @@ namespace MSBuild.XCode
 
         public string[] GetConfigsForPlatformsForGroup(string Platform, string inGroup)
         {
-            Project project = GetProjectByGroup(inGroup);
+            ProjectResource project = GetProjectByGroup(inGroup);
             if (project!=null)
                 return project.GetConfigsForPlatform(Platform);
             return new string[0];
@@ -126,14 +126,6 @@ namespace MSBuild.XCode
             XmlDocument xmlDoc = new XmlDocument();
             xmlDoc.LoadXml(xml);
             Read(xmlDoc.FirstChild);
-        }
-
-        public void OnlyKeepPlatformSpecifics(string platform)
-        {
-            foreach (Project prj in Projects)
-            {
-                prj.OnlyKeepPlatformSpecifics(platform);
-            }
         }
 
         private void Read(XmlNode node)
@@ -196,7 +188,7 @@ namespace MSBuild.XCode
                         }
                         else if (child.Name == "Project")
                         {
-                            Project project = new Project();
+                            ProjectResource project = new ProjectResource();
                             project.Read(child);
                             Projects.Add(project);
                         }

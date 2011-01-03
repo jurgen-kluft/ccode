@@ -37,8 +37,6 @@ namespace MSBuild.XCode
             Environment.CurrentDirectory = RootDir;
 
             Global.TemplateDir = TemplateDir;
-            Global.CacheRepoDir = string.Empty;
-            Global.RemoteRepoDir = string.Empty;
             Global.Initialize();
 
             PackageInstance package = PackageInstance.LoadFromRoot(RootDir);
