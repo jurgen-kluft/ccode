@@ -28,6 +28,8 @@ namespace MSBuild.XCode
         private string mBranch;
         private string mPlatform;
 
+        private PomInstance mPom;
+
         public Group Group { get { return mResource.Group; } }
         public string Name { get { return mResource.Name; } }
         public string Branch { get { return mBranch; } }
@@ -52,19 +54,32 @@ namespace MSBuild.XCode
 
         public bool IsRootPackage { get { return RootExists; } }
 
-        public PomInstance Pom { get; set; }
+        public PomInstance Pom { get { return mPom; } }
+        public List<DependencyResource> Dependencies { get { return Pom.Dependencies; } }
 
         public Dictionary<string, DependencyTree> DependencyTree { get; set; }
 
-        private PackageInstance(PackageResource resource)
+        private PackageInstance()
+        {
+
+        }
+
+        internal PackageInstance(PackageResource resource)
         {
             mResource = resource;
+            DependencyTree = new Dictionary<string, DependencyTree>();
+        }
+        internal PackageInstance(PackageResource resource, PomInstance pom)
+        {
+            mResource = resource;
+            mPom = pom;
+            DependencyTree = new Dictionary<string, DependencyTree>();
         }
 
         public static PackageInstance From(string name, string group, string branch, string platform)
         {
             PackageResource resource = PackageResource.From(name, group);
-            PackageInstance instance = new PackageInstance(resource);
+            PackageInstance instance = resource.CreateInstance();
             instance.mBranch = branch;
             instance.mPlatform = platform;
             return instance;
@@ -73,40 +88,34 @@ namespace MSBuild.XCode
         public static PackageInstance LoadFromRoot(string dir)
         {
             PackageResource resource = PackageResource.LoadFromFile(dir);
-
-            PackageInstance package = new PackageInstance(resource);
-            package.mRootURL = dir;
-
-            return package;
+            PackageInstance instance = resource.CreateInstance();
+            instance.mRootURL = dir;
+            return instance;
         }
 
         public static PackageInstance LoadFromTarget(string dir)
         {
             PackageResource resource = PackageResource.LoadFromFile(dir);
-
-            PackageInstance package = new PackageInstance(resource);
-            package.mTargetURL = dir;
-
-            return package;
+            PackageInstance instance = resource.CreateInstance();
+            instance.mTargetURL = dir;
+            return instance;
         }
 
         public static PackageInstance LoadFromLocal(string rootURL, IPackageFilename filename)
         {
             PackageResource resource = PackageResource.LoadFromPackage(rootURL + "target\\", filename);
-
-            PackageInstance package = new PackageInstance(resource);
-            package.mRootURL = rootURL;
-            package.mLocalURL = rootURL + "target\\";
-            package.Filename = filename;
-            package.Version = filename.Version;
-
-            return package;
+            PackageInstance instance = resource.CreateInstance();
+            instance.mRootURL = rootURL;
+            instance.mLocalURL = rootURL + "target\\";
+            instance.Filename = filename;
+            instance.Version = filename.Version;
+            return instance;
         }
 
         public static PackageInstance FromFilename(IPackageFilename filename)
         {
             PackageResource resource = PackageResource.From(filename.Name, string.Empty);
-            PackageInstance instance = new PackageInstance(resource);
+            PackageInstance instance = resource.CreateInstance();
             instance.Version = new ComparableVersion(filename.Version);
             instance.mBranch = filename.Branch;
             instance.mPlatform = filename.Platform;
@@ -122,6 +131,27 @@ namespace MSBuild.XCode
         public bool Load()
         {
             // Load it from the best location (Root, Target or Cache)
+            if (RootExists)
+            {
+                PackageResource resource = PackageResource.LoadFromFile(RootURL);
+                mPom = resource.CreatePomInstance();
+                mResource = resource;
+                return true;
+            }
+            else if (TargetExists)
+            {
+                PackageResource resource = PackageResource.LoadFromFile(TargetURL);
+                mPom = resource.CreatePomInstance();
+                mResource = resource;
+                return true;
+            }
+            else if (CacheExists)
+            {
+                PackageResource resource = PackageResource.LoadFromPackage(CacheURL, Filename);
+                mPom = resource.CreatePomInstance();
+                mResource = resource;
+                return true;
+            }
             return false;
         }
 
@@ -135,6 +165,12 @@ namespace MSBuild.XCode
                 case ELocation.Target: mTargetURL = url; break;
                 case ELocation.Root: mRootURL = url; break;
             }
+        }
+        
+        public void SetURL(ELocation location, string url, string filename)
+        {
+            SetURL(location, url);
+            Filename = new PackageFilename(Path.GetFileNameWithoutExtension(filename));
         }
 
         public string GetURL(ELocation location)
@@ -160,21 +196,24 @@ namespace MSBuild.XCode
         {
             if (CacheExists && TargetExists)    // && File.Exists(CacheURL)), should exist since the PackageRepository assigned it
             {
-                ZipFile zip = new ZipFile(CacheURL);
-                zip.ExtractAll(TargetURL, ExtractExistingFileAction.OverwriteSilently);
+                if (File.Exists(CacheURL + Filename))
+                {
+                    ZipFile zip = new ZipFile(CacheURL + Filename);
+                    zip.ExtractAll(TargetURL, ExtractExistingFileAction.OverwriteSilently);
 
-                DateTime lastWriteTime = File.GetLastWriteTime(CacheURL);
-                FileInfo fi = new FileInfo(TargetURL + Path.GetFileNameWithoutExtension(CacheURL) + ".t");
-                if (fi.Exists)
-                {
-                    fi.LastWriteTime = lastWriteTime;
+                    DateTime lastWriteTime = File.GetLastWriteTime(CacheURL + Filename);
+                    FileInfo fi = new FileInfo(TargetURL + Path.GetFileNameWithoutExtension(Filename.ToString()) + ".t");
+                    if (fi.Exists)
+                    {
+                        fi.LastWriteTime = lastWriteTime;
+                    }
+                    else
+                    {
+                        fi.Create().Close();
+                        fi.LastWriteTime = lastWriteTime;
+                    }
+                    return true;
                 }
-                else
-                {
-                    fi.Create().Close();
-                    fi.LastWriteTime = lastWriteTime;
-                }
-                return true;
             }
             return false;
         }
@@ -461,7 +500,7 @@ namespace MSBuild.XCode
             // Generating project files is a bit complex in that it has to merge project definitions on a per platform basis.
             // Every platform is considered to have its own package (zip -> pom.xml) containing the project settings for that platform.
             // For every platform we have to merge in only the conditional xml elements into the final project file.
-            foreach (Project rootProject in Pom.Projects)
+            foreach (ProjectInstance rootProject in Pom.Projects)
             {
                 // Every platform has a dependency tree and every dependency package for that platform has filtered their
                 // project to only keep their platform specific xml elements.
@@ -472,7 +511,7 @@ namespace MSBuild.XCode
                     // Merge in all Projects of those dependency packages which are already filtered on the platform
                     foreach (PackageInstance dependencyPackage in allDependencyPackages)
                     {
-                        Project dependencyProject = dependencyPackage.Pom.GetProjectByGroup(rootProject.Group);
+                        ProjectInstance dependencyProject = dependencyPackage.Pom.GetProjectByGroup(rootProject.Group);
                         if (dependencyProject != null && !dependencyProject.IsPrivate)
                             rootProject.MergeWithDependencyProject(dependencyProject);
                     }
@@ -481,21 +520,21 @@ namespace MSBuild.XCode
 
             // And the root package UnitTest project generally merges with Main, since UnitTest will use Main.
             // Although the user could specify more project and different internal dependencies.
-            foreach (Project rootProject in Pom.Projects)
+            foreach (ProjectInstance rootProject in Pom.Projects)
             {
                 if (!String.IsNullOrEmpty(rootProject.DependsOn))
                 {
                     string[] projectNames = rootProject.DependsOn.Split(new char[] { ';' }, StringSplitOptions.RemoveEmptyEntries);
                     foreach (string name in projectNames)
                     {
-                        Project dependencyProject = Pom.GetProjectByName(name);
+                        ProjectInstance dependencyProject = Pom.GetProjectByName(name);
                         if (dependencyProject != null)
                             rootProject.MergeWithDependencyProject(dependencyProject);
                     }
                 }
             }
 
-            foreach (Project p in Pom.Projects)
+            foreach (ProjectInstance p in Pom.Projects)
             {
                 string path = p.Location.Replace("/", "\\");
                 path = path.EndWith('\\');
@@ -507,7 +546,7 @@ namespace MSBuild.XCode
         public void GenerateSolution()
         {
             List<string> projectFilenames = new List<string>();
-            foreach (Project prj in Pom.Projects)
+            foreach (ProjectInstance prj in Pom.Projects)
             {
                 string path = prj.Location.Replace("/", "\\");
                 path = path.EndWith('\\');
