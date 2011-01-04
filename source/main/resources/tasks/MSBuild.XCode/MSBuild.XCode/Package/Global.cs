@@ -20,8 +20,8 @@ namespace MSBuild.XCode
         public static PackageRepository CacheRepo { get; set; }
         public static PackageRepository RemoteRepo { get; set; }
 
-        public static MsDev2010.Cpp.XCode.Project CppTemplateProject { get; set; }
-        public static MsDev2010.Cpp.XCode.Project CsTemplateProject { get; set; }
+        public static CppProject CppTemplateProject { get; set; }
+        public static CsProject CsTemplateProject { get; set; }
 
         static Global()
         {
@@ -65,7 +65,7 @@ namespace MSBuild.XCode
             if (!String.IsNullOrEmpty(TemplateDir))
             {
                 // For C++
-                CppTemplateProject = new MsDev2010.Cpp.XCode.Project();
+                CppTemplateProject = new CppProject();
                 if (!CppTemplateProject.Load(TemplateDir + "main.vcxproj"))
                 {
                     Loggy.Add(String.Format("Error: Initialization of Global failed in due to failure in loading {0}", TemplateDir + "main.vcxproj"));
@@ -73,7 +73,7 @@ namespace MSBuild.XCode
                 }
 
                 // For C#
-                // CsTemplateProject = new MsDev2010.Cpp.XCode.Project();
+                // CsTemplateProject = new CsProject();
                 // CsTemplateProject.Load(TemplateDir + "main.vcxproj");
             }
 

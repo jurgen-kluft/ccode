@@ -165,7 +165,7 @@ namespace MSBuild.XCode
             {
                 register.Add(Name);
 
-                string versionStr = Package.Version == null ? "?" : Package.Version.ToString();
+                string versionStr = Package.TargetVersion == null ? "?" : Package.TargetVersion.ToString();
                 writer.WriteLine(String.Format("{0} {1}, version={2}, type={3}", Name, versionStr, Dependency.Type));
 
                 if (Children != null)
@@ -182,7 +182,7 @@ namespace MSBuild.XCode
             else if (indent == "+") indent = "|----+";
             else indent = "     " + indent;
 
-            string versionStr = Package.Version == null ? "?" : Package.Version.ToString();
+            string versionStr = Package.TargetVersion == null ? "?" : Package.TargetVersion.ToString();
 
             Loggy.Add(String.Format("{0} {1}, version={2}, type={3}", indent, Name, versionStr, Dependency.Type));
 

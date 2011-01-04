@@ -10,7 +10,7 @@ namespace MSBuild.XCode
     public class ProjectInstance
     {
         private ProjectResource mResource;
-        private MsDev2010.Cpp.XCode.Project mMsDevProject;
+        private CppProject mMsDevProject;
 
         public Dictionary<string, StringItems> Configs { get { return mResource.Configs; } }
 
@@ -33,7 +33,7 @@ namespace MSBuild.XCode
             mResource = resource;
             Main = main;
             
-            mMsDevProject = new MsDev2010.Cpp.XCode.Project();
+            mMsDevProject = new CppProject();
             mMsDevProject.Merge(mResource.MsDevProject, true, true);
 
             // Filter items, this should be moved to ProjectInstance!
@@ -55,7 +55,7 @@ namespace MSBuild.XCode
         {
             if (IsCpp)
             {
-                MsDev2010.Cpp.XCode.Project finalProject = new MsDev2010.Cpp.XCode.Project();
+                CppProject finalProject = new CppProject();
                 finalProject.Merge(Global.CppTemplateProject, true, false);
                 finalProject.Merge(mMsDevProject, true, true);
                 finalProject.RemoveAllBut(Configs);
@@ -63,10 +63,10 @@ namespace MSBuild.XCode
             }
             else if (IsCs)
             {
-                MsDev2010.Cpp.XCode.Project finalProject = new MsDev2010.Cpp.XCode.Project();
-                finalProject.Merge(Global.CsTemplateProject, true, false);
-                finalProject.Merge(mMsDevProject, true, true);
-                mMsDevProject = finalProject;
+                //CsProject finalProject = new CsProject();
+                //finalProject.Merge(Global.CsTemplateProject, true, false);
+                //finalProject.Merge(mMsDevProject, true, true);
+                //mMsDevProject = finalProject;
             }
         }
 
@@ -79,14 +79,14 @@ namespace MSBuild.XCode
         {
             if (IsCpp)
             {
-                MsDev2010.Cpp.XCode.Project finalProject = new MsDev2010.Cpp.XCode.Project();
+                CppProject finalProject = new CppProject();
                 finalProject.Merge(mMsDevProject, true, true);
                 finalProject.RemoveAllPlatformsBut(platform);
                 mMsDevProject = finalProject;
             }
             else if (IsCs)
             {
-                MsDev2010.Cpp.XCode.Project finalProject = new MsDev2010.Cpp.XCode.Project();
+                CppProject finalProject = new CppProject();
                 finalProject.Merge(mMsDevProject, true, true);
                 finalProject.RemoveAllPlatformsBut(platform);
                 mMsDevProject = finalProject;

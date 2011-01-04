@@ -4,9 +4,9 @@ using System;
 
 namespace FileDirectoryPath
 {
-    public sealed class DirectoryPathAbsolute : DirectoryPath
+    public sealed class DirPathAbsolute : DirPath
     {
-        public DirectoryPathAbsolute(string path)
+        public DirPathAbsolute(string path)
             : base(path, true)
         {
         }
@@ -15,7 +15,7 @@ namespace FileDirectoryPath
         //
         //  Absolute/Relative path conversion
         //
-        public DirectoryPathRelative GetPathRelativeFrom(DirectoryPathAbsolute path)
+        public DirPathRelative GetPathRelativeFrom(DirPathAbsolute path)
         {
             if (path == null)
             {
@@ -25,11 +25,11 @@ namespace FileDirectoryPath
             {
                 throw new ArgumentException("Cannot compute a relative path from an empty path.");
             }
-            return new DirectoryPathRelative(BasePath.GetPathRelative(path, this));
+            return new DirPathRelative(BasePath.GetPathRelative(path, this));
         }
 
 
-        public bool CanGetPathRelativeFrom(DirectoryPathAbsolute path)
+        public bool CanGetPathRelativeFrom(DirPathAbsolute path)
         {
             try
             {
@@ -44,12 +44,12 @@ namespace FileDirectoryPath
         //
         //  Path Browsing facilities
         //
-        public new DirectoryPathAbsolute ParentDirectoryPath
+        public new DirPathAbsolute ParentDirectoryPath
         {
             get
             {
                 string parentPath = InternalStringHelper.GetParentDirectory(this.Path);
-                return new DirectoryPathAbsolute(parentPath);
+                return new DirPathAbsolute(parentPath);
             }
         }
 
@@ -61,7 +61,7 @@ namespace FileDirectoryPath
             return this.ParentDirectoryPath.GetChildFileWithName(fileName);
         }
 
-        public DirectoryPathAbsolute GetBrotherDirectoryWithName(string fileName)
+        public DirPathAbsolute GetBrotherDirectoryWithName(string fileName)
         {
             if (fileName == null) { throw new ArgumentNullException("filename"); }
             if (fileName.Length == 0) { throw new ArgumentException("Can't get brother of an empty file", "filename"); }
@@ -77,7 +77,7 @@ namespace FileDirectoryPath
             return new FilePathAbsolute(this.Path + System.IO.Path.DirectorySeparatorChar + fileName);
         }
 
-        public DirectoryPathAbsolute GetChildDirectoryWithName(string directoryName)
+        public DirPathAbsolute GetChildDirectoryWithName(string directoryName)
         {
             if (directoryName == null) { throw new ArgumentNullException("directoryName"); }
             if (directoryName.Length == 0) { throw new ArgumentException("Empty directoryName not accepted", "directoryName"); }
@@ -86,10 +86,10 @@ namespace FileDirectoryPath
             {
 
             }
-            return new DirectoryPathAbsolute(this.Path + System.IO.Path.DirectorySeparatorChar + directoryName);
+            return new DirPathAbsolute(this.Path + System.IO.Path.DirectorySeparatorChar + directoryName);
         }
 
-        public bool IsChildDirectoryOf(DirectoryPathAbsolute parentDir)
+        public bool IsChildDirectoryOf(DirPathAbsolute parentDir)
         {
             if (parentDir == null) { throw new ArgumentNullException("parentDir"); }
             if (parentDir.IsEmpty) { throw new ArgumentException("Empty parentDir not accepted", "parentDir"); }
@@ -139,16 +139,16 @@ namespace FileDirectoryPath
                 return childrenFilesPath;
             }
         }
-        public List<DirectoryPathAbsolute> ChildrenDirectoriesPath
+        public List<DirPathAbsolute> ChildrenDirectoriesPath
         {
             get
             {
                 DirectoryInfo directoryInfo = this.DirectoryInfo;
                 DirectoryInfo[] directoriesInfos = directoryInfo.GetDirectories();
-                List<DirectoryPathAbsolute> childrenDirectoriesPath = new List<DirectoryPathAbsolute>();
+                List<DirPathAbsolute> childrenDirectoriesPath = new List<DirPathAbsolute>();
                 foreach (DirectoryInfo childDirectoryInfo in directoriesInfos)
                 {
-                    childrenDirectoriesPath.Add(new DirectoryPathAbsolute(childDirectoryInfo.FullName));
+                    childrenDirectoriesPath.Add(new DirPathAbsolute(childDirectoryInfo.FullName));
                 }
                 return childrenDirectoriesPath;
             }
@@ -158,9 +158,9 @@ namespace FileDirectoryPath
         //
         //  Empty DirectoryPathAbsolute
         //
-        private DirectoryPathAbsolute() : base() { }
-        private static DirectoryPathAbsolute s_Empty = new DirectoryPathAbsolute();
-        public static DirectoryPathAbsolute Empty { get { return s_Empty; } }
+        private DirPathAbsolute() : base() { }
+        private static DirPathAbsolute s_Empty = new DirPathAbsolute();
+        public static DirPathAbsolute Empty { get { return s_Empty; } }
 
 
         public override bool IsAbsolutePath { get { return true; } }

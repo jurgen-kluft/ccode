@@ -16,10 +16,16 @@ namespace MSBuild.XCode
     /// 
     /// 
     /// 1) RemotePackageRepository: Init, Add, Get
-    /// 2) CachePackageRepository:  Init, Add, Get
+    /// 2) CachePackageRepository : Init, Add, Get
     /// 3) TargetPackageRepository: Init, Add, Get
+    /// 4) LocalPackageRepository : Init, Add, Get
     /// 
-    /// Packages go from 3 to 2 to 1, or from 1 to 2 to 3, or just from 2 to 3 and 3 to 2
+    /// Package flow:
+    /// - 4 to 2 (push)
+    /// - 2 to 1 (push)
+    /// - 4 to 1 (push)
+    /// - 1 to 2 (pull)
+    /// - 2 to 3 (pull)
     /// 
     /// PackageRepositoryActor
     /// - Init     (Analyze the target folder)
@@ -33,26 +39,28 @@ namespace MSBuild.XCode
         public IPackageRepository RemoteRepository { get; set; }
         public IPackageRepository CacheRepository { get; set; }
         public IPackageRepository TargetRepository { get; set; }
+        public IPackageRepository LocalRepository { get; set; }
 
-        public void Init(string rootPackageName, List<DependencyInstance> dependencies)
+        public void Init(PackageInstance package, List<DependencyInstance> dependencies)
         {
 
         }
 
-        public void Update(string packageName, VersionRange versionRange)
+        public void Update(PackageInstance package, VersionRange versionRange)
         {
             // Use Target Repository information and check Cache Repository for better versions
             // Use Cache Repository information and check Remote Repository for better versions
         }
 
-        public bool Install()
+        public bool Install(PackageInstance package)
         {
-            // From Target Repository to Cache Repository
+            // From Root to Local Repository (Create Package)
+            // From Local Repository to Cache Repository
 
             return false;
         }
 
-        public bool Deploy()
+        public bool Deploy(PackageInstance package)
         {
             // From Cache Repository to Remote Repository
 

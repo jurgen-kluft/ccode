@@ -13,7 +13,7 @@ namespace FileDirectoryPath
         //
         //  Absolute/Relative path conversion
         //
-        public FilePathAbsolute GetAbsolutePathFrom(DirectoryPathAbsolute path)
+        public FilePathAbsolute GetAbsolutePathFrom(DirPathAbsolute path)
         {
             if (path == null)
             {
@@ -27,7 +27,7 @@ namespace FileDirectoryPath
             return new FilePathAbsolute(pathAbsolute + System.IO.Path.DirectorySeparatorChar + this.FileName);
         }
 
-        public bool CanGetAbsolutePathFrom(DirectoryPathAbsolute path)
+        public bool CanGetAbsolutePathFrom(DirPathAbsolute path)
         {
             try
             {
@@ -43,12 +43,12 @@ namespace FileDirectoryPath
         //
         //  Path Browsing facilities
         //
-        public new DirectoryPathRelative ParentDirectoryPath
+        public new DirPathRelative ParentDirectoryPath
         {
             get
             {
                 string parentPath = InternalStringHelper.GetParentDirectory(this.Path);
-                return new DirectoryPathRelative(parentPath);
+                return new DirPathRelative(parentPath);
             }
         }
 
@@ -61,7 +61,7 @@ namespace FileDirectoryPath
             return this.ParentDirectoryPath.GetChildFileWithName(fileName);
         }
 
-        public DirectoryPathRelative GetBrotherDirectoryWithName(string fileName)
+        public DirPathRelative GetBrotherDirectoryWithName(string fileName)
         {
             if (fileName == null) { throw new ArgumentNullException("filename"); }
             if (fileName.Length == 0) { throw new ArgumentException("Can't get brother of an empty file", "filename"); }

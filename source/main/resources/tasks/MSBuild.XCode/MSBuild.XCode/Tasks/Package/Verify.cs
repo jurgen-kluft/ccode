@@ -31,7 +31,7 @@ namespace MSBuild.XCode
             PackageInstance package = PackageInstance.LoadFromTarget(RootDir + "target\\" + Name + "\\" + Platform + "\\");
             if (package.IsValid)
             {
-                ok = package.Verify();
+                //ok = package.Verify();
             }
             return ok;
         }

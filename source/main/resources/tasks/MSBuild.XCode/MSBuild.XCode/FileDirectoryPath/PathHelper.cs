@@ -120,14 +120,14 @@ namespace FileDirectoryPath
         // Infer Relative/Absolute path from string
         //
         //---------------------------------------------------
-        public static DirectoryPath BuildDirectoryPath(string path)
+        public static DirPath BuildDirectoryPath(string path)
         {
             string unusedReason;
             if (PathHelper.IsValidRelativePath(path, out unusedReason))
             {
-                return new DirectoryPathRelative(path);
+                return new DirPathRelative(path);
             }
-            return new DirectoryPathAbsolute(path);
+            return new DirPathAbsolute(path);
         }
         public static FilePath BuildFilePath(string path)
         {
@@ -180,12 +180,12 @@ namespace FileDirectoryPath
         // 3) Get the deeper common dir name (deeper in validPath)
         // 4) Return Path(deeperCommonDirName)+ Pathes in originalPath after deeperCommonDirName
         public static bool TryRebasePath(
-              DirectoryPathAbsolute originalPath,
-              DirectoryPathAbsolute validPath,
-              out DirectoryPathAbsolute rebasedPath)
+              DirPathAbsolute originalPath,
+              DirPathAbsolute validPath,
+              out DirPathAbsolute rebasedPath)
         {
 
-            rebasedPath = DirectoryPathAbsolute.Empty;
+            rebasedPath = DirPathAbsolute.Empty;
             if (PathHelper.IsNullOrEmpty(originalPath))
             {
                 return false;
@@ -229,7 +229,7 @@ namespace FileDirectoryPath
             string[] arrayInferedDirNames = new string[inferedDirNames.Count];
             inferedDirNames.CopyTo(arrayInferedDirNames);
             string inferedPath = string.Join(Path.DirectorySeparatorChar.ToString(), arrayInferedDirNames);
-            rebasedPath = new DirectoryPathAbsolute(inferedPath);
+            rebasedPath = new DirPathAbsolute(inferedPath);
             return true;
         }
         #endregion Try Rebase path

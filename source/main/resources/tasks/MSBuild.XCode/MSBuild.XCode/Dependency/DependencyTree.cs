@@ -87,33 +87,6 @@ namespace MSBuild.XCode
             return true;
         }
 
-        // Synchronize dependencies
-        public bool Sync()
-        {
-            bool result = true;
-
-            // Checkout all dependencies
-            foreach (DependencyTreeNode depNode in mAllNodes)
-            {
-                if (!Global.CacheRepo.Update(depNode.Package))
-                {
-                    // Failed to checkout!
-                    result = false;
-                    break;
-                }
-                else
-                {
-                    if (!depNode.Package.VerifyBeforeExtract())
-                    {
-                        result = false;
-                        break;
-                    }
-                }
-            }
-
-            return result;
-        }
-
         public void SaveInfo(FileDirectoryPath.FilePathAbsolute filepath)
         {
             FileStream stream = new FileStream(filepath.ToString(), FileMode.Create, FileAccess.Write);
@@ -132,7 +105,7 @@ namespace MSBuild.XCode
             foreach (DependencyTreeNode node in mAllNodes)
             {
                 Loggy.Add(String.Format("Name                       : {0}", node.Package.Name));
-                Loggy.Add(String.Format("Version                    : {0}", node.Package.Version));
+                Loggy.Add(String.Format("Version                    : {0}", node.Package.TargetVersion));
             }
         }
 
