@@ -3,6 +3,8 @@ using System.IO;
 using System.Text;
 using System.Collections;
 using System.Collections.Generic;
+using System.Security.Cryptography;
+using Ionic.Zip;
 using MSBuild.XCode.Helpers;
 
 namespace MSBuild.XCode
@@ -13,7 +15,8 @@ namespace MSBuild.XCode
     /// - Target\PackageName\Platform
     /// 
     /// Note: We do need a way to identify the version of the extracted package.
-    /// 
+    ///       This is done by using the filename of the marker file (.t).
+    ///       
     /// From the root pom.xml we can collect its dependencies. From there we
     /// can load the pom.xml of those packages from the target. If one of them
     /// doesn't exist we stop and move to using the cache repository. Under
@@ -21,18 +24,17 @@ namespace MSBuild.XCode
     /// the target folder without ever using the cache and remote repository.
     /// However we do need to query the cache and remote for a more up-to-date
     /// version. We can however have the cache and remote give us a signature
-    /// that can tell us when a package has been installed/deployed, when the
-    /// signature differs we can move to the next phase and ask for a better
-    /// version of that package.
-    /// 
+    /// that can tell us when a package has been updated by a install/deploy cmd.
+    /// When the signature has changed we can move to the next phase and ask for 
+    /// a better version of that package.
     /// </summary>
     public class PackageRepositoryTarget : IPackageRepository
     {
-        public PackageRepositoryTarget(string targetDir, ELocation location)
+        public PackageRepositoryTarget(string targetDir)
         {
             RepoDir = targetDir;
-            Layout = new LayoutDefault();
-            Location = location;
+            Layout = new LayoutTarget();
+            Location = ELocation.Target;
         }
 
         public string RepoDir { get; set; }
@@ -41,14 +43,50 @@ namespace MSBuild.XCode
 
         public bool Update(PackageInstance package)
         {
+            // See if this package is in the target folder and valid
+            string packageURL = String.Format("{0}{1}\\{2}\\", RepoDir, package.Name, package.Platform);
+            if (Directory.Exists(packageURL))
+            {
+                if (File.Exists(packageURL + "pom.xml"))
+                {
+                    string[] t_filenames = Directory.GetFiles(packageURL, "*.t", SearchOption.TopDirectoryOnly);
+                    if (t_filenames.Length > 0)
+                    {
+                        // Find the one with the latest LastWriteTime
+                        DateTime latest_datetime = DateTime.MinValue;
+                        string latest_t_filename = string.Empty;
+                        foreach (string t_filename in t_filenames)
+                        {
+                            DateTime datetime = File.GetLastWriteTime(t_filename);
+                            if (datetime > latest_datetime)
+                            {
+                                latest_datetime = datetime;
+                                latest_t_filename = t_filename;
+                            }
+                        }
+                        // Extract the version from the filename
+                        if (!String.IsNullOrEmpty(latest_t_filename))
+                        {
+                            string version = Layout.FilenameToVersion(latest_t_filename);
+                            package.TargetVersion = new ComparableVersion(version);
+                            package.TargetSignature = latest_datetime.Ticks.ToString();
+                            return true;
+                        }
+                    }
+                }
+            }
             return false;
         }
 
         public bool Update(PackageInstance package, VersionRange versionRange)
         {
-            if (FindBestVersion(package, versionRange))
+            // See if this package is in the target folder and valid for the version range
+            if (Update(package))
             {
-                return Update(package);
+                if (versionRange.IsInRange(package.GetVersion(Location)))
+                {
+                    return true;
+                }
             }
             return false;
         }
@@ -57,236 +95,101 @@ namespace MSBuild.XCode
         {
             if (File.Exists(package.GetURL(from)))
             {
-                string dest_dir = Layout.PackageVersionDir(RepoDir, package.Group.ToString(), package.Name, package.Version);
+                string dest_dir = Layout.PackageVersionDir(RepoDir, package.Group.ToString(), package.Name, package.Platform, package.GetVersion(Location));
                 if (!Directory.Exists(dest_dir))
-                {
                     Directory.CreateDirectory(dest_dir);
-                }
-                string package_filename = Layout.VersionToFilename(package.Name, package.Branch, package.Platform, package.Version);
-                if (!File.Exists(dest_dir + package_filename))
+
+                ZipFile zip = new ZipFile(package.GetURL(from) + package.GetFilename(from));
+                string targetURL = RepoDir + package.Name + "\\" + package.Platform + "\\";
+                zip.ExtractAll(targetURL, ExtractExistingFileAction.OverwriteSilently);
+
+                string current_t_filename = Path.GetFileNameWithoutExtension(package.GetFilename(from).ToString()) + ".t";
+
+                string[] t_filenames = Directory.GetFiles(dest_dir, "*.t", SearchOption.TopDirectoryOnly);
+                // Delete all old .t files?
+                foreach (string t_filename in t_filenames)
                 {
-                    File.Copy(package.GetURL(from), dest_dir + package_filename, true);
-                    DirtyVersionCache(package.Group.ToString(), package.Name);
+                    if (String.Compare(Path.GetFileNameWithoutExtension(t_filename), current_t_filename, true) != 0)
+                    {
+                        try { File.Delete(t_filename); } catch(IOException) { }
+                    }
                 }
-                package.SetURL(Location, dest_dir + package_filename);
+
+                DateTime lastWriteTime = File.GetLastWriteTime(package.GetURL(from) + package.GetFilename(from));
+                FileInfo fi = new FileInfo(targetURL + current_t_filename);
+                if (fi.Exists)
+                {
+                    fi.LastWriteTime = lastWriteTime;
+                }
+                else
+                {
+                    fi.Create().Close();
+                    fi.LastWriteTime = lastWriteTime;
+                }
+
+                package.SetURL(Location, targetURL);
                 return true;
             }
             return false;
         }
 
-        public string[] RetrieveVersionsFor(string group, string package_name, string branch, string platform)
+        private bool Verify(PackageInstance package)
         {
-            UpdateVersionCache(group, package_name, branch, platform);
-            return LoadVersionCache(group, package_name, branch, platform);
-        }
+            bool ok = false;
 
-        // 
-        // OPTIMIZATION, THIS CAN BE DONE IN MANY DIFFERENT WAYS
-        // 
-        public void UpdateVersionCache(string group, string package_name, string branch, string platform)
-        {
-            string root_dir = Layout.PackageRootDir(RepoDir, group, package_name);
-            if (!Directory.Exists(root_dir))
-                return;
+            if (!package.TargetExists)
+                return ok;
 
-            string filename = String.Format("versions.{0}.{1}.cache", branch, platform);
-
-            if (File.Exists(root_dir + filename + ".writelock"))
+            string md5_file = package.Name + ".MD5";
+            if (File.Exists(package.TargetURL + md5_file))
             {
-                long ticks = File.GetLastWriteTime(root_dir + filename + ".writelock").Ticks;
-                long current_ticks = DateTime.Now.Ticks;
-                TimeSpan timespan = new TimeSpan(current_ticks - ticks);
-                TimeSpan timeout = new TimeSpan(0, 5, 0);
-                bool _return = true;
-                if (timespan > timeout)
-                {
-                    try { _return = false;  File.Delete(root_dir + filename + ".writelock"); }
-                    catch (SystemException) { _return = true; }
-                }
-                if (_return)
-                    return;
-            }
+                MD5CryptoServiceProvider md5_provider = new MD5CryptoServiceProvider();
 
-            using (FileStream stream = new FileStream(root_dir + filename + ".writelock", FileMode.Create, FileAccess.Write, FileShare.None))
-            {
-                using (StreamWriter writer = new StreamWriter(stream))
+                // Load MD5 file
+                ok = true;
+                string[] lines = File.ReadAllLines(package.TargetURL + md5_file);
+
+                // MD5 is relative to its own location
+                foreach (string entry in lines)
                 {
-                    string[] dirtyMarkerFiles = Directory.GetFiles(root_dir, "*.dirty", SearchOption.TopDirectoryOnly);
-                    foreach (string dirty in dirtyMarkerFiles)
+                    if (entry.Trim().StartsWith(";"))
+                        continue;
+
+                    // Get the MD5 and Filename
+                    int s = entry.IndexOf('*');
+                    if (s == -1)
                     {
-                        try { File.Delete(dirty); }
-                        catch (SystemException) { }
+                        ok = false;
+                        break;
                     }
-                    string[] packages = Directory.GetFiles(root_dir + "version\\", "*.zip", SearchOption.AllDirectories);
-                    SortedDictionary<ComparableVersion, bool> sortedVersions = new SortedDictionary<ComparableVersion, bool>();
-                    foreach (string package in packages)
+                    string old_md5 = entry.Substring(s + 1).Trim();
+                    string filename = package.TargetURL + entry.Substring(0, s).Trim();
+
+                    if (File.Exists(filename))
                     {
-                        string[] c = Path.GetFileNameWithoutExtension(package).Split(new char[] { '+' }, StringSplitOptions.RemoveEmptyEntries);
-                        if (c.Length == 4)
+                        string new_md5 = string.Empty;
+                        using (FileStream rfs = new FileStream(filename, FileMode.Open, FileAccess.Read))
                         {
-                            ComparableVersion version = new ComparableVersion(c[1]);
-                            if (!sortedVersions.ContainsKey(version))
-                                sortedVersions.Add(version, true);
+                            byte[] new_md5_raw = md5_provider.ComputeHash(rfs);
+                            new_md5 = StringTools.MD5ToString(new_md5_raw);
+                            rfs.Close();
                         }
-                    }
 
-                    foreach (ComparableVersion v in sortedVersions.Keys)
-                        writer.WriteLine(v.ToString());
-                    writer.Close();
-                    stream.Close();
-
-                    try { File.Copy(root_dir + filename + ".writelock", root_dir + filename, true); }
-                    catch (SystemException) { }
-                    try { File.Delete(root_dir + filename + ".writelock"); }
-                    catch (SystemException) { }
-                }
-            }
-        }
-
-        private string[] LoadVersionCache(string group, string package_name, string branch, string platform)
-        {
-            string root_dir = Layout.PackageRootDir(RepoDir, group, package_name);
-            string[] versions = new string[0];
-
-            string filename = String.Format("versions.{0}.{1}.cache", branch, platform);
-
-            int retry = 0;
-            bool exception = true;
-            while (exception && retry < 5)
-            {
-                try
-                {
-                    exception = false;
-                    versions = File.ReadAllLines(root_dir + filename);
-                }
-                catch (SystemException)
-                {
-                    exception = true;
-                    System.Threading.Thread.Sleep(1 * 1000);
-                    retry++;
-                }
-            }
-            return versions;
-        }
-
-        private void DirtyVersionCache(string group, string package_name)
-        {
-            string root_dir = Layout.PackageRootDir(RepoDir, group, package_name);
-            if (!File.Exists(root_dir + Environment.MachineName + ".dirty"))
-            {
-                FileStream s = File.Create(root_dir + Environment.MachineName + ".dirty");
-                s.Close();
-            }
-        }
-
-        private ComparableVersion LowerBound(List<ComparableVersion> all, ComparableVersion value, bool lessOrEqual)
-        {
-            // LowerBound will return the index of the version that is higher than the lower bound
-            int i = all.LowerBound(value, lessOrEqual) - 1;
-            if (i >= 0 && i<all.Count)
-                return all[i];
-
-            return null;
-        }
-
-        private List<ComparableVersion> Construct(string[] versions)
-        {
-            List<ComparableVersion> all = new List<ComparableVersion>();
-            foreach (string v in versions)
-                all.Add(new ComparableVersion(v));
-            return all;
-        }
-
-        private bool FindBestVersion(PackageInstance package, VersionRange versionRange)
-        {
-            string[] versions = RetrieveVersionsFor(package.Group.ToString(), package.Name, package.Branch, package.Platform);
-            if (versions.Length > 1)
-            {
-                if (versionRange.Kind == VersionRange.EKind.UniqueVersion)
-                {
-                    List<ComparableVersion> all = Construct(versions);
-                    package.Version = LowerBound(all, versionRange.From, versionRange.IncludeFrom);
-                    // This might not be a match, but we have to return the best possible match
-                    return true;
-                }
-                else
-                {
-                    ComparableVersion highest = new ComparableVersion(versions[versions.Length - 1]);
-
-                    // High probability that the highest version will match
-                    if (versionRange.IsInRange(highest))
-                    {
-                        package.Version = new ComparableVersion(highest);
-                        return true;
-                    }
-
-                    if (versionRange.Kind == VersionRange.EKind.VersionToUnbound)
-                    {
-                        // lowest ---------------------------------------------------------- highest
-                        // xxxxxxxxxxxxxxxx from >-----------------------------------------------------------
-                        // highest is not in range so there will be no matching version
-                        return false;
+                        if (String.Compare(old_md5, new_md5) != 0)
+                        {
+                            ok = false;
+                            break;
+                        }
                     }
                     else
                     {
-                        // Search for a matching version
-                        if (versionRange.Kind == VersionRange.EKind.UnboundToVersionOrVersionToUnbound)
-                        {
-                            // highest failed and this can only be in the following case:
-                            //      lowest ------------------------------------- highest
-                            //      ---------------------< from xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx to >--------------------------
-                            // Find a version in the UnboundToVersion, where Version is 'from'
-                            List<ComparableVersion> all = Construct(versions);
-                            ComparableVersion version = LowerBound(all, versionRange.From, versionRange.IncludeFrom);
-                            package.Version = version;
-                            return true;
-                        }
-                        else if (versionRange.Kind == VersionRange.EKind.UnboundToVersion)
-                        {
-                            // highest failed and this can only be in the following case:
-                            //     lowest ---------------------------------------------------------- highest
-                            //     ----------------------< to xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx
-                            // Find a version in the UnboundToVersion, where Version is 'to'
-                            List<ComparableVersion> all = Construct(versions);
-                            ComparableVersion version = LowerBound(all, versionRange.To, versionRange.IncludeTo);
-                            package.Version = version;
-                            return true;
-                        }
-                        else if (versionRange.Kind == VersionRange.EKind.VersionToVersion)
-                        {
-                            // highest failed and this can only be in the following two cases:
-                            // 1)
-                            //     lowest ---------------------------------------------------------- highest
-                            //     xxxxxxxxxxxxxxxx from >---------------------------------< to xxxxxxxxxxxxxxxxxxxxxxxxxxxxxx
-                            // 2)
-                            //     lowest --------highest
-                            //     xxxxxxxxxxxxxxxxxxxxxxxxxxxxx from >---------------------------------< to xxxxxxxxxxxxxxxxx
-                            // Only case 1 might give as a version
-                            if (!highest.LessThan(versionRange.From, !versionRange.IncludeFrom))
-                            {
-                                List<ComparableVersion> all = Construct(versions);
-                                ComparableVersion version = LowerBound(all, versionRange.To, versionRange.IncludeTo);
-                                if (version != null && versionRange.IsInRange(version))
-                                {
-                                    package.Version = version;
-                                    return true;
-                                }
-                            }
-                        }
+                        // File doesn't exist anymore
+                        ok = false;
+                        break;
                     }
                 }
             }
-            else if (versions.Length == 1)
-            {
-                ComparableVersion version = new ComparableVersion(versions[0]);
-                if (versionRange.IsInRange(version))
-                {
-                    package.Version = version;
-                    return true;
-                }
-            }
-            return false;
+            return ok;
         }
     }
-
 }

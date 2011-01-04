@@ -75,9 +75,14 @@ namespace MSBuild.XCode
             PackageInstance package = PackageInstance.LoadFromRoot(RootDir);
             if (package.IsValid)
             {
-                IPackageFilename filename;
-                if (package.Create(hg_changeset.Branch, Platform, out filename))
+                package.Branch = hg_changeset.Branch;
+                package.Platform = Platform;
+
+                PackageRepositoryLocal localRepo = new PackageRepositoryLocal(RootDir);
+
+                if (localRepo.Add(package, ELocation.Root))
                 {
+                    IPackageFilename filename = package.LocalFilename;
                     Filename = filename.ToString();
                     success = true;
                 }

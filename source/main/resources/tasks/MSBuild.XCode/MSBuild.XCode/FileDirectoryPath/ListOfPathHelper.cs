@@ -60,9 +60,9 @@ namespace FileDirectoryPath
 
 
 
-        public static bool TryGetCommonRootDirectory(List<DirectoryPathAbsolute> listOfPaths, out DirectoryPathAbsolute commonRootDirectory)
+        public static bool TryGetCommonRootDirectory(List<DirPathAbsolute> listOfPaths, out DirPathAbsolute commonRootDirectory)
         {
-            commonRootDirectory = DirectoryPathAbsolute.Empty;
+            commonRootDirectory = DirPathAbsolute.Empty;
             if (listOfPaths == null)
             {
                 return false;
@@ -73,7 +73,7 @@ namespace FileDirectoryPath
             }
 
             // If the list contains a path null or empty -> no commonRootDirectory
-            foreach (DirectoryPathAbsolute path in listOfPaths)
+            foreach (DirPathAbsolute path in listOfPaths)
             {
                 if (PathHelper.IsNullOrEmpty(path))
                 {
@@ -122,7 +122,7 @@ namespace FileDirectoryPath
             //
             List<string[]> listOfSplittedPaths = new List<string[]>();
             int maxDeepForRootDir = int.MaxValue;
-            foreach (DirectoryPathAbsolute path in listOfPaths)
+            foreach (DirPathAbsolute path in listOfPaths)
             {
                 string[] pathSplitted = path.Path.Split(new char[] { Path.DirectorySeparatorChar });
                 if (pathSplitted.Length < maxDeepForRootDir)
@@ -144,7 +144,7 @@ namespace FileDirectoryPath
                 {
                     if (string.Compare(pathSplitted[i], current, true) != 0)
                     {
-                        commonRootDirectory = new DirectoryPathAbsolute(commonRootDirPath);
+                        commonRootDirectory = new DirPathAbsolute(commonRootDirPath);
                         return true;
                     }
                 }
@@ -157,7 +157,7 @@ namespace FileDirectoryPath
                     commonRootDirPath += Path.DirectorySeparatorChar + current;
                 }
             }
-            commonRootDirectory = new DirectoryPathAbsolute(commonRootDirPath);
+            commonRootDirectory = new DirPathAbsolute(commonRootDirPath);
             return true;
         }
 
@@ -180,11 +180,11 @@ namespace FileDirectoryPath
 
         public static void GetListOfUniqueDirsAndUniqueFileNames(
               List<FilePathAbsolute> listOfFilePath,
-              out List<DirectoryPathAbsolute> listOfUniqueDirs,
+              out List<DirPathAbsolute> listOfUniqueDirs,
               out List<string> listOfUniqueFileNames)
         {
 
-            listOfUniqueDirs = new List<DirectoryPathAbsolute>();
+            listOfUniqueDirs = new List<DirPathAbsolute>();
             listOfUniqueFileNames = new List<string>();
 
             if (listOfFilePath == null)
@@ -198,7 +198,7 @@ namespace FileDirectoryPath
                 {
                     continue;
                 }
-                DirectoryPathAbsolute dir = filePath.ParentDirectoryPath;
+                DirPathAbsolute dir = filePath.ParentDirectoryPath;
                 if (!ListOfPathHelper.Contains(listOfUniqueDirs, dir))
                 {
                     listOfUniqueDirs.Add(dir);

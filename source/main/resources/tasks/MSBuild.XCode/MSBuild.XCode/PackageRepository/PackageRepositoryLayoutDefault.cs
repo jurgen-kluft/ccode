@@ -39,7 +39,7 @@ namespace MSBuild.XCode
             return parts[1];
         }
 
-        public string PackageRootDir(string repoPath, string group, string package_name)
+        public string PackageRootDir(string repoPath, string group, string package_name, string platform)
         {
             // Path = group[] \ group[] ... \ package_name \ version.cache
             string[] splitted_group = group.Split(new char[] { '.' }, StringSplitOptions.RemoveEmptyEntries);
@@ -55,7 +55,7 @@ namespace MSBuild.XCode
             return fullPath;
         }
 
-        public string PackageVersionDir(string repoPath, string group, string package_name, ComparableVersion version)
+        public string PackageVersionDir(string repoPath, string group, string package_name, string platform, ComparableVersion version)
         {
             // Path = group[] \ group[] ... \ package_name \ version.cache
             string[] splitted_group = group.Split(new char[] { '.' }, StringSplitOptions.RemoveEmptyEntries);

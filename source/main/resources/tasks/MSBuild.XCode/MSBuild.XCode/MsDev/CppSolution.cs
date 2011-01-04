@@ -5,9 +5,9 @@ using System.Text.RegularExpressions;
 using System.IO;
 using MSBuild.XCode.Helpers;
 
-namespace MsDev2010.Cpp.XCode
+namespace MSBuild.XCode
 {
-    class Solution
+    class CppSolution
     {
         public enum EVersion
         {
@@ -27,7 +27,7 @@ namespace MsDev2010.Cpp.XCode
         private List<string> m_Configs;
         private Dictionary<string, Guid> m_ProjectGuids;
 
-        public Solution(EVersion version, ELanguage language)
+        public CppSolution(EVersion version, ELanguage language)
         {
             mVersion = version;
             mLanguage = language;

@@ -6,7 +6,7 @@ using System.Linq;
 using System.Text;
 using MSBuild.XCode.Helpers;
 
-namespace MsDev2010.Cpp.XCode
+namespace MSBuild.XCode
 {
     /// <summary>
     /// What if we change the whole approach from being template oriented to being able to
@@ -30,7 +30,7 @@ namespace MsDev2010.Cpp.XCode
     /// 2) ${GUID}
     /// 
     /// </summary>
-    public class Project
+    public class CppProject
     {
         private bool mAllowRemoval;
         private XmlDocument mXmlDocMain;
@@ -50,12 +50,12 @@ namespace MsDev2010.Cpp.XCode
             return copy;
         }
 
-        public Project()
+        public CppProject()
         {
             mXmlDocMain = new XmlDocument();
         }
 
-        public Project(XmlNodeList nodes)
+        public CppProject(XmlNodeList nodes)
         {
             mXmlDocMain = new XmlDocument();
             foreach(XmlNode node in nodes)
@@ -372,7 +372,7 @@ namespace MsDev2010.Cpp.XCode
             return false;
         }
 
-        public bool Merge(Project project, bool replace, bool content)
+        public bool Merge(CppProject project, bool replace, bool content)
         {
             Merge(mXmlDocMain, project.mXmlDocMain,
                 delegate(XmlNode node)

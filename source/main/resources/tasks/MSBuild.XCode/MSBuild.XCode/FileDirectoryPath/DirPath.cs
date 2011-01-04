@@ -4,10 +4,10 @@ using System.Collections.Generic;
 
 namespace FileDirectoryPath
 {
-    public abstract class DirectoryPath : BasePath
+    public abstract class DirPath : BasePath
     {
-        protected DirectoryPath() { }  // Special for empty Path
-        protected DirectoryPath(string path, bool isAbsolute)
+        protected DirPath() { }  // Special for empty Path
+        protected DirPath(string path, bool isAbsolute)
             : base(path, isAbsolute)
         {
         }
