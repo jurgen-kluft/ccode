@@ -66,7 +66,7 @@ namespace MSBuild.XCode
         public void Read(XmlNode node)
         {
             this.Name = Attribute.Get("Name", node, "Unknown");
-            this.Category = Attribute.Get("Category", node, "Main");
+            this.Category = Attribute.Get("Group", node, "Main");
             this.Language = Attribute.Get("Language", node, "cpp");
             this.Location = Attribute.Get("Location", node, "source\\main\\cpp");
             this.Scope = Attribute.Get("Scope", node, "Public");
