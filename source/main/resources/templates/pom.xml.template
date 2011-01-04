@@ -1,0 +1,120 @@
+<Package Name="${Name}" Group="com.virtuos.tnt">
+  <Versions>
+    <Version>1.0.0</Version>
+  </Versions>
+
+  <DirectoryStructure>
+    <Item Folder="docs\manuals"/>
+    <Item Folder="docs\references"/>
+    <Item Folder="source\main\cpp"/>
+    <Item Folder="source\main\include\${Name}"/>
+    <Item Folder="source\main\include\${Name}\private"/>
+    <Item Folder="source\main\resources"/>
+    <Item Folder="source\test\cpp"/>
+    <Item Folder="source\test\include\${Name}"/>
+    <Item Folder="source\test\include\${Name}\private"/>
+    <Item Folder="source\test\resources"/>
+    <Item Folder="target"/>
+    <Item Folder="tools"/>
+  </DirectoryStructure>
+  
+  <Content>
+		<Item Src="pom.*" Dst="" />  
+    <Item Src="source\main\cpp\**\*.cpp" Dst="source\main\cpp\" />
+    <Item Src="source\main\include\**\*.h" Dst="source\main\include\" />
+    <Item Src="source\main\resources\**\*.*" Dst="source\main\resources\" />
+    <Item Src="libs\**\*.*" Dst="libs\" />
+    <Item Src="docs\**\*.*" Dst="docs\" />
+    <Item Src="tools\**\*.*" Dst="Tools\" />
+    <Item Src="target\outdir\${Name}_*\${Name}_*_${Platform}.lib" Dst="libs\" />
+  </Content>
+  
+  <Dependency Package="example_package_name">
+    <Group>com.virtuos.tnt</Group>
+    <Version>[1.0,)</Version>
+    <Type>Package</Type>
+  </Dependency>
+
+  <Project Name="${Name}" Category="Main" Language="${Language}" Location="source\main\cpp" Scope="Public">
+    <ProjectFile>
+			<Project DefaultTargets="Build" ToolsVersion="4.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+			  <PropertyGroup Label="Globals">
+			    <ProjectGuid>{${GUID}}</ProjectGuid>
+			  </PropertyGroup>
+			  <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='DevDebug|Win32'">
+			    <ClCompile>
+			      <PreprocessorDefinitions>WIN32;_DEBUG;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+			      <AdditionalIncludeDirectories>#$(SolutionDir)target\${Name}\Win32\source\main\include;@$(SolutionDir)source\main\include;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+					</ClCompile>
+			    <Link>
+			      <AdditionalLibraryDirectories>#$(SolutionDir)target\${Name}\Win32\libs</AdditionalLibraryDirectories>
+			      <AdditionalDependencies>#${Name}_DevDebug_Win32.lib</AdditionalDependencies>
+			    </Link>
+				</ItemDefinitionGroup>
+			  <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='DevRelease|Win32'">
+			    <ClCompile>
+			      <PreprocessorDefinitions>WIN32;NDEBUG;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+			      <AdditionalIncludeDirectories>#$(SolutionDir)target\${Name}\Win32\source\main\include;@$(SolutionDir)source\main\include;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+					</ClCompile>
+			    <Link>
+			      <AdditionalLibraryDirectories>#$(SolutionDir)target\${Name}\Win32\libs</AdditionalLibraryDirectories>
+			      <AdditionalDependencies>#${Name}_DevRelease_Win32.lib</AdditionalDependencies>
+			    </Link>
+				</ItemDefinitionGroup>
+			  <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='DevFinal|Win32'">
+			    <ClCompile>
+			      <PreprocessorDefinitions>WIN32;NDEBUG;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+			      <AdditionalIncludeDirectories>#$(SolutionDir)target\${Name}\Win32\source\main\include;@$(SolutionDir)source\main\include;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+					</ClCompile>
+			    <Link>
+			      <AdditionalLibraryDirectories>#$(SolutionDir)target\${Name}\Win32\libs</AdditionalLibraryDirectories>
+			      <AdditionalDependencies>#${Name}_DevFinal_Win32.lib</AdditionalDependencies>
+			    </Link>
+				</ItemDefinitionGroup>
+			  <ItemGroup>
+			    <ClCompile Include="source\main\cpp\**\*.cpp" />
+			  </ItemGroup>
+			  <ItemGroup>
+			    <ClInclude Include="source\main\include\${Name}\**\*.h" />
+			  </ItemGroup>
+			</Project>				
+    </ProjectFile>
+  </Project>
+  <Project Name="${Name}_test" Category="UnitTest" Language="${Language}" Location="source\test\cpp" Scope="Private">
+    <ProjectFile>
+			<Project DefaultTargets="Build" ToolsVersion="4.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+			  <PropertyGroup Label="Globals">
+			    <ProjectGuid>{${GUID}}</ProjectGuid>
+			  </PropertyGroup>
+			  <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='DevDebug|Win32'">
+			    <ClCompile>
+			      <PreprocessorDefinitions>WIN32;_DEBUG;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+			      <AdditionalIncludeDirectories>$(SolutionDir)source\test\include;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+					</ClCompile>
+				</ItemDefinitionGroup>
+			  <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='DevRelease|Win32'">
+			    <ClCompile>
+			      <PreprocessorDefinitions>WIN32;NDEBUG;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+			      <AdditionalIncludeDirectories>$(SolutionDir)source\test\include;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+					</ClCompile>
+				</ItemDefinitionGroup>
+			  <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='DevFinal|Win32'">
+			    <ClCompile>
+			      <PreprocessorDefinitions>WIN32;NDEBUG;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+			      <AdditionalIncludeDirectories>$(SolutionDir)source\test\include;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+					</ClCompile>
+				</ItemDefinitionGroup>
+			  <ItemGroup>
+			    <ClCompile Include="source\test\cpp\**\*.cpp" />
+			  </ItemGroup>
+			  <ItemGroup>
+			    <ClInclude Include="source\test\include\**\*.h" />
+			  </ItemGroup>				
+			</Project>
+    </ProjectFile>
+  </Project>
+</Package>
+
+
+
+
