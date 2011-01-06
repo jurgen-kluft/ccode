@@ -41,6 +41,9 @@ namespace MSBuild.XCode
         }
         public PackageFilename(string filename)
         {
+            if (filename.EndsWith(".zip"))
+                filename = System.IO.Path.GetFileNameWithoutExtension(filename);
+
             string[] parts = filename.Split(new char[] { '+' }, StringSplitOptions.RemoveEmptyEntries);
             Name = parts[0];
             Version = new ComparableVersion(parts.Length>1 ? parts[1] : "1.0.0");

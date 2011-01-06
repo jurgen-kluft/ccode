@@ -39,30 +39,21 @@ namespace MSBuild.XCode
             if (package.IsValid)
             {
                 package.SetPlatform(Platform);
+                PackageDependencies dependencies = new PackageDependencies(package);
+
+                if (!dependencies.BuildForPlatform(Platform))
                 {
-                    if (package.BuildDependencies(Platform))
-                    {
-                        if (package.SyncDependencies(Platform))
-                        {
-                            return true;
-                        }
-                        else
-                        {
-                            Loggy.Add(String.Format("Error: Failed to sync dependencies in Package::Sync"));
-                        }
-                    }
-                    else
-                    {
-                        Loggy.Add(String.Format("Error: Failed to build dependencies in Package::Sync"));
-                    }
+                    Loggy.Add(String.Format("Error: Failed to build dependencies in Package::Sync"));
+                    return false;
                 }
             }
             else
             {
                 Loggy.Add(String.Format("Error: Failed to load 'pom.xml' in Package::Sync"));
+                return false;
             }
 
-            return false;
+            return true;
         }
     }
 }

@@ -49,11 +49,15 @@ namespace MSBuild.XCode
             }
 
             bool ok = false;
-            PackageInstance package = PackageInstance.LoadFromLocal(RootDir, new PackageFilename(Filename));
+            PackageInstance package = PackageInstance.LoadFromRoot(RootDir);
             if (package.IsValid)
             {
-                // - Commit version to remote package repository
-                ok = package.Deploy();
+                PackageRepositoryLocal localPackageRepo = new PackageRepositoryLocal(RootDir);
+                if (localPackageRepo.Update(package))
+                {
+                    // - Commit version to remote package repository from local
+                    Global.RemoteRepo.Add(package, localPackageRepo.Location);
+                }
             }
             return ok;
         }

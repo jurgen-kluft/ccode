@@ -23,10 +23,10 @@ namespace MSBuild.XCode
         private PackageResource mResource;
 
         private string mRootURL = string.Empty;
-        private string mTargetURL = string.Empty;
 
         private string mBranch;
         private string mPlatform;
+        private bool mIsRoot;
 
         private PomInstance mPom;
 
@@ -37,10 +37,10 @@ namespace MSBuild.XCode
 
         public bool IsValid { get { return mResource.IsValid; } }
 
-        public string RemoteSignature { get; set; }
-        public string CacheSignature { get; set; }
-        public string TargetSignature { get; set; }
-        public string LocalSignature { get; set; }
+        public DateTime RemoteSignature { get; set; }
+        public DateTime CacheSignature { get; set; }
+        public DateTime TargetSignature { get; set; }
+        public DateTime LocalSignature { get; set; }
 
         public IPackageFilename RemoteFilename { get; set; }
         public IPackageFilename CacheFilename { get; set; }
@@ -62,37 +62,33 @@ namespace MSBuild.XCode
         public string RemoteURL { get; set; }
         public string CacheURL { get; set; }
         public string LocalURL { get; set; }
-        public string TargetURL { get { return mTargetURL; } }
+        public string TargetURL { get; set; }
         public string RootURL { get { return mRootURL; } }
 
-        public bool IsRootPackage { get { return RootExists; } }
+        public bool IsRootPackage { get { return mIsRoot; } }
 
         public PomInstance Pom { get { return mPom; } }
         public List<DependencyResource> Dependencies { get { return Pom.Dependencies; } }
 
-        public Dictionary<string, DependencyTree> DependencyTree { get; set; }
-
-        private PackageInstance()
+        private PackageInstance(bool isRoot)
         {
-
+            mIsRoot = isRoot;
         }
 
         internal PackageInstance(PackageResource resource)
         {
             mResource = resource;
-            DependencyTree = new Dictionary<string, DependencyTree>();
         }
         internal PackageInstance(PackageResource resource, PomInstance pom)
         {
             mResource = resource;
             mPom = pom;
-            DependencyTree = new Dictionary<string, DependencyTree>();
         }
 
         public static PackageInstance From(string name, string group, string branch, string platform)
         {
             PackageResource resource = PackageResource.From(name, group);
-            PackageInstance instance = resource.CreateInstance();
+            PackageInstance instance = resource.CreateInstance(false);
             instance.mBranch = branch;
             instance.mPlatform = platform;
             return instance;
@@ -101,7 +97,7 @@ namespace MSBuild.XCode
         public static PackageInstance LoadFromRoot(string dir)
         {
             PackageResource resource = PackageResource.LoadFromFile(dir);
-            PackageInstance instance = resource.CreateInstance();
+            PackageInstance instance = resource.CreateInstance(true);
             instance.mRootURL = dir;
             return instance;
         }
@@ -109,15 +105,15 @@ namespace MSBuild.XCode
         public static PackageInstance LoadFromTarget(string dir)
         {
             PackageResource resource = PackageResource.LoadFromFile(dir);
-            PackageInstance instance = resource.CreateInstance();
-            instance.mTargetURL = dir;
+            PackageInstance instance = resource.CreateInstance(false);
+            instance.TargetURL = dir;
             return instance;
         }
 
         public static PackageInstance LoadFromLocal(string rootURL, IPackageFilename filename)
         {
             PackageResource resource = PackageResource.LoadFromPackage(rootURL + "target\\", filename);
-            PackageInstance instance = resource.CreateInstance();
+            PackageInstance instance = resource.CreateInstance(false);
             instance.mRootURL = rootURL;
             instance.LocalURL = rootURL + "target\\";
             instance.LocalFilename = filename;
@@ -134,24 +130,24 @@ namespace MSBuild.XCode
         public bool Load()
         {
             // Load it from the best location (Root, Target or Cache)
-            if (RootExists)
+            if (IsRootPackage)
             {
                 PackageResource resource = PackageResource.LoadFromFile(RootURL);
-                mPom = resource.CreatePomInstance();
+                mPom = resource.CreatePomInstance(true);
                 mResource = resource;
                 return true;
             }
             else if (TargetExists)
             {
                 PackageResource resource = PackageResource.LoadFromFile(TargetURL);
-                mPom = resource.CreatePomInstance();
+                mPom = resource.CreatePomInstance(false);
                 mResource = resource;
                 return true;
             }
             else if (CacheExists)
             {
                 PackageResource resource = PackageResource.LoadFromPackage(CacheURL, CacheFilename);
-                mPom = resource.CreatePomInstance();
+                mPom = resource.CreatePomInstance(false);
                 mResource = resource;
                 return true;
             }
@@ -165,7 +161,7 @@ namespace MSBuild.XCode
                 case ELocation.Remote: RemoteURL = url; break;
                 case ELocation.Cache: CacheURL = url; break;
                 case ELocation.Local: LocalURL = url; break;
-                case ELocation.Target: mTargetURL = url; break;
+                case ELocation.Target: TargetURL = url; break;
                 case ELocation.Root: mRootURL = url; break;
             }
         }
@@ -182,7 +178,7 @@ namespace MSBuild.XCode
             }
         }
 
-        public void SetSignature(ELocation location, string signature)
+        public void SetSignature(ELocation location, DateTime signature)
         {
             switch (location)
             {
@@ -235,9 +231,9 @@ namespace MSBuild.XCode
             return filename;
         }
 
-        public string GetSignature(ELocation location)
+        public DateTime GetSignature(ELocation location)
         {
-            string signature = string.Empty;
+            DateTime signature = DateTime.MinValue;
             switch (location)
             {
                 case ELocation.Remote: signature = RemoteSignature; break;
@@ -268,60 +264,7 @@ namespace MSBuild.XCode
             return Pom.Info();
         }
 
-        
-        
-
-        public bool Install()
-        {
-            bool success = Global.CacheRepo.Add(this, ELocation.Local);
-            return success;
-        }
-
-        public bool Deploy()
-        {
-            bool success = false;
-            if (Global.CacheRepo.Update(this))
-            {
-                success = Global.RemoteRepo.Add(this, ELocation.Cache);
-            }
-            return success;
-        }
-
-        public bool BuildAllDependencies()
-        {
-            foreach (string platform in Pom.Platforms)
-            {
-                if (!BuildDependencies(platform))
-                    return false;
-            }
-            return true;
-        }
-
-        public bool PrintAllDependencies()
-        {
-            foreach (string p in Pom.Platforms)
-            {
-                Loggy.Add(String.Format("Dependencies for platform : {0}", p));
-                Loggy.Indent += 1;
-                // Has valid dependency tree ?
-                PrintDependencies(p);
-                Loggy.Indent -= 1;
-            }
-            return true;
-        }
-
-        public bool SyncAllDependencies()
-        {
-            foreach (string platform in Pom.Platforms)
-            {
-                // Has valid dependency tree ?
-                if (!SyncDependencies(platform))
-                    return false;
-            }
-            return true;
-        }
-
-        public void GenerateProjects()
+        public void GenerateProjects(PackageDependencies dependencies)
         {
             // Generating project files is a bit complex in that it has to merge project definitions on a per platform basis.
             // Every platform is considered to have its own package (zip -> pom.xml) containing the project settings for that platform.
@@ -330,9 +273,12 @@ namespace MSBuild.XCode
             {
                 // Every platform has a dependency tree and every dependency package for that platform has filtered their
                 // project to only keep their platform specific xml elements.
-                foreach (KeyValuePair<string, DependencyTree> pair in DependencyTree)
+                
+                // TODO: This function should be somewhere else!!!
+                string[] platforms = rootProject.GetPlatforms();
+                foreach (string platform in platforms)
                 {
-                    List<PackageInstance> allDependencyPackages = pair.Value.GetAllDependencyPackages();
+                    List<PackageInstance> allDependencyPackages = dependencies.GetAllDependencyPackages(platform);
 
                     // Merge in all Projects of those dependency packages which are already filtered on the platform
                     foreach (PackageInstance dependencyPackage in allDependencyPackages)
@@ -385,40 +331,5 @@ namespace MSBuild.XCode
             solution.Save(solutionFilename, projectFilenames);
         }
 
-        public bool BuildDependencies(string Platform)
-        {
-            bool result = true;
-
-            DependencyTree tree;
-            if (!DependencyTree.TryGetValue(Platform, out tree))
-            {
-                tree = new DependencyTree();
-                tree.Package = this;
-                tree.Platform = Platform;
-                tree.Dependencies = new List<DependencyInstance>();
-                foreach (DependencyResource resource in mResource.Dependencies)
-                    tree.Dependencies.Add(new DependencyInstance(Platform, resource));
-                DependencyTree.Add(Platform, tree);
-                result = tree.Build();
-            }
-
-            return result;
-        }
-
-        public void PrintDependencies(string Platform)
-        {
-            DependencyTree tree;
-            if (DependencyTree.TryGetValue(Platform, out tree))
-                tree.Print();
-        }
-
-        public bool SyncDependencies(string Platform)
-        {
-            bool result = false;
-            DependencyTree tree;
-            if (DependencyTree.TryGetValue(Platform, out tree))
-                result = false; // tree.Sync();
-            return result;
-        }
     }
 }

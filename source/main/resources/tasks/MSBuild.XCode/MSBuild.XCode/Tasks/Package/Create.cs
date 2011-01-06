@@ -61,7 +61,7 @@ namespace MSBuild.XCode
                 u.AuthorName(hg_changeset.AuthorName);
                 u.AuthorEmail(hg_changeset.AuthorEmailAddress);
             }));
-            using (FileStream fs = new FileStream(Global.RootDir + "vcs.info", FileMode.Create))
+            using (FileStream fs = new FileStream(Global.RootDir + "target\\build\\vcs.info", FileMode.Create))
             {
                 using (StreamWriter sw = new StreamWriter(fs))
                 {
@@ -79,6 +79,7 @@ namespace MSBuild.XCode
                 package.Platform = Platform;
 
                 PackageRepositoryLocal localRepo = new PackageRepositoryLocal(RootDir);
+                localRepo.Update(package);
 
                 if (localRepo.Add(package, ELocation.Root))
                 {
