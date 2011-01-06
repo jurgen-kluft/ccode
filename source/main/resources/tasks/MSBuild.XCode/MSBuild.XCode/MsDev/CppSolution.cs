@@ -108,6 +108,24 @@ namespace MSBuild.XCode
                                 projectGuid.ToString().ToUpper()));
 
                             // TODO: write dependencies
+                            /// ProjectSection(ProjectDependencies) = postProject
+                            /// 	{62068C48-9011-4E7F-A282-1D0F91023756} = {62068C48-9011-4E7F-A282-1D0F91023756}
+                            /// EndProjectSection
+                            string[] dependencyProjectFiles;
+                            if (mProjectDependencies.TryGetValue(project.Name, out dependencyProjectFiles))
+                            {
+                                writer.WriteLine(string.Format("\tProjectSection(ProjectDependencies) = postProject"));
+                                foreach (string projectFile in dependencyProjectFiles)
+                                {
+                                    FileSystemInfo info = GetProjectByName(projectFile);
+                                    if (info != null)
+                                    {
+                                        Guid guid = GetProjectGuid(info);
+                                        writer.WriteLine("\t\t{{{0}}} = {{{0}}}", guid.ToString().ToUpper());
+                                    }
+                                }
+                                writer.WriteLine("\tEndProjectSection");
+                            }
 
                             writer.WriteLine("EndProject");
                         }
@@ -141,7 +159,6 @@ namespace MSBuild.XCode
                         {
                             writer.WriteLine("\tGlobalSection(ProjectConfigurationPlatforms) = postSolution");
 
-                            // TODO Write configurations
                             foreach (FileSystemInfo project in m_Projects)
                             {
                                 Guid projectGuid = GetProjectGuid(project);
@@ -179,7 +196,6 @@ namespace MSBuild.XCode
                         {
                             writer.WriteLine("\tGlobalSection(ProjectConfigurationPlatforms) = postSolution");
 
-                            // TODO Write configurations
                             foreach (FileSystemInfo project in m_Projects)
                             {
                                 Guid projectGuid = GetProjectGuid(project);
@@ -200,6 +216,14 @@ namespace MSBuild.XCode
                         } break;
                 }
             }
+        }
+        private Dictionary<string, string[]> mProjectDependencies = new Dictionary<string, string[]>();
+        public void AddDependencies(string projectFile, string[] dependencyProjectFiles)
+        {
+            if (mProjectDependencies.ContainsKey(projectFile))
+                mProjectDependencies.Remove(projectFile);
+
+            mProjectDependencies.Add(projectFile, dependencyProjectFiles);
         }
 
         public int Save(string _SolutionFile, List<string> _ProjectFiles)
@@ -252,6 +276,16 @@ namespace MSBuild.XCode
             }
 
             return m_Projects.Count;
+        }
+
+        private FileSystemInfo GetProjectByName(string projectFile)
+        {
+            foreach (FileSystemInfo info in m_Projects)
+            {
+                if (String.Compare(info.Name, projectFile, true) == 0)
+                    return info;
+            }
+            return null;
         }
 
         private Guid GetProjectGuid(FileSystemInfo file)

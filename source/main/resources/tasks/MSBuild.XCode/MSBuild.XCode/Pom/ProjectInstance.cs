@@ -11,6 +11,7 @@ namespace MSBuild.XCode
     {
         private ProjectResource mResource;
         private CppProject mMsDevProject;
+        private bool mIsFinalProject;
 
         public Dictionary<string, StringItems> Configs { get { return mResource.Configs; } }
 
@@ -32,7 +33,8 @@ namespace MSBuild.XCode
         {
             mResource = resource;
             Main = main;
-            
+
+            mIsFinalProject = false;
             mMsDevProject = new CppProject();
             mMsDevProject.Merge(mResource.MsDevProject, true, true);
 
@@ -53,6 +55,9 @@ namespace MSBuild.XCode
 
         public void ConstructFullMsDevProject()
         {
+            if (mIsFinalProject)
+                return;
+
             if (IsCpp)
             {
                 CppProject finalProject = new CppProject();
@@ -60,6 +65,7 @@ namespace MSBuild.XCode
                 finalProject.Merge(mMsDevProject, true, true);
                 finalProject.RemoveAllBut(Configs);
                 mMsDevProject = finalProject;
+                mIsFinalProject = true;
             }
             else if (IsCs)
             {
