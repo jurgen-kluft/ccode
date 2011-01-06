@@ -50,7 +50,7 @@ namespace MSBuild.XCode.Test
             configs.Execute();
             
             string createdPackageFilename = @"xunittest+1.0.1.2010.12.29.16.38.53+default+Win32.zip";
-            if (false)
+            if (true)
             {
                 PackageCreate create = new PackageCreate();
                 create.RootDir = Global.RootDir;
