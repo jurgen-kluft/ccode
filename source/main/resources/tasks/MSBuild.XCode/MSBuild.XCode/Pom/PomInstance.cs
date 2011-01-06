@@ -23,10 +23,15 @@ namespace MSBuild.XCode
         public List<string> Platforms { get { return mResource.Platforms; } }
         public Versions Versions { get { return mResource.Versions; } }
 
-        public PomInstance(PomResource resource)
+        public PomInstance(bool main, PomResource resource)
         {
             mResource = resource;
             mProjects = new List<ProjectInstance>();
+            foreach (ProjectResource projectResource in resource.Projects)
+            {
+                ProjectInstance projectInstance = projectResource.CreateInstance(main);
+                mProjects.Add(projectInstance);
+            }
         }
 
         public bool Info()

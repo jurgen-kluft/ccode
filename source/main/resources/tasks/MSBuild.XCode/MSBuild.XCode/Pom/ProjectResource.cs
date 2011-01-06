@@ -41,6 +41,12 @@ namespace MSBuild.XCode
             mMsDevProject = new CppProject();
         }
 
+        public ProjectInstance CreateInstance(bool main)
+        {
+            ProjectInstance instance = new ProjectInstance(main, this);
+            return instance;
+        }
+
         public void Info()
         {
             Loggy.Add(String.Format("Project                    : {0}", Name));

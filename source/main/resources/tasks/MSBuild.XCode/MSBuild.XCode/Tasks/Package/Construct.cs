@@ -55,13 +55,20 @@ namespace MSBuild.XCode
                 PackageInstance package = PackageInstance.LoadFromRoot(RootDir);
                 if (package.IsValid)
                 {
-                    package.BuildAllDependencies();
-                    package.SyncAllDependencies();
-                    package.PrintAllDependencies();
+                    PackageDependencies dependencies = new PackageDependencies(package);
+                    if (dependencies.BuildForAllPlatforms())
+                    {
+                        dependencies.PrintForAllPlatforms();
 
-                    // Generate the projects and solution
-                    package.GenerateProjects();
-                    package.GenerateSolution();
+                        // Generate the projects and solution
+                        package.GenerateProjects(dependencies);
+                        package.GenerateSolution();
+                    }
+                    else
+                    {
+                        Loggy.Add(String.Format("Error: Action {0} failed in Package::Construct due to failure in building dependencies", Action));
+                        return false;
+                    }
                 }
                 else
                 {

@@ -34,15 +34,20 @@ namespace MSBuild.XCode
             Global.Initialize();
 
             bool ok = false;
-            PackageInstance package = PackageInstance.LoadFromLocal(RootDir, new PackageFilename(Filename));
+
+            PackageInstance package = PackageInstance.LoadFromRoot(RootDir);
             if (package.IsValid)
             {
-                // - Commit version to local package repository
-                ok = package.Install();
+                PackageRepositoryLocal localPackageRepo = new PackageRepositoryLocal(RootDir);
+                if (localPackageRepo.Update(package))
+                {
+                    // - Commit version to cache package repository
+                    ok = Global.CacheRepo.Add(package, localPackageRepo.Location);
+                }
             }
             
             if (!ok)
-                Loggy.Add(String.Format("Error: Package::Install, failed to add {0} to {2}", Filename, CacheRepoDir));
+                Loggy.Add(String.Format("Error: Package::Install, failed to add {0} to {1}", Filename, CacheRepoDir));
 
             return ok;
         }

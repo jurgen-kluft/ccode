@@ -33,7 +33,7 @@ namespace MSBuild.XCode.Test
             Global.Initialize();
            
             // Our test project is xproject
-            Global.RootDir = @"d:\Dev\Packages\xunittest\";
+            Global.RootDir = @"I:\Packages\xunittest\";
 
             Mercurial.Repository hg_repo = new Mercurial.Repository(Global.RootDir);
             if (!hg_repo.Exists)
@@ -49,8 +49,6 @@ namespace MSBuild.XCode.Test
             configs.TemplateDir = Global.TemplateDir;
             configs.Execute();
             
-            Construct("xbase");
-
             string createdPackageFilename = @"xunittest+1.0.1.2010.12.29.16.38.53+default+Win32.zip";
             if (false)
             {
@@ -60,6 +58,8 @@ namespace MSBuild.XCode.Test
                 bool result1 = create.Execute();
                 createdPackageFilename = create.Filename;
             }
+
+            Construct("xstring");
 
             PackageInstall install = new PackageInstall();
             install.RootDir = Global.RootDir;
@@ -86,7 +86,7 @@ namespace MSBuild.XCode.Test
             info.RootDir = Global.RootDir;
             info.Execute();
 
-            Global.RootDir = @"d:\Dev\Packages\xstring\";
+            Global.RootDir = @"I:\Packages\xstring\";
 
             PackageVerify verify = new PackageVerify();
             verify.RootDir = Global.RootDir;
@@ -99,7 +99,7 @@ namespace MSBuild.XCode.Test
         {
             PackageConstruct construct = new PackageConstruct();
             construct.Name = name;
-            construct.RootDir = @"d:\Dev\Packages\";
+            construct.RootDir = @"i:\Packages\";
             construct.CacheRepoDir = Global.CacheRepoDir;
             construct.RemoteRepoDir = Global.RemoteRepoDir;
             construct.TemplateDir = Global.TemplateDir;

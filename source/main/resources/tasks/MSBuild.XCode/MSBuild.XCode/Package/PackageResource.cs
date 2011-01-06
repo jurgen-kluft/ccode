@@ -35,15 +35,15 @@ namespace MSBuild.XCode
             return mPom.Info();
         }
 
-        internal PackageInstance CreateInstance()
+        internal PackageInstance CreateInstance(bool main)
         {
-            PackageInstance instance = new PackageInstance(this, new PomInstance(mPom));
+            PackageInstance instance = new PackageInstance(this, new PomInstance(main, mPom));
             return instance;
         }
 
-        internal PomInstance CreatePomInstance()
+        internal PomInstance CreatePomInstance(bool main)
         {
-            return new PomInstance(mPom);
+            return new PomInstance(main, mPom);
         }
 
         public static PackageResource From(string name, string group)

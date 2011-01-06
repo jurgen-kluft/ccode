@@ -67,9 +67,10 @@ namespace MSBuild.XCode
                         // Extract the version from the filename
                         if (!String.IsNullOrEmpty(latest_t_filename))
                         {
-                            string version = Layout.FilenameToVersion(latest_t_filename);
-                            package.TargetVersion = new ComparableVersion(version);
-                            package.TargetSignature = latest_datetime.Ticks.ToString();
+                            package.TargetURL = packageURL;
+                            package.TargetFilename = new PackageFilename(Path.GetFileNameWithoutExtension(latest_t_filename));
+                            package.TargetVersion = package.TargetFilename.Version;
+                            package.TargetSignature = latest_datetime;
                             return true;
                         }
                     }
@@ -93,9 +94,9 @@ namespace MSBuild.XCode
 
         public bool Add(PackageInstance package, ELocation from)
         {
-            if (File.Exists(package.GetURL(from)))
+            if (File.Exists(package.GetURL(from) + package.GetFilename(from)))
             {
-                string dest_dir = Layout.PackageVersionDir(RepoDir, package.Group.ToString(), package.Name, package.Platform, package.GetVersion(Location));
+                string dest_dir = Layout.PackageVersionDir(RepoDir, package.Group.ToString(), package.Name, package.Platform, package.GetVersion(from));
                 if (!Directory.Exists(dest_dir))
                     Directory.CreateDirectory(dest_dir);
 
@@ -115,7 +116,7 @@ namespace MSBuild.XCode
                     }
                 }
 
-                DateTime lastWriteTime = File.GetLastWriteTime(package.GetURL(from) + package.GetFilename(from));
+                DateTime lastWriteTime = package.GetSignature(from);
                 FileInfo fi = new FileInfo(targetURL + current_t_filename);
                 if (fi.Exists)
                 {
@@ -128,68 +129,13 @@ namespace MSBuild.XCode
                 }
 
                 package.SetURL(Location, targetURL);
+                package.SetFilename(Location, new PackageFilename(package.GetFilename(from)));
+                package.SetVersion(Location, package.GetVersion(from));
+                package.SetSignature(Location, lastWriteTime);
+
                 return true;
             }
             return false;
-        }
-
-        private bool Verify(PackageInstance package)
-        {
-            bool ok = false;
-
-            if (!package.TargetExists)
-                return ok;
-
-            string md5_file = package.Name + ".MD5";
-            if (File.Exists(package.TargetURL + md5_file))
-            {
-                MD5CryptoServiceProvider md5_provider = new MD5CryptoServiceProvider();
-
-                // Load MD5 file
-                ok = true;
-                string[] lines = File.ReadAllLines(package.TargetURL + md5_file);
-
-                // MD5 is relative to its own location
-                foreach (string entry in lines)
-                {
-                    if (entry.Trim().StartsWith(";"))
-                        continue;
-
-                    // Get the MD5 and Filename
-                    int s = entry.IndexOf('*');
-                    if (s == -1)
-                    {
-                        ok = false;
-                        break;
-                    }
-                    string old_md5 = entry.Substring(s + 1).Trim();
-                    string filename = package.TargetURL + entry.Substring(0, s).Trim();
-
-                    if (File.Exists(filename))
-                    {
-                        string new_md5 = string.Empty;
-                        using (FileStream rfs = new FileStream(filename, FileMode.Open, FileAccess.Read))
-                        {
-                            byte[] new_md5_raw = md5_provider.ComputeHash(rfs);
-                            new_md5 = StringTools.MD5ToString(new_md5_raw);
-                            rfs.Close();
-                        }
-
-                        if (String.Compare(old_md5, new_md5) != 0)
-                        {
-                            ok = false;
-                            break;
-                        }
-                    }
-                    else
-                    {
-                        // File doesn't exist anymore
-                        ok = false;
-                        break;
-                    }
-                }
-            }
-            return ok;
         }
     }
 }

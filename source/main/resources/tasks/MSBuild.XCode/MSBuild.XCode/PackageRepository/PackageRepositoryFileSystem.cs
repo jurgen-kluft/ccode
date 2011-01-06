@@ -20,16 +20,30 @@ namespace MSBuild.XCode
         public ELocation Location { get; set; }
         public ILayout Layout { get; set; }
 
-        private bool UpdateSignature(PackageInstance package)
+        private bool GetSignatureFor(PackageInstance package)
         {
-            string signatureFilename = ".signature";
-            if (!File.Exists(RepoDir + signatureFilename))
-                File.Create(RepoDir + signatureFilename).Close();
+            string package_dir = Layout.PackageRootDir(RepoDir, package.Group.ToString(), package.Name, package.Platform);
 
-            DateTime last_write_time = File.GetLastWriteTime(RepoDir + signatureFilename);
-            package.SetSignature(Location, last_write_time.Ticks.ToString());
+            string signatureFilename = ".signature";
+            if (!File.Exists(package_dir + signatureFilename))
+                File.Create(package_dir + signatureFilename).Close();
+
+            DateTime last_write_time = File.GetLastWriteTime(package_dir + signatureFilename);
+            package.SetSignature(Location, last_write_time);
 
             return true;
+        }
+        private void UpdateSignatureOf(PackageInstance package)
+        {
+            string package_dir = Layout.PackageRootDir(RepoDir, package.Group.ToString(), package.Name, package.Platform);
+
+            string signatureFilename = ".signature";
+            if (!File.Exists(package_dir + signatureFilename))
+                File.Create(package_dir + signatureFilename).Close();
+
+            DateTime last_write_time = DateTime.Now;
+            File.SetLastWriteTime(package_dir + signatureFilename, last_write_time);
+            package.SetSignature(Location, last_write_time);
         }
 
         public bool Update(PackageInstance package)
@@ -41,7 +55,7 @@ namespace MSBuild.XCode
             {
                 package.SetURL(Location, src_dir);
                 package.SetFilename(Location, new PackageFilename(src_filename));
-                return UpdateSignature(package);
+                return GetSignatureFor(package);
             }
             return false;
         }
@@ -50,7 +64,7 @@ namespace MSBuild.XCode
         {
             if (FindBestVersion(package, versionRange))
             {
-                UpdateSignature(package); 
+                GetSignatureFor(package); 
                 return Update(package);
             }
             return false;
@@ -60,19 +74,24 @@ namespace MSBuild.XCode
         {
             if (File.Exists(package.GetURL(from)))
             {
-                string dest_dir = Layout.PackageVersionDir(RepoDir, package.Group.ToString(), package.Name, package.Platform, package.GetVersion(Location));
+                string dest_dir = Layout.PackageVersionDir(RepoDir, package.Group.ToString(), package.Name, package.Platform, package.GetVersion(from));
                 if (!Directory.Exists(dest_dir))
                 {
                     Directory.CreateDirectory(dest_dir);
                 }
-                string package_filename = Layout.VersionToFilename(package.Name, package.Branch, package.Platform, package.GetVersion(Location));
+                string package_filename = Layout.VersionToFilename(package.Name, package.Branch, package.Platform, package.GetVersion(from));
                 if (!File.Exists(dest_dir + package_filename))
                 {
                     File.Copy(package.GetURL(from), dest_dir + package_filename, true);
                     DirtyVersionCache(package.Group.ToString(), package.Name, package.Platform);
                 }
+
                 package.SetURL(Location, dest_dir);
                 package.SetFilename(Location, new PackageFilename(package_filename));
+                package.SetVersion(Location, package.GetVersion(from));
+
+                UpdateSignatureOf(package);
+
                 return true;
             }
             return false;
@@ -121,14 +140,14 @@ namespace MSBuild.XCode
                         try { File.Delete(dirty); }
                         catch (SystemException) { }
                     }
-                    string[] packages = Directory.GetFiles(root_dir + "version\\", "*.zip", SearchOption.AllDirectories);
+                    string[] filenames = Directory.GetFiles(root_dir + "version\\", "*.zip", SearchOption.AllDirectories);
                     SortedDictionary<ComparableVersion, bool> sortedVersions = new SortedDictionary<ComparableVersion, bool>();
-                    foreach (string package in packages)
+                    foreach (string file in filenames)
                     {
-                        string[] c = Path.GetFileNameWithoutExtension(package).Split(new char[] { '+' }, StringSplitOptions.RemoveEmptyEntries);
-                        if (c.Length == 4)
+                        PackageFilename packageFilename = new PackageFilename(file);
+                        if (String.Compare(packageFilename.Platform, platform, true) == 0)
                         {
-                            ComparableVersion version = new ComparableVersion(c[1]);
+                            ComparableVersion version = packageFilename.Version;
                             if (!sortedVersions.ContainsKey(version))
                                 sortedVersions.Add(version, true);
                         }

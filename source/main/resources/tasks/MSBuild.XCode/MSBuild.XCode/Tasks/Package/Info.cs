@@ -46,8 +46,15 @@ namespace MSBuild.XCode
             PackageInstance package = PackageInstance.LoadFromRoot(RootDir);
             if (package.IsValid)
             {
-                package.BuildAllDependencies();
-                success = package.Info();
+                PackageDependencies dependencies = new PackageDependencies(package);
+                if (dependencies.BuildForAllPlatforms())
+                {
+                    success = package.Info();
+                }
+                else
+                {
+                    success = false;
+                }
             }
             return success;
         }
