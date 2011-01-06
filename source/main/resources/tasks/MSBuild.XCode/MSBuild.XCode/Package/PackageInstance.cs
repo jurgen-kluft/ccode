@@ -271,10 +271,14 @@ namespace MSBuild.XCode
             // For every platform we have to merge in only the conditional xml elements into the final project file.
             foreach (ProjectInstance rootProject in Pom.Projects)
             {
+                rootProject.ConstructFullMsDevProject();
+            }
+
+            foreach (ProjectInstance rootProject in Pom.Projects)
+            {
                 // Every platform has a dependency tree and every dependency package for that platform has filtered their
                 // project to only keep their platform specific xml elements.
                 
-                // TODO: This function should be somewhere else!!!
                 string[] platforms = rootProject.GetPlatforms();
                 foreach (string platform in platforms)
                 {
@@ -317,6 +321,8 @@ namespace MSBuild.XCode
 
         public void GenerateSolution()
         {
+            CppSolution solution = new CppSolution(CppSolution.EVersion.VS2010, CppSolution.ELanguage.CPP);
+
             List<string> projectFilenames = new List<string>();
             foreach (ProjectInstance prj in Pom.Projects)
             {
@@ -324,9 +330,18 @@ namespace MSBuild.XCode
                 path = path.EndWith('\\');
                 path = path + prj.Name + prj.Extension;
                 projectFilenames.Add(path);
+
+                string[] dependencies = prj.DependsOn.Split(new char[] { ';' }, StringSplitOptions.RemoveEmptyEntries);
+                if (dependencies.Length > 0)
+                {
+                    for (int i = 0; i < dependencies.Length; ++i)
+                    {
+                        dependencies[i] = dependencies[i] + prj.Extension;
+                    }
+                    solution.AddDependencies(prj.Name + prj.Extension, dependencies);
+                }
             }
 
-            CppSolution solution = new CppSolution(CppSolution.EVersion.VS2010, CppSolution.ELanguage.CPP);
             string solutionFilename = RootURL + Name + ".sln";
             solution.Save(solutionFilename, projectFilenames);
         }
