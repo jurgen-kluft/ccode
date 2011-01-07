@@ -25,7 +25,7 @@ namespace MSBuild.XCode.Test
             Global.Initialize();
            
             // Our test project is xproject
-            Global.RootDir = @"I:\Packages\xunittest\";
+            Global.RootDir = @"I:\Packages\xstring\";
 
             Mercurial.Repository hg_repo = new Mercurial.Repository(Global.RootDir);
             if (!hg_repo.Exists)
@@ -41,7 +41,7 @@ namespace MSBuild.XCode.Test
             configs.TemplateDir = Global.TemplateDir;
             configs.Execute();
             
-            string createdPackageFilename = @"xunittest+1.0.1.2010.12.29.16.38.53+default+Win32.zip";
+            string createdPackageFilename;
             if (true)
             {
                 PackageCreate create = new PackageCreate();

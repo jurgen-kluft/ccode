@@ -45,9 +45,9 @@
     </CodeAnalysisDependentAssemblyPaths>
   </ItemGroup>
   <ItemGroup>
-    <Compile Include="XVersionRange.UnitTest.cs" />
+    <Compile Include="VersionRange.UnitTest.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
-    <Compile Include="XVersion.UnitTest.cs" />
+    <Compile Include="Version.UnitTest.cs" />
   </ItemGroup>
   <ItemGroup>
     <ProjectReference Include="..\MSBuild.XCode\MSBuild.XCode.csproj">

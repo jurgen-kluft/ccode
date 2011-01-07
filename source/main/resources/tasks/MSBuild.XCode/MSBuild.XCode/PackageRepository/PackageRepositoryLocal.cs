@@ -154,11 +154,19 @@ namespace MSBuild.XCode
             }
 
             PackageSfvFile sfvFile = PackageSfvFile.New(new List<string>(files.Keys));
-            sfvFile.Save(buildURL, package.Name, files);
+            if (!sfvFile.Save(buildURL, package.Name, files))
+            {
+                Loggy.Add(String.Format("Error: PackageRepositoryLocal::Add, failed to save sfv file!"));
+                return false;
+            }
+
+            // Add Sfv file to the package
+            if (File.Exists(buildURL + sfv_filename))
+                files.Add(buildURL + sfv_filename, "");
 
             // Add VCS Information file to the package
             if (File.Exists(buildURL + "vcs.info"))
-                files.Add(rootURL + "vcs.info", "");
+                files.Add(buildURL + "vcs.info", "");
 
             // Add Dependency Information file to the package
             if (File.Exists((buildURL + "dependencies.info")))

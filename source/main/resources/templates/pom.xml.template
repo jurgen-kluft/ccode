@@ -35,7 +35,7 @@
     <Type>Package</Type>
   </Dependency>
 
-  <Project Name="${Name}" Category="Main" Language="${Language}" Location="source\main\cpp" Scope="Public">
+  <Project Name="${Name}" Group="Main" Language="${Language}" Location="source\main\cpp" Scope="Public">
     <ProjectFile>
 			<Project DefaultTargets="Build" ToolsVersion="4.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
 			  <PropertyGroup Label="Globals">
@@ -80,7 +80,7 @@
 			</Project>				
     </ProjectFile>
   </Project>
-  <Project Name="${Name}_test" Category="UnitTest" Language="${Language}" Location="source\test\cpp" Scope="Private">
+  <Project Name="${Name}_test" Group="UnitTest" Language="${Language}" Location="source\test\cpp" Scope="Private" DependsOn="${Name}>
     <ProjectFile>
 			<Project DefaultTargets="Build" ToolsVersion="4.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
 			  <PropertyGroup Label="Globals">

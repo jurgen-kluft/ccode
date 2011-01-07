@@ -31,5 +31,31 @@ using System.Runtime.InteropServices;
 //
 // You can specify all the values or you can default the Revision and Build Numbers 
 // by using the '*' as shown below:
-[assembly: AssemblyVersion("1.0.0.0")]
-[assembly: AssemblyFileVersion("1.0.0.0")]
+[assembly: AssemblyVersion("1.0.2.0")]
+[assembly: AssemblyFileVersion("1.0.2.0")]
+
+// -----------------------------------------------------------------------------------
+// Coming --> 1.0.3.0 (? January 2011)
+// - Pom.xml validation
+// - Package Type = Source
+// - Internal DependsOn should treat the dependency as a dependency project instance.
+//   Currently we are merging with it as a main project instance.
+// - Integration in Visual Studio (Compile, Install and Deploy)
+// - C#
+//
+// -----------------------------------------------------------------------------------
+// 1.0.2.0 (7th January 2011)
+// - PackageRepository: Local, Target, Cache, Remote
+// - Instance/Resource for some objects
+// - Package dependency tree is now a seperate object
+// - Dependency package update is faster, since we now know the version of the target
+// - 
+// -----------------------------------------------------------------------------------
+// 1.0.1.0 (4th January 2010)
+// - First release, improved logic of dependency package handling and updating
+// - Clean up of the code
+// - 
+// 
+// -----------------------------------------------------------------------------------
+// 1.0.0.0 (29th December 2010)
+// - First prototype version, features Compile, Install, Deploy, Sync
