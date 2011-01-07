@@ -26,7 +26,7 @@ namespace MSBuild.XCode
             }
             set
             {
-                mGroup = value;
+                mGroup = value.ToLower();
             }
         }
 
@@ -51,10 +51,49 @@ namespace MSBuild.XCode
                 }
             }
         }
+        public override bool Equals(object obj)
+        {
+            return base.Equals(obj);
+        }
+
+        public override int GetHashCode()
+        {
+            return mGroup.GetHashCode();
+        }
 
         public override string ToString()
         {
             return mGroup;
+        }
+
+        private static int Compare(Group a, Group b)
+        {
+            return String.Compare(a.ToString(), b.ToString());
+        }
+
+        public static bool operator <(Group a, Group b)
+        {
+            return Compare(a, b) == -1;
+        }
+        public static bool operator <=(Group a, Group b)
+        {
+            return Compare(a, b) != 1;
+        }
+        public static bool operator >(Group a, Group b)
+        {
+            return Compare(a, b) == 1;
+        }
+        public static bool operator >=(Group a, Group b)
+        {
+            return Compare(a, b) != -1;
+        }
+        public static bool operator ==(Group a, Group b)
+        {
+            return Compare(a, b) == 0;
+        }
+        public static bool operator !=(Group a, Group b)
+        {
+            return Compare(a, b) != 0;
         }
     }
 }

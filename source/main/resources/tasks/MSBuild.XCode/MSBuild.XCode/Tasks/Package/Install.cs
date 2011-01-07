@@ -33,19 +33,21 @@ namespace MSBuild.XCode
             Global.RemoteRepoDir = RemoteRepoDir;
             Global.Initialize();
 
-            Package package = new Package();
-            package.IsRoot = true;
-            package.RootDir = RootDir;
-            package.LoadPom();
-            package.SetPropertiesFromFilename(Filename);
-            package.Name = package.Pom.Name;
-            package.Group = package.Pom.Group;
-            package.LocalURL = RootDir + "target\\" + Filename;
+            bool ok = false;
 
-            // - Commit version to local package repository
-            bool ok = package.Install();
+            PackageInstance package = PackageInstance.LoadFromRoot(RootDir);
+            if (package.IsValid)
+            {
+                PackageRepositoryLocal localPackageRepo = new PackageRepositoryLocal(RootDir);
+                if (localPackageRepo.Update(package))
+                {
+                    // - Commit version to cache package repository
+                    ok = Global.CacheRepo.Add(package, localPackageRepo.Location);
+                }
+            }
+            
             if (!ok)
-                Loggy.Add(String.Format("Error: Package::Install, failed to add {0} to {2}", Filename, CacheRepoDir));
+                Loggy.Add(String.Format("Error: Package::Install, failed to add {0} to {1}", Filename, CacheRepoDir));
 
             return ok;
         }

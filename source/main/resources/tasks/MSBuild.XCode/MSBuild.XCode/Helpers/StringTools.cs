@@ -575,7 +575,7 @@ namespace MSBuild.XCode.Helpers
 		/// <returns>String to the left of c, or the entire string.</returns>
 		public static string LeftOf(string src, char c)
 		{
-			string ret = src;
+			string ret = string.Empty;
 			int idx = src.IndexOf(c);
 			if (idx != -1)
 			{
@@ -592,7 +592,7 @@ namespace MSBuild.XCode.Helpers
 		/// <returns>String to the left of c, or the entire string.</returns>
 		public static string LeftOf(string src, string c)
 		{
-			string ret = src;
+            string ret = string.Empty;
 			int idx = src.IndexOf(c);
 			if (idx != -1)
 			{
@@ -610,7 +610,7 @@ namespace MSBuild.XCode.Helpers
 		/// <returns>String to the left of c, or the entire string if not found or n is 0.</returns>
 		public static string LeftOf(string src, char c, int n)
 		{
-			string ret = src;
+            string ret = string.Empty;
 			int idx = -1;
 			while (n > 0)
 			{
@@ -637,7 +637,7 @@ namespace MSBuild.XCode.Helpers
 		/// <returns>String to the left of <paramref name="c"/>, or the entire string if not found or <paramref name="n"/> is 0.</returns>
 		public static string LeftOf(string src, string c, int n)
 		{
-			string ret = src;
+            string ret = string.Empty;
 			int idx = -1;
 			while (n > 0)
 			{
@@ -759,18 +759,14 @@ namespace MSBuild.XCode.Helpers
             int startEndOpen = 0;
             foreach (char c in src)
             {
-                if (c == start)
+                if (c == start && startEndOpen == 0)
                 {
                     ++startEndOpen;
                 }
-
-                if (c == end)
+                else if (c == end && startEndOpen == 1)
                 {
                     --startEndOpen;
-                    if (startEndOpen == 0)
-                    {
-                        numStartEndOccurences++;
-                    }
+                    numStartEndOccurences++;
                 }
             }
             string[] ret = new string[numStartEndOccurences];
@@ -781,21 +777,16 @@ namespace MSBuild.XCode.Helpers
             int startIndex = 0;
             foreach (char c in src)
             {
-                if (c == start)
+                if (c == start && startEndOpen==0)
                 {
-                    if (startEndOpen==0)
-                        startIndex = index + 1;
-
+                    startIndex = index + 1;
                     ++startEndOpen;
                 }
-                if (c == end)
+                else if (c == end && startEndOpen == 1)
                 {
                     --startEndOpen;
-                    if (startEndOpen == 0)
-                    {
-                        ret[numStartEndOccurences] = src.Substring(startIndex, index - startIndex);
-                        numStartEndOccurences++;
-                    }
+                    ret[numStartEndOccurences] = src.Substring(startIndex, index - startIndex);
+                    numStartEndOccurences++;
                 }
                 ++index;
             }

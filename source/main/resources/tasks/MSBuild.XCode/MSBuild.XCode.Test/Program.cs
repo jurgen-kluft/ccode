@@ -19,21 +19,20 @@ namespace MSBuild.XCode.Test
         [STAThread]
         static void Main()
         {
-            /// MsDev2010.Cs.XCode.Project p1 = new MsDev2010.Cs.XCode.Project();
-            /// p1.Load(@"d:\Dev\HgDev.Modules\xcode\source\main\resources\templates\main.csproj");
-            /// MsDev2010.Cs.XCode.Project p2 = new MsDev2010.Cs.XCode.Project();
-            /// p2.Load(@"d:\temp\test_cs_project\package.csproj");
-            /// 
-            /// p2.Merge(p1);
-            /// p2.ExpandGlobs(@"d:\temp\test_cs_project\", @"d:\temp\test_cs_project\");
-
-            Global.TemplateDir = @"\\cnshasap2\Hg_Repo\PACKAGE_REPO\com\virtuos\xcode\publish\templates\";
+            Global.TemplateDir = @"d:\REMOTE_PACKAGE_REPO\com\virtuos\xcode\publish\templates\";
             Global.CacheRepoDir = @"d:\PACKAGE_REPO\";
-            Global.RemoteRepoDir = @"\\cnshasap2\Hg_Repo\PACKAGE_REPO\";
+            Global.RemoteRepoDir = @"d:\REMOTE_PACKAGE_REPO\";
             Global.Initialize();
            
             // Our test project is xproject
             Global.RootDir = @"I:\Packages\xunittest\";
+
+            Mercurial.Repository hg_repo = new Mercurial.Repository(Global.RootDir);
+            if (!hg_repo.Exists)
+            {
+                Loggy.Add(String.Format("Error: Package::Create failed since there is no Hg (Mercurial) repository!"));
+                return;
+            }
 
             PackageConfigs configs = new PackageConfigs();
             configs.RootDir = Global.RootDir;
@@ -42,10 +41,8 @@ namespace MSBuild.XCode.Test
             configs.TemplateDir = Global.TemplateDir;
             configs.Execute();
             
-            Construct("xbase");
-
             string createdPackageFilename = @"xunittest+1.0.1.2010.12.29.16.38.53+default+Win32.zip";
-            if (false)
+            if (true)
             {
                 PackageCreate create = new PackageCreate();
                 create.RootDir = Global.RootDir;
@@ -53,6 +50,8 @@ namespace MSBuild.XCode.Test
                 bool result1 = create.Execute();
                 createdPackageFilename = create.Filename;
             }
+
+            Construct("xstring");
 
             PackageInstall install = new PackageInstall();
             install.RootDir = Global.RootDir;
@@ -77,12 +76,16 @@ namespace MSBuild.XCode.Test
 
             PackageInfo info = new PackageInfo();
             info.RootDir = Global.RootDir;
+            info.CacheRepoDir = Global.CacheRepoDir;
+            info.RemoteRepoDir = Global.RemoteRepoDir;
             info.Execute();
+
+            Global.RootDir = @"I:\Packages\xstring\";
 
             PackageVerify verify = new PackageVerify();
             verify.RootDir = Global.RootDir;
+            verify.Name = "xbase";
             verify.Platform = "Win32";
-            verify.Branch = "default";
             bool result2 = verify.Execute();
         }
 

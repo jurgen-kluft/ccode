@@ -6,7 +6,7 @@ using System.Linq;
 using System.Text;
 using MSBuild.XCode.Helpers;
 
-namespace MsDev2010.Cpp.XCode
+namespace MSBuild.XCode
 {
     /// <summary>
     /// What if we change the whole approach from being template oriented to being able to
@@ -30,7 +30,7 @@ namespace MsDev2010.Cpp.XCode
     /// 2) ${GUID}
     /// 
     /// </summary>
-    public class Project
+    public class CppProject
     {
         private bool mAllowRemoval;
         private XmlDocument mXmlDocMain;
@@ -50,12 +50,12 @@ namespace MsDev2010.Cpp.XCode
             return copy;
         }
 
-        public Project()
+        public CppProject()
         {
             mXmlDocMain = new XmlDocument();
         }
 
-        public Project(XmlNodeList nodes)
+        public CppProject(XmlNodeList nodes)
         {
             mXmlDocMain = new XmlDocument();
             foreach(XmlNode node in nodes)
@@ -150,17 +150,10 @@ namespace MsDev2010.Cpp.XCode
                         }
                         return false;
                     }
-                    if (node.Name == "ItemGroup")
+                    if (node.Name == "ItemGroup" && node.HasChildNodes)
                     {
-                        if (node.HasChildNodes)
-                        {
-                            if (node.ChildNodes[0].Name == "ClCompile")
-                                return false;
-                            else if (node.ChildNodes[0].Name == "ClInclude")
-                                return false;
-                            else if (node.ChildNodes[0].Name == "None")
-                                return false;
-                        }
+                        if (IsOneOf(node.ChildNodes[0].Name, new string[] { "ClCompile", "ClInclude", "None" }))
+                            return false;
                     }
                     return true;
                 },
@@ -181,10 +174,7 @@ namespace MsDev2010.Cpp.XCode
                 },
                 delegate(XmlNode main, XmlNode other)
                 {
-                    if (main.ParentNode.Name == "PreprocessorDefinitions" ||
-                        main.ParentNode.Name == "AdditionalDependencies" ||
-                        main.ParentNode.Name == "AdditionalLibraryDirectories" ||
-                        main.ParentNode.Name == "AdditionalIncludeDirectories")
+                    if (IsOneOf(main.ParentNode.Name, new string[] { "PreprocessorDefinitions", "AdditionalDependencies", "AdditionalLibraryDirectories", "AdditionalIncludeDirectories" }))
                     {
                         StringItems items = new StringItems();
                         items.Add(main.Value, true);
@@ -204,7 +194,7 @@ namespace MsDev2010.Cpp.XCode
             Merge(mXmlDocMain, mXmlDocMain,
                 delegate(XmlNode node)
                 {
-                    if (node.Name == "ClCompile" || node.Name == "ClInclude" || node.Name == "None")
+                    if (IsOneOf(node.Name, new string[] { "ClCompile", "ClInclude", "None" }))
                     {
                         foreach (XmlAttribute a in node.Attributes)
                         {
@@ -240,7 +230,7 @@ namespace MsDev2010.Cpp.XCode
                 }
             }
 
-            // Now do the globbing
+            // Now do the file globbing
             HashSet<string> allGlobbedFiles = new HashSet<string>();
             foreach (XmlNode node in globs)
             {
@@ -275,39 +265,25 @@ namespace MsDev2010.Cpp.XCode
             {
                 foreach (XmlAttribute a in node.Attributes)
                 {
-                    int begin = -1;
-                    int end = -1;
-
                     if (a.Name == "Condition")
                     {
-                        int cursor = a.Value.IndexOf("==");
-                        if (cursor >= 0)
+                        string[] parts = StringTools.Between(a.Value, '\'', '\'');
+                        if (parts.Length == 2)
                         {
-                            cursor += 2;
-                            if ((cursor + 1) < a.Value.Length && a.Value[cursor] == '\'')
-                                cursor += 1;
-                            else
-                                cursor = -1;
+                            config = StringTools.LeftOf(parts[1], '|');
+                            platform = StringTools.RightOf(parts[1], '|');
+                            if (!String.IsNullOrEmpty(config) && !String.IsNullOrEmpty(platform))
+                                return true;
                         }
-                        begin = cursor;
-                        end = begin>=0 ? a.Value.IndexOf("'", begin) : begin;
+                        break;
                     }
                     else if (a.Name == "Include")
                     {
-                        begin = 0;
-                        end = a.Value.Length;
-                    }
-
-                    if (begin >= 0 && end > begin)
-                    {
-                        string configplatform = a.Value.Substring(begin, end - begin);
-                        string[] items = configplatform.Split(new char[] { '|' }, StringSplitOptions.RemoveEmptyEntries);
-                        if (items.Length == 2)
-                        {
-                            config = items[0];
-                            platform = items[1];
+                        config = StringTools.LeftOf(a.Value, '|');
+                        platform = StringTools.RightOf(a.Value, '|');
+                        if (!String.IsNullOrEmpty(config) && !String.IsNullOrEmpty(platform))
                             return true;
-                        }
+
                         break;
                     }
                 }
@@ -322,42 +298,13 @@ namespace MsDev2010.Cpp.XCode
             {
                 foreach (XmlAttribute a in node.Attributes)
                 {
-                    if (a.Name == "Condition" || a.Name == "Include")
-                    {
-                        if (a.Value.Contains(String.Format("{0}|{1}", config, platform)))
-                        {
-                            return true;
-                        }
-                        else
-                        {
-                            return false;
-                        }
-                    }
+                    if (IsOneOf(a.Name, new string[] { "Condition", "Include" }))
+                        return (a.Value.Contains(String.Format("{0}|{1}", config, platform)));
                 }
             }
             return true;
         }
-
-        private string GetItem(string platform, string config, string itemName)
-        {
-            StringItems concat = new StringItems();
-
-            Merge(mXmlDocMain, mXmlDocMain,
-                delegate(XmlNode node)
-                {
-                    return HasCondition(node, platform, config);
-                },
-                delegate(XmlNode main, XmlNode other)
-                {
-                    if (main.ParentNode.Name == itemName)
-                    {
-                        concat.Add(main.Value, true);
-                        concat.Add(other.Value, true);
-                    }
-                });
-            return concat.Get();
-        }
-
+        
         public string[] GetPlatforms()
         {
             HashSet<string> platforms = new HashSet<string>();
@@ -378,6 +325,7 @@ namespace MsDev2010.Cpp.XCode
                 });
             return platforms.ToArray();
         }
+
         public string[] GetPlatformConfigs(string platform)
         {
             HashSet<string> configs = new HashSet<string>();
@@ -401,53 +349,59 @@ namespace MsDev2010.Cpp.XCode
                 });
             return configs.ToArray();
         }
-
-        public bool SetItem(string platform, string config, string itemName, string itemValue)
-        {
-            StringItems concat = new StringItems();
-            concat.Add(itemValue, true);
-
-            Merge(mXmlDocMain, mXmlDocMain,
-                delegate(XmlNode node)
-                {
-                    return HasCondition(node, platform, config);
-                },
-                delegate(XmlNode main, XmlNode other)
-                {
-                    if (main.ParentNode.Name == itemName)
-                    {
-                        concat.Add(main.Value, true);
-                        concat.Add(other.Value, true);
-                        main.Value = concat.Get();
-                    }
-                });
-            return true;
-        }
-
+        
         public bool Save(string filename)
         {
             mXmlDocMain.Save(filename);
             return true;
         }
 
-        public bool Merge(Project project, bool replace)
+        private static bool IsOneOf(string str, string[] strs)
+        {
+            if (String.IsNullOrEmpty(str))
+                return false;
+
+            foreach (string s in strs)
+            {
+                if ((str.Length == s.Length) && (str[0] == s[0]))
+                {
+                    if (String.Compare(str, s, true) == 0)
+                        return true;
+                }
+            }
+            return false;
+        }
+
+        public bool Merge(CppProject project, bool replace, bool content)
         {
             Merge(mXmlDocMain, project.mXmlDocMain,
                 delegate(XmlNode node)
                 {
+                    // If (content == False)
+                    //    do not merge these:
+                    //          <ItemGroup>
+                    //            <ClCompile Include="source.cpp">
+                    //          </ItemGroup>
+                    //          <ItemGroup>
+                    //            <ClInclude Include="source.h">
+                    //          </ItemGroup>
+                    //          <ItemGroup>
+                    //            <None Include="source.png">
+                    //          </ItemGroup>
+                    // Endif
+                    if (!content && node.Name == "ItemGroup" && node.HasChildNodes)
+                    {
+                        XmlNode child = node.ChildNodes[0];
+                        if (IsOneOf(child.Name, new string[] { "ClCompile", "ClInclude", "None" }))
+                        {
+                            return false;
+                        }
+                    }
                     return true;
                 },
                 delegate(XmlNode main, XmlNode other)
                 {
-                    // Merge:
-                    // - PreprocessorDefinitions
-                    // - AdditionalIncludeDirectories
-                    // - AdditionalLibraryDirectories
-                    // - AdditionalDependencies
-                    if (main.ParentNode.Name == "PreprocessorDefinitions" ||
-                        main.ParentNode.Name == "AdditionalIncludeDirectories" ||
-                        main.ParentNode.Name == "AdditionalLibraryDirectories" ||
-                        main.ParentNode.Name == "AdditionalDependencies")
+                    if (IsOneOf(main.ParentNode.Name, new string[] { "PreprocessorDefinitions", "AdditionalIncludeDirectories", "AdditionalLibraryDirectories", "AdditionalDependencies" }))
                     {
                         StringItems items = new StringItems();
                         items.Add(other.Value, true);
@@ -470,50 +424,22 @@ namespace MsDev2010.Cpp.XCode
                 return true;
             if (a.Attributes != null && b.Attributes != null)
             {
-                bool the_same = true;
-                int na = 0;
-                foreach (XmlAttribute aa in a.Attributes)
-                {
-                    if (aa.Name == "Concat")
-                        continue;
-                    ++na;
-                }
-                int nb = 0;
-                foreach (XmlAttribute ab in b.Attributes)
-                {
-                    if (ab.Name == "Concat")
-                        continue;
-                    ++nb;
-                }
-
-                the_same = (na == nb);
+                bool the_same = (a.Attributes.Count == b.Attributes.Count);
                 if (the_same)
                 {
                     foreach (XmlAttribute aa in a.Attributes)
                     {
-                        if (aa.Name == "Concat")
-                            continue;
-
-                        bool found = false;
+                        the_same = false;
                         foreach (XmlAttribute ab in b.Attributes)
                         {
-                            if (ab.Name == "Concat")
-                                continue;
-
-                            if (ab.Name == aa.Name)
+                            if ((ab.Name == aa.Name) && (ab.Value == aa.Value))
                             {
-                                if (ab.Value == aa.Value)
-                                {
-                                    found = true;
-                                    break;
-                                }
+                                the_same = true;
+                                break;
                             }
                         }
-                        if (!found)
-                        {
-                            the_same = false;
+                        if (!the_same)
                             break;
-                        }
                     }
                 }
                 return the_same;

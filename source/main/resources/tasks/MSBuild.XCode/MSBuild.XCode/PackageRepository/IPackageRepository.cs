@@ -13,9 +13,9 @@ namespace MSBuild.XCode
         ELocation Location { get; set; }
         ILayout Layout { get; set; }
 
-        bool Update(Package package, VersionRange versionRange);
-        bool Update(Package package);
-        bool Add(Package package, ELocation from);
+        bool Update(PackageInstance package, VersionRange versionRange);
+        bool Update(PackageInstance package);
+        bool Add(PackageInstance package, ELocation from);
     }
 
 }

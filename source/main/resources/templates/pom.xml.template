@@ -26,7 +26,7 @@
     <Item Src="libs\**\*.*" Dst="libs\" />
     <Item Src="docs\**\*.*" Dst="docs\" />
     <Item Src="tools\**\*.*" Dst="Tools\" />
-    <Item Src="target\outdir\${Name}_*\${Name}_*_${Platform}.lib" Dst="libs\" />
+    <Item Src="target\${Name}\outdir\${Name}_*\${Name}_*_${Platform}.lib" Dst="libs\" />
   </Content>
   
   <Dependency Package="example_package_name">
@@ -85,6 +85,15 @@
 			<Project DefaultTargets="Build" ToolsVersion="4.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
 			  <PropertyGroup Label="Globals">
 			    <ProjectGuid>{${GUID}}</ProjectGuid>
+			  </PropertyGroup>
+			  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='DevDebug|Win32'" Label="Configuration">
+			    <ConfigurationType>Application</ConfigurationType>
+			  </PropertyGroup>
+			  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='DevFinal|Win32'" Label="Configuration">
+			    <ConfigurationType>Application</ConfigurationType>
+			  </PropertyGroup>
+			  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='DevRelease|Win32'" Label="Configuration">
+			    <ConfigurationType>Application</ConfigurationType>
 			  </PropertyGroup>
 			  <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='DevDebug|Win32'">
 			    <ClCompile>

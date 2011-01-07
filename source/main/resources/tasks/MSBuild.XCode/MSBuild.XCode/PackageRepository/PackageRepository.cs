@@ -26,15 +26,15 @@ namespace MSBuild.XCode
 
         public string RepoPath { get; set; }
 
-        public bool Update(Package package, VersionRange range)
+        public bool Update(PackageInstance package, VersionRange range)
         {
             return mRepository.Update(package, range);
         }
-        public bool Update(Package package)
+        public bool Update(PackageInstance package)
         {
             return mRepository.Update(package);
         }
-        public bool Add(Package package, ELocation from)
+        public bool Add(PackageInstance package, ELocation from)
         {
             return mRepository.Add(package, from);
         }

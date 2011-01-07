@@ -5,9 +5,9 @@ using System.Text.RegularExpressions;
 using System.IO;
 using MSBuild.XCode.Helpers;
 
-namespace MsDev2010.Cpp.XCode
+namespace MSBuild.XCode
 {
-    class Solution
+    class CppSolution
     {
         public enum EVersion
         {
@@ -27,7 +27,7 @@ namespace MsDev2010.Cpp.XCode
         private List<string> m_Configs;
         private Dictionary<string, Guid> m_ProjectGuids;
 
-        public Solution(EVersion version, ELanguage language)
+        public CppSolution(EVersion version, ELanguage language)
         {
             mVersion = version;
             mLanguage = language;
@@ -108,6 +108,24 @@ namespace MsDev2010.Cpp.XCode
                                 projectGuid.ToString().ToUpper()));
 
                             // TODO: write dependencies
+                            /// ProjectSection(ProjectDependencies) = postProject
+                            /// 	{62068C48-9011-4E7F-A282-1D0F91023756} = {62068C48-9011-4E7F-A282-1D0F91023756}
+                            /// EndProjectSection
+                            string[] dependencyProjectFiles;
+                            if (mProjectDependencies.TryGetValue(project.Name, out dependencyProjectFiles))
+                            {
+                                writer.WriteLine(string.Format("\tProjectSection(ProjectDependencies) = postProject"));
+                                foreach (string projectFile in dependencyProjectFiles)
+                                {
+                                    FileSystemInfo info = GetProjectByName(projectFile);
+                                    if (info != null)
+                                    {
+                                        Guid guid = GetProjectGuid(info);
+                                        writer.WriteLine("\t\t{{{0}}} = {{{0}}}", guid.ToString().ToUpper());
+                                    }
+                                }
+                                writer.WriteLine("\tEndProjectSection");
+                            }
 
                             writer.WriteLine("EndProject");
                         }
@@ -141,7 +159,6 @@ namespace MsDev2010.Cpp.XCode
                         {
                             writer.WriteLine("\tGlobalSection(ProjectConfigurationPlatforms) = postSolution");
 
-                            // TODO Write configurations
                             foreach (FileSystemInfo project in m_Projects)
                             {
                                 Guid projectGuid = GetProjectGuid(project);
@@ -179,7 +196,6 @@ namespace MsDev2010.Cpp.XCode
                         {
                             writer.WriteLine("\tGlobalSection(ProjectConfigurationPlatforms) = postSolution");
 
-                            // TODO Write configurations
                             foreach (FileSystemInfo project in m_Projects)
                             {
                                 Guid projectGuid = GetProjectGuid(project);
@@ -200,6 +216,14 @@ namespace MsDev2010.Cpp.XCode
                         } break;
                 }
             }
+        }
+        private Dictionary<string, string[]> mProjectDependencies = new Dictionary<string, string[]>();
+        public void AddDependencies(string projectFile, string[] dependencyProjectFiles)
+        {
+            if (mProjectDependencies.ContainsKey(projectFile))
+                mProjectDependencies.Remove(projectFile);
+
+            mProjectDependencies.Add(projectFile, dependencyProjectFiles);
         }
 
         public int Save(string _SolutionFile, List<string> _ProjectFiles)
@@ -254,6 +278,16 @@ namespace MsDev2010.Cpp.XCode
             return m_Projects.Count;
         }
 
+        private FileSystemInfo GetProjectByName(string projectFile)
+        {
+            foreach (FileSystemInfo info in m_Projects)
+            {
+                if (String.Compare(info.Name, projectFile, true) == 0)
+                    return info;
+            }
+            return null;
+        }
+
         private Guid GetProjectGuid(FileSystemInfo file)
         {
             switch (mLanguage)
@@ -284,28 +318,7 @@ namespace MsDev2010.Cpp.XCode
                             Guid guid;
                             if (m_ProjectGuids.TryGetValue(file.FullName, out guid))
                                 return guid;
-
                             return Guid.NewGuid();
-
-                            if (false)
-                            {
-                                using (StreamReader reader = File.OpenText(file.FullName))
-                                {
-                                    string text = reader.ReadToEnd();
-                                    string pattern = "<ProjectGuid>";
-                                    int start = text.IndexOf(pattern);
-                                    if (start > 0)
-                                    {
-                                        start += pattern.Length;
-                                        pattern = "</ProjectGuid>";
-                                        int end = text.IndexOf(pattern);
-                                        if (end > 0)
-                                        {
-                                            return new Guid(text.Substring(start + 1, end - start - 2));
-                                        }
-                                    }
-                                }
-                            }
                         }
                         else
                         {

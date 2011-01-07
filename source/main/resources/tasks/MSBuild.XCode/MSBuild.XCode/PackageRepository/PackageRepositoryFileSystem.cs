@@ -20,44 +20,80 @@ namespace MSBuild.XCode
         public ELocation Location { get; set; }
         public ILayout Layout { get; set; }
 
-        public bool Update(Package package)
+        private bool GetSignatureFor(PackageInstance package)
         {
-            string src_dir = Layout.PackageVersionDir(RepoDir, package.Group.ToString(), package.Name, package.Version);
-            string src_filename = Layout.VersionToFilename(package.Name, package.Branch, package.Platform, package.Version);
+            string package_dir = Layout.PackageRootDir(RepoDir, package.Group.ToString(), package.Name, package.Platform);
+
+            string signatureFilename = ".signature";
+            if (!File.Exists(package_dir + signatureFilename))
+                File.Create(package_dir + signatureFilename).Close();
+
+            DateTime last_write_time = File.GetLastWriteTime(package_dir + signatureFilename);
+            package.SetSignature(Location, last_write_time);
+
+            return true;
+        }
+        private void UpdateSignatureFrom(PackageInstance package)
+        {
+            string package_dir = Layout.PackageRootDir(RepoDir, package.Group.ToString(), package.Name, package.Platform);
+
+            string signatureFilename = ".signature";
+            if (!File.Exists(package_dir + signatureFilename))
+                File.Create(package_dir + signatureFilename).Close();
+
+            DateTime last_write_time = package.GetSignature(Location);
+            File.SetLastWriteTime(package_dir + signatureFilename, last_write_time);
+            package.SetSignature(Location, last_write_time);
+        }
+
+        public bool Update(PackageInstance package)
+        {
+            string src_dir = Layout.PackageVersionDir(RepoDir, package.Group.ToString(), package.Name, package.Platform, package.GetVersion(Location));
+            string src_filename = Layout.VersionToFilename(package.Name, package.Branch, package.Platform, package.GetVersion(Location));
             string src_path = src_dir + src_filename;
             if (File.Exists(src_path))
             {
-                package.SetURL(Location, src_path);
-                return true;
+                package.SetURL(Location, src_dir);
+                package.SetFilename(Location, new PackageFilename(src_filename));
+                return GetSignatureFor(package);
             }
             return false;
         }
 
-        public bool Update(Package package, VersionRange versionRange)
+        public bool Update(PackageInstance package, VersionRange versionRange)
         {
             if (FindBestVersion(package, versionRange))
             {
+                GetSignatureFor(package); 
                 return Update(package);
             }
             return false;
         }
 
-        public bool Add(Package package, ELocation from)
+        public bool Add(PackageInstance package, ELocation from)
         {
-            if (File.Exists(package.GetURL(from)))
+            string src_path = package.GetURL(from) + package.GetFilename(from);
+            if (File.Exists(src_path))
             {
-                string dest_dir = Layout.PackageVersionDir(RepoDir, package.Group.ToString(), package.Name, package.Version);
+                string dest_dir = Layout.PackageVersionDir(RepoDir, package.Group.ToString(), package.Name, package.Platform, package.GetVersion(from));
                 if (!Directory.Exists(dest_dir))
                 {
                     Directory.CreateDirectory(dest_dir);
                 }
-                string package_filename = Layout.VersionToFilename(package.Name, package.Branch, package.Platform, package.Version);
-                if (!File.Exists(dest_dir + package_filename))
+                string dest_package_filename = Layout.VersionToFilename(package.Name, package.Branch, package.Platform, package.GetVersion(from));
+                if (!File.Exists(dest_dir + dest_package_filename))
                 {
-                    File.Copy(package.GetURL(from), dest_dir + package_filename, true);
-                    DirtyVersionCache(package.Group.ToString(), package.Name);
+                    File.Copy(src_path, dest_dir + dest_package_filename, true);
+                    DirtyVersionCache(package.Group.ToString(), package.Name, package.Platform);
                 }
-                package.SetURL(Location, dest_dir + package_filename);
+
+                package.SetURL(Location, dest_dir);
+                package.SetFilename(Location, new PackageFilename(dest_package_filename));
+                package.SetVersion(Location, package.GetVersion(from));
+                package.SetSignature(Location, package.GetSignature(from));
+
+                UpdateSignatureFrom(package);
+
                 return true;
             }
             return false;
@@ -74,7 +110,7 @@ namespace MSBuild.XCode
         // 
         public void UpdateVersionCache(string group, string package_name, string branch, string platform)
         {
-            string root_dir = Layout.PackageRootDir(RepoDir, group, package_name);
+            string root_dir = Layout.PackageRootDir(RepoDir, group, package_name, platform);
             if (!Directory.Exists(root_dir))
                 return;
 
@@ -106,14 +142,14 @@ namespace MSBuild.XCode
                         try { File.Delete(dirty); }
                         catch (SystemException) { }
                     }
-                    string[] packages = Directory.GetFiles(root_dir + "version\\", "*.zip", SearchOption.AllDirectories);
+                    string[] filenames = Directory.GetFiles(root_dir + "version\\", "*.zip", SearchOption.AllDirectories);
                     SortedDictionary<ComparableVersion, bool> sortedVersions = new SortedDictionary<ComparableVersion, bool>();
-                    foreach (string package in packages)
+                    foreach (string file in filenames)
                     {
-                        string[] c = Path.GetFileNameWithoutExtension(package).Split(new char[] { '+' }, StringSplitOptions.RemoveEmptyEntries);
-                        if (c.Length == 4)
+                        PackageFilename packageFilename = new PackageFilename(file);
+                        if (String.Compare(packageFilename.Platform, platform, true) == 0)
                         {
-                            ComparableVersion version = new ComparableVersion(c[1]);
+                            ComparableVersion version = packageFilename.Version;
                             if (!sortedVersions.ContainsKey(version))
                                 sortedVersions.Add(version, true);
                         }
@@ -134,10 +170,13 @@ namespace MSBuild.XCode
 
         private string[] LoadVersionCache(string group, string package_name, string branch, string platform)
         {
-            string root_dir = Layout.PackageRootDir(RepoDir, group, package_name);
+            string root_dir = Layout.PackageRootDir(RepoDir, group, package_name, platform);
             string[] versions = new string[0];
-
+            if (!Directory.Exists(root_dir))
+                return versions;
             string filename = String.Format("versions.{0}.{1}.cache", branch, platform);
+            if (!File.Exists(root_dir + filename))
+                return versions;
 
             int retry = 0;
             bool exception = true;
@@ -158,9 +197,9 @@ namespace MSBuild.XCode
             return versions;
         }
 
-        private void DirtyVersionCache(string group, string package_name)
+        private void DirtyVersionCache(string group, string package_name, string platform)
         {
-            string root_dir = Layout.PackageRootDir(RepoDir, group, package_name);
+            string root_dir = Layout.PackageRootDir(RepoDir, group, package_name, platform);
             if (!File.Exists(root_dir + Environment.MachineName + ".dirty"))
             {
                 FileStream s = File.Create(root_dir + Environment.MachineName + ".dirty");
@@ -186,7 +225,7 @@ namespace MSBuild.XCode
             return all;
         }
 
-        private bool FindBestVersion(Package package, VersionRange versionRange)
+        private bool FindBestVersion(PackageInstance package, VersionRange versionRange)
         {
             string[] versions = RetrieveVersionsFor(package.Group.ToString(), package.Name, package.Branch, package.Platform);
             if (versions.Length > 1)
@@ -194,7 +233,7 @@ namespace MSBuild.XCode
                 if (versionRange.Kind == VersionRange.EKind.UniqueVersion)
                 {
                     List<ComparableVersion> all = Construct(versions);
-                    package.Version = LowerBound(all, versionRange.From, versionRange.IncludeFrom);
+                    package.SetVersion(Location, LowerBound(all, versionRange.From, versionRange.IncludeFrom));
                     // This might not be a match, but we have to return the best possible match
                     return true;
                 }
@@ -205,7 +244,7 @@ namespace MSBuild.XCode
                     // High probability that the highest version will match
                     if (versionRange.IsInRange(highest))
                     {
-                        package.Version = new ComparableVersion(highest);
+                        package.SetVersion(Location, new ComparableVersion(highest));
                         return true;
                     }
 
@@ -227,7 +266,7 @@ namespace MSBuild.XCode
                             // Find a version in the UnboundToVersion, where Version is 'from'
                             List<ComparableVersion> all = Construct(versions);
                             ComparableVersion version = LowerBound(all, versionRange.From, versionRange.IncludeFrom);
-                            package.Version = version;
+                            package.SetVersion(Location, version);
                             return true;
                         }
                         else if (versionRange.Kind == VersionRange.EKind.UnboundToVersion)
@@ -238,7 +277,7 @@ namespace MSBuild.XCode
                             // Find a version in the UnboundToVersion, where Version is 'to'
                             List<ComparableVersion> all = Construct(versions);
                             ComparableVersion version = LowerBound(all, versionRange.To, versionRange.IncludeTo);
-                            package.Version = version;
+                            package.SetVersion(Location, version);
                             return true;
                         }
                         else if (versionRange.Kind == VersionRange.EKind.VersionToVersion)
@@ -257,7 +296,7 @@ namespace MSBuild.XCode
                                 ComparableVersion version = LowerBound(all, versionRange.To, versionRange.IncludeTo);
                                 if (version != null && versionRange.IsInRange(version))
                                 {
-                                    package.Version = version;
+                                    package.SetVersion(Location, version);
                                     return true;
                                 }
                             }
@@ -270,7 +309,7 @@ namespace MSBuild.XCode
                 ComparableVersion version = new ComparableVersion(versions[0]);
                 if (versionRange.IsInRange(version))
                 {
-                    package.Version = version;
+                    package.SetVersion(Location, version);
                     return true;
                 }
             }

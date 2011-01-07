@@ -7,42 +7,43 @@ using MSBuild.XCode.Helpers;
 
 namespace MSBuild.XCode
 {
-    public class Pom
+    public class PomResource
     {
-        public string Name { get; set; }
-        public Group Group { get; set; }
+        private string mName;
+        private Group mGroup;
 
-        public EType Type { get; set; }
-        public bool Main { get { return Type == EType.Main; } set { if (value) Type = EType.Main; else Type = EType.Dependency; } }
+        public string Name { get { return mName; } }
+        public Group Group { get { return mGroup; } }
+
+        public bool IsValid { get { return !String.IsNullOrEmpty(Name); } }
 
         public List<Attribute> DirectoryStructure { get; set; }
 
         public Dictionary<string, List<KeyValuePair<string,string>>> Content { get; set; }
-        public List<Dependency> Dependencies { get; set; }
-        public List<Project> Projects { get; set; }
+        public List<DependencyResource> Dependencies { get; set; }
+        public List<ProjectResource> Projects { get; set; }
         public List<string> Platforms { get; set; }
         public Versions Versions { get; set; }
-        public Dictionary<string, DependencyTree> DependencyTree { get; set; }
 
-        public enum EType
+        public PomResource()
         {
-            Main,
-            Dependency,
-        }
-
-        public Pom(EType type)
-        {
-            Name = "Unknown";
-            Group = new Group("com.virtuos.tnt");
-            Type = type;
+            mName = string.Empty;
+            mGroup = new Group(string.Empty);
 
             DirectoryStructure = new List<Attribute>();
             Content = new Dictionary<string, List<KeyValuePair<string, string>>>();
-            Dependencies = new List<Dependency>();
-            Projects = new List<Project>();
+            Dependencies = new List<DependencyResource>();
+            Projects = new List<ProjectResource>();
             Platforms = new List<string>();
             Versions = new Versions();
-            DependencyTree = new Dictionary<string, DependencyTree>();
+        }
+
+        public static PomResource From(string name, string group)
+        {
+            PomResource resource = new PomResource();
+            resource.mName = name;
+            resource.mGroup = new Group(group);
+            return resource;
         }
 
         public bool Info()
@@ -52,14 +53,14 @@ namespace MSBuild.XCode
             Versions.Info();
             {
                 Loggy.Indent += 1;
-                foreach (Project p in Projects)
+                foreach (ProjectResource p in Projects)
                 {
                     Loggy.Add(String.Format("----------------------------"));
                     p.Info();
                 }
 
                 Loggy.Add(String.Format("----------------------------"));
-                foreach (Dependency d in Dependencies)
+                foreach (DependencyResource d in Dependencies)
                     d.Info();
 
                 Loggy.Indent -= 1;
@@ -67,43 +68,53 @@ namespace MSBuild.XCode
             return true;
         }
 
-        public Project GetProjectByCategory(string category)
+        public ProjectResource GetProjectByGroup(string group)
         {
-            foreach (Project p in Projects)
+            foreach (ProjectResource p in Projects)
             {
-                if (String.Compare(p.Category, category, true) == 0)
+                if (String.Compare(p.Group, group, true) == 0)
                     return p;
             }
             return null;
         }
 
-        public string[] GetCategories()
+        public ProjectResource GetProjectByName(string name)
+        {
+            foreach (ProjectResource p in Projects)
+            {
+                if (String.Compare(p.Name, name, true) == 0)
+                    return p;
+            }
+            return null;
+        }
+
+        public string[] GetGroups()
         {
             List<string> categories = new List<string>();
-            foreach (Project prj in Projects)
+            foreach (ProjectResource prj in Projects)
             {
-                categories.Add(prj.Category);
+                categories.Add(prj.Group);
             }
             return categories.ToArray();
         }
 
-        public string[] GetPlatformsForCategory(string Category)
+        public string[] GetPlatformsForGroup(string inGroup)
         {
-            Project project = GetProjectByCategory(Category);
+            ProjectResource project = GetProjectByGroup(inGroup);
             if (project != null)
                 return project.GetPlatforms();
             return new string[0];
         }
 
-        public string[] GetConfigsForPlatformsForCategory(string Platform, string Category)
+        public string[] GetConfigsForPlatformsForGroup(string Platform, string inGroup)
         {
-            Project project = GetProjectByCategory(Category);
+            ProjectResource project = GetProjectByGroup(inGroup);
             if (project!=null)
                 return project.GetConfigsForPlatform(Platform);
             return new string[0];
         }
 
-        public void Load(string filename)
+        public void LoadFile(string filename)
         {
             XmlDocument xmlDoc = new XmlDocument();
             xmlDoc.Load(filename);
@@ -117,23 +128,7 @@ namespace MSBuild.XCode
             Read(xmlDoc.FirstChild);
         }
 
-        public void OnlyKeepPlatformSpecifics(string platform)
-        {
-            foreach (Project prj in Projects)
-            {
-                prj.OnlyKeepPlatformSpecifics(platform);
-            }
-        }
-
-        public void PostLoad()
-        {
-            foreach (Project prj in Projects)
-            {
-                prj.ConstructFullMsDevProject();
-            }
-        }
-
-        public void Read(XmlNode node)
+        private void Read(XmlNode node)
         {
             if (node.Name == "Package")
             {
@@ -143,11 +138,11 @@ namespace MSBuild.XCode
                     {
                         if (a.Name == "Name")
                         {
-                            Name = a.Value;
+                            mName = a.Value;
                         }
                         else if (a.Name == "Group")
                         {
-                            Group.Full = a.Value;
+                            mGroup = new Group(a.Value);
                         }
                     }
                 }
@@ -187,13 +182,13 @@ namespace MSBuild.XCode
                         }
                         else if (child.Name == "Dependency")
                         {
-                            Dependency dependency = new Dependency();
+                            DependencyResource dependency = new DependencyResource();
                             dependency.Read(child);
                             Dependencies.Add(dependency);
                         }
                         else if (child.Name == "Project")
                         {
-                            Project project = new Project(Main);
+                            ProjectResource project = new ProjectResource();
                             project.Read(child);
                             Projects.Add(project);
                         }
@@ -217,10 +212,10 @@ namespace MSBuild.XCode
             }
 
             HashSet<string> all_platforms = new HashSet<string>();
-            string[] categories = GetCategories();
-            foreach (string category in categories)
+            string[] groups = GetGroups();
+            foreach (string group in groups)
             {
-                string[] platforms = GetPlatformsForCategory(category);
+                string[] platforms = GetPlatformsForGroup(group);
                 foreach (string platform in platforms)
                 {
                     if (!all_platforms.Contains(platform))
@@ -230,91 +225,5 @@ namespace MSBuild.XCode
             foreach (string platform in all_platforms)
                 Platforms.Add(platform);
         }
-
-        public void GenerateProjects(string root)
-        {
-            // Generating project files is a bit complex in that it has to merge project definitions on a per platform basis.
-            // Every platform is considered to have its own package (zip -> pom.xml) containing the project settings for that platform.
-            // For every platform we have to merge in only the conditional xml elements into the final project file.
-            foreach (Project rootProject in Projects)
-            {
-                // Every platform has a dependency tree and every dependency package for that platform has filtered their
-                // project to only keep their platform specific xml elements.
-                foreach (KeyValuePair<string, DependencyTree> pair in DependencyTree)
-                {
-                    List<Package> allDependencyPackages = pair.Value.GetAllDependencyPackages();
-
-                    // Merge in all Projects of those dependency packages which are already filtered on the platform
-                    foreach (Package dependencyPackage in allDependencyPackages)
-                    {
-                        Project dependencyProject = dependencyPackage.Pom.GetProjectByCategory(rootProject.Category);
-                        if (dependencyProject!=null && !dependencyProject.IsPrivate)
-                            rootProject.MergeWithDependencyProject(dependencyProject);
-                    }
-                }
-            }
-
-            root = root.EndWith('\\');
-            foreach (Project p in Projects)
-            {
-                string path = p.Location.Replace("/", "\\");
-                path = path.EndWith('\\');
-                string filename = path + p.Name + p.Extension;
-                p.Save(root, filename);
-            }
-        }
-
-        public void GenerateSolution(string root)
-        {
-            root = root.EndWith('\\');
-
-            List<string> projectFilenames = new List<string>();
-            foreach (Project prj in Projects)
-            {
-                string path = prj.Location.Replace("/", "\\");
-                path = path.EndWith('\\');
-                path = path + prj.Name + prj.Extension;
-                projectFilenames.Add(path);
-            }
-
-            MsDev2010.Cpp.XCode.Solution solution = new MsDev2010.Cpp.XCode.Solution(MsDev2010.Cpp.XCode.Solution.EVersion.VS2010, MsDev2010.Cpp.XCode.Solution.ELanguage.CPP);
-            string solutionFilename = root + Name + ".sln";
-            solution.Save(solutionFilename, projectFilenames);
-        }
-
-        public bool BuildDependencies(string Platform)
-        {
-            bool result = true;
-
-            DependencyTree tree;
-            if (!DependencyTree.TryGetValue(Platform, out tree))
-            {
-                tree = new DependencyTree();
-                tree.Package = this;
-                tree.Platform = Platform;
-                tree.Dependencies = Dependencies;
-                DependencyTree.Add(Platform, tree);
-                result = tree.Build();
-            }
-
-            return result;
-        }
-
-        public void PrintDependencies(string Platform)
-        {
-            DependencyTree tree;
-            if (DependencyTree.TryGetValue(Platform, out tree))
-                tree.Print();
-        }
-
-        public bool SyncDependencies(string Platform)
-        {
-            bool result = false;
-            DependencyTree tree;
-            if (DependencyTree.TryGetValue(Platform, out tree))
-                result = tree.Sync();
-            return result;
-        }
-
     }
 }
