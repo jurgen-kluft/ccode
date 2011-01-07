@@ -319,7 +319,7 @@ namespace MSBuild.XCode
             }
         }
 
-        public void GenerateSolution()
+        public bool GenerateSolution()
         {
             CppSolution solution = new CppSolution(CppSolution.EVersion.VS2010, CppSolution.ELanguage.CPP);
 
@@ -343,7 +343,10 @@ namespace MSBuild.XCode
             }
 
             string solutionFilename = RootURL + Name + ".sln";
-            solution.Save(solutionFilename, projectFilenames);
+            if (solution.Save(solutionFilename, projectFilenames) < 0)
+                return false;
+
+            return true;
         }
 
     }

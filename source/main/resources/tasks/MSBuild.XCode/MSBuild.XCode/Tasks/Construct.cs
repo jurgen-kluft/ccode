@@ -62,7 +62,11 @@ namespace MSBuild.XCode
 
                         // Generate the projects and solution
                         package.GenerateProjects(dependencies);
-                        package.GenerateSolution();
+                        if (!package.GenerateSolution())
+                        {
+                            Loggy.Add(String.Format("Error: Action {0} failed in Package::Construct due to failure in saving solution (.sln)", Action));
+                            return false;
+                        }
                     }
                     else
                     {
