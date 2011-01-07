@@ -34,14 +34,14 @@ namespace MSBuild.XCode
         public string PackageRootDir(string repoPath, string group, string package_name, string platform)
         {
             // Path = target \ build \ 
-            string fullPath = repoPath + "target\\build\\";
+            string fullPath = repoPath + "target\\" + package_name + "\\build\\";
             return fullPath;
         }
 
         public string PackageVersionDir(string repoPath, string group, string package_name, string platform, ComparableVersion version)
         {
             // Path = target \ build \ 
-            string fullPath = repoPath + "target\\build\\";
+            string fullPath = repoPath + "target\\" + package_name + "\\build\\";
             return fullPath;
         }
     }

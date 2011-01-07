@@ -131,6 +131,21 @@ namespace MSBuild.XCode
             if (!node.Package.CacheExists)
                 Global.CacheRepo.Update(node.Package, node.Dependency.VersionRange);
 
+            // Do a signature verification
+            if (node.Package.TargetExists && node.Package.CacheExists)
+            {
+                if (node.Package.RemoteExists)
+                {
+                    if (node.Package.RemoteSignature == node.Package.CacheSignature && node.Package.CacheSignature == node.Package.TargetSignature)
+                        return 0;
+                }
+                else
+                {
+                    if (node.Package.CacheSignature == node.Package.TargetSignature)
+                        return 0;
+                }
+            }
+
             // Check if the Remote has a better version
             if (node.Package.RemoteExists)
             {

@@ -61,20 +61,25 @@ namespace MSBuild.XCode
                 u.AuthorName(hg_changeset.AuthorName);
                 u.AuthorEmail(hg_changeset.AuthorEmailAddress);
             }));
-            using (FileStream fs = new FileStream(Global.RootDir + "target\\build\\vcs.info", FileMode.Create))
-            {
-                using (StreamWriter sw = new StreamWriter(fs))
-                {
-                    sw.Write(x.ToString(true));
-                    sw.Close();
-                    fs.Close();
-                }
-            }
 
-            // Write a dependency.info file containing dependency package info, this will be included in the package
             PackageInstance package = PackageInstance.LoadFromRoot(RootDir);
+            // Write a dependency.info file containing dependency package info, this will be included in the package
             if (package.IsValid)
             {
+                string buildURL = Global.RootDir + "target\\" + package.Name + "\\build\\";
+                if (!Directory.Exists(buildURL))
+                    Directory.CreateDirectory(buildURL);
+
+                using (FileStream fs = new FileStream(buildURL + "vcs.info", FileMode.Create))
+                {
+                    using (StreamWriter sw = new StreamWriter(fs))
+                    {
+                        sw.Write(x.ToString(true));
+                        sw.Close();
+                        fs.Close();
+                    }
+                }
+
                 package.Branch = hg_changeset.Branch;
                 package.Platform = Platform;
 
