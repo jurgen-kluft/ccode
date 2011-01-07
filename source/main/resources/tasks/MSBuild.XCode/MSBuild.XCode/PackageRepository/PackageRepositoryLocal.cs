@@ -40,7 +40,7 @@ namespace MSBuild.XCode
             // If pom.xml is not modified and all content of the previous package are identical
             // Lastly delete any old zip packages.
             string rootURL = RepoDir;
-            string buildURL = rootURL + "target\\build\\";
+            string buildURL = rootURL + "target\\" + package.Name + "\\build\\";
             string[] package_filenames = Directory.GetFiles(buildURL, "*.zip", SearchOption.TopDirectoryOnly);
             if (package_filenames.Length > 0)
             {
@@ -60,8 +60,11 @@ namespace MSBuild.XCode
                 if (!String.IsNullOrEmpty(latest_package_filename))
                 {
                     string version = Layout.FilenameToVersion(latest_package_filename);
-                    package.LocalVersion = new ComparableVersion(version);
                     package.LocalFilename = new PackageFilename(Path.GetFileName(latest_package_filename));
+                    package.Platform = package.LocalFilename.Platform;
+                    package.Branch = package.LocalFilename.Branch;
+                    package.LocalVersion = new ComparableVersion(version);
+                    package.LocalURL = buildURL;
                     package.LocalSignature = File.GetLastWriteTime(latest_package_filename);
 
 
@@ -106,7 +109,7 @@ namespace MSBuild.XCode
             /// Delete the .sfv file
             string sfv_filename = package.Name + ".md5";
             string rootURL = RepoDir;
-            string buildURL = rootURL + "target\\build\\";
+            string buildURL = rootURL + "target\\" + package.Name + "\\build\\";
 
             if (!Directory.Exists(buildURL))
                 Directory.CreateDirectory(buildURL);
@@ -163,6 +166,8 @@ namespace MSBuild.XCode
 
             package.LocalFilename = new PackageFilename(package.Name, version, branch, platform);
             package.LocalFilename.DateTime = DateTime.Now;
+            package.LocalVersion = version;
+            package.LocalSignature = package.LocalFilename.DateTime.Value;
 
             if (File.Exists(buildURL + package.LocalFilename.ToString()))
             {
@@ -170,12 +175,14 @@ namespace MSBuild.XCode
                 catch (Exception) { }
             }
 
-            using (ZipFile zip = new ZipFile(buildURL + package.LocalFilename.ToString()))
+            string zipPath = buildURL + package.LocalFilename.ToString();
+            using (ZipFile zip = new ZipFile(zipPath))
             {
                 foreach (KeyValuePair<string, string> p in files)
                     zip.AddFile(p.Key, p.Value);
 
                 zip.Save();
+                File.SetLastWriteTime(zipPath, package.LocalSignature);
                 package.LocalURL = buildURL;
                 success = true;
             }

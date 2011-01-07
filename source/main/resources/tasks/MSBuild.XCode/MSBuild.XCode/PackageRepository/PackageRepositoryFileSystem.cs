@@ -33,7 +33,7 @@ namespace MSBuild.XCode
 
             return true;
         }
-        private void UpdateSignatureOf(PackageInstance package)
+        private void UpdateSignatureFrom(PackageInstance package)
         {
             string package_dir = Layout.PackageRootDir(RepoDir, package.Group.ToString(), package.Name, package.Platform);
 
@@ -41,7 +41,7 @@ namespace MSBuild.XCode
             if (!File.Exists(package_dir + signatureFilename))
                 File.Create(package_dir + signatureFilename).Close();
 
-            DateTime last_write_time = DateTime.Now;
+            DateTime last_write_time = package.GetSignature(Location);
             File.SetLastWriteTime(package_dir + signatureFilename, last_write_time);
             package.SetSignature(Location, last_write_time);
         }
@@ -72,25 +72,27 @@ namespace MSBuild.XCode
 
         public bool Add(PackageInstance package, ELocation from)
         {
-            if (File.Exists(package.GetURL(from)))
+            string src_path = package.GetURL(from) + package.GetFilename(from);
+            if (File.Exists(src_path))
             {
                 string dest_dir = Layout.PackageVersionDir(RepoDir, package.Group.ToString(), package.Name, package.Platform, package.GetVersion(from));
                 if (!Directory.Exists(dest_dir))
                 {
                     Directory.CreateDirectory(dest_dir);
                 }
-                string package_filename = Layout.VersionToFilename(package.Name, package.Branch, package.Platform, package.GetVersion(from));
-                if (!File.Exists(dest_dir + package_filename))
+                string dest_package_filename = Layout.VersionToFilename(package.Name, package.Branch, package.Platform, package.GetVersion(from));
+                if (!File.Exists(dest_dir + dest_package_filename))
                 {
-                    File.Copy(package.GetURL(from), dest_dir + package_filename, true);
+                    File.Copy(src_path, dest_dir + dest_package_filename, true);
                     DirtyVersionCache(package.Group.ToString(), package.Name, package.Platform);
                 }
 
                 package.SetURL(Location, dest_dir);
-                package.SetFilename(Location, new PackageFilename(package_filename));
+                package.SetFilename(Location, new PackageFilename(dest_package_filename));
                 package.SetVersion(Location, package.GetVersion(from));
+                package.SetSignature(Location, package.GetSignature(from));
 
-                UpdateSignatureOf(package);
+                UpdateSignatureFrom(package);
 
                 return true;
             }
