@@ -37,23 +37,19 @@ namespace MSBuild.XCode
             Environment.CurrentDirectory = RootDir;
 
             Global.TemplateDir = TemplateDir;
-            Global.CacheRepoDir = string.Empty;
-            Global.RemoteRepoDir = string.Empty;
             Global.Initialize();
 
-            Package package = new Package();
-            package.IsRoot = true;
-            package.RootDir = RootDir;
-            if (package.LoadFinalPom())
+            PackageInstance package = PackageInstance.LoadFromRoot(RootDir);
+            if (package.IsValid)
             {
                 // Get all platforms and configs, e.g: DevDebug|Win32;DevRelease|Win32;DevFinal|Win32
-                string[] configs = package.Pom.GetConfigsForPlatformsForCategory(Platform, Category);
+                string[] configs = package.Pom.GetConfigsForPlatformsForGroup(Platform, Category);
                 Configurations = configs;
                 success = true;
             }
             else
             {
-                Loggy.Add(String.Format("Error: Loading 'pom.xml' failed in Package::Targets"));
+                Loggy.Add(String.Format("Error: Loading package failed in Package::Configs"));
             }
 
             return success;

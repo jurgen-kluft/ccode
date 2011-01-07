@@ -52,24 +52,23 @@ namespace MSBuild.XCode
                 if (!Global.Initialize())
                     return false;
 
-                Package package = new Package();
-                package.IsRoot = true;
-                package.RootDir = RootDir;
-                if (package.LoadFinalPom())
+                PackageInstance package = PackageInstance.LoadFromRoot(RootDir);
+                if (package.IsValid)
                 {
-                    package.Name = package.Pom.Name;
-                    package.Group = package.Pom.Group;
-                    package.Version = null;
-                    package.Branch = string.Empty;
-                    package.Platform = string.Empty;
+                    PackageDependencies dependencies = new PackageDependencies(package);
+                    if (dependencies.BuildForAllPlatforms())
+                    {
+                        dependencies.PrintForAllPlatforms();
 
-                    package.BuildAllDependencies();
-                    package.SyncAllDependencies();
-                    package.PrintAllDependencies();
-
-                    // Generate the projects and solution
-                    package.GenerateProjects();
-                    package.GenerateSolution();
+                        // Generate the projects and solution
+                        package.GenerateProjects(dependencies);
+                        package.GenerateSolution();
+                    }
+                    else
+                    {
+                        Loggy.Add(String.Format("Error: Action {0} failed in Package::Construct due to failure in building dependencies", Action));
+                        return false;
+                    }
                 }
                 else
                 {
@@ -79,17 +78,9 @@ namespace MSBuild.XCode
             }
             else if (Action.StartsWith("dir"))
             {
-                Package package = new Package();
-                package.IsRoot = true;
-                package.RootDir = RootDir;
-                if (package.LoadPom())
+                PackageInstance package = PackageInstance.LoadFromRoot(RootDir);
+                if (package.IsValid)
                 {
-                    package.Name = package.Pom.Name;
-                    package.Group = package.Pom.Group;
-                    package.Version = null;
-                    package.Branch = string.Empty;
-                    package.Platform = string.Empty;
-
                     // Check directory structure
                     foreach (Attribute xa in package.Pom.DirectoryStructure)
                     {

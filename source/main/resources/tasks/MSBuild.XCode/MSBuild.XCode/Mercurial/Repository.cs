@@ -66,7 +66,6 @@ namespace Mercurial
             {
                 bool ok = Directory.Exists(_Path + "\\.hg");
                 ok = ok && Directory.Exists(_Path + "\\.hg\\store");
-                ok = ok && File.Exists(_Path + "\\.hg\\branch");
                 return ok;
             }
         }

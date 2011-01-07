@@ -6,11 +6,11 @@ using System.Linq;
 using System.Text;
 using MSBuild.XCode.Helpers;
 
-namespace MsDev2010.Cs.XCode
+namespace MSBuild.XCode
 {
     /// <summary>
     /// </summary>
-    public class Project
+    public class CsProject
     {
         private bool mAllowRemoval;
         private XmlDocument mXmlDocMain;
@@ -30,12 +30,12 @@ namespace MsDev2010.Cs.XCode
             return copy;
         }
 
-        public Project()
+        public CsProject()
         {
             mXmlDocMain = new XmlDocument();
         }
 
-        public Project(XmlNodeList nodes)
+        public CsProject(XmlNodeList nodes)
         {
             mXmlDocMain = new XmlDocument();
             foreach(XmlNode node in nodes)
@@ -553,7 +553,7 @@ namespace MsDev2010.Cs.XCode
             return true;
         }
 
-        public bool Merge(Project project)
+        public bool Merge(CsProject project)
         {
             Merge(mXmlDocMain, project.mXmlDocMain,
                 delegate(XmlNode node)

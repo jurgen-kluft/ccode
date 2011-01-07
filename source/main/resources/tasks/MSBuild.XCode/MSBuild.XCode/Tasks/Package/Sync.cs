@@ -35,39 +35,25 @@ namespace MSBuild.XCode
             Global.RemoteRepoDir = RemoteRepoDir;
             Global.Initialize();
 
-            Package package = new Package();
-            package.IsRoot = true;
-            package.RootDir = RootDir;
-            if (package.LoadFinalPom())
+            PackageInstance package = PackageInstance.LoadFromRoot(RootDir);
+            if (package.IsValid)
             {
-                package.Name = package.Pom.Name;
-                package.Group = new Group(package.Pom.Group);
-                package.Version = package.Pom.Versions.GetForPlatform(Platform);
-                package.Platform = Platform;
+                package.SetPlatform(Platform);
+                PackageDependencies dependencies = new PackageDependencies(package);
+
+                if (!dependencies.BuildForPlatform(Platform))
                 {
-                    if (package.BuildDependencies(Platform))
-                    {
-                        if (package.SyncDependencies(Platform))
-                        {
-                            return true;
-                        }
-                        else
-                        {
-                            Loggy.Add(String.Format("Error: Failed to sync dependencies in Package::Sync"));
-                        }
-                    }
-                    else
-                    {
-                        Loggy.Add(String.Format("Error: Failed to build dependencies in Package::Sync"));
-                    }
+                    Loggy.Add(String.Format("Error: Failed to build dependencies in Package::Sync"));
+                    return false;
                 }
             }
             else
             {
                 Loggy.Add(String.Format("Error: Failed to load 'pom.xml' in Package::Sync"));
+                return false;
             }
 
-            return false;
+            return true;
         }
     }
 }

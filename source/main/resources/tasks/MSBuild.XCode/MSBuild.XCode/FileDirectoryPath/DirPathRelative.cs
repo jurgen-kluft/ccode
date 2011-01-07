@@ -2,18 +2,17 @@ using System;
 
 namespace FileDirectoryPath
 {
-    public sealed class DirectoryPathRelative : DirectoryPath
+    public sealed class DirPathRelative : DirPath
     {
-        public DirectoryPathRelative(string path)
+        public DirPathRelative(string path)
             : base(path, false)
         {
         }
 
-
         //
         //  Absolute/Relative path conversion
         //
-        public DirectoryPathAbsolute GetAbsolutePathFrom(DirectoryPathAbsolute path)
+        public DirPathAbsolute GetAbsolutePathFrom(DirPathAbsolute path)
         {
             if (path == null)
             {
@@ -23,10 +22,10 @@ namespace FileDirectoryPath
             {
                 throw new ArgumentException("Cannot compute an absolute path from an empty path.");
             }
-            return new DirectoryPathAbsolute(BasePath.GetAbsolutePathFrom(path, this));
+            return new DirPathAbsolute(BasePath.GetAbsolutePathFrom(path, this));
         }
 
-        public bool CanGetAbsolutePathFrom(DirectoryPathAbsolute path)
+        public bool CanGetAbsolutePathFrom(DirPathAbsolute path)
         {
             try
             {
@@ -37,20 +36,15 @@ namespace FileDirectoryPath
             return false;
         }
 
-
-
-
         //
         //  Path Browsing facilities
         //
-
-
-        public new DirectoryPathRelative ParentDirectoryPath
+        public new DirPathRelative ParentDirectoryPath
         {
             get
             {
                 string parentPath = InternalStringHelper.GetParentDirectory(this.Path);
-                return new DirectoryPathRelative(parentPath);
+                return new DirPathRelative(parentPath);
             }
         }
 
@@ -62,7 +56,7 @@ namespace FileDirectoryPath
             return this.ParentDirectoryPath.GetChildFileWithName(fileName);
         }
 
-        public DirectoryPathRelative GetBrotherDirectoryWithName(string fileName)
+        public DirPathRelative GetBrotherDirectoryWithName(string fileName)
         {
             if (fileName == null) { throw new ArgumentNullException("filename"); }
             if (fileName.Length == 0) { throw new ArgumentException("Can't get brother of an empty file", "filename"); }
@@ -78,21 +72,21 @@ namespace FileDirectoryPath
             return new FilePathRelative(this.Path + System.IO.Path.DirectorySeparatorChar + fileName);
         }
 
-        public DirectoryPathRelative GetChildDirectoryWithName(string directoryName)
+        public DirPathRelative GetChildDirectoryWithName(string directoryName)
         {
             if (directoryName == null) { throw new ArgumentNullException("directoryName"); }
             if (directoryName.Length == 0) { throw new ArgumentException("Empty directoryName not accepted", "directoryName"); }
             if (this.IsEmpty) { throw new InvalidOperationException("Can't get a child directory name from an empty path"); }
-            return new DirectoryPathRelative(this.Path + System.IO.Path.DirectorySeparatorChar + directoryName);
+            return new DirPathRelative(this.Path + System.IO.Path.DirectorySeparatorChar + directoryName);
         }
 
 
         //
         //  Empty DirectoryPathRelative
         //
-        private DirectoryPathRelative() : base() { }
-        private static DirectoryPathRelative s_Empty = new DirectoryPathRelative();
-        public static DirectoryPathRelative Empty { get { return s_Empty; } }
+        private DirPathRelative() : base() { }
+        private static DirPathRelative s_Empty = new DirPathRelative();
+        public static DirPathRelative Empty { get { return s_Empty; } }
 
         public override bool IsAbsolutePath { get { return false; } }
         public override bool IsRelativePath { get { return true; } }

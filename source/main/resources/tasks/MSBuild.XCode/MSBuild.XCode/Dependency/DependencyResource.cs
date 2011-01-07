@@ -6,22 +6,27 @@ using MSBuild.XCode.Helpers;
 
 namespace MSBuild.XCode
 {
-    public class Dependency
+    public class DependencyResource
     {
         private Dictionary<string, string> mPlatformBranch;
         private Dictionary<string, VersionRange> mPlatformBranchVersions;
 
-        public Dependency()
+        private string mName;
+        private Group mGroup;
+        private string mType;
+
+        public DependencyResource()
         {
-            Group = new Group("com.virtuos.tnt");
-            Type = "Package";
+            mName = "?";
+            mGroup = new Group("com.virtuos.tnt");
+            mType = "Package";
             mPlatformBranch = new Dictionary<string, string>();
             mPlatformBranchVersions = new Dictionary<string, VersionRange>();
         }
 
-        public string Name { get; set; }
-        public Group Group { get; set; }
-        public string Type { get; set; }
+        public string Name { get { return mName; } }
+        public Group Group { get { return mGroup; } }
+        public string Type { get { return mType; } }
 
         public void Info()
         {
@@ -40,7 +45,7 @@ namespace MSBuild.XCode
             }
         }
 
-        private string GetBranch(string platform, string defaultBranch)
+        public string GetBranch(string platform, string defaultBranch)
         {
             string branch;
             if (!mPlatformBranch.TryGetValue(platform.ToLower(), out branch))
@@ -58,9 +63,9 @@ namespace MSBuild.XCode
             return GetBranch(platform, "default");
         }
 
-        private delegate VersionRange ReturnVersionRangeDelegate();
+        public delegate VersionRange ReturnVersionRangeDelegate();
 
-        private VersionRange GetVersionRange(string platform, ReturnVersionRangeDelegate returnDefaultVersionRangeDelegate)
+        public VersionRange GetVersionRange(string platform, ReturnVersionRangeDelegate returnDefaultVersionRangeDelegate)
         {
             string branch = GetBranch(platform);
             VersionRange versionRange;
@@ -86,7 +91,7 @@ namespace MSBuild.XCode
             return GetVersionRange(platform, delegate() { return new VersionRange("[1.0,)"); } );
         }
 
-        public bool IsEqual(Dependency dependency)
+        public bool IsEqual(DependencyResource dependency)
         {
             if (String.Compare(Name, dependency.Name, true)==0)
             {
@@ -128,41 +133,11 @@ namespace MSBuild.XCode
             return false;
         }
 
-        // Merge with same package dependency
-        // Return True when merge resulted in an updated dependency (A change in XVersionRange)
-        public bool Merge(Dependency dependency)
-        {
-            bool modified = false;
-            if (String.Compare(Name, dependency.Name, true) != 0)
-                return modified;
-
-            // Merge the type
-            if (String.Compare(Type, dependency.Type, true) != 0)
-            {
-                // Currently there are only 2 types, Package and Source
-                if (String.Compare(Type, "Package", true) != 0)
-                {
-                    Type = "Package";
-                    modified = true;
-                }
-            }
-
-            // Merge the version range
-            foreach (KeyValuePair<string,string> Platform_Branch in mPlatformBranch)
-            {
-                VersionRange thisRange = GetVersionRange(Platform_Branch.Key);
-                VersionRange thatRange = dependency.GetVersionRange(Platform_Branch.Key);
-                if (thisRange.Merge(thatRange))
-                    modified = true;
-            }
-            return modified;
-        }
-
         public void Read(XmlNode node)
         {
             if (node.Name == "Dependency")
             {
-                Name = Attribute.Get("Package", node, "Unknown");
+                mName = Attribute.Get("Package", node, "Unknown");
 
                 if (node.HasChildNodes)
                 {
@@ -173,7 +148,7 @@ namespace MSBuild.XCode
 
                         if (child.Name == "Group")
                         {
-                            Group.Full = Element.sGetXmlNodeValueAsText(child);
+                            mGroup.Full = Element.GetText(child);
                         }
                         else if (child.Name == "Version")
                         {
@@ -181,7 +156,8 @@ namespace MSBuild.XCode
                             string branch = Attribute.Get("Branch", child, "default").ToLower();
                             if (branch == "*")
                                 branch = "default";
-                            VersionRange versionRange = new VersionRange(Element.sGetXmlNodeValueAsText(child));
+
+                            VersionRange versionRange = new VersionRange(Element.GetText(child));
 
                             if (mPlatformBranch.ContainsKey(platform))
                                 mPlatformBranch.Remove(platform);
@@ -194,7 +170,7 @@ namespace MSBuild.XCode
                         }
                         else if (child.Name == "Type")
                         {
-                            Type = Element.sGetXmlNodeValueAsText(child);
+                            mType = Element.GetText(child);
                         }
                     }
                 }

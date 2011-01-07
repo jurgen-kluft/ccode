@@ -104,16 +104,16 @@ namespace FileDirectoryPath
         //
         // ParentDirectoryPath
         //
-        public DirectoryPath ParentDirectoryPath
+        public DirPath ParentDirectoryPath
         {
             get
             {
                 string parentPath = InternalStringHelper.GetParentDirectory(this.Path);
                 if (this.IsRelativePath)
                 {
-                    return new DirectoryPathRelative(parentPath);
+                    return new DirPathRelative(parentPath);
                 }
-                return new DirectoryPathAbsolute(parentPath);
+                return new DirPathAbsolute(parentPath);
             }
         }
 
@@ -202,7 +202,7 @@ namespace FileDirectoryPath
         //
         //  Relative/absolute
         //
-        protected static string GetPathRelative(DirectoryPathAbsolute pathFrom, BasePath pathTo)
+        protected static string GetPathRelative(DirPathAbsolute pathFrom, BasePath pathTo)
         {
             Debug.Assert(pathTo.IsAbsolutePath);
             /*if (pathTo.PathMode == PathMode.Relative) {
@@ -219,7 +219,7 @@ namespace FileDirectoryPath
             return InternalStringHelper.GetPathRelativeTo(pathFrom.Path, pathTo.Path);
         }
 
-        protected static string GetAbsolutePathFrom(DirectoryPathAbsolute pathFrom, BasePath pathTo)
+        protected static string GetAbsolutePathFrom(DirPathAbsolute pathFrom, BasePath pathTo)
         {
             Debug.Assert(pathTo.IsRelativePath);
             /*if (pathTo.PathMode == PathMode.Absolute) {
@@ -230,6 +230,11 @@ namespace FileDirectoryPath
             // Only work with Directory 
             if (pathTo.IsFilePath) { pathTo = pathTo.ParentDirectoryPath; }
             return InternalStringHelper.GetAbsolutePath(pathFrom.Path, pathTo.Path);
+        }
+
+        public override string ToString()
+        {
+            return m_Path;
         }
     }
 }

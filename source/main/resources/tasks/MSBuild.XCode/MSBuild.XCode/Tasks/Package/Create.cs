@@ -61,37 +61,42 @@ namespace MSBuild.XCode
                 u.AuthorName(hg_changeset.AuthorName);
                 u.AuthorEmail(hg_changeset.AuthorEmailAddress);
             }));
-            using (FileStream fs = new FileStream(Global.RootDir + "vcs.info", FileMode.Create))
+
+            PackageInstance package = PackageInstance.LoadFromRoot(RootDir);
+            // Write a dependency.info file containing dependency package info, this will be included in the package
+            if (package.IsValid)
             {
-                using (StreamWriter sw = new StreamWriter(fs))
+                string buildURL = Global.RootDir + "target\\" + package.Name + "\\build\\";
+                if (!Directory.Exists(buildURL))
+                    Directory.CreateDirectory(buildURL);
+
+                using (FileStream fs = new FileStream(buildURL + "vcs.info", FileMode.Create))
                 {
-                    sw.Write(x.ToString(true));
-                    sw.Close();
-                    fs.Close();
+                    using (StreamWriter sw = new StreamWriter(fs))
+                    {
+                        sw.Write(x.ToString(true));
+                        sw.Close();
+                        fs.Close();
+                    }
                 }
-            }
 
-            Package package = new Package();
-            package.IsRoot = true;
-            package.RootDir = RootDir;
-            package.LoadPom();
+                package.Branch = hg_changeset.Branch;
+                package.Platform = Platform;
 
-            package.Name = package.Pom.Name;
-            package.Group = package.Pom.Group;
-            package.Version = package.Pom.Versions.GetForPlatformWithBranch(Platform, hg_changeset.Branch);
-            package.Branch = hg_changeset.Branch;
-            package.Platform = Platform;
+                PackageRepositoryLocal localRepo = new PackageRepositoryLocal(RootDir);
+                localRepo.Update(package);
 
-            string filename;
-            if (package.Create(out filename))
-            {
-                Filename = filename;
-                success = true;
-            }
-            else
-            {
-                Filename = string.Empty;
-                success = false;
+                if (localRepo.Add(package, ELocation.Root))
+                {
+                    IPackageFilename filename = package.LocalFilename;
+                    Filename = filename.ToString();
+                    success = true;
+                }
+                else
+                {
+                    Filename = string.Empty;
+                    success = false;
+                }
             }
 
             return success;

@@ -1,4 +1,5 @@
 ﻿using System;
+using System.IO;
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
@@ -9,95 +10,208 @@ namespace MSBuild.XCode
     public class DependencyTree
     {
         private List<DependencyTreeNode> mRootNodes;
-        private List<DependencyTreeNode> mAllNodes;
+        private Dictionary<string, DependencyTreeNode> mAllNodesMap;
+        
+        private Queue<DependencyTreeNode> mCompileQueue;
+        private int mCompileIteration;
 
-        public Pom Package { get; set; }
-        public string Platform { get; set; }
-        public List<Dependency> Dependencies { get; set; }
+        private PackageInstance mPackage;
+        private string mPlatform;
+        private List<DependencyInstance> mDependencies;
+        private IPackageRepository mTargetRepo;
 
-        public List<Package> GetAllDependencyPackages()
+        public PackageInstance Package { get { return mPackage; } }
+        public string Platform { get { return mPlatform;  } }
+        public List<DependencyInstance> Dependencies { get { return mDependencies; } }
+
+        public DependencyTree(PackageInstance package, string platform, List<DependencyInstance> dependencies)
         {
-            List<Package> allDependencyPackages = new List<Package>();
-            foreach (DependencyTreeNode node in mAllNodes)
-            {
+            mPackage = package;
+            mPlatform = platform;
+            mDependencies = dependencies;
+            mRootNodes = new List<DependencyTreeNode>();
+            mAllNodesMap = new Dictionary<string, DependencyTreeNode>();
+            mCompileQueue = new Queue<DependencyTreeNode>();
+            mCompileIteration = 0;
+            mTargetRepo = new PackageRepositoryTarget(package.RootURL + "target\\");
+        }
+
+        public List<PackageInstance> GetAllDependencyPackages()
+        {
+            List<PackageInstance> allDependencyPackages = new List<PackageInstance>();
+            foreach (DependencyTreeNode node in mAllNodesMap.Values)
                 allDependencyPackages.Add(node.Package);
-            }
             return allDependencyPackages;
         }
 
-        public bool Build()
+        public bool HasNode(string name)
         {
-            Queue<DependencyTreeNode> dependencyQueue = new Queue<DependencyTreeNode>();
-            Dictionary<string, DependencyTreeNode> dependencyFlatMap = new Dictionary<string, DependencyTreeNode>();
-            foreach (Dependency d in Dependencies)
-            {
-                DependencyTreeNode depNode = new DependencyTreeNode(Platform, d, 1);
-                dependencyQueue.Enqueue(depNode);
-                dependencyFlatMap.Add(depNode.Name, depNode);
-            }
-
-            // These are the root nodes of the tree
-            mRootNodes = new List<DependencyTreeNode>();
-            foreach (DependencyTreeNode node in dependencyFlatMap.Values)
-                mRootNodes.Add(node);
-
-            // Breadth-First 
-            while (dependencyQueue.Count > 0)
-            {
-                DependencyTreeNode node = dependencyQueue.Dequeue();
-                List<DependencyTreeNode> newDepNodes = node.Build(dependencyFlatMap);
-                if (newDepNodes != null)
-                {
-                    foreach (DependencyTreeNode n in newDepNodes)
-                        dependencyQueue.Enqueue(n);
-                }
-                else
-                {
-                    // Error building dependencies !!
-                }
-            }
-
-            // Store all dependency nodes in a list
-            mAllNodes = new List<DependencyTreeNode>();
-            foreach (DependencyTreeNode node in dependencyFlatMap.Values)
-                mAllNodes.Add(node);
-
-            return true;
+            return mAllNodesMap.ContainsKey(name);
         }
 
-        // Synchronize dependencies
-        public bool Sync()
+        public DependencyTreeNode FindNode(string name)
         {
-            bool result = true;
-
-            // Checkout all dependencies
-            foreach (DependencyTreeNode depNode in mAllNodes)
+            DependencyTreeNode depNode;
+            if (!mAllNodesMap.TryGetValue(name, out depNode))
             {
-                if (!Global.CacheRepo.Update(depNode.Package))
+                return null;
+            }
+            return depNode;
+        }
+
+        public bool AddNode(DependencyTreeNode node)
+        {
+            if (!mAllNodesMap.ContainsKey(node.Name))
+            {
+                mAllNodesMap.Add(node.Name, node);
+                return true;
+            }
+            return false;
+        }
+
+        public bool EnqueueForCompile(DependencyTreeNode node)
+        {
+            if (node.Iteration != mCompileIteration)
+            {
+                mCompileQueue.Enqueue(node);
+                return true;
+            }
+            return false;
+        }
+
+        // Incremental compilation of the dependency tree
+        // Return value:
+        // 1 = A package in the tree needs to be updated (it is not available in the repo)
+        // 0 = The tree has been compiled
+        // -1 = A package failed to load
+        public int Compile()
+        {
+            mCompileQueue.Clear();
+            mCompileIteration++;
+
+            // Process all nodes again
+            foreach (DependencyInstance d in Dependencies)
+            {
+                if (!mAllNodesMap.ContainsKey(d.Name))
                 {
-                    // Failed to checkout!
-                    result = false;
-                    break;
+                    DependencyTreeNode depNode = new DependencyTreeNode(Platform, d, 1);
+                    EnqueueForCompile(depNode);
+                    mAllNodesMap.Add(depNode.Name, depNode);
+                    mRootNodes.Add(depNode);
                 }
                 else
                 {
-                    if (!depNode.Package.VerifyBeforeExtract())
-                    {
-                        result = false;
-                        break;
-                    }
+                    DependencyTreeNode depNode;
+                    mAllNodesMap.TryGetValue(d.Name, out depNode);
+                    EnqueueForCompile(depNode);
                 }
+            }
+
+            // Breadth-First 
+            int result = 0;
+            while (mCompileQueue.Count > 0 && result == 0)
+            {
+                DependencyTreeNode node = mCompileQueue.Dequeue();
+                node.Iteration = mCompileIteration;
+                result = node.Compile(this);
             }
 
             return result;
         }
 
+        public int Update(DependencyTreeNode node)
+        {
+            int result = 0;
+
+            mTargetRepo.Update(node.Package);
+
+            // Try to get the package from the Cache to Target
+            if (!node.Package.RemoteExists)
+                Global.RemoteRepo.Update(node.Package, node.Dependency.VersionRange);
+            if (!node.Package.CacheExists)
+                Global.CacheRepo.Update(node.Package, node.Dependency.VersionRange);
+
+            // Do a signature verification
+            if (node.Package.TargetExists && node.Package.CacheExists)
+            {
+                if (node.Package.RemoteExists)
+                {
+                    if (node.Package.RemoteSignature == node.Package.CacheSignature && node.Package.CacheSignature == node.Package.TargetSignature)
+                        return 0;
+                }
+                else
+                {
+                    if (node.Package.CacheSignature == node.Package.TargetSignature)
+                        return 0;
+                }
+            }
+
+            // Check if the Remote has a better version
+            if (node.Package.RemoteExists)
+            {
+                if (!node.Package.CacheExists || (node.Package.RemoteVersion > node.Package.CacheVersion))
+                {
+                    // Update from remote to cache
+                    if (!Global.CacheRepo.Add(node.Package, ELocation.Remote))
+                    {
+                        // Failed to get package from Remote to Cache
+                        result = -1;
+                    }
+                }
+            }
+
+            if (node.Package.CacheExists)
+            {
+                if (!node.Package.TargetExists || (node.Package.CacheVersion > node.Package.TargetVersion))
+                {
+                    if (mTargetRepo.Add(node.Package, ELocation.Cache))
+                    {
+                        result = 1;
+                    }
+                    else
+                    {
+                        // Failed to get package from Cache to Target
+                        result = -1;
+                    }
+                }
+            }
+            else
+            {
+                // Failed to get package from Remote to Cache
+                result = -1;
+            }
+
+            return result;
+        }
+
+        public void SaveInfo(FileDirectoryPath.FilePathAbsolute filepath)
+        {
+            FileStream stream = new FileStream(filepath.ToString(), FileMode.Create, FileAccess.Write);
+            StreamWriter writer = new StreamWriter(stream);
+
+            HashSet<string> register = new HashSet<string>();
+
+            ComparableVersion version = Package.Pom.Versions.GetForPlatform(Platform);
+            string versionStr = version != null ? version.ToString() : "?";
+            foreach (DependencyTreeNode node in mRootNodes)
+                node.SaveInfo(writer, register);
+        }
+
+        public void Info()
+        {
+            foreach (DependencyTreeNode node in mAllNodesMap.Values)
+            {
+                Loggy.Add(String.Format("Name                       : {0}", node.Package.Name));
+                Loggy.Add(String.Format("Version                    : {0}", node.Package.TargetVersion));
+            }
+        }
+
         public void Print()
         {
             string indent = "+";
-            ComparableVersion version = Package.Versions.GetForPlatform(Platform);
+            ComparableVersion version = Package.Pom.Versions.GetForPlatform(Platform);
             string versionStr = version != null ? version.ToString() : "?";
-            Loggy.Add(String.Format("{0} {1}, version={2}, type={3}", indent, Package.Name, versionStr, Package.Type));
+            Loggy.Add(String.Format("{0} {1}, version={2}, type={3}", indent, Package.Name, versionStr, "Root"));
             foreach (DependencyTreeNode node in mRootNodes)
                 node.Print(indent);
         }

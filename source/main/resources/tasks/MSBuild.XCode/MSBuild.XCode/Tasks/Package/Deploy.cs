@@ -48,17 +48,17 @@ namespace MSBuild.XCode
                 Global.Initialize();
             }
 
-            Package package = new Package();
-            package.IsRoot = true;
-            package.RootDir = RootDir;
-            package.LoadPom();
-            package.SetPropertiesFromFilename(Filename);
-            package.Name = package.Pom.Name;
-            package.Group = package.Pom.Group;
-            package.LocalURL = RootDir + "target\\" + Filename;
-
-            // - Commit version to local package repository
-            bool ok = package.Deploy();
+            bool ok = false;
+            PackageInstance package = PackageInstance.LoadFromRoot(RootDir);
+            if (package.IsValid)
+            {
+                PackageRepositoryLocal localPackageRepo = new PackageRepositoryLocal(RootDir);
+                if (localPackageRepo.Update(package))
+                {
+                    // - Commit version to remote package repository from local
+                    Global.RemoteRepo.Add(package, localPackageRepo.Location);
+                }
+            }
             return ok;
         }
     }
