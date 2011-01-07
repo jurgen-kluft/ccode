@@ -352,6 +352,9 @@ namespace MSBuild.XCode
         
         public bool Save(string filename)
         {
+            if (!Directory.Exists(Path.GetDirectoryName(filename)))
+                Directory.CreateDirectory(Path.GetDirectoryName(filename));
+
             mXmlDocMain.Save(filename);
             return true;
         }

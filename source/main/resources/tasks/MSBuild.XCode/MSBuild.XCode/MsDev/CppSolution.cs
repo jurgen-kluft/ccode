@@ -231,6 +231,8 @@ namespace MSBuild.XCode
             mRootDir = Path.GetDirectoryName(_SolutionFile);
             if (!mRootDir.EndsWith("\\"))
                 mRootDir = mRootDir + "\\";
+            if (!Directory.Exists(mRootDir))
+                return -1;
 
             m_ProjectGuids = new Dictionary<string, Guid>();
             foreach (string projectFilename in _ProjectFiles)
