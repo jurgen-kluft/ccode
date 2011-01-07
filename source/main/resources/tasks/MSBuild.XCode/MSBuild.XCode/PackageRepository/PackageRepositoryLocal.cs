@@ -159,6 +159,11 @@ namespace MSBuild.XCode
                 Loggy.Add(String.Format("Error: PackageRepositoryLocal::Add, failed to save sfv file!"));
                 return false;
             }
+            if (!sfvFile.Save(buildURL, package.Name+".source"))
+            {
+                Loggy.Add(String.Format("Error: PackageRepositoryLocal::Add, failed to save sfv source file!"));
+                return false;
+            }
 
             // Add Sfv file to the package
             if (File.Exists(buildURL + sfv_filename))
