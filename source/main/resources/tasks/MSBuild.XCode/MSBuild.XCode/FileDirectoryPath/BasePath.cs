@@ -64,8 +64,6 @@ namespace FileDirectoryPath
         private string m_Path;
         public string Path { get { return m_Path; } }
 
-
-
         public abstract bool IsAbsolutePath { get; }
         public abstract bool IsRelativePath { get; }
         public abstract bool IsDirectoryPath { get; }

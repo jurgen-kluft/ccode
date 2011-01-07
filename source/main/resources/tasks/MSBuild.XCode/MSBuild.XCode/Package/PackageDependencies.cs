@@ -100,5 +100,11 @@ namespace MSBuild.XCode
                 PrintForPlatform(platform);
             Loggy.Indent -= 1;
         }
+
+        public void SaveInfo(string platform, FileDirectoryPath.FilePathAbsolute filepath)
+        {
+            DependencyTree tree = GetDependencyTree(platform);
+            tree.SaveInfo(filepath);
+        }
     }
 }

@@ -186,6 +186,10 @@ namespace MSBuild.XCode
 
         public void SaveInfo(FileDirectoryPath.FilePathAbsolute filepath)
         {
+            Loggy.Add(filepath.ParentDirectoryPath.ToString());
+            if (!Directory.Exists(filepath.ParentDirectoryPath.ToString()))
+                Directory.CreateDirectory(filepath.ParentDirectoryPath.ToString());
+
             FileStream stream = new FileStream(filepath.ToString(), FileMode.Create, FileAccess.Write);
             StreamWriter writer = new StreamWriter(stream);
 
@@ -193,8 +197,12 @@ namespace MSBuild.XCode
 
             ComparableVersion version = Package.Pom.Versions.GetForPlatform(Platform);
             string versionStr = version != null ? version.ToString() : "?";
+            writer.WriteLine(String.Format("{0}, version={1}, platform={2}", Package.Name, versionStr, Platform));
             foreach (DependencyTreeNode node in mRootNodes)
                 node.SaveInfo(writer, register);
+
+            writer.Close();
+            stream.Close();
         }
 
         public void Info()

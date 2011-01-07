@@ -15,9 +15,10 @@ namespace MSBuild.XCode
     /// </summary>
     public class PackageSync : Task
     {
+        [Required]
         public string RootDir { get; set; }
+        [Required]
         public string Platform { get; set; }
-
         [Required]
         public string TemplateDir { get; set; }
         [Required]
@@ -46,6 +47,7 @@ namespace MSBuild.XCode
                     Loggy.Add(String.Format("Error: Failed to build dependencies in Package::Sync"));
                     return false;
                 }
+                dependencies.SaveInfo(Platform, new FileDirectoryPath.FilePathAbsolute(RootDir + "\\target\\" + package.Name + "\\build\\dependencies.info"));
             }
             else
             {
