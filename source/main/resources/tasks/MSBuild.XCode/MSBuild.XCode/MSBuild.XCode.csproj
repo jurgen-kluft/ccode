@@ -39,7 +39,7 @@
     <DebugSymbols>true</DebugSymbols>
     <DebugType>full</DebugType>
     <Optimize>false</Optimize>
-    <OutputPath>bin\Debug\</OutputPath>
+    <OutputPath>%24%28SolutionDir%29target\xcode\Debug\</OutputPath>
     <DefineConstants>DEBUG;TRACE</DefineConstants>
     <ErrorReport>prompt</ErrorReport>
     <WarningLevel>4</WarningLevel>
@@ -48,7 +48,7 @@
   <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'Release|AnyCPU' ">
     <DebugType>pdbonly</DebugType>
     <Optimize>true</Optimize>
-    <OutputPath>bin\Release\</OutputPath>
+    <OutputPath>%24%28SolutionDir%29target\xcode\Release\</OutputPath>
     <DefineConstants>DEBUG;TRACE</DefineConstants>
     <ErrorReport>prompt</ErrorReport>
     <WarningLevel>4</WarningLevel>
@@ -189,18 +189,12 @@
     <Compile Include="Pom\Element.cs">
       <SubType>Code</SubType>
     </Compile>
-    <Compile Include="Tasks\CodeGen\GenerateProject.cs">
-      <SubType>Code</SubType>
-    </Compile>
-    <Compile Include="Tasks\CodeGen\GenerateSolution.cs">
-      <SubType>Code</SubType>
-    </Compile>
     <Compile Include="PackageRepository\PackageRepositoryLayoutDefault.cs" />
     <Compile Include="PackageRepository\IPackageRepositoryLayout.cs" />
     <Compile Include="PackageRepository\IPackageRepository.cs" />
     <Compile Include="Package\PackageResource.cs" />
     <Compile Include="Package\Global.cs" />
-    <Compile Include="Tasks\Package\Configs.cs" />
+    <Compile Include="Tasks\Configs.cs" />
     <Compile Include="Version\ComparableVersion.Parser.cs" />
     <Compile Include="Package\IPackageFilename.cs" />
     <Compile Include="Dependency\DependencyTreeNode.cs" />
@@ -218,13 +212,13 @@
     <Compile Include="Helpers\Math.cs" />
     <Compile Include="Helpers\StringScan.cs" />
     <Compile Include="Helpers\StringTools.cs" />
-    <Compile Include="Tasks\Package\Construct.cs" />
-    <Compile Include="Tasks\Package\Info.cs" />
-    <Compile Include="Tasks\Package\Verify.cs" />
-    <Compile Include="Tasks\Package\Deploy.cs" />
-    <Compile Include="Tasks\Package\Install.cs" />
-    <Compile Include="Tasks\Package\Create.cs" />
-    <Compile Include="Tasks\Package\Sync.cs" />
+    <Compile Include="Tasks\Construct.cs" />
+    <Compile Include="Tasks\Info.cs" />
+    <Compile Include="Tasks\Verify.cs" />
+    <Compile Include="Tasks\Deploy.cs" />
+    <Compile Include="Tasks\Install.cs" />
+    <Compile Include="Tasks\Create.cs" />
+    <Compile Include="Tasks\Sync.cs" />
     <Compile Include="Version\ComparableVersion.cs" />
   </ItemGroup>
   <ItemGroup>

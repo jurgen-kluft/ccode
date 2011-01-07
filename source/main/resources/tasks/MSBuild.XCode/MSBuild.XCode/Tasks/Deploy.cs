@@ -56,7 +56,7 @@ namespace MSBuild.XCode
                 if (localPackageRepo.Update(package))
                 {
                     // - Commit version to remote package repository from local
-                    Global.RemoteRepo.Add(package, localPackageRepo.Location);
+                    ok = Global.RemoteRepo.Add(package, localPackageRepo.Location);
                 }
             }
             return ok;

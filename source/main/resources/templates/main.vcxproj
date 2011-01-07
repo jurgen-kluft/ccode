@@ -93,38 +93,38 @@
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='DevFinal|Win32'">
     <LinkIncremental>false</LinkIncremental>
-    <OutDir>$(SolutionDir)target\$(ProjectName)\outdir\$(ProjectName)_$(Configuration)_$(PlatformName)\</OutDir>
-    <IntDir>$(SolutionDir)target\$(ProjectName)\outdir\$(ProjectName)_$(Configuration)_$(PlatformName)\</IntDir>
+    <OutDir>$(SolutionDir)target\$(SolutionName)\outdir\$(ProjectName)_$(Configuration)_$(PlatformName)\</OutDir>
+    <IntDir>$(SolutionDir)target\$(SolutionName)\outdir\$(ProjectName)_$(Configuration)_$(PlatformName)\</IntDir>
     <ExecutablePath>C:\Program Files\Microsoft DirectX SDK (August 2009)\Utilities\Bin\x86;$(VCInstallDir)bin;$(WindowsSdkDir)bin\NETFX 4.0 Tools;$(WindowsSdkDir)bin;$(VSInstallDir)Common7\Tools\bin;$(VSInstallDir)Common7\tools;$(VSInstallDir)Common7\ide;$(ProgramFiles)\HTML Help Workshop;$(FrameworkSDKDir)\bin;$(MSBuildToolsPath32);$(VSInstallDir);$(SystemRoot)\SysWow64</ExecutablePath>
     <TargetName>$(ProjectName)_$(Configuration)_$(PlatformName)</TargetName>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='DevRelease|Win32'">
     <LinkIncremental>false</LinkIncremental>
-    <OutDir>$(SolutionDir)target\$(ProjectName)\outdir\$(ProjectName)_$(Configuration)_$(PlatformName)\</OutDir>
-    <IntDir>$(SolutionDir)target\$(ProjectName)\outdir\$(ProjectName)_$(Configuration)_$(PlatformName)\</IntDir>
+    <OutDir>$(SolutionDir)target\$(SolutionName)\outdir\$(ProjectName)_$(Configuration)_$(PlatformName)\</OutDir>
+    <IntDir>$(SolutionDir)target\$(SolutionName)\outdir\$(ProjectName)_$(Configuration)_$(PlatformName)\</IntDir>
     <ExecutablePath>C:\Program Files\Microsoft DirectX SDK (August 2009)\Utilities\Bin\x86;$(VCInstallDir)bin;$(WindowsSdkDir)bin\NETFX 4.0 Tools;$(WindowsSdkDir)bin;$(VSInstallDir)Common7\Tools\bin;$(VSInstallDir)Common7\tools;$(VSInstallDir)Common7\ide;$(ProgramFiles)\HTML Help Workshop;$(FrameworkSDKDir)\bin;$(MSBuildToolsPath32);$(VSInstallDir);$(SystemRoot)\SysWow64</ExecutablePath>
     <TargetName>$(ProjectName)_$(Configuration)_$(PlatformName)</TargetName>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='DevDebug|PS3'">
     <LinkIncremental>true</LinkIncremental>
-    <OutDir>$(SolutionDir)target\$(ProjectName)\outdir\$(ProjectName)_$(Configuration)_$(PlatformName)\</OutDir>
-    <IntDir>$(SolutionDir)target\$(ProjectName)\outdir\$(ProjectName)_$(Configuration)_$(PlatformName)\</IntDir>
+    <OutDir>$(SolutionDir)target\$(SolutionName)\outdir\$(ProjectName)_$(Configuration)_$(PlatformName)\</OutDir>
+    <IntDir>$(SolutionDir)target\$(SolutionName)\outdir\$(ProjectName)_$(Configuration)_$(PlatformName)\</IntDir>
     <ExecutablePath>C:\Program Files\Microsoft DirectX SDK (August 2009)\Utilities\Bin\x86;$(VCInstallDir)bin;$(WindowsSdkDir)bin\NETFX 4.0 Tools;$(WindowsSdkDir)bin;$(VSInstallDir)Common7\Tools\bin;$(VSInstallDir)Common7\tools;$(VSInstallDir)Common7\ide;$(ProgramFiles)\HTML Help Workshop;$(FrameworkSDKDir)\bin;$(MSBuildToolsPath32);$(VSInstallDir);$(SystemRoot)\SysWow64</ExecutablePath>
     <TargetName>$(ProjectName)_$(Configuration)_$(PlatformName)</TargetName>
     <ExtensionsToDeleteOnClean>*.obj%3b*.d%3b*.map%3b*.lst%3b*.pch%3b$(TargetPath)</ExtensionsToDeleteOnClean>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='DevFinal|PS3'">
     <LinkIncremental>false</LinkIncremental>
-    <OutDir>$(SolutionDir)target\$(ProjectName)\outdir\$(ProjectName)_$(Configuration)_$(PlatformName)\</OutDir>
-    <IntDir>$(SolutionDir)target\$(ProjectName)\outdir\$(ProjectName)_$(Configuration)_$(PlatformName)\</IntDir>
+    <OutDir>$(SolutionDir)target\$(SolutionName)\outdir\$(ProjectName)_$(Configuration)_$(PlatformName)\</OutDir>
+    <IntDir>$(SolutionDir)target\$(SolutionName)\outdir\$(ProjectName)_$(Configuration)_$(PlatformName)\</IntDir>
     <ExecutablePath>C:\Program Files\Microsoft DirectX SDK (August 2009)\Utilities\Bin\x86;$(VCInstallDir)bin;$(WindowsSdkDir)bin\NETFX 4.0 Tools;$(WindowsSdkDir)bin;$(VSInstallDir)Common7\Tools\bin;$(VSInstallDir)Common7\tools;$(VSInstallDir)Common7\ide;$(ProgramFiles)\HTML Help Workshop;$(FrameworkSDKDir)\bin;$(MSBuildToolsPath32);$(VSInstallDir);$(SystemRoot)\SysWow64</ExecutablePath>
     <TargetName>$(ProjectName)_$(Configuration)_$(PlatformName)</TargetName>
     <ExtensionsToDeleteOnClean>*.obj%3b*.d%3b*.map%3b*.lst%3b*.pch%3b$(TargetPath)</ExtensionsToDeleteOnClean>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='DevRelease|PS3'">
     <LinkIncremental>false</LinkIncremental>
-    <OutDir>$(SolutionDir)target\$(ProjectName)\outdir\$(ProjectName)_$(Configuration)_$(PlatformName)\</OutDir>
-    <IntDir>$(SolutionDir)target\$(ProjectName)\outdir\$(ProjectName)_$(Configuration)_$(PlatformName)\</IntDir>
+    <OutDir>$(SolutionDir)target\$(SolutionName)\outdir\$(ProjectName)_$(Configuration)_$(PlatformName)\</OutDir>
+    <IntDir>$(SolutionDir)target\$(SolutionName)\outdir\$(ProjectName)_$(Configuration)_$(PlatformName)\</IntDir>
     <ExecutablePath>C:\Program Files\Microsoft DirectX SDK (August 2009)\Utilities\Bin\x86;$(VCInstallDir)bin;$(WindowsSdkDir)bin\NETFX 4.0 Tools;$(WindowsSdkDir)bin;$(VSInstallDir)Common7\Tools\bin;$(VSInstallDir)Common7\tools;$(VSInstallDir)Common7\ide;$(ProgramFiles)\HTML Help Workshop;$(FrameworkSDKDir)\bin;$(MSBuildToolsPath32);$(VSInstallDir);$(SystemRoot)\SysWow64</ExecutablePath>
     <TargetName>$(ProjectName)_$(Configuration)_$(PlatformName)</TargetName>
     <ExtensionsToDeleteOnClean>*.obj%3b*.d%3b*.map%3b*.lst%3b*.pch%3b$(TargetPath)</ExtensionsToDeleteOnClean>
