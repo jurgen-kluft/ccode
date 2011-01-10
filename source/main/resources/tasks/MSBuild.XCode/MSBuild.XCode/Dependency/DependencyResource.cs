@@ -28,6 +28,20 @@ namespace MSBuild.XCode
         public Group Group { get { return mGroup; } }
         public string Type { get { return mType; } }
 
+        private string ReplaceVars(string str, Dictionary<string,string> vars)
+        {
+            foreach (KeyValuePair<string, string> var in vars)
+                str = str.Replace(String.Format("${{{0}}}", var.Key), var.Value);
+            return str;
+        }
+
+        public void ExpandVars(Dictionary<string, string> vars)
+        {
+            mName = ReplaceVars(mName, vars);
+            mGroup.ExpandVars(vars);
+            mType = ReplaceVars(mType, vars);
+        }
+
         public void Info()
         {
             Loggy.Add(String.Format("Dependency                 : {0}", Name));
