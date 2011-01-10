@@ -20,6 +20,7 @@ namespace MSBuild.XCode
         public List<Attribute> DirectoryStructure { get; set; }
 
         public Dictionary<string, List<KeyValuePair<string,string>>> Content { get; set; }
+        public Dictionary<string, string> Vars { get; set; }
         public List<DependencyResource> Dependencies { get; set; }
         public List<ProjectResource> Projects { get; set; }
         public List<string> Platforms { get; set; }
@@ -32,6 +33,7 @@ namespace MSBuild.XCode
 
             DirectoryStructure = new List<Attribute>();
             Content = new Dictionary<string, List<KeyValuePair<string, string>>>();
+            Vars = new Dictionary<string, string>();
             Dependencies = new List<DependencyResource>();
             Projects = new List<ProjectResource>();
             Platforms = new List<string>();
@@ -128,6 +130,13 @@ namespace MSBuild.XCode
             Read(xmlDoc.FirstChild);
         }
 
+        private string ReplaceVars(string str, Dictionary<string, string> vars)
+        {
+            foreach (KeyValuePair<string, string> var in vars)
+                str = str.Replace(String.Format("${{{0}}}", var.Key), var.Value);
+            return str;
+        }
+
         private void Read(XmlNode node)
         {
             if (node.Name == "Package")
@@ -155,6 +164,21 @@ namespace MSBuild.XCode
                         {
                             Versions.Read(child);
                         }
+                        else if (child.Name == "Variables")
+                        {
+                            if (child.HasChildNodes)
+                            {
+                                foreach (XmlNode item in child.ChildNodes)
+                                {
+                                    string text;
+                                    if (!Vars.TryGetValue(item.Name, out text))
+                                    {
+                                        text = Element.GetText(item);
+                                        Vars.Add(item.Name, text);
+                                    }
+                                }
+                            }
+                        }
                         else if (child.Name == "Content")
                         {
                             if (child.HasChildNodes)
@@ -165,10 +189,12 @@ namespace MSBuild.XCode
                                     string src = Attribute.Get("Src", item, null);
                                     if (src != null)
                                     {
+                                        ReplaceVars(src, Vars);
                                         string dst = Attribute.Get("Dst", item, null);
                                         if (dst != null)
                                         {
-                                            List<KeyValuePair<string,string>> items;
+                                            ReplaceVars(dst, Vars);
+                                            List<KeyValuePair<string, string>> items;
                                             if (!Content.TryGetValue(platform, out items))
                                             {
                                                 items = new List<KeyValuePair<string, string>>();
@@ -189,7 +215,7 @@ namespace MSBuild.XCode
                         else if (child.Name == "Project")
                         {
                             ProjectResource project = new ProjectResource();
-                            project.Read(child);
+                            project.Read(child, Vars);
                             Projects.Add(project);
                         }
                         else if (child.Name == "DirectoryStructure")
@@ -200,16 +226,28 @@ namespace MSBuild.XCode
                                 {
                                     string folder = Attribute.Get("Folder", item, string.Empty);
                                     if (!String.IsNullOrEmpty(folder))
+                                    {
+                                        folder = folder.Replace("${Name}", Name);
                                         DirectoryStructure.Add(new Attribute("Folder", folder));
+                                    }
                                     string file = Attribute.Get("File", item, string.Empty);
                                     if (!String.IsNullOrEmpty(file))
+                                    {
+                                        file = file.Replace("${Name}", Name);
                                         DirectoryStructure.Add(new Attribute("File", file));
+                                    }
                                 }
                             }
                         }
                     }
                 }
             }
+
+            mName = ReplaceVars(mName, Vars);
+            Group.ExpandVars(Vars);
+
+            foreach (DependencyResource dependencyResource in Dependencies)
+                dependencyResource.ExpandVars(Vars);
 
             HashSet<string> all_platforms = new HashSet<string>();
             string[] groups = GetGroups();

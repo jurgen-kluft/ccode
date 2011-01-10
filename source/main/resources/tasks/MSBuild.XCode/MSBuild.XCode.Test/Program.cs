@@ -25,7 +25,7 @@ namespace MSBuild.XCode.Test
             Global.Initialize();
            
             // Our test project is xproject
-            Global.RootDir = @"I:\Packages\xstring\";
+            Global.RootDir = @"I:\Packages\xtime\";
 
             Mercurial.Repository hg_repo = new Mercurial.Repository(Global.RootDir);
             if (!hg_repo.Exists)
@@ -33,6 +33,8 @@ namespace MSBuild.XCode.Test
                 Loggy.Add(String.Format("Error: Package::Create failed since there is no Hg (Mercurial) repository!"));
                 return;
             }
+
+            Construct("xtime");
 
             PackageConfigs configs = new PackageConfigs();
             configs.RootDir = Global.RootDir;
@@ -50,8 +52,6 @@ namespace MSBuild.XCode.Test
                 bool result1 = create.Execute();
                 createdPackageFilename = create.Filename;
             }
-
-            Construct("xstring");
 
             PackageInstall install = new PackageInstall();
             install.RootDir = Global.RootDir;

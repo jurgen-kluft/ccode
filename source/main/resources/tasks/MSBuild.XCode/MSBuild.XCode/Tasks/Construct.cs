@@ -166,12 +166,12 @@ namespace MSBuild.XCode
                 {
                     foreach (string line in lines)
                     {
-                        string l = line.Replace("${Name}", Name);
-                        l = l.Replace("${Language}", Language);
-                        if (l.Contains("${GUID}"))
+                        string l = line.Replace("${PackageName}", Name);
+                        l = l.Replace("${PackageLanguage}", Language);
+                        if (l.Contains("${PackageGUID}"))
                         {
                             string uuid = Guid.NewGuid().ToString();
-                            l = l.Replace("${GUID}", uuid);
+                            l = l.Replace("${PackageGUID}", uuid);
                         }
                         writer.WriteLine(l);
                     }

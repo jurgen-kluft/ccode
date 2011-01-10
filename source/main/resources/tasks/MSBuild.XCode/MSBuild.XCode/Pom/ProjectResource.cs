@@ -55,7 +55,14 @@ namespace MSBuild.XCode
             Loggy.Add(String.Format("Location                   : {0}", Location));
         }
 
-        public void Read(XmlNode node)
+        private string ReplaceVars(string str, Dictionary<string, string> vars)
+        {
+            foreach (KeyValuePair<string, string> var in vars)
+                str = str.Replace(String.Format("${{{0}}}", var.Key), var.Value);
+            return str;
+        }
+
+        public void Read(XmlNode node, Dictionary<string, string> vars)
         {
             this.Name = Attribute.Get("Name", node, "Unknown");
             this.Group = Attribute.Get("Group", node, "Main");
@@ -63,6 +70,13 @@ namespace MSBuild.XCode
             this.Location = Attribute.Get("Location", node, "source\\main\\cpp");
             this.Scope = Attribute.Get("Scope", node, "Public");
             this.DependsOn = Attribute.Get("DependsOn", node, "");
+
+            this.Name = ReplaceVars(this.Name, vars);
+            this.Group = ReplaceVars(this.Group, vars);
+            this.Language = ReplaceVars(this.Language, vars);
+            this.Location = ReplaceVars(this.Location, vars);
+            this.Scope = ReplaceVars(this.Scope, vars);
+            this.DependsOn = ReplaceVars(this.DependsOn, vars);
 
             foreach (XmlNode child in node.ChildNodes)
             {
@@ -73,6 +87,7 @@ namespace MSBuild.XCode
                 else if (String.Compare(child.Name, "ProjectFile", true) == 0)
                 {
                     mMsDevProject = new CppProject(child.ChildNodes);
+                    mMsDevProject.ExpandVars(vars);
                 }
                 else
                 {

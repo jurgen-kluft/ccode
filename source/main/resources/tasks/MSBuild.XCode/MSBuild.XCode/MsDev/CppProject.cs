@@ -50,6 +50,13 @@ namespace MSBuild.XCode
             return copy;
         }
 
+        private string ReplaceVars(string str, Dictionary<string, string> vars)
+        {
+            foreach (KeyValuePair<string, string> var in vars)
+                str = str.Replace(String.Format("${{{0}}}", var.Key), var.Value);
+            return str;
+        }
+
         public CppProject()
         {
             mXmlDocMain = new XmlDocument();
@@ -183,6 +190,40 @@ namespace MSBuild.XCode
                     }
                 });
 
+            return true;
+        }
+
+        public bool ExpandVars(Dictionary<string, string> vars)
+        {
+            Merge(mXmlDocMain, mXmlDocMain,
+                delegate(XmlNode node)
+                {
+                    if (node.Attributes != null)
+                    {
+                        foreach (XmlAttribute a in node.Attributes)
+                        {
+                            a.Value = ReplaceVars(a.Value, vars);
+                        }
+                    }
+                    return true;
+                },
+                delegate(XmlNode main, XmlNode other)
+                {
+                    if (main.Attributes != null)
+                    {
+                        foreach (XmlAttribute a in main.Attributes)
+                        {
+                            foreach (KeyValuePair<string, string> var in vars)
+                                a.Value = ReplaceVars(a.Value, vars);
+                        }
+                    }
+
+                    foreach (KeyValuePair<string, string> var in vars)
+                    {
+                        if (!String.IsNullOrEmpty(main.Value))
+                            main.Value = ReplaceVars(main.Value, vars);
+                    }
+                });
             return true;
         }
 

@@ -18,6 +18,12 @@ namespace MSBuild.XCode
             Full = group.Full;
         }
 
+        public void ExpandVars(Dictionary<string, string> vars)
+        {
+            foreach (KeyValuePair<string, string> var in vars)
+                mGroup = mGroup.Replace(String.Format("${{{0}}}", var.Key), var.Value);
+        }
+
         public string Full 
         {
             get
