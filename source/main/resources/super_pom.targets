@@ -67,7 +67,7 @@
   </Target>
 
   <Target Name="Configurations">
-    <MSBuild.XCode.PackageConfigs RootDir="$(PackageDir)" Platform="$(PackagePlatform)" Group="$(PackageProjectGroup)" TemplateDir="$(PackageLocalRepoURL)com\virtuos\xcode\publish\templates\">
+    <MSBuild.XCode.PackageConfigs RootDir="$(PackageDir)" Platform="$(PackagePlatform)" ProjectGroup="$(PackageProjectGroup)" TemplateDir="$(PackageLocalRepoURL)com\virtuos\xcode\publish\templates\">
       <Output PropertyName="PackageConfigs" TaskParameter="Configurations"/>
     </MSBuild.XCode.PackageConfigs>
   </Target>
