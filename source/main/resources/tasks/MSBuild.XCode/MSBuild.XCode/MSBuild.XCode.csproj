@@ -254,7 +254,7 @@
   </Target>
   -->
   <PropertyGroup>
-    <PostBuildEvent>xcopy $(ProjectDir)bin\$(ConfigurationName)\*.dll  D:\REMOTE_PACKAGE_REPO\com\virtuos\xcode\publish\*.* /R /Y /Q
+    <PostBuildEvent>
 </PostBuildEvent>
   </PropertyGroup>
 </Project>
