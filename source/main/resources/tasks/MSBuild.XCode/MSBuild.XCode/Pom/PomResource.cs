@@ -50,18 +50,18 @@ namespace MSBuild.XCode
 
         public bool Info()
         {
-            Loggy.Add(String.Format("Name                       : {0}", Name));
-            Loggy.Add(String.Format("Group                      : {0}", Group.ToString()));
+            Loggy.Info(String.Format("Name                       : {0}", Name));
+            Loggy.Info(String.Format("Group                      : {0}", Group.ToString()));
             Versions.Info();
             {
                 Loggy.Indent += 1;
                 foreach (ProjectResource p in Projects)
                 {
-                    Loggy.Add(String.Format("----------------------------"));
+                    Loggy.Info(String.Format("----------------------------"));
                     p.Info();
                 }
 
-                Loggy.Add(String.Format("----------------------------"));
+                Loggy.Info(String.Format("----------------------------"));
                 foreach (DependencyResource d in Dependencies)
                     d.Info();
 

@@ -40,6 +40,9 @@ namespace MSBuild.XCode
 
             foreach (DependencyResource dependencyResource in Package.Dependencies)
             {
+                if (!dependencyResource.IsForPlatform(Platform))
+                    continue;
+
                 if (!dependencyTree.HasNode(dependencyResource.Name))
                 {
                     DependencyInstance dependencyInstance = new DependencyInstance(Platform, dependencyResource);
@@ -84,7 +87,7 @@ namespace MSBuild.XCode
 
             string versionStr = Package.TargetVersion == null ? "?" : Package.TargetVersion.ToString();
 
-            Loggy.Add(String.Format("{0}{1}, version={2}, type={3}", indent, Name, versionStr, Dependency.Type));
+            Loggy.Info(String.Format("{0}{1}, version={2}, type={3}", indent, Name, versionStr, Dependency.Type));
 
             if (Children != null)
             {

@@ -39,9 +39,9 @@ namespace MSBuild.XCode
             foreach (KeyValuePair<string, ComparableVersion> pair in mPlatformBranchSpecificVersions)
             {
                 if (first)
-                    Loggy.Add(String.Format("Versions[]                 : {0}={1}", pair.Key, pair.Value.ToString()));
+                    Loggy.Info(String.Format("Versions[]                 : {0}={1}", pair.Key, pair.Value.ToString()));
                 else
-                    Loggy.Add(String.Format("                             {0}={1}", pair.Key, pair.Value.ToString()));
+                    Loggy.Info(String.Format("                             {0}={1}", pair.Key, pair.Value.ToString()));
                 first = false;
             }
         }

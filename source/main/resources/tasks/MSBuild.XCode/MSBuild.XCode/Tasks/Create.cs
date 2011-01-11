@@ -40,12 +40,12 @@ namespace MSBuild.XCode
             Mercurial.Repository hg_repo = new Mercurial.Repository(RootDir);
             if (!hg_repo.Exists)
             {
-                Loggy.Add(String.Format("Error: Package::Create failed since there is no Hg (Mercurial) repository!"));
+                Loggy.Error(String.Format("Error: Package::Create failed since there is no Hg (Mercurial) repository!"));
                 return false;
             }
             if (hg_repo.HasOutstandingChanges)
             {
-                Loggy.Add(String.Format("Error: Package::Create failed since there are still outstanding (non commited) changes!"));
+                Loggy.Error(String.Format("Error: Package::Create failed since there are still outstanding (non commited) changes!"));
                 return false;
             }
 

@@ -148,7 +148,7 @@ namespace MSBuild.XCode
             }
             if (!includesPomXml)
             {
-                Loggy.Add(String.Format("Error: PackageRepositoryLocal::Add, package must include pom.xml!"));
+                Loggy.Error(String.Format("Error: PackageRepositoryLocal::Add, package must include pom.xml!"));
                 package.LocalFilename = new PackageFilename();
                 return false;
             }
@@ -156,12 +156,12 @@ namespace MSBuild.XCode
             PackageSfvFile sfvFile = PackageSfvFile.New(new List<string>(files.Keys));
             if (!sfvFile.Save(buildURL, package.Name, files))
             {
-                Loggy.Add(String.Format("Error: PackageRepositoryLocal::Add, failed to save sfv file!"));
+                Loggy.Error(String.Format("Error: PackageRepositoryLocal::Add, failed to save sfv file!"));
                 return false;
             }
             if (!sfvFile.Save(buildURL, package.Name+".source"))
             {
-                Loggy.Add(String.Format("Error: PackageRepositoryLocal::Add, failed to save sfv source file!"));
+                Loggy.Error(String.Format("Error: PackageRepositoryLocal::Add, failed to save sfv source file!"));
                 return false;
             }
 

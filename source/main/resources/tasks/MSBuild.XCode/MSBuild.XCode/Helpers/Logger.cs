@@ -16,7 +16,7 @@ namespace MSBuild.XCode.Helpers
 
         public static TaskLoggingHelper TaskLogger { get; set; }
 
-        public static void Add(string line)
+        public static void Info(string line)
         {
             if (TaskLogger != null && TaskLogger.TaskResources!=null)
             {
@@ -27,6 +27,40 @@ namespace MSBuild.XCode.Helpers
                 for (int i = 0; i < Indent; ++i)
                     Console.Write(Indentor);
                 Console.WriteLine(line);
+            }
+        }
+
+        public static void Warning(string line)
+        {
+            if (TaskLogger != null && TaskLogger.TaskResources != null)
+            {
+                TaskLogger.LogWarning(line);
+            }
+            else if (ToConsole)
+            {
+                ConsoleColor oldColor = Console.ForegroundColor;
+                Console.ForegroundColor = ConsoleColor.Yellow;
+                for (int i = 0; i < Indent; ++i)
+                    Console.Write(Indentor);
+                Console.WriteLine(line);
+                Console.ForegroundColor = oldColor;
+            }
+        }
+
+        public static void Error(string line)
+        {
+            if (TaskLogger != null && TaskLogger.TaskResources!=null)
+            {
+                TaskLogger.LogError(line);
+            }
+            else if (ToConsole)
+            {
+                ConsoleColor oldColor = Console.ForegroundColor;
+                Console.ForegroundColor = ConsoleColor.Red;
+                for (int i = 0; i < Indent; ++i)
+                    Console.Write(Indentor);
+                Console.WriteLine(line);
+                Console.ForegroundColor = oldColor;
             }
         }
     }

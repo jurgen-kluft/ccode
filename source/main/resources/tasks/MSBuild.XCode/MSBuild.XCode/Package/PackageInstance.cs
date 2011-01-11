@@ -295,15 +295,62 @@ namespace MSBuild.XCode
             }
 
             // And the root package UnitTest project generally merges with Main, since UnitTest will use Main.
+            // Although the user could specify more projects and different internal project dependencies with 'ProjectName'.
+            // It is also possible to define external project references, these are specified by 'PackageName:ProjectGroup'.
+            foreach (ProjectInstance rootProject in Pom.Projects)
+            {
+                if (!String.IsNullOrEmpty(rootProject.DependsOn))
+                {
+                    string[] projectDependencies = rootProject.DependsOn.Split(new char[] { ';' }, StringSplitOptions.RemoveEmptyEntries);
+
+                    // External project dependencies (Format is "PackageName:ProjectGroup;PackageName:ProjectGroup;PackageName:ProjectGroup;etc..")
+                    foreach (string dependency in projectDependencies)
+                    {
+                        if (!dependency.Contains(":")) ///< This is not an external project reference
+                            continue;
+
+                        // Here the reference is PackageName:ProjectGroup
+                        string[] package_projectgroup = dependency.Split(new char[] { ':' }, StringSplitOptions.RemoveEmptyEntries);
+                        if (package_projectgroup.Length == 2 && !String.IsNullOrEmpty(package_projectgroup[0]) && !String.IsNullOrEmpty(package_projectgroup[1]))
+                        {
+                            string[] platforms = rootProject.GetPlatforms();
+                            foreach (string platform in platforms)
+                            {
+                                List<PackageInstance> allDependencyPackages = dependencies.GetAllDependencyPackages(platform);
+                                foreach (PackageInstance dependencyPackage in allDependencyPackages)
+                                {
+                                    if (String.Compare(dependencyPackage.Name, package_projectgroup[0], true) == 0)
+                                    {
+                                        ProjectInstance dependencyProject = dependencyPackage.Pom.GetProjectByGroup(package_projectgroup[1]);
+                                        if (dependencyProject != null)
+                                            rootProject.MergeWithDependencyProject(dependencyProject);
+                                    }
+                                }
+                            }
+                        }
+                        else
+                        {
+                            Loggy.Error(String.Format("Error: PackageInstance:GenerateProjects, invalid project reference {0}", dependency));
+                        }
+                    }
+                }
+            }
+
+            // And the root package UnitTest project generally merges with Main, since UnitTest will use Main.
             // Although the user could specify more project and different internal dependencies.
             foreach (ProjectInstance rootProject in Pom.Projects)
             {
                 if (!String.IsNullOrEmpty(rootProject.DependsOn))
                 {
-                    string[] projectNames = rootProject.DependsOn.Split(new char[] { ';' }, StringSplitOptions.RemoveEmptyEntries);
-                    foreach (string name in projectNames)
+                    string[] projectDependencies = rootProject.DependsOn.Split(new char[] { ';' }, StringSplitOptions.RemoveEmptyEntries);
+
+                    // Internal pom project dependencies (Format is "ProjectName;ProjectName;etc..")
+                    foreach (string dependency in projectDependencies)
                     {
-                        ProjectInstance dependencyProject = Pom.GetProjectByName(name);
+                        if (dependency.Contains(":")) ///< This is an external project reference
+                            continue;
+
+                        ProjectInstance dependencyProject = Pom.GetProjectByName(dependency);
                         if (dependencyProject != null)
                             rootProject.MergeWithDependencyProject(dependencyProject);
                     }

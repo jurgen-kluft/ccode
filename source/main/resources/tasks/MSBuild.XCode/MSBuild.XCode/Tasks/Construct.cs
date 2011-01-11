@@ -39,7 +39,7 @@ namespace MSBuild.XCode
 
             if (!Directory.Exists(TemplateDir))
             {
-                Loggy.Add(String.Format("Error: Action {0} failed in Package::Construct since template directory {1} doesn't exist", Action, TemplateDir));
+                Loggy.Error(String.Format("Error: Action {0} failed in Package::Construct since template directory {1} doesn't exist", Action, TemplateDir));
                 return false;
             }
 
@@ -64,19 +64,19 @@ namespace MSBuild.XCode
                         package.GenerateProjects(dependencies);
                         if (!package.GenerateSolution())
                         {
-                            Loggy.Add(String.Format("Error: Action {0} failed in Package::Construct due to failure in saving solution (.sln)", Action));
+                            Loggy.Error(String.Format("Error: Action {0} failed in Package::Construct due to failure in saving solution (.sln)", Action));
                             return false;
                         }
                     }
                     else
                     {
-                        Loggy.Add(String.Format("Error: Action {0} failed in Package::Construct due to failure in building dependencies", Action));
+                        Loggy.Error(String.Format("Error: Action {0} failed in Package::Construct due to failure in building dependencies", Action));
                         return false;
                     }
                 }
                 else
                 {
-                    Loggy.Add(String.Format("Error: Action {0} failed in Package::Construct due to failure in loading pom.xml", Action));
+                    Loggy.Error(String.Format("Error: Action {0} failed in Package::Construct due to failure in loading pom.xml", Action));
                     return false;
                 }
             }
@@ -97,7 +97,7 @@ namespace MSBuild.XCode
                 }
                 else
                 {
-                    Loggy.Add(String.Format("Error: Action {0} failed in Package::Construct due to failure in loading pom.xml", Action));
+                    Loggy.Error(String.Format("Error: Action {0} failed in Package::Construct due to failure in loading pom.xml", Action));
                     return false;
                 }
             }
@@ -126,7 +126,7 @@ namespace MSBuild.XCode
                         }
                         if (!file_copy_result)
                         {
-                            Loggy.Add(String.Format("Error: Action {0} failed in Package::Construct to copy the template (pom.targets, pom.props and pom.xml) files", Action));
+                            Loggy.Error(String.Format("Error: Action {0} failed in Package::Construct to copy the template (pom.targets, pom.props and pom.xml) files", Action));
                         }
 
                         // Init the Mercurial repository, add the above files and commit
@@ -137,19 +137,19 @@ namespace MSBuild.XCode
                     }
                     else
                     {
-                        Loggy.Add(String.Format("Error: Action {0} failed in Package::Construct since directory already exists", Action));
+                        Loggy.Error(String.Format("Error: Action {0} failed in Package::Construct since directory already exists", Action));
                         return false;
                     }
                 }
                 else
                 {
-                    Loggy.Add(String.Format("Error: Action {0} failed in Package::Construct since 'Name' was not specified", Action));
+                    Loggy.Error(String.Format("Error: Action {0} failed in Package::Construct since 'Name' was not specified", Action));
                     return false;
                 }
             }
             else
             {
-                Loggy.Add(String.Format("Error: Action {0} is not recognized by Package::Construct (Available actions: Dir, MsDev2010)", Action));
+                Loggy.Error(String.Format("Error: Action {0} is not recognized by Package::Construct (Available actions: Dir, MsDev2010)", Action));
                 return false;
             }
 

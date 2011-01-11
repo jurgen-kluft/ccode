@@ -20,7 +20,7 @@ namespace MSBuild.XCode
         [Required]
         public string Platform { get; set; }
         [Required]
-        public string Category { get; set; }
+        public string ProjectGroup { get; set; }
         [Required]
         public string TemplateDir { get; set; }
 
@@ -43,13 +43,13 @@ namespace MSBuild.XCode
             if (package.IsValid)
             {
                 // Get all platforms and configs, e.g: DevDebug|Win32;DevRelease|Win32;DevFinal|Win32
-                string[] configs = package.Pom.GetConfigsForPlatformsForGroup(Platform, Category);
+                string[] configs = package.Pom.GetConfigsForPlatformsForGroup(Platform, ProjectGroup);
                 Configurations = configs;
                 success = true;
             }
             else
             {
-                Loggy.Add(String.Format("Error: Loading package failed in Package::Configs"));
+                Loggy.Error(String.Format("Error: Loading package failed in Package::Configs"));
             }
 
             return success;

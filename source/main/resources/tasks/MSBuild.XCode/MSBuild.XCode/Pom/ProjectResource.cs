@@ -49,10 +49,10 @@ namespace MSBuild.XCode
 
         public void Info()
         {
-            Loggy.Add(String.Format("Project                    : {0}", Name));
-            Loggy.Add(String.Format("Category                   : {0}", Group));
-            Loggy.Add(String.Format("Language                   : {0}", Language));
-            Loggy.Add(String.Format("Location                   : {0}", Location));
+            Loggy.Info(String.Format("Project                    : {0}", Name));
+            Loggy.Info(String.Format("Category                   : {0}", Group));
+            Loggy.Info(String.Format("Language                   : {0}", Language));
+            Loggy.Info(String.Format("Location                   : {0}", Location));
         }
 
         private string ReplaceVars(string str, Dictionary<string, string> vars)

@@ -67,7 +67,7 @@
   </Target>
 
   <Target Name="Configurations">
-    <MSBuild.XCode.PackageConfigs RootDir="$(PackageDir)" Platform="$(PackagePlatform)" Category="$(PackageCategory)" TemplateDir="$(PackageLocalRepoURL)com\virtuos\xcode\publish\templates\">
+    <MSBuild.XCode.PackageConfigs RootDir="$(PackageDir)" Platform="$(PackagePlatform)" Group="$(PackageProjectGroup)" TemplateDir="$(PackageLocalRepoURL)com\virtuos\xcode\publish\templates\">
       <Output PropertyName="PackageConfigs" TaskParameter="Configurations"/>
     </MSBuild.XCode.PackageConfigs>
   </Target>
@@ -83,7 +83,7 @@
 
   <Target Name="__Compile">
   	<Message Text="Platform: $(PackagePlatform)" />
-  	<Message Text="Category: $(PackageCategory)" />
+  	<Message Text="ProjectGroup: $(PackageProjectGroup)" />
     <CallTarget Targets="Configurations"/>
     <CallTarget Targets="CompilePlatformForEveryTarget"/>
   </Target>

@@ -47,7 +47,7 @@ namespace MSBuild.XCode
             }
             
             if (!ok)
-                Loggy.Add(String.Format("Error: Package::Install, failed to add {0} to {1}", Filename, CacheRepoDir));
+                Loggy.Error(String.Format("Error: Package::Install, failed to add {0} to {1}", Filename, CacheRepoDir));
 
             return ok;
         }

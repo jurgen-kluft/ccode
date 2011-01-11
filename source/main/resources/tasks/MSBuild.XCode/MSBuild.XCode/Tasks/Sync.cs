@@ -44,14 +44,14 @@ namespace MSBuild.XCode
 
                 if (!dependencies.BuildForPlatform(Platform))
                 {
-                    Loggy.Add(String.Format("Error: Failed to build dependencies in Package::Sync"));
+                    Loggy.Error(String.Format("Error: Failed to build dependencies in Package::Sync"));
                     return false;
                 }
                 dependencies.SaveInfo(Platform, new FileDirectoryPath.FilePathAbsolute(RootDir + "\\target\\" + package.Name + "\\build\\dependencies.info"));
             }
             else
             {
-                Loggy.Add(String.Format("Error: Failed to load 'pom.xml' in Package::Sync"));
+                Loggy.Error(String.Format("Error: Failed to load 'pom.xml' in Package::Sync"));
                 return false;
             }
 

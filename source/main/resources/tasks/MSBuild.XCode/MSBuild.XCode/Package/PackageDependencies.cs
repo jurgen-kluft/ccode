@@ -52,7 +52,10 @@ namespace MSBuild.XCode
             {
                 List<DependencyInstance> dependencies = new List<DependencyInstance>();
                 foreach (DependencyResource resource in Package.Dependencies)
-                    dependencies.Add(new DependencyInstance(platform, resource));
+                {
+                    if (resource.IsForPlatform(platform))
+                        dependencies.Add(new DependencyInstance(platform, resource));
+                }
                 tree = new DependencyTree(Package, platform, dependencies);
                 mDependencyTree.Add(platform, tree);
             }
@@ -88,7 +91,7 @@ namespace MSBuild.XCode
 
         public void PrintForPlatform(string platform)
         {
-            Loggy.Add(String.Format("Dependencies for platform : {0}", platform));
+            Loggy.Info(String.Format("Dependencies for platform : {0}", platform));
             DependencyTree tree = GetDependencyTree(platform);
             tree.Print();
         }
