@@ -2,8 +2,8 @@
   <PropertyGroup>
     <PackageDir>$(MSBuildProjectDirectory)</PackageDir>
     <PackagePlatform>Win32</PackagePlatform>
-    <PackageName>${Name}</PackageName>
-    <PackageSolution>${Name}.sln</PackageSolution>
-    <PackageCategory>Main</PackageCategory>
+    <PackageName>${PackageName}</PackageName>
+    <PackageSolution>${PackageName}.sln</PackageSolution>
+    <PackageProjectGroup>Main</PackageProjectGroup>
   </PropertyGroup>
 </Project>

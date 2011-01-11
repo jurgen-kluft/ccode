@@ -25,21 +25,21 @@ namespace MSBuild.XCode.Test
             Global.Initialize();
            
             // Our test project is xproject
-            Global.RootDir = @"I:\Packages\xtime\";
+            Global.RootDir = @"I:\Packages\xunittest\";
 
             Mercurial.Repository hg_repo = new Mercurial.Repository(Global.RootDir);
             if (!hg_repo.Exists)
             {
-                Loggy.Add(String.Format("Error: Package::Create failed since there is no Hg (Mercurial) repository!"));
+                Loggy.Error(String.Format("Error: Package::Create failed since there is no Hg (Mercurial) repository!"));
                 return;
             }
 
-            Construct("xtime");
+            Construct("xunittest");
 
             PackageConfigs configs = new PackageConfigs();
             configs.RootDir = Global.RootDir;
             configs.Platform = "Win32";
-            configs.Category = "UnitTest";
+            configs.ProjectGroup = "UnitTest";
             configs.TemplateDir = Global.TemplateDir;
             configs.Execute();
             

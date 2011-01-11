@@ -38,7 +38,7 @@ namespace MSBuild.XCode
             {
                 if (!Directory.Exists(CacheRepoDir))
                 {
-                    Loggy.Add(String.Format("Error: Initialization of Global failed since cache repo {0} doesn't exist", CacheRepoDir));
+                    Loggy.Error(String.Format("Error: Initialization of Global failed since cache repo {0} doesn't exist", CacheRepoDir));
                     return false;
                 }
             }
@@ -46,7 +46,7 @@ namespace MSBuild.XCode
             {
                 if (!Directory.Exists(RemoteRepoDir))
                 {
-                    Loggy.Add(String.Format("Error: Initialization of Global failed since remote repo {0} doesn't exist", RemoteRepoDir));
+                    Loggy.Error(String.Format("Error: Initialization of Global failed since remote repo {0} doesn't exist", RemoteRepoDir));
                     return false;
                 }
             }
@@ -54,7 +54,7 @@ namespace MSBuild.XCode
             {
                 if (!Directory.Exists(TemplateDir))
                 {
-                    Loggy.Add(String.Format("Error: Initialization of Global failed since template dir {0} doesn't exist", TemplateDir));
+                    Loggy.Error(String.Format("Error: Initialization of Global failed since template dir {0} doesn't exist", TemplateDir));
                     return false;
                 }
             }
@@ -68,7 +68,7 @@ namespace MSBuild.XCode
                 CppTemplateProject = new CppProject();
                 if (!CppTemplateProject.Load(TemplateDir + "main.vcxproj"))
                 {
-                    Loggy.Add(String.Format("Error: Initialization of Global failed in due to failure in loading {0}", TemplateDir + "main.vcxproj"));
+                    Loggy.Error(String.Format("Error: Initialization of Global failed in due to failure in loading {0}", TemplateDir + "main.vcxproj"));
                     return false;
                 }
 

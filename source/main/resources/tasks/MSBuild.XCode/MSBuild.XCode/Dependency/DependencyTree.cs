@@ -178,6 +178,7 @@ namespace MSBuild.XCode
             else
             {
                 // Failed to get package from Remote to Cache
+                Loggy.Error(String.Format("Dependency {0} in group {1} doesn't exist at the remote and cache package repositories", node.Dependency.Name, node.Dependency.Group.ToString()));
                 result = -1;
             }
 
@@ -186,7 +187,7 @@ namespace MSBuild.XCode
 
         public void SaveInfo(FileDirectoryPath.FilePathAbsolute filepath)
         {
-            Loggy.Add(filepath.ParentDirectoryPath.ToString());
+            Loggy.Info(filepath.ParentDirectoryPath.ToString());
             if (!Directory.Exists(filepath.ParentDirectoryPath.ToString()))
                 Directory.CreateDirectory(filepath.ParentDirectoryPath.ToString());
 
@@ -209,8 +210,8 @@ namespace MSBuild.XCode
         {
             foreach (DependencyTreeNode node in mAllNodesMap.Values)
             {
-                Loggy.Add(String.Format("Name                       : {0}", node.Package.Name));
-                Loggy.Add(String.Format("Version                    : {0}", node.Package.TargetVersion));
+                Loggy.Info(String.Format("Name                       : {0}", node.Package.Name));
+                Loggy.Info(String.Format("Version                    : {0}", node.Package.TargetVersion));
             }
         }
 
@@ -219,7 +220,7 @@ namespace MSBuild.XCode
             string indent = "+";
             ComparableVersion version = Package.Pom.Versions.GetForPlatform(Platform);
             string versionStr = version != null ? version.ToString() : "?";
-            Loggy.Add(String.Format("{0} {1}, version={2}, type={3}", indent, Package.Name, versionStr, "Root"));
+            Loggy.Info(String.Format("{0} {1}, version={2}, type={3}", indent, Package.Name, versionStr, "Root"));
             foreach (DependencyTreeNode node in mRootNodes)
                 node.Print(indent);
         }

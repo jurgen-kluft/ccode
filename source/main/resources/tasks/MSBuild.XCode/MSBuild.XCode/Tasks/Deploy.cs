@@ -36,7 +36,7 @@ namespace MSBuild.XCode
             IEnumerable<Mercurial.FileStatus> repo_status = hg_repo.Status(hg_status);
             if (!repo_status.IsEmpty())
             {
-                Loggy.Add("Error: Package::Deploy requires you to commit all outstanding changes into VCS!");
+                Loggy.Error("Error: Package::Deploy requires you to commit all outstanding changes into VCS!");
                 return false;
             }
 

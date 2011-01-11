@@ -12,6 +12,7 @@ namespace MSBuild.XCode
         private Dictionary<string, VersionRange> mPlatformBranchVersions;
 
         private string mName;
+        private string mPlatform;
         private Group mGroup;
         private string mType;
 
@@ -25,6 +26,7 @@ namespace MSBuild.XCode
         }
 
         public string Name { get { return mName; } }
+        public string Platform { get { return mPlatform; } }
         public Group Group { get { return mGroup; } }
         public string Type { get { return mType; } }
 
@@ -42,19 +44,30 @@ namespace MSBuild.XCode
             mType = ReplaceVars(mType, vars);
         }
 
+        public bool IsForPlatform(string platform)
+        {
+            if (Platform == "*")
+                return true;
+
+            return String.Compare(Platform, platform, true) == 0;
+        }
+
         public void Info()
         {
-            Loggy.Add(String.Format("Dependency                 : {0}", Name));
-            Loggy.Add(String.Format("Group                      : {0}", Group.ToString()));
-            Loggy.Add(String.Format("Type                       : {0}", Type));
+            if (Platform == "*")
+                Loggy.Info(String.Format("Dependency                 : {0}", Name));
+            else
+                Loggy.Info(String.Format("Dependency - Platform      : {0}-{1}", Name, Platform));
+            Loggy.Info(String.Format("Group                      : {0}", Group.ToString()));
+            Loggy.Info(String.Format("Type                       : {0}", Type));
 
             bool first = true;
             foreach (KeyValuePair<string, VersionRange> pair in mPlatformBranchVersions)
             {
                 if (first)
-                    Loggy.Add(String.Format("Versions[]                 : {0} = {1}", pair.Key, pair.Value.ToString()));
+                    Loggy.Info(String.Format("Versions[]                 : {0} = {1}", pair.Key, pair.Value.ToString()));
                 else
-                    Loggy.Add(String.Format("                             {0} = {1}", pair.Key, pair.Value.ToString()));
+                    Loggy.Info(String.Format("                             {0} = {1}", pair.Key, pair.Value.ToString()));
                 first = false;
             }
         }
@@ -152,6 +165,7 @@ namespace MSBuild.XCode
             if (node.Name == "Dependency")
             {
                 mName = Attribute.Get("Package", node, "Unknown");
+                mPlatform = Attribute.Get("Platform", node, "*").ToLower();
 
                 if (node.HasChildNodes)
                 {
@@ -167,6 +181,11 @@ namespace MSBuild.XCode
                         else if (child.Name == "Version")
                         {
                             string platform = Attribute.Get("Platform", child, "*").ToLower();
+                            // When the dependency itself is platform dependent then 'Version'
+                            // cannot (shouldn't) be constrained to a platform!
+                            if (Platform != "*")
+                                platform = "*";
+
                             string branch = Attribute.Get("Branch", child, "default").ToLower();
                             if (branch == "*")
                                 branch = "default";

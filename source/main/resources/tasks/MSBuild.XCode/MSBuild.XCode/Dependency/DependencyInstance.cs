@@ -30,12 +30,12 @@ namespace MSBuild.XCode
 
         public void Info()
         {
-            Loggy.Add(String.Format("Dependency                 : {0}", Name));
-            Loggy.Add(String.Format("Group                      : {0}", Group.ToString()));
-            Loggy.Add(String.Format("Platform                   : {0}", Platform));
-            Loggy.Add(String.Format("Branch                     : {0}", Branch));
-            Loggy.Add(String.Format("Type                       : {0}", Type));
-            Loggy.Add(String.Format("VersionRange               : {0}", VersionRange.ToString()));
+            Loggy.Info(String.Format("Dependency                 : {0}", Name));
+            Loggy.Info(String.Format("Group                      : {0}", Group.ToString()));
+            Loggy.Info(String.Format("Platform                   : {0}", Platform));
+            Loggy.Info(String.Format("Branch                     : {0}", Branch));
+            Loggy.Info(String.Format("Type                       : {0}", Type));
+            Loggy.Info(String.Format("VersionRange               : {0}", VersionRange.ToString()));
         }
 
         public bool IsEqual(DependencyInstance dependency)
