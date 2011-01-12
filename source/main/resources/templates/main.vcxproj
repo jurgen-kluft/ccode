@@ -415,6 +415,8 @@
     <ExecutablePath>C:\Program Files\Microsoft DirectX SDK (August 2009)\Utilities\Bin\x86;$(VCInstallDir)bin;$(WindowsSdkDir)bin\NETFX 4.0 Tools;$(WindowsSdkDir)bin;$(VSInstallDir)Common7\Tools\bin;$(VSInstallDir)Common7\tools;$(VSInstallDir)Common7\ide;$(ProgramFiles)\HTML Help Workshop;$(FrameworkSDKDir)\bin;$(MSBuildToolsPath32);$(VSInstallDir);$(SystemRoot)\SysWow64</ExecutablePath>
     <TargetName>$(ProjectName)_$(Configuration)_$(PlatformName)</TargetName>
     <ExtensionsToDeleteOnClean>*.obj%3b*.d%3b*.map%3b*.lst%3b*.pch%3b$(TargetPath)</ExtensionsToDeleteOnClean>
+    <IncludePath>$(Xbox360InstallDir)include\xbox</IncludePath>
+    <GenerateManifest>false</GenerateManifest>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='DevRelease|Xbox 360'">
     <LinkIncremental>false</LinkIncremental>
@@ -423,6 +425,8 @@
     <ExecutablePath>C:\Program Files\Microsoft DirectX SDK (August 2009)\Utilities\Bin\x86;$(VCInstallDir)bin;$(WindowsSdkDir)bin\NETFX 4.0 Tools;$(WindowsSdkDir)bin;$(VSInstallDir)Common7\Tools\bin;$(VSInstallDir)Common7\tools;$(VSInstallDir)Common7\ide;$(ProgramFiles)\HTML Help Workshop;$(FrameworkSDKDir)\bin;$(MSBuildToolsPath32);$(VSInstallDir);$(SystemRoot)\SysWow64</ExecutablePath>
     <TargetName>$(ProjectName)_$(Configuration)_$(PlatformName)</TargetName>
     <ExtensionsToDeleteOnClean>*.obj%3b*.d%3b*.map%3b*.lst%3b*.pch%3b$(TargetPath)</ExtensionsToDeleteOnClean>
+    <IncludePath>$(Xbox360InstallDir)include\xbox</IncludePath>
+    <GenerateManifest>false</GenerateManifest>
   </PropertyGroup>  
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='DevFinal|Xbox 360'">
     <LinkIncremental>false</LinkIncremental>
@@ -431,6 +435,8 @@
     <ExecutablePath>C:\Program Files\Microsoft DirectX SDK (August 2009)\Utilities\Bin\x86;$(VCInstallDir)bin;$(WindowsSdkDir)bin\NETFX 4.0 Tools;$(WindowsSdkDir)bin;$(VSInstallDir)Common7\Tools\bin;$(VSInstallDir)Common7\tools;$(VSInstallDir)Common7\ide;$(ProgramFiles)\HTML Help Workshop;$(FrameworkSDKDir)\bin;$(MSBuildToolsPath32);$(VSInstallDir);$(SystemRoot)\SysWow64</ExecutablePath>
     <TargetName>$(ProjectName)_$(Configuration)_$(PlatformName)</TargetName>
     <ExtensionsToDeleteOnClean>*.obj%3b*.d%3b*.map%3b*.lst%3b*.pch%3b$(TargetPath)</ExtensionsToDeleteOnClean>
+    <IncludePath>$(Xbox360InstallDir)include\xbox</IncludePath>
+    <GenerateManifest>false</GenerateManifest>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='TestDebug|Xbox 360'">
     <LinkIncremental>true</LinkIncremental>
@@ -439,6 +445,8 @@
     <ExecutablePath>C:\Program Files\Microsoft DirectX SDK (August 2009)\Utilities\Bin\x86;$(VCInstallDir)bin;$(WindowsSdkDir)bin\NETFX 4.0 Tools;$(WindowsSdkDir)bin;$(VSInstallDir)Common7\Tools\bin;$(VSInstallDir)Common7\tools;$(VSInstallDir)Common7\ide;$(ProgramFiles)\HTML Help Workshop;$(FrameworkSDKDir)\bin;$(MSBuildToolsPath32);$(VSInstallDir);$(SystemRoot)\SysWow64</ExecutablePath>
     <TargetName>$(ProjectName)_$(Configuration)_$(PlatformName)</TargetName>
     <ExtensionsToDeleteOnClean>*.obj%3b*.d%3b*.map%3b*.lst%3b*.pch%3b$(TargetPath)</ExtensionsToDeleteOnClean>
+    <IncludePath>$(Xbox360InstallDir)include\xbox</IncludePath>
+    <GenerateManifest>false</GenerateManifest>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='TestRelease|Xbox 360'">
     <LinkIncremental>true</LinkIncremental>
@@ -447,6 +455,8 @@
     <ExecutablePath>C:\Program Files\Microsoft DirectX SDK (August 2009)\Utilities\Bin\x86;$(VCInstallDir)bin;$(WindowsSdkDir)bin\NETFX 4.0 Tools;$(WindowsSdkDir)bin;$(VSInstallDir)Common7\Tools\bin;$(VSInstallDir)Common7\tools;$(VSInstallDir)Common7\ide;$(ProgramFiles)\HTML Help Workshop;$(FrameworkSDKDir)\bin;$(MSBuildToolsPath32);$(VSInstallDir);$(SystemRoot)\SysWow64</ExecutablePath>
     <TargetName>$(ProjectName)_$(Configuration)_$(PlatformName)</TargetName>
     <ExtensionsToDeleteOnClean>*.obj%3b*.d%3b*.map%3b*.lst%3b*.pch%3b$(TargetPath)</ExtensionsToDeleteOnClean>
+    <IncludePath>$(Xbox360InstallDir)include\xbox</IncludePath>
+    <GenerateManifest>false</GenerateManifest>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='DevDebug|WII'">
     <LinkIncremental>true</LinkIncremental>
@@ -706,7 +716,7 @@
     <ClCompile>
       <WarningLevel>Level3</WarningLevel>
       <Optimization>Disabled</Optimization>
-      <PreprocessorDefinitions>%()</PreprocessorDefinitions>
+      <PreprocessorDefinitions>_XBOX</PreprocessorDefinitions>
       <PrecompiledHeader>NotUsing</PrecompiledHeader>
       <AdditionalIncludeDirectories>%()</AdditionalIncludeDirectories>
       <ExceptionHandling>false</ExceptionHandling>
@@ -722,7 +732,7 @@
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='DevRelease|Xbox 360'">
     <ClCompile>
       <WarningLevel>Level3</WarningLevel>
-      <PreprocessorDefinitions>%()</PreprocessorDefinitions>
+      <PreprocessorDefinitions>_XBOX</PreprocessorDefinitions>
       <PrecompiledHeader>NotUsing</PrecompiledHeader>
       <AdditionalIncludeDirectories>%()</AdditionalIncludeDirectories>
       <ExceptionHandling>false</ExceptionHandling>
@@ -740,7 +750,7 @@
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='DevFinal|Xbox 360'">
     <ClCompile>
       <WarningLevel>Level3</WarningLevel>
-      <PreprocessorDefinitions>%()</PreprocessorDefinitions>
+      <PreprocessorDefinitions>_XBOX</PreprocessorDefinitions>
       <PrecompiledHeader>NotUsing</PrecompiledHeader>
       <AdditionalIncludeDirectories>%()</AdditionalIncludeDirectories>
       <ExceptionHandling>false</ExceptionHandling>
@@ -758,7 +768,7 @@
     <ClCompile>
       <WarningLevel>Level3</WarningLevel>
       <Optimization>Disabled</Optimization>
-      <PreprocessorDefinitions>%()</PreprocessorDefinitions>
+      <PreprocessorDefinitions>_XBOX</PreprocessorDefinitions>
       <PrecompiledHeader>NotUsing</PrecompiledHeader>
       <AdditionalIncludeDirectories>%()</AdditionalIncludeDirectories>
       <ExceptionHandling>Sync</ExceptionHandling>
@@ -774,7 +784,7 @@
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='TestRelease|Xbox 360'">
     <ClCompile>
       <WarningLevel>Level3</WarningLevel>
-      <PreprocessorDefinitions>%()</PreprocessorDefinitions>
+      <PreprocessorDefinitions>_XBOX</PreprocessorDefinitions>
       <PrecompiledHeader>NotUsing</PrecompiledHeader>
       <AdditionalIncludeDirectories>%()</AdditionalIncludeDirectories>
       <ExceptionHandling>Sync</ExceptionHandling>

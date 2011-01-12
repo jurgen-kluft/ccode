@@ -32,6 +32,23 @@ namespace MSBuild.XCode
     /// </summary>
     public class CppProject
     {
+        private readonly static string[] mMergeItems = new string[]
+        {
+            "IncludePath",
+            "LibraryPath",
+            "PreprocessorDefinitions", 
+            "AdditionalDependencies", 
+            "AdditionalLibraryDirectories", 
+            "AdditionalIncludeDirectories" 
+        };
+        
+        private readonly static string[] mContentItems = new string[]
+        {
+            "ClCompile", 
+            "ClInclude", 
+            "None" 
+        };
+
         private bool mAllowRemoval;
         private XmlDocument mXmlDocMain;
 
@@ -159,7 +176,7 @@ namespace MSBuild.XCode
                     }
                     if (node.Name == "ItemGroup" && node.HasChildNodes)
                     {
-                        if (IsOneOf(node.ChildNodes[0].Name, new string[] { "ClCompile", "ClInclude", "None" }))
+                        if (IsOneOf(node.ChildNodes[0].Name, mContentItems))
                             return false;
                     }
                     return true;
@@ -181,7 +198,7 @@ namespace MSBuild.XCode
                 },
                 delegate(XmlNode main, XmlNode other)
                 {
-                    if (IsOneOf(main.ParentNode.Name, new string[] { "PreprocessorDefinitions", "AdditionalDependencies", "AdditionalLibraryDirectories", "AdditionalIncludeDirectories" }))
+                    if (IsOneOf(main.ParentNode.Name, mMergeItems))
                     {
                         StringItems items = new StringItems();
                         items.Add(main.Value, true);
@@ -235,7 +252,7 @@ namespace MSBuild.XCode
             Merge(mXmlDocMain, mXmlDocMain,
                 delegate(XmlNode node)
                 {
-                    if (IsOneOf(node.Name, new string[] { "ClCompile", "ClInclude", "None" }))
+                    if (IsOneOf(node.Name, mContentItems))
                     {
                         foreach (XmlAttribute a in node.Attributes)
                         {
@@ -436,7 +453,7 @@ namespace MSBuild.XCode
                     if (!content && node.Name == "ItemGroup" && node.HasChildNodes)
                     {
                         XmlNode child = node.ChildNodes[0];
-                        if (IsOneOf(child.Name, new string[] { "ClCompile", "ClInclude", "None" }))
+                        if (IsOneOf(child.Name, mContentItems))
                         {
                             return false;
                         }
@@ -445,7 +462,7 @@ namespace MSBuild.XCode
                 },
                 delegate(XmlNode main, XmlNode other)
                 {
-                    if (IsOneOf(main.ParentNode.Name, new string[] { "PreprocessorDefinitions", "AdditionalIncludeDirectories", "AdditionalLibraryDirectories", "AdditionalDependencies" }))
+                    if (IsOneOf(main.ParentNode.Name, mMergeItems))
                     {
                         StringItems items = new StringItems();
                         items.Add(other.Value, true);
