@@ -37,8 +37,6 @@ namespace MSBuild.XCode
             mIsFinalProject = false;
             mMsDevProject = new CppProject();
             mMsDevProject.Merge(mResource.MsDevProject, true, true);
-
-            // Filter items, this should be moved to ProjectInstance!
             if (Main)
                 mMsDevProject.FilterItems(new string[] { "#" }, new string[] { "@" });
             else
