@@ -13,6 +13,9 @@ namespace MSBuild.XCode
         string Branch { get; set; }
         string Platform { get; set; }
         string Extension { get; set; }
+
+        string Filename { get; }
+        string FilenameWithoutExtension { get; }
     }
 
     public class PackageFilename : IPackageFilename
@@ -74,15 +77,37 @@ namespace MSBuild.XCode
         public string Platform { get; set; }
         public string Extension { get; set; }
 
+        public string FilenameWithoutExtension
+        {
+            get
+            {
+                string datetime = string.Empty;
+                if (DateTime.HasValue)
+                {
+                    DateTime dt = DateTime.Value;
+                    datetime = String.Format(".{0:yyyy.M.d.H.m.s}", dt);
+                }
+                return String.Format("{0}+{1}{2}+{3}+{4}", Name, Version.ToString(), datetime, Branch, Platform);
+            }
+        }
+
+        public string Filename
+        {
+            get
+            {
+                string datetime = string.Empty;
+                if (DateTime.HasValue)
+                {
+                    DateTime dt = DateTime.Value;
+                    datetime = String.Format(".{0:yyyy.M.d.H.m.s}", dt);
+                }
+                return String.Format("{0}+{1}{2}+{3}+{4}{5}", Name, Version.ToString(), datetime, Branch, Platform, Extension);
+            }
+        }
+
         public override string ToString()
         {
-            string datetime = string.Empty;
-            if (DateTime.HasValue)
-            {
-                DateTime dt = DateTime.Value;
-                datetime = String.Format(".{0:yyyy.M.d.H.m.s}", dt);
-            }
-            return String.Format("{0}+{1}{2}+{3}+{4}{5}", Name, Version.ToString(), datetime, Branch, Platform, Extension);
+            return Filename;
         }
     }
 }

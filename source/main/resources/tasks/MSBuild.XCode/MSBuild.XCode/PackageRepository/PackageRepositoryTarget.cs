@@ -32,7 +32,7 @@ namespace MSBuild.XCode
     {
         public PackageRepositoryTarget(string targetDir)
         {
-            RepoDir = targetDir;
+            RepoDir = targetDir.EndWith('\\');
             Layout = new LayoutTarget();
             Location = ELocation.Target;
         }
@@ -44,12 +44,13 @@ namespace MSBuild.XCode
         public bool Update(PackageInstance package)
         {
             // See if this package is in the target folder and valid
-            string packageURL = String.Format("{0}{1}\\{2}\\", RepoDir, package.Name, package.Platform);
+            string packageURL = Layout.PackageRootDir(RepoDir, package.Group.ToString(), package.Name, package.Platform);
             if (Directory.Exists(packageURL))
             {
-                if (File.Exists(packageURL + "pom.xml"))
+                // A .t file needs to exist as well as a .props
+                if (File.Exists(packageURL + package.Name + "." + package.Platform + ".props"))
                 {
-                    string[] t_filenames = Directory.GetFiles(packageURL, "*.t", SearchOption.TopDirectoryOnly);
+                    string[] t_filenames = Directory.GetFiles(packageURL, String.Format("*{0}.t", package.Platform), SearchOption.TopDirectoryOnly);
                     if (t_filenames.Length > 0)
                     {
                         // Find the one with the latest LastWriteTime
@@ -94,19 +95,18 @@ namespace MSBuild.XCode
 
         public bool Add(PackageInstance package, ELocation from)
         {
-            if (File.Exists(package.GetURL(from) + package.GetFilename(from)))
-            {
-                string dest_dir = Layout.PackageVersionDir(RepoDir, package.Group.ToString(), package.Name, package.Platform, package.GetVersion(from));
-                if (!Directory.Exists(dest_dir))
-                    Directory.CreateDirectory(dest_dir);
+            // Target normally gets packages from Share
 
-                ZipFile zip = new ZipFile(package.GetURL(from) + package.GetFilename(from));
-                string targetURL = RepoDir + package.Name + "\\" + package.Platform + "\\";
-                zip.ExtractAll(targetURL, ExtractExistingFileAction.OverwriteSilently);
+            if (package.HasURL(from))
+            {
+                string targetURL = Layout.PackageVersionDir(RepoDir, package.Group.ToString(), package.Name, package.Platform, package.Branch, package.GetVersion(from));
+                if (!Directory.Exists(targetURL))
+                    Directory.CreateDirectory(targetURL);
+
+                // The package itself is extracted in the Share Repo
 
                 string current_t_filename = Path.GetFileNameWithoutExtension(package.GetFilename(from).ToString()) + ".t";
-
-                string[] t_filenames = Directory.GetFiles(dest_dir, "*.t", SearchOption.TopDirectoryOnly);
+                string[] t_filenames = Directory.GetFiles(targetURL, String.Format("*{0}.t", package.Platform), SearchOption.TopDirectoryOnly);
                 // Delete all old .t files?
                 foreach (string t_filename in t_filenames)
                 {
@@ -133,9 +133,42 @@ namespace MSBuild.XCode
                 package.SetVersion(Location, package.GetVersion(from));
                 package.SetSignature(Location, lastWriteTime);
 
+                GenerateProps(package);
+
                 return true;
             }
             return false;
+        }
+
+        private bool GenerateProps(PackageInstance package)
+        {
+            // <?xml version="1.0" encoding="utf-8"?>
+            // <Project ToolsVersion="4.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+            //   <PropertyGroup Condition="'$(Platform)'=='Win32'" Label="TargetDirs">
+            //     <xunittest_TargetDir>$(SolutionDir)..\PACKAGE_REPO\com.virtuos.tnt\xunittest\xunittest+1.0.1.2011.1.7.20.40.44+default+Win32\</xunittest_TargetDir>
+            //   </PropertyGroup>
+            // </Project>
+            // 
+
+            string shareURL = package.ShareURL;
+
+            string propsFilePath = Layout.PackageRootDir(RepoDir, package.Group.ToString(), package.Name, package.Platform) + package.Name + "." + package.Platform + ".props";
+            using (FileStream stream = new FileStream(propsFilePath, FileMode.Create, FileAccess.Write))
+            {
+                using (StreamWriter writer = new StreamWriter(stream))
+                {
+                    writer.WriteLine("<?xml version=\"1.0\" encoding=\"utf-8\"?>");
+                    writer.WriteLine("<Project ToolsVersion=\"4.0\" xmlns=\"http://schemas.microsoft.com/developer/msbuild/2003\">");
+                    writer.WriteLine("  <ImportGroup Condition=\"'$(Platform)'=='{0}'\" Label=\"TargetDirs\">", package.Platform);
+                    writer.WriteLine("    <{0}_TargetDir>{1}</{0}_TargetDir>", package.Name, shareURL);
+                    writer.WriteLine("  </ImportGroup>");
+                    writer.WriteLine("</Project>");
+                    writer.Close();
+                }
+                stream.Close();
+            }
+
+            return true;
         }
     }
 }

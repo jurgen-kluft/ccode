@@ -23,7 +23,7 @@ namespace MSBuild.XCode
     {
         public PackageRepositoryLocal(string rootDir)
         {
-            RepoDir = rootDir;
+            RepoDir = rootDir.EndWith('\\');
             Layout = new LayoutLocal();
             Location = ELocation.Local;
         }
@@ -41,7 +41,7 @@ namespace MSBuild.XCode
             // Lastly delete any old zip packages.
             string rootURL = RepoDir;
             string buildURL = rootURL + "target\\" + package.Name + "\\build\\";
-            string[] package_filenames = Directory.GetFiles(buildURL, "*.zip", SearchOption.TopDirectoryOnly);
+            string[] package_filenames = Directory.GetFiles(buildURL, String.Format("*{0}.zip", package.Platform), SearchOption.TopDirectoryOnly);
             if (package_filenames.Length > 0)
             {
                 // Find the one with the latest LastWriteTime

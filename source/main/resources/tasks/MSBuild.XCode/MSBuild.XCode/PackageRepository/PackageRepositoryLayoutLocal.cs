@@ -38,7 +38,7 @@ namespace MSBuild.XCode
             return fullPath;
         }
 
-        public string PackageVersionDir(string repoPath, string group, string package_name, string platform, ComparableVersion version)
+        public string PackageVersionDir(string repoPath, string group, string package_name, string platform, string branch, ComparableVersion version)
         {
             // Path = target \ build \ 
             string fullPath = repoPath + "target\\" + package_name + "\\build\\";
