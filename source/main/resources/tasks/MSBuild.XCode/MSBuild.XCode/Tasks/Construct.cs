@@ -43,13 +43,13 @@ namespace MSBuild.XCode
                 return false;
             }
 
-            Global.TemplateDir = TemplateDir;
-            Global.CacheRepoDir = CacheRepoDir;
-            Global.RemoteRepoDir = RemoteRepoDir;
+            PackageInstance.TemplateDir = TemplateDir;
+            PackageInstance.CacheRepoDir = CacheRepoDir;
+            PackageInstance.RemoteRepoDir = RemoteRepoDir;
 
             if (Action.StartsWith("vs2010"))
             {
-                if (!Global.Initialize())
+                if (!PackageInstance.Initialize())
                     return false;
 
                 PackageInstance package = PackageInstance.LoadFromRoot(RootDir);

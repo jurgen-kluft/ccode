@@ -36,7 +36,7 @@ namespace MSBuild.XCode
 
             mIsFinalProject = false;
             mMsDevProject = new CppProject();
-            mMsDevProject.Merge(mResource.MsDevProject, true, true);
+            mMsDevProject.Copy(mResource.MsDevProject);
             if (Main)
                 mMsDevProject.FilterItems(new string[] { "#" }, new string[] { "@" });
             else
@@ -59,8 +59,8 @@ namespace MSBuild.XCode
             if (IsCpp)
             {
                 CppProject finalProject = new CppProject();
-                finalProject.Merge(Global.CppTemplateProject, true, false);
-                finalProject.Merge(mMsDevProject, true, true);
+                finalProject.Copy(PackageInstance.CppTemplateProject);
+                finalProject.Merge(mMsDevProject, true, true, true);
                 finalProject.RemoveAllBut(Configs);
                 mMsDevProject = finalProject;
                 mIsFinalProject = true;
@@ -68,32 +68,27 @@ namespace MSBuild.XCode
             else if (IsCs)
             {
                 //CsProject finalProject = new CsProject();
-                //finalProject.Merge(Global.CsTemplateProject, true, false);
-                //finalProject.Merge(mMsDevProject, true, true);
+                //finalProject.Copy(Global.CsTemplateProject);
+                //finalProject.Merge(mMsDevProject, true, true, true);
+                //finalProject.RemoveAllBut(Configs);
                 //mMsDevProject = finalProject;
             }
         }
 
         public void MergeWithDependencyProject(ProjectInstance dependencyProject)
         {
-            mMsDevProject.Merge(dependencyProject.mMsDevProject, false, false);
+            mMsDevProject.Merge(dependencyProject.mMsDevProject, false, false, false);
         }
 
         public void OnlyKeepPlatformSpecifics(string platform)
         {
             if (IsCpp)
             {
-                CppProject finalProject = new CppProject();
-                finalProject.Merge(mMsDevProject, true, true);
-                finalProject.RemoveAllPlatformsBut(platform);
-                mMsDevProject = finalProject;
+                mMsDevProject.RemoveAllPlatformsBut(platform);
             }
             else if (IsCs)
             {
-                CppProject finalProject = new CppProject();
-                finalProject.Merge(mMsDevProject, true, true);
-                finalProject.RemoveAllPlatformsBut(platform);
-                mMsDevProject = finalProject;
+                mMsDevProject.RemoveAllPlatformsBut(platform);
             }
         }
 

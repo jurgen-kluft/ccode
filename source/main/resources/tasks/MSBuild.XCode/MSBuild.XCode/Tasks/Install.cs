@@ -28,10 +28,10 @@ namespace MSBuild.XCode
             Loggy.TaskLogger = Log;
             RootDir = RootDir.EndWith('\\');
 
-            Global.TemplateDir = string.Empty;
-            Global.CacheRepoDir = CacheRepoDir;
-            Global.RemoteRepoDir = RemoteRepoDir;
-            Global.Initialize();
+            PackageInstance.TemplateDir = string.Empty;
+            PackageInstance.CacheRepoDir = CacheRepoDir;
+            PackageInstance.RemoteRepoDir = RemoteRepoDir;
+            PackageInstance.Initialize();
 
             bool ok = false;
 
@@ -42,7 +42,7 @@ namespace MSBuild.XCode
                 if (localPackageRepo.Update(package))
                 {
                     // - Commit version to cache package repository
-                    ok = Global.CacheRepo.Add(package, localPackageRepo.Location);
+                    ok = PackageInstance.CacheRepo.Add(package, localPackageRepo.Location);
                 }
             }
             

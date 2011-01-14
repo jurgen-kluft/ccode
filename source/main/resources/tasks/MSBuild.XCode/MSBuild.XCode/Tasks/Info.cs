@@ -33,10 +33,10 @@ namespace MSBuild.XCode
 
             Environment.CurrentDirectory = RootDir;
 
-            Global.TemplateDir = string.Empty;
-            Global.CacheRepoDir = CacheRepoDir;
-            Global.RemoteRepoDir = RemoteRepoDir;
-            Global.Initialize();
+            PackageInstance.TemplateDir = string.Empty;
+            PackageInstance.CacheRepoDir = CacheRepoDir;
+            PackageInstance.RemoteRepoDir = RemoteRepoDir;
+            PackageInstance.Initialize();
 
             // - Verify that there are no local changes 
             // - Verify that there are no outgoing changes

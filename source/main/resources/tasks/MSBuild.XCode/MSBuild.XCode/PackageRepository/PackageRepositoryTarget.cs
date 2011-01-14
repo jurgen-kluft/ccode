@@ -159,9 +159,9 @@ namespace MSBuild.XCode
                 {
                     writer.WriteLine("<?xml version=\"1.0\" encoding=\"utf-8\"?>");
                     writer.WriteLine("<Project ToolsVersion=\"4.0\" xmlns=\"http://schemas.microsoft.com/developer/msbuild/2003\">");
-                    writer.WriteLine("  <ImportGroup Condition=\"'$(Platform)'=='{0}'\" Label=\"TargetDirs\">", package.Platform);
+                    writer.WriteLine("  <PropertyGroup Condition=\"'$(Platform)'=='{0}'\" Label=\"TargetDirs\">", package.Platform);
                     writer.WriteLine("    <{0}_TargetDir>{1}</{0}_TargetDir>", package.Name, shareURL);
-                    writer.WriteLine("  </ImportGroup>");
+                    writer.WriteLine("  </PropertyGroup>");
                     writer.WriteLine("</Project>");
                     writer.Close();
                 }

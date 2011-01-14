@@ -36,8 +36,8 @@ namespace MSBuild.XCode
 
             Environment.CurrentDirectory = RootDir;
 
-            Global.TemplateDir = TemplateDir;
-            Global.Initialize();
+            PackageInstance.TemplateDir = TemplateDir;
+            PackageInstance.Initialize();
 
             PackageInstance package = PackageInstance.LoadFromRoot(RootDir);
             if (package.IsValid)

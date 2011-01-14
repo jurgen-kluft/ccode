@@ -210,7 +210,6 @@
     <Compile Include="Dependency\DependencyInstance.cs" />
     <Compile Include="Package\Group.cs" />
     <Compile Include="Pom\PomResource.cs" />
-    <Compile Include="PackageRepository\PackageRepository.cs" />
     <Compile Include="Helpers\Math.cs" />
     <Compile Include="Helpers\StringScan.cs" />
     <Compile Include="Helpers\StringTools.cs" />

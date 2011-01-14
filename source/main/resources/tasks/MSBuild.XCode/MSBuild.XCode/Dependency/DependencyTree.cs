@@ -20,7 +20,6 @@ namespace MSBuild.XCode
         private PackageInstance mPackage;
         private List<DependencyInstance> mDependencies;
 
-        private IPackageRepository mShareRepo;
         private IPackageRepository mTargetRepo;
 
         public PackageInstance Package { get { return mPackage; } }
@@ -36,8 +35,6 @@ namespace MSBuild.XCode
             mAllNodesMap = new Dictionary<string, DependencyTreeNode>();
             mCompileQueue = new Queue<DependencyTreeNode>();
             mCompileIteration = 0;
-            DirPathAbsolute shareRepoURL = new DirPathAbsolute(package.RootURL + "..\\.share\\");
-            mShareRepo = new PackageRepositoryShare(shareRepoURL.ToString());
             mTargetRepo = new PackageRepositoryTarget(package.RootURL + "target\\");
         }
 
@@ -132,13 +129,13 @@ namespace MSBuild.XCode
 
             // Try to get the package from the Cache to Target
             if (!node.Package.RemoteExists)
-                Global.RemoteRepo.Update(node.Package, node.Dependency.VersionRange);
+                PackageInstance.RemoteRepo.Update(node.Package, node.Dependency.VersionRange);
             if (!node.Package.CacheExists)
-                Global.CacheRepo.Update(node.Package, node.Dependency.VersionRange);
+                PackageInstance.CacheRepo.Update(node.Package, node.Dependency.VersionRange);
 
             if (node.Package.CacheExists)
             {
-                mShareRepo.Update(node.Package);
+                PackageInstance.ShareRepo.Update(node.Package);
             }
 
             // Do a signature verification
@@ -164,7 +161,7 @@ namespace MSBuild.XCode
                 if (!node.Package.CacheExists || (node.Package.RemoteVersion > node.Package.CacheVersion))
                 {
                     // Update from remote to cache
-                    if (!Global.CacheRepo.Add(node.Package, ELocation.Remote))
+                    if (!PackageInstance.CacheRepo.Add(node.Package, ELocation.Remote))
                     {
                         // Failed to get package from Remote to Cache
                         result = -1;
@@ -176,7 +173,7 @@ namespace MSBuild.XCode
             {
                 if (!node.Package.ShareExists || (node.Package.CacheVersion > node.Package.ShareVersion))
                 {
-                    if (mShareRepo.Add(node.Package, ELocation.Cache))
+                    if (PackageInstance.ShareRepo.Add(node.Package, ELocation.Cache))
                     {
                         result = 1;
                     }
