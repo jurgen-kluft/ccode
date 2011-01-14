@@ -31,10 +31,10 @@ namespace MSBuild.XCode
             Loggy.TaskLogger = Log;
             RootDir = RootDir.EndWith('\\');
 
-            Global.TemplateDir = TemplateDir;
-            Global.CacheRepoDir = CacheRepoDir;
-            Global.RemoteRepoDir = RemoteRepoDir;
-            Global.Initialize();
+            PackageInstance.TemplateDir = TemplateDir;
+            PackageInstance.CacheRepoDir = CacheRepoDir;
+            PackageInstance.RemoteRepoDir = RemoteRepoDir;
+            PackageInstance.Initialize();
 
             PackageInstance package = PackageInstance.LoadFromRoot(RootDir);
             if (package.IsValid)

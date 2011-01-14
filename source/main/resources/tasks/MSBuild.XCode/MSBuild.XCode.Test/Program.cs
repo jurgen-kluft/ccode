@@ -19,15 +19,15 @@ namespace MSBuild.XCode.Test
         [STAThread]
         static void Main()
         {
-            Global.TemplateDir = @"d:\REMOTE_PACKAGE_REPO\com\virtuos\xcode\publish\templates\";
-            Global.CacheRepoDir = @"d:\PACKAGE_REPO\";
-            Global.RemoteRepoDir = @"d:\REMOTE_PACKAGE_REPO\";
-            Global.Initialize();
+            PackageInstance.TemplateDir = @"d:\REMOTE_PACKAGE_REPO\com\virtuos\xcode\publish\templates\";
+            PackageInstance.CacheRepoDir = @"d:\PACKAGE_REPO\";
+            PackageInstance.RemoteRepoDir = @"d:\REMOTE_PACKAGE_REPO\";
+            PackageInstance.Initialize();
            
             // Our test project is xproject
-            Global.RootDir = @"I:\Packages\xbase\";
+            PackageInstance.RootDir = @"I:\Packages\xbase\";
 
-            Mercurial.Repository hg_repo = new Mercurial.Repository(Global.RootDir);
+            Mercurial.Repository hg_repo = new Mercurial.Repository(PackageInstance.RootDir);
             if (!hg_repo.Exists)
             {
                 Loggy.Error(String.Format("Error: Package::Create failed since there is no Hg (Mercurial) repository!"));
@@ -37,53 +37,53 @@ namespace MSBuild.XCode.Test
             Construct("xbase");
 
             PackageConfigs configs = new PackageConfigs();
-            configs.RootDir = Global.RootDir;
+            configs.RootDir = PackageInstance.RootDir;
             configs.Platform = "Win32";
             configs.ProjectGroup = "UnitTest";
-            configs.TemplateDir = Global.TemplateDir;
+            configs.TemplateDir = PackageInstance.TemplateDir;
             configs.Execute();
 
             string createdPackageFilename;
             if (true)
             {
                 PackageCreate create = new PackageCreate();
-                create.RootDir = Global.RootDir;
+                create.RootDir = PackageInstance.RootDir;
                 create.Platform = "Win32";
                 bool result1 = create.Execute();
                 createdPackageFilename = create.Filename;
             }
 
             PackageInstall install = new PackageInstall();
-            install.RootDir = Global.RootDir;
-            install.CacheRepoDir = Global.CacheRepoDir;
-            install.RemoteRepoDir = Global.RemoteRepoDir;
+            install.RootDir = PackageInstance.RootDir;
+            install.CacheRepoDir = PackageInstance.CacheRepoDir;
+            install.RemoteRepoDir = PackageInstance.RemoteRepoDir;
             install.Filename = createdPackageFilename;
             bool result3 = install.Execute();
 
             PackageDeploy deploy = new PackageDeploy();
-            deploy.RootDir = Global.RootDir;
-            deploy.CacheRepoDir = Global.CacheRepoDir;
-            deploy.RemoteRepoDir = Global.RemoteRepoDir;
+            deploy.RootDir = PackageInstance.RootDir;
+            deploy.CacheRepoDir = PackageInstance.CacheRepoDir;
+            deploy.RemoteRepoDir = PackageInstance.RemoteRepoDir;
             deploy.Filename = createdPackageFilename;
             bool result4 = deploy.Execute();
 
             PackageSync sync = new PackageSync();
-            sync.RootDir = Global.RootDir;
+            sync.RootDir = PackageInstance.RootDir;
             sync.Platform = "Win32";
-            sync.CacheRepoDir = Global.CacheRepoDir;
-            sync.RemoteRepoDir = Global.RemoteRepoDir;
+            sync.CacheRepoDir = PackageInstance.CacheRepoDir;
+            sync.RemoteRepoDir = PackageInstance.RemoteRepoDir;
             sync.Execute();
 
             PackageInfo info = new PackageInfo();
-            info.RootDir = Global.RootDir;
-            info.CacheRepoDir = Global.CacheRepoDir;
-            info.RemoteRepoDir = Global.RemoteRepoDir;
+            info.RootDir = PackageInstance.RootDir;
+            info.CacheRepoDir = PackageInstance.CacheRepoDir;
+            info.RemoteRepoDir = PackageInstance.RemoteRepoDir;
             info.Execute();
 
-            Global.RootDir = @"I:\Packages\xstring\";
+            PackageInstance.RootDir = @"I:\Packages\xstring\";
 
             PackageVerify verify = new PackageVerify();
-            verify.RootDir = Global.RootDir;
+            verify.RootDir = PackageInstance.RootDir;
             verify.Name = "xbase";
             verify.Platform = "Win32";
             bool result2 = verify.Execute();
@@ -94,9 +94,9 @@ namespace MSBuild.XCode.Test
             PackageConstruct construct = new PackageConstruct();
             construct.Name = name;
             construct.RootDir = @"i:\Packages\";
-            construct.CacheRepoDir = Global.CacheRepoDir;
-            construct.RemoteRepoDir = Global.RemoteRepoDir;
-            construct.TemplateDir = Global.TemplateDir;
+            construct.CacheRepoDir = PackageInstance.CacheRepoDir;
+            construct.RemoteRepoDir = PackageInstance.RemoteRepoDir;
+            construct.TemplateDir = PackageInstance.TemplateDir;
             //construct.Action = "init";
             //construct.Execute();
             construct.RootDir = construct.RootDir + construct.Name + "\\";

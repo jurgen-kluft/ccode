@@ -19,7 +19,7 @@ namespace MSBuild.XCode
         Root,       ///< Root package
     }
 
-    public class PackageInstance
+    public partial class PackageInstance
     {
         private PackageResource mResource;
 

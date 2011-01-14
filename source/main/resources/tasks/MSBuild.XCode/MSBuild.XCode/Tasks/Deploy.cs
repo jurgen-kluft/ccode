@@ -40,12 +40,12 @@ namespace MSBuild.XCode
                 return false;
             }
 
-            if (!Global.IsInitialized)
+            if (!PackageInstance.IsInitialized)
             {
-                Global.TemplateDir = string.Empty;
-                Global.CacheRepoDir = CacheRepoDir;
-                Global.RemoteRepoDir = RemoteRepoDir;
-                Global.Initialize();
+                PackageInstance.TemplateDir = string.Empty;
+                PackageInstance.CacheRepoDir = CacheRepoDir;
+                PackageInstance.RemoteRepoDir = RemoteRepoDir;
+                PackageInstance.Initialize();
             }
 
             bool ok = false;
@@ -56,7 +56,7 @@ namespace MSBuild.XCode
                 if (localPackageRepo.Update(package))
                 {
                     // - Commit version to remote package repository from local
-                    ok = Global.RemoteRepo.Add(package, localPackageRepo.Location);
+                    ok = PackageInstance.RemoteRepo.Add(package, localPackageRepo.Location);
                 }
             }
             return ok;

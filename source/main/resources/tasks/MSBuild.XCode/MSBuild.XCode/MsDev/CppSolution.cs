@@ -24,7 +24,7 @@ namespace MSBuild.XCode
         private EVersion mVersion = EVersion.VS2010;
         private ELanguage mLanguage = ELanguage.CS;
 
-        private List<string> m_Configs;
+        private Dictionary<string, HashSet<string>> m_Configs;
         private Dictionary<string, Guid> m_ProjectGuids;
 
         public CppSolution(EVersion version, ELanguage language)
@@ -33,7 +33,7 @@ namespace MSBuild.XCode
             mLanguage = language;
             m_Projects = new List<FileSystemInfo>();
 
-            m_Configs = new List<string>();
+            m_Configs = new Dictionary<string, HashSet<string>>();
         }
 
         private string ProjectTypeGuid()
@@ -149,9 +149,9 @@ namespace MSBuild.XCode
                     case EGlobalSection.Solution:
                         {
                             writer.WriteLine("\tGlobalSection(SolutionConfigurationPlatforms) = preSolution");
-                            foreach (string c in m_Configs)
+                            foreach (KeyValuePair<string, HashSet<string>> p in m_Configs)
                             {
-                                writer.WriteLine("\t\t" + c + " = " + c);
+                                writer.WriteLine("\t\t" + p.Key + " = " + p.Key);
                             }
                             writer.WriteLine("\tEndGlobalSection");
                         } break;
@@ -162,10 +162,12 @@ namespace MSBuild.XCode
                             foreach (FileSystemInfo project in m_Projects)
                             {
                                 Guid projectGuid = GetProjectGuid(project);
-                                foreach (string c in m_Configs)
+                                foreach (KeyValuePair<string,HashSet<string>> p in m_Configs)
                                 {
-                                    writer.WriteLine("\t\t{" + projectGuid.ToString().ToUpper() + "}." + c + ".ActiveCfg = " + c);
-                                    writer.WriteLine("\t\t{" + projectGuid.ToString().ToUpper() + "}." + c + ".Build.0 = " + c);
+                                    string c = p.Key;
+                                    writer.WriteLine("\t\t{" + projectGuid.ToString().ToUpper() + "}." + c + ".ActiveCfg = " + p.Key);
+                                    if (p.Value.Contains(project.FullName))
+                                        writer.WriteLine("\t\t{" + projectGuid.ToString().ToUpper() + "}." + c + ".Build.0 = " + p.Key);
                                 }
                             }
 
@@ -186,8 +188,9 @@ namespace MSBuild.XCode
                     case EGlobalSection.Solution:
                         {
                             writer.WriteLine("\tGlobalSection(SolutionConfigurationPlatforms) = preSolution");
-                            foreach (string c in m_Configs)
+                            foreach (KeyValuePair<string, HashSet<string>> p in m_Configs)
                             {
+                                string c = p.Key;
                                 writer.WriteLine("\t\t" + c + " = " + c);
                             }
                             writer.WriteLine("\tEndGlobalSection");
@@ -199,10 +202,12 @@ namespace MSBuild.XCode
                             foreach (FileSystemInfo project in m_Projects)
                             {
                                 Guid projectGuid = GetProjectGuid(project);
-                                foreach (string c in m_Configs)
+                                foreach (KeyValuePair<string, HashSet<string>> p in m_Configs)
                                 {
+                                    string c = p.Key;
                                     writer.WriteLine("\t\t{" + projectGuid.ToString().ToUpper() + "}." + c + ".ActiveCfg = " + c);
-                                    writer.WriteLine("\t\t{" + projectGuid.ToString().ToUpper() + "}." + c + ".Build.0 = " + c);
+                                    if (p.Value.Contains(project.FullName))
+                                        writer.WriteLine("\t\t{" + projectGuid.ToString().ToUpper() + "}." + c + ".Build.0 = " + c);
                                 }
                             }
 
@@ -246,21 +251,24 @@ namespace MSBuild.XCode
             }
 
             // Analyze the configurations
-            Dictionary<string, bool> sln_configs = new Dictionary<string, bool>();
+            Dictionary<string, HashSet<string>> sln_configs = new Dictionary<string, HashSet<string>>();
             foreach (FileSystemInfo project in m_Projects)
             {
                 Dictionary<string,bool> project_configs = GetProjectConfigs(project);
                 foreach (KeyValuePair<string, bool> p in project_configs)
                 {
-                    if (!sln_configs.ContainsKey(p.Key))
+                    HashSet<string> projects;
+                    if (!sln_configs.TryGetValue(p.Key, out projects))
                     {
-                        sln_configs.Add(p.Key, true);
+                        projects = new HashSet<string>();
+                        sln_configs.Add(p.Key, projects);
                     }
+                    projects.Add(project.FullName);
                 }
             }
-            foreach (KeyValuePair<string, bool> p in sln_configs)
+            foreach (KeyValuePair<string, HashSet<string>> p in sln_configs)
             {
-                m_Configs.Add(p.Key);
+                m_Configs.Add(p.Key, p.Value);
             }
 
             using (StreamWriter writer = File.CreateText(_SolutionFile))

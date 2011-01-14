@@ -66,7 +66,7 @@ namespace MSBuild.XCode
             // Write a dependency.info file containing dependency package info, this will be included in the package
             if (package.IsValid)
             {
-                string buildURL = Global.RootDir + "target\\" + package.Name + "\\build\\";
+                string buildURL = PackageInstance.RootDir + "target\\" + package.Name + "\\build\\";
                 if (!Directory.Exists(buildURL))
                     Directory.CreateDirectory(buildURL);
 

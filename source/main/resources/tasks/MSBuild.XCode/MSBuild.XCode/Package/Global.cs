@@ -8,7 +8,7 @@ using MSBuild.XCode.Helpers;
 
 namespace MSBuild.XCode
 {
-    public static class Global
+    public partial class PackageInstance
     {
         public static bool IsInitialized { get; set; }
 
@@ -17,19 +17,23 @@ namespace MSBuild.XCode
         public static string TemplateDir { get; set; }
         public static string RootDir { get; set; }
 
-        public static PackageRepository CacheRepo { get; set; }
-        public static PackageRepository RemoteRepo { get; set; }
+        public static IPackageRepository RemoteRepo { get; set; }
+        public static IPackageRepository CacheRepo { get; set; }
+        public static IPackageRepository ShareRepo { get; set; }
 
         public static CppProject CppTemplateProject { get; set; }
         public static CsProject CsTemplateProject { get; set; }
 
-        static Global()
+        static PackageInstance()
         {
             IsInitialized = false;
         }
 
         public static bool Initialize()
         {
+            if (IsInitialized)
+                return true;
+
             Loggy.ToConsole = true;
             Loggy.TaskLogger = null;
             Loggy.Indentor = "\t";
@@ -59,8 +63,9 @@ namespace MSBuild.XCode
                 }
             }
 
-            RemoteRepo = new PackageRepository(RemoteRepoDir, ELocation.Remote);
-            CacheRepo = new PackageRepository(CacheRepoDir, ELocation.Cache);
+            RemoteRepo = new PackageRepositoryFileSystem(RemoteRepoDir, ELocation.Remote);
+            CacheRepo = new PackageRepositoryFileSystem(CacheRepoDir, ELocation.Cache);
+            ShareRepo = new PackageRepositoryShare(CacheRepoDir + ".share\\");
 
             if (!String.IsNullOrEmpty(TemplateDir))
             {
