@@ -10,12 +10,11 @@
   </PropertyGroup>
   
   <PropertyGroup>
-    <PackageName></PackageName>
     <PackageDir>$(MSBuildProjectDirectory)</PackageDir>
     <PackagePlatform>$(Platform)</PackagePlatform>
-    <PackageFile></PackageFile>
+    <PackageFilename></PackageFilename>
     <PackageConfigs></PackageConfigs>
-    <PackageCategory>Main</PackageCategory>
+    <PackageProjectGroup>Main</PackageProjectGroup>
   </PropertyGroup>
 
 </Project>

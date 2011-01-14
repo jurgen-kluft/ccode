@@ -11,7 +11,7 @@ namespace MSBuild.XCode
     {
         public PackageRepositoryFileSystem(string repoDir, ELocation location)
         {
-            RepoDir = repoDir;
+            RepoDir = repoDir.EndWith('\\');
             Layout = new LayoutDefault();
             Location = location;
         }
@@ -48,7 +48,7 @@ namespace MSBuild.XCode
 
         public bool Update(PackageInstance package)
         {
-            string src_dir = Layout.PackageVersionDir(RepoDir, package.Group.ToString(), package.Name, package.Platform, package.GetVersion(Location));
+            string src_dir = Layout.PackageVersionDir(RepoDir, package.Group.ToString(), package.Name, package.Platform, package.Branch, package.GetVersion(Location));
             string src_filename = Layout.VersionToFilename(package.Name, package.Branch, package.Platform, package.GetVersion(Location));
             string src_path = src_dir + src_filename;
             if (File.Exists(src_path))
@@ -75,7 +75,7 @@ namespace MSBuild.XCode
             string src_path = package.GetURL(from) + package.GetFilename(from);
             if (File.Exists(src_path))
             {
-                string dest_dir = Layout.PackageVersionDir(RepoDir, package.Group.ToString(), package.Name, package.Platform, package.GetVersion(from));
+                string dest_dir = Layout.PackageVersionDir(RepoDir, package.Group.ToString(), package.Name, package.Platform, package.Branch, package.GetVersion(from));
                 if (!Directory.Exists(dest_dir))
                 {
                     Directory.CreateDirectory(dest_dir);

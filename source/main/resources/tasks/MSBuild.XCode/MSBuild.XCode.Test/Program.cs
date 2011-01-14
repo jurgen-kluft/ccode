@@ -25,7 +25,7 @@ namespace MSBuild.XCode.Test
             Global.Initialize();
            
             // Our test project is xproject
-            Global.RootDir = @"I:\Packages\xunittest\";
+            Global.RootDir = @"I:\Packages\xbase\";
 
             Mercurial.Repository hg_repo = new Mercurial.Repository(Global.RootDir);
             if (!hg_repo.Exists)
@@ -34,7 +34,7 @@ namespace MSBuild.XCode.Test
                 return;
             }
 
-            Construct("xunittest");
+            Construct("xbase");
 
             PackageConfigs configs = new PackageConfigs();
             configs.RootDir = Global.RootDir;
@@ -42,7 +42,7 @@ namespace MSBuild.XCode.Test
             configs.ProjectGroup = "UnitTest";
             configs.TemplateDir = Global.TemplateDir;
             configs.Execute();
-            
+
             string createdPackageFilename;
             if (true)
             {

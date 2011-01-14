@@ -33,15 +33,15 @@ namespace MSBuild.XCode
 
         public string PackageRootDir(string repoPath, string group, string package_name, string platform)
         {
-            // Path = package_name \ platform \ 
-            string fullPath = repoPath + package_name + "\\" + platform + "\\";
+            // Path = package_name \ 
+            string fullPath = repoPath + package_name + "\\";
             return fullPath;
         }
 
-        public string PackageVersionDir(string repoPath, string group, string package_name, string platform, ComparableVersion version)
+        public string PackageVersionDir(string repoPath, string group, string package_name, string platform, string branch, ComparableVersion version)
         {
-            // Path = package_name \ platform \ 
-            string fullPath = repoPath + package_name + "\\" + platform + "\\";
+            // Path = package_name \  
+            string fullPath = repoPath + package_name + "\\";
             return fullPath;
         }
     }

@@ -14,7 +14,7 @@ namespace MSBuild.XCode
         string VersionToFilenameWithoutExtension(string package_name, string branch, string platform, ComparableVersion version);
         string FilenameToVersion(string filename);
         string PackageRootDir(string repoPath, string group, string package_name, string platform);
-        string PackageVersionDir(string repoPath, string group, string package_name, string platform, ComparableVersion version);
+        string PackageVersionDir(string repoPath, string group, string package_name, string platform, string branch, ComparableVersion version);
     }
 
 }

@@ -4,6 +4,7 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Text;
 using MSBuild.XCode.Helpers;
+using FileDirectoryPath;
 
 namespace MSBuild.XCode
 {
@@ -15,9 +16,11 @@ namespace MSBuild.XCode
         private Queue<DependencyTreeNode> mCompileQueue;
         private int mCompileIteration;
 
-        private PackageInstance mPackage;
         private string mPlatform;
+        private PackageInstance mPackage;
         private List<DependencyInstance> mDependencies;
+
+        private IPackageRepository mShareRepo;
         private IPackageRepository mTargetRepo;
 
         public PackageInstance Package { get { return mPackage; } }
@@ -33,6 +36,8 @@ namespace MSBuild.XCode
             mAllNodesMap = new Dictionary<string, DependencyTreeNode>();
             mCompileQueue = new Queue<DependencyTreeNode>();
             mCompileIteration = 0;
+            DirPathAbsolute shareRepoURL = new DirPathAbsolute(package.RootURL + "..\\.share\\");
+            mShareRepo = new PackageRepositoryShare(shareRepoURL.ToString());
             mTargetRepo = new PackageRepositoryTarget(package.RootURL + "target\\");
         }
 
@@ -131,13 +136,20 @@ namespace MSBuild.XCode
             if (!node.Package.CacheExists)
                 Global.CacheRepo.Update(node.Package, node.Dependency.VersionRange);
 
+            if (node.Package.CacheExists)
+            {
+                mShareRepo.Update(node.Package);
+            }
+
             // Do a signature verification
-            if (node.Package.TargetExists && node.Package.CacheExists)
+            if (node.Package.TargetExists && node.Package.ShareExists && node.Package.CacheExists)
             {
                 if (node.Package.RemoteExists)
                 {
-                    if (node.Package.RemoteSignature == node.Package.CacheSignature && node.Package.CacheSignature == node.Package.TargetSignature)
+                    if (node.Package.RemoteSignature == node.Package.CacheSignature && node.Package.CacheSignature == node.Package.ShareSignature)
+                    {
                         return 0;
+                    }
                 }
                 else
                 {
@@ -162,9 +174,22 @@ namespace MSBuild.XCode
 
             if (node.Package.CacheExists)
             {
-                if (!node.Package.TargetExists || (node.Package.CacheVersion > node.Package.TargetVersion))
+                if (!node.Package.ShareExists || (node.Package.CacheVersion > node.Package.ShareVersion))
                 {
-                    if (mTargetRepo.Add(node.Package, ELocation.Cache))
+                    if (mShareRepo.Add(node.Package, ELocation.Cache))
+                    {
+                        result = 1;
+                    }
+                    else
+                    {
+                        // Failed to get package from Cache to Share
+                        result = -1;
+                    }
+                }
+
+                if (!node.Package.TargetExists || (node.Package.ShareVersion > node.Package.TargetVersion))
+                {
+                    if (mTargetRepo.Add(node.Package, ELocation.Share))
                     {
                         result = 1;
                     }

@@ -14,7 +14,8 @@ namespace MSBuild.XCode
         Remote,     ///< Remote package repository
         Cache,      ///< Cache package repository (on local machine)
         Local,      ///< Local package, a 'Created' package of the Root
-        Target,     ///< Target package, an 'Extracted' package
+        Target,     ///< Target package, an 'Extracted' package in the target folder of a root package
+        Share,      ///< Share package, an 'Extracted' package in the shared package repo
         Root,       ///< Root package
     }
 
@@ -39,16 +40,19 @@ namespace MSBuild.XCode
 
         public DateTime RemoteSignature { get; set; }
         public DateTime CacheSignature { get; set; }
+        public DateTime ShareSignature { get; set; }
         public DateTime TargetSignature { get; set; }
         public DateTime LocalSignature { get; set; }
 
         public IPackageFilename RemoteFilename { get; set; }
         public IPackageFilename CacheFilename { get; set; }
+        public IPackageFilename ShareFilename { get; set; }
         public IPackageFilename TargetFilename { get; set; }
         public IPackageFilename LocalFilename { get; set; }
 
         public ComparableVersion RemoteVersion { get; set; }
         public ComparableVersion CacheVersion { get; set; }
+        public ComparableVersion ShareVersion { get; set; }
         public ComparableVersion TargetVersion { get; set; }
         public ComparableVersion LocalVersion { get; set; }
         public ComparableVersion RootVersion { get; set; }
@@ -56,12 +60,14 @@ namespace MSBuild.XCode
         public bool RemoteExists { get { return !String.IsNullOrEmpty(RemoteURL); } }
         public bool CacheExists { get { return !String.IsNullOrEmpty(CacheURL); } }
         public bool LocalExists { get { return !String.IsNullOrEmpty(LocalURL); } }
+        public bool ShareExists { get { return !String.IsNullOrEmpty(ShareURL); } }
         public bool TargetExists { get { return !String.IsNullOrEmpty(TargetURL); } }
         public bool RootExists { get { return !String.IsNullOrEmpty(RootURL); } }
 
         public string RemoteURL { get; set; }
         public string CacheURL { get; set; }
         public string LocalURL { get; set; }
+        public string ShareURL { get; set; }
         public string TargetURL { get; set; }
         public string RootURL { get { return mRootURL; } }
 
@@ -79,6 +85,7 @@ namespace MSBuild.XCode
         {
             mResource = resource;
         }
+
         internal PackageInstance(PackageResource resource, PomInstance pom)
         {
             mResource = resource;
@@ -112,10 +119,11 @@ namespace MSBuild.XCode
 
         public static PackageInstance LoadFromLocal(string rootURL, IPackageFilename filename)
         {
-            PackageResource resource = PackageResource.LoadFromPackage(rootURL + "target\\", filename);
+            string subDir = "target\\" + filename.Name + "\\build\\";
+            PackageResource resource = PackageResource.LoadFromPackage(rootURL + subDir, filename);
             PackageInstance instance = resource.CreateInstance(false);
             instance.mRootURL = rootURL;
-            instance.LocalURL = rootURL + "target\\";
+            instance.LocalURL = rootURL + subDir;
             instance.LocalFilename = filename;
             instance.LocalVersion = filename.Version;
             return instance;
@@ -139,10 +147,15 @@ namespace MSBuild.XCode
             }
             else if (TargetExists)
             {
-                PackageResource resource = PackageResource.LoadFromFile(TargetURL);
-                mPom = resource.CreatePomInstance(false);
-                mResource = resource;
-                return true;
+                // Target actually is a dummy, it doesn't contain the content, the actual content
+                // is in the Share repository. The Target only contains the full filename .
+                if (ShareExists)
+                {
+                    PackageResource resource = PackageResource.LoadFromFile(ShareURL);
+                    mPom = resource.CreatePomInstance(false);
+                    mResource = resource;
+                    return true;
+                }
             }
             else if (CacheExists)
             {
@@ -161,6 +174,7 @@ namespace MSBuild.XCode
                 case ELocation.Remote: RemoteURL = url; break;
                 case ELocation.Cache: CacheURL = url; break;
                 case ELocation.Local: LocalURL = url; break;
+                case ELocation.Share: ShareURL = url; break;
                 case ELocation.Target: TargetURL = url; break;
                 case ELocation.Root: mRootURL = url; break;
             }
@@ -173,6 +187,7 @@ namespace MSBuild.XCode
                 case ELocation.Remote: RemoteFilename = filename; break;
                 case ELocation.Cache: CacheFilename = filename; break;
                 case ELocation.Local: LocalFilename = filename; break;
+                case ELocation.Share: ShareFilename = filename; break;
                 case ELocation.Target: TargetFilename = filename; break;
                 case ELocation.Root: break;
             }
@@ -185,6 +200,7 @@ namespace MSBuild.XCode
                 case ELocation.Remote: RemoteSignature = signature; break;
                 case ELocation.Cache: CacheSignature = signature; break;
                 case ELocation.Local: LocalSignature = signature; break;
+                case ELocation.Share: ShareSignature = signature; break;
                 case ELocation.Target: TargetSignature = signature; break;
                 case ELocation.Root: break;
             }
@@ -198,6 +214,7 @@ namespace MSBuild.XCode
                 case ELocation.Remote: RemoteVersion = version; break;
                 case ELocation.Cache: CacheVersion = version; break;
                 case ELocation.Local: LocalVersion = version; break;
+                case ELocation.Share: ShareVersion = version; break;
                 case ELocation.Target: TargetVersion = version; break;
                 case ELocation.Root: RootVersion = version; break;
             }
@@ -211,10 +228,26 @@ namespace MSBuild.XCode
                 case ELocation.Remote: url = RemoteURL; break;
                 case ELocation.Cache: url = CacheURL; break;
                 case ELocation.Local: url = LocalURL; break;
+                case ELocation.Share: url = ShareURL; break;
                 case ELocation.Target: url = TargetURL; break;
                 case ELocation.Root: url = RootURL; break;
             }
             return url;
+        }
+
+        public bool HasURL(ELocation location)
+        {
+            bool has = false;
+            switch (location)
+            {
+                case ELocation.Remote: has = RemoteExists; break;
+                case ELocation.Cache: has = CacheExists; break;
+                case ELocation.Local: has = LocalExists; break;
+                case ELocation.Share: has = ShareExists; break;
+                case ELocation.Target: has = TargetExists; break;
+                case ELocation.Root: has = RootExists; break;
+            }
+            return has;
         }
 
         public IPackageFilename GetFilename(ELocation location)
@@ -225,6 +258,7 @@ namespace MSBuild.XCode
                 case ELocation.Remote: filename = RemoteFilename; break;
                 case ELocation.Cache: filename = CacheFilename; break;
                 case ELocation.Local: filename = LocalFilename; break;
+                case ELocation.Share: filename = ShareFilename; break;
                 case ELocation.Target: filename = TargetFilename; break;
                 case ELocation.Root: break;
             }
@@ -239,6 +273,7 @@ namespace MSBuild.XCode
                 case ELocation.Remote: signature = RemoteSignature; break;
                 case ELocation.Cache: signature = CacheSignature; break;
                 case ELocation.Local: signature = LocalSignature; break;
+                case ELocation.Share: signature = ShareSignature; break;
                 case ELocation.Target: signature = TargetSignature; break;
                 case ELocation.Root: break;
             }
@@ -253,6 +288,7 @@ namespace MSBuild.XCode
                 case ELocation.Remote: version = RemoteVersion; break;
                 case ELocation.Cache: version = CacheVersion; break;
                 case ELocation.Local: version = LocalVersion; break;
+                case ELocation.Share: version = ShareVersion; break;
                 case ELocation.Target: version = TargetVersion; break;
                 case ELocation.Root: version = RootVersion; break;
             }
