@@ -891,7 +891,7 @@
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='DevDebug|N3DS'">
     <ClCompile>
       <WarningLevel>Level3</WarningLevel>
-      <Optimization>Disabled</Optimization>
+      <Optimization>Minimum</Optimization>
       <PreprocessorDefinitions>%()</PreprocessorDefinitions>
       <PrecompiledHeader>NotUsing</PrecompiledHeader>
       <AdditionalIncludeDirectories>%()</AdditionalIncludeDirectories>
@@ -913,7 +913,7 @@
       <AdditionalIncludeDirectories>%()</AdditionalIncludeDirectories>
       <ExceptionHandling>false</ExceptionHandling>
       <RuntimeTypeInfo>false</RuntimeTypeInfo>
-      <Optimization>Debuggable</Optimization>
+      <Optimization>Maximum</Optimization>
     </ClCompile>
     <Link>
       <GenerateDebugInformation>true</GenerateDebugInformation>
@@ -930,7 +930,7 @@
       <PrecompiledHeader>NotUsing</PrecompiledHeader>
       <AdditionalIncludeDirectories>%()</AdditionalIncludeDirectories>
       <ExceptionHandling>false</ExceptionHandling>
-      <Optimization>Full</Optimization>
+      <Optimization>Maximum</Optimization>
     </ClCompile>
     <Link>
       <GenerateDebugInformation>true</GenerateDebugInformation>
@@ -943,7 +943,7 @@
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='TestDebug|N3DS'">
     <ClCompile>
       <WarningLevel>Level3</WarningLevel>
-      <Optimization>Disabled</Optimization>
+      <Optimization>Minimum</Optimization>
       <PreprocessorDefinitions>%()</PreprocessorDefinitions>
       <PrecompiledHeader>NotUsing</PrecompiledHeader>
       <AdditionalIncludeDirectories>%()</AdditionalIncludeDirectories>
@@ -965,7 +965,7 @@
       <AdditionalIncludeDirectories>%()</AdditionalIncludeDirectories>
       <ExceptionHandling>Sync</ExceptionHandling>
       <RuntimeTypeInfo>false</RuntimeTypeInfo>
-      <Optimization>Debuggable</Optimization>
+      <Optimization>Maximum</Optimization>
     </ClCompile>
     <Link>
       <GenerateDebugInformation>true</GenerateDebugInformation>
