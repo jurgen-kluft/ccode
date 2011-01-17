@@ -98,6 +98,7 @@
     <Compile Include="Helpers\Filename.cs" />
     <Compile Include="Helpers\ProcessHelper.cs" />
     <Compile Include="Helpers\ReflectionHelper.cs" />
+    <Compile Include="Helpers\TextFile.cs" />
     <Compile Include="Mercurial\AddCommand.cs" />
     <Compile Include="Mercurial\AddRemoveCommand.cs" />
     <Compile Include="Mercurial\AnnotateCommand.cs" />

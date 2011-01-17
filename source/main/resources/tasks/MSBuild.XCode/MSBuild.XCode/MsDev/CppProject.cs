@@ -414,6 +414,123 @@ namespace MSBuild.XCode
                 Directory.CreateDirectory(Path.GetDirectoryName(filename));
 
             mXmlDocMain.Save(filename);
+            return SaveFilter(filename +  ".filters");
+        }
+
+        private void WriteFilterIncludes(TextFile textFile, List<string> files, HashSet<string> directoryMap)
+        {
+            if (files.Count > 0)
+            {
+                textFile.WriteLine(1, "<ItemGroup>");
+                foreach (string current_file in files)
+                {
+                    Loggy.Info(current_file);
+                    string path_to_file = Path.GetDirectoryName(current_file.Replace("..\\", ""));
+                    string[] folders = path_to_file.Split(new char[] { '\\' }, StringSplitOptions.RemoveEmptyEntries);
+                    string folderPath = string.Empty;
+                    foreach (string folder in folders)
+                    {
+                        if (String.IsNullOrEmpty(folderPath))
+                            folderPath = folder;
+                        else
+                            folderPath = folderPath + "\\" + folder;
+
+                        if (!String.IsNullOrEmpty(folderPath) && !directoryMap.Contains(folderPath))
+                        {
+                            directoryMap.Add(folderPath);
+                            textFile.WriteLine(2, "<Filter Include=\"{0}\">", folderPath);
+                            textFile.WriteLine(3, "<UniqueIdentifier>{{{0}}}</UniqueIdentifier>", Guid.NewGuid().ToString());
+                            textFile.WriteLine(2, "</Filter>");
+                        }
+                    }
+                }
+                textFile.WriteLine(1, "</ItemGroup>");
+            }
+        }
+
+        private void WriteFileFilterBlock(TextFile textFile, List<string> files, string group_type)
+        {
+            if (files.Count > 0)
+            {
+                textFile.WriteLine(1, "<ItemGroup>");
+                foreach (string current_file in files)
+                {
+                    string path_to_file = Path.GetDirectoryName(current_file.Replace("..\\", ""));
+                    if (!String.IsNullOrEmpty(path_to_file))
+                    {
+                        textFile.WriteLine(2, "<{0} Include=\"{1}\">", group_type, current_file);
+                        textFile.WriteLine(3, "<Filter>{0}</Filter>", path_to_file);
+                        textFile.WriteLine(2, "</{0}>", group_type);
+                    }
+                    else
+                    {
+                        textFile.WriteLine(2, "<{0} Include=\"{1}\" />", group_type, current_file);
+                    }
+                }
+                textFile.WriteLine(1, "</ItemGroup>");
+            }
+        }
+
+        private bool SaveFilter(string filename)
+        {
+            // Find the <ItemGroup><ClCompile...
+            List<string> clAll = new List<string>();
+            List<string> clCompile = new List<string>();
+            List<string> clInclude = new List<string>();
+            List<string> clNone = new List<string>();
+            List<string> clResourceCompile = new List<string>();
+
+            Merge(mXmlDocMain, mXmlDocMain,
+                delegate(bool isMainNode, XmlNode node)
+                {
+                    string includeAttrValue = Attribute.Get("Include", node, string.Empty);
+                    if (!String.IsNullOrEmpty(includeAttrValue))
+                    {
+                        if (String.Compare(node.Name, "ClCompile", true) == 0)
+                        {
+                            clAll.Add(includeAttrValue);
+                            clCompile.Add(includeAttrValue);
+                        }
+                        else if (String.Compare(node.Name, "ClInclude", true) == 0)
+                        {
+                            clAll.Add(includeAttrValue);
+                            clInclude.Add(includeAttrValue);
+                        }
+                        else if (String.Compare(node.Name, "None", true) == 0)
+                        {
+                            clAll.Add(includeAttrValue);
+                            clNone.Add(includeAttrValue);
+                        }
+                        else if (String.Compare(node.Name, "ClResourceCompile", true) == 0)
+                        {
+                            clAll.Add(includeAttrValue);
+                            clResourceCompile.Add(includeAttrValue);
+                        }
+                    }
+                    return true;
+                },
+                delegate(XmlNode main, XmlNode other)
+                {
+                });
+
+            string tool_version_and_xmlns = "ToolsVersion=\"4.0\" xmlns=\"http://schemas.microsoft.com/developer/msbuild/2003\"";
+            string xml_version_and_encoding = "<?xml version=\"1.0\" encoding=\"utf-8\"?>";
+
+            TextFile textFile = new TextFile();
+            textFile.Open(filename);
+            textFile.WriteLine(xml_version_and_encoding);
+            textFile.WriteLine("<Project " + tool_version_and_xmlns + ">");
+            {
+                HashSet<string> directoryMap = new HashSet<string>();
+                WriteFilterIncludes(textFile, clAll, directoryMap);
+                WriteFileFilterBlock(textFile, clInclude, "ClInclude");
+                WriteFileFilterBlock(textFile, clCompile, "ClCompile");
+                WriteFileFilterBlock(textFile, clNone, "None");
+                WriteFileFilterBlock(textFile, clResourceCompile, "ResourceCompile");
+            }
+            textFile.WriteLine("</Project>");
+            textFile.Close();
+
             return true;
         }
 
