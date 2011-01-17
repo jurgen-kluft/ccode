@@ -424,7 +424,6 @@ namespace MSBuild.XCode
                 textFile.WriteLine(1, "<ItemGroup>");
                 foreach (string current_file in files)
                 {
-                    Loggy.Info(current_file);
                     string path_to_file = Path.GetDirectoryName(current_file.Replace("..\\", ""));
                     string[] folders = path_to_file.Split(new char[] { '\\' }, StringSplitOptions.RemoveEmptyEntries);
                     string folderPath = string.Empty;
