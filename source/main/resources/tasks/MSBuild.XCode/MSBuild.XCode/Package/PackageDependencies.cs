@@ -79,6 +79,16 @@ namespace MSBuild.XCode
             return result == 0;
         }
 
+        public bool BuildForPlatforms(List<string> platforms)
+        {
+            foreach (string platform in platforms)
+            {
+                if (!BuildForPlatform(platform))
+                    return false;
+            }
+            return true;
+        }
+
         public bool BuildForAllPlatforms()
         {
             foreach (string platform in Package.Pom.Platforms)
@@ -94,6 +104,14 @@ namespace MSBuild.XCode
             Loggy.Info(String.Format("Dependencies for platform : {0}", platform));
             DependencyTree tree = GetDependencyTree(platform);
             tree.Print();
+        }
+
+        public void PrintForPlatforms(List<string> platforms)
+        {
+            Loggy.Indent += 1;
+            foreach (string platform in platforms)
+                PrintForPlatform(platform);
+            Loggy.Indent -= 1;
         }
 
         public void PrintForAllPlatforms()

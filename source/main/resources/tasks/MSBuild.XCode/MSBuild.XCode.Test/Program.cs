@@ -30,7 +30,7 @@ namespace MSBuild.XCode.Test
             Mercurial.Repository hg_repo = new Mercurial.Repository(PackageInstance.RootDir);
             if (!hg_repo.Exists)
             {
-                Loggy.Error(String.Format("Error: Package::Create failed since there is no Hg (Mercurial) repository!"));
+                Loggy.Error(String.Format("Error: Package::Create failed since there is no Hg (SVN) repository!"));
                 return;
             }
 
