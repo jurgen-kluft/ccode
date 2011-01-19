@@ -300,7 +300,15 @@ namespace MSBuild.XCode
             return Pom.Info();
         }
 
-        public void GenerateProjects(PackageDependencies dependencies)
+        private static bool ContainsPlatform(List<string> platforms, string platform)
+        {
+            foreach (string p in platforms)
+                if (String.Compare(p, platform, true) == 0)
+                    return true;
+            return false;
+        }
+
+        public void GenerateProjects(PackageDependencies dependencies, List<string> platforms)
         {
             // Generating project files is a bit complex in that it has to merge project definitions on a per platform basis.
             // Every platform is considered to have its own package (zip -> pom.xml) containing the project settings for that platform.
@@ -314,18 +322,21 @@ namespace MSBuild.XCode
             {
                 // Every platform has a dependency tree and every dependency package for that platform has filtered their
                 // project to only keep their platform specific xml elements.
-                
-                string[] platforms = rootProject.GetPlatforms();
-                foreach (string platform in platforms)
-                {
-                    List<PackageInstance> allDependencyPackages = dependencies.GetAllDependencyPackages(platform);
 
-                    // Merge in all Projects of those dependency packages which are already filtered on the platform
-                    foreach (PackageInstance dependencyPackage in allDependencyPackages)
+                string[] projectPlatforms = rootProject.GetPlatforms();
+                foreach (string projectPlatform in projectPlatforms)
+                {
+                    if (ContainsPlatform(platforms, projectPlatform))
                     {
-                        ProjectInstance dependencyProject = dependencyPackage.Pom.GetProjectByGroup(rootProject.Group);
-                        if (dependencyProject != null && !dependencyProject.IsPrivate)
-                            rootProject.MergeWithDependencyProject(dependencyProject);
+                        List<PackageInstance> allDependencyPackages = dependencies.GetAllDependencyPackages(projectPlatform);
+
+                        // Merge in all Projects of those dependency packages which are already filtered on the platform
+                        foreach (PackageInstance dependencyPackage in allDependencyPackages)
+                        {
+                            ProjectInstance dependencyProject = dependencyPackage.Pom.GetProjectByGroup(rootProject.Group);
+                            if (dependencyProject != null && !dependencyProject.IsPrivate)
+                                rootProject.MergeWithDependencyProject(dependencyProject);
+                        }
                     }
                 }
             }
@@ -349,17 +360,20 @@ namespace MSBuild.XCode
                         string[] package_projectgroup = dependency.Split(new char[] { ':' }, StringSplitOptions.RemoveEmptyEntries);
                         if (package_projectgroup.Length == 2 && !String.IsNullOrEmpty(package_projectgroup[0]) && !String.IsNullOrEmpty(package_projectgroup[1]))
                         {
-                            string[] platforms = rootProject.GetPlatforms();
-                            foreach (string platform in platforms)
+                            string[] projectPlatforms = rootProject.GetPlatforms();
+                            foreach (string projectPlatform in projectPlatforms)
                             {
-                                List<PackageInstance> allDependencyPackages = dependencies.GetAllDependencyPackages(platform);
-                                foreach (PackageInstance dependencyPackage in allDependencyPackages)
+                                if (ContainsPlatform(platforms, projectPlatform))
                                 {
-                                    if (String.Compare(dependencyPackage.Name, package_projectgroup[0], true) == 0)
+                                    List<PackageInstance> allDependencyPackages = dependencies.GetAllDependencyPackages(projectPlatform);
+                                    foreach (PackageInstance dependencyPackage in allDependencyPackages)
                                     {
-                                        ProjectInstance dependencyProject = dependencyPackage.Pom.GetProjectByGroup(package_projectgroup[1]);
-                                        if (dependencyProject != null)
-                                            rootProject.MergeWithDependencyProject(dependencyProject);
+                                        if (String.Compare(dependencyPackage.Name, package_projectgroup[0], true) == 0)
+                                        {
+                                            ProjectInstance dependencyProject = dependencyPackage.Pom.GetProjectByGroup(package_projectgroup[1]);
+                                            if (dependencyProject != null)
+                                                rootProject.MergeWithDependencyProject(dependencyProject);
+                                        }
                                     }
                                 }
                             }
