@@ -13,7 +13,7 @@ namespace MSBuild.XCode
         public string Name { get; set; }
         [Required]
         public string Action { get; set; }      ///< init, dir, vs2010
-
+        public string Platform { get; set; }
         public string Language { get; set; }
         [Required]
         public string RootDir { get; set; }
@@ -56,9 +56,17 @@ namespace MSBuild.XCode
                 if (package.IsValid)
                 {
                     PackageDependencies dependencies = new PackageDependencies(package);
-                    if (dependencies.BuildForAllPlatforms())
+
+                    List<string> platforms = new List<string>(package.Pom.Platforms);
+                    if (!String.IsNullOrEmpty(Platform) && String.Compare(Platform, "all", true) != 0)
                     {
-                        dependencies.PrintForAllPlatforms();
+                        platforms.Clear();
+                        platforms.Add(Platform);
+                    }
+
+                    if (dependencies.BuildForPlatforms(platforms))
+                    {
+                        dependencies.PrintForPlatforms(platforms);
 
                         // Generate the projects and solution
                         package.GenerateProjects(dependencies);

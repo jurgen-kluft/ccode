@@ -60,12 +60,14 @@ namespace Mercurial
             }
         }
 
+        /// <summary>
+        /// Checks if the .hg folder exists
+        /// </summary>
         public bool Exists
         {
             get
             {
                 bool ok = Directory.Exists(_Path + "\\.hg");
-                ok = ok && Directory.Exists(_Path + "\\.hg\\store");
                 return ok;
             }
         }

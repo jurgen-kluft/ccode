@@ -107,7 +107,7 @@
     <MSBuild.XCode.PackageConstruct Name="" Action="dir" RootDir="$(PackageDir)" TemplateDir="$(PackageLocalRepoURL)com\virtuos\xcode\publish\templates\" CacheRepoDir="$(PackageLocalRepoURL)" RemoteRepoDir="$(PackageRemoteRepoURL)"/>
   </Target>
   <Target Name="Construct">
-    <MSBuild.XCode.PackageConstruct Name="" Action="vs2010" RootDir="$(PackageDir)" TemplateDir="$(PackageLocalRepoURL)com\virtuos\xcode\publish\templates\" CacheRepoDir="$(PackageLocalRepoURL)" RemoteRepoDir="$(PackageRemoteRepoURL)"/>
+    <MSBuild.XCode.PackageConstruct Name="" Action="vs2010" Platform="$(PackagePlatform)" RootDir="$(PackageDir)" TemplateDir="$(PackageLocalRepoURL)com\virtuos\xcode\publish\templates\" CacheRepoDir="$(PackageLocalRepoURL)" RemoteRepoDir="$(PackageRemoteRepoURL)"/>
   </Target>
 
   <Target Name="Info">
