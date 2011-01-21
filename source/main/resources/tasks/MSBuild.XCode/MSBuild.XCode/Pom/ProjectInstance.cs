@@ -51,7 +51,15 @@ namespace MSBuild.XCode
             Loggy.Info(String.Format("Location                   : {0}", Location));
         }
 
-        public void ConstructFullMsDevProject()
+        private static bool ContainsPlatform(List<string> platforms, string platform)
+        {
+            foreach (string p in platforms)
+                if (String.Compare(p, platform, true) == 0)
+                    return true;
+            return false;
+        }
+
+        public void ConstructFullMsDevProject(List<string> platforms)
         {
             if (mIsFinalProject)
                 return;
@@ -61,7 +69,15 @@ namespace MSBuild.XCode
                 CppProject finalProject = new CppProject();
                 finalProject.Copy(PackageInstance.CppTemplateProject);
                 finalProject.Merge(mMsDevProject, true, true, true);
-                finalProject.RemoveAllBut(Configs);
+
+                Dictionary<string, StringItems> platform_configs = new Dictionary<string, StringItems>();
+                foreach (KeyValuePair<string, StringItems> pair in Configs)
+                {
+                    if (ContainsPlatform(platforms, pair.Key))
+                        platform_configs.Add(pair.Key, pair.Value);
+                }
+
+                finalProject.RemoveAllBut(platform_configs);
                 mMsDevProject = finalProject;
                 mIsFinalProject = true;
             }

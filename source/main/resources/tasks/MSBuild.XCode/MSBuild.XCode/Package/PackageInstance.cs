@@ -314,9 +314,7 @@ namespace MSBuild.XCode
             // Every platform is considered to have its own package (zip -> pom.xml) containing the project settings for that platform.
             // For every platform we have to merge in only the conditional xml elements into the final project file.
             foreach (ProjectInstance rootProject in Pom.Projects)
-            {
-                rootProject.ConstructFullMsDevProject();
-            }
+                rootProject.ConstructFullMsDevProject(platforms);
 
             foreach (ProjectInstance rootProject in Pom.Projects)
             {
