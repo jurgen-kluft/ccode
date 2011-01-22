@@ -54,13 +54,12 @@
 			  <ImportGroup Label="TargetDirs">
 			    <Import Project="$(SolutionDir)target\${PackageName}\${PackageName}.$(Platform).props" Condition="exists('$(SolutionDir)target\${PackageName}\${PackageName}.$(Platform).props')" Label="${PackageName}_TargetDir" />
 			  </ImportGroup>
-        <Reference Include="#${PackageName}">
-        	<HintPath>$(${PackageName}_TargetDir)lib\${PackageName}.dll</HintPath>
-        </Reference>
 			  <ItemGroup>
 			    <Reference Include="System" />
 			    <Reference Include="System.Core" />
-			    <Reference Include="System.IO" />
+	        <Reference Include="#${PackageName}">
+  	      	<HintPath>$(${PackageName}_TargetDir)lib\${PackageName}.dll</HintPath>
+    	    </Reference>
 			  </ItemGroup>
 			  <ItemGroup>
 			    <Compile Include="source\main\cs\**\*.cs" />
@@ -92,7 +91,6 @@
 			  <ItemGroup>
 			    <Reference Include="System" />
 			    <Reference Include="System.Core" />
-			    <Reference Include="System.IO" />
 			  </ItemGroup>
 			  <ItemGroup>
 			    <ProjectReference Include="..\..\main\cs\${PackageName}.csproj">
