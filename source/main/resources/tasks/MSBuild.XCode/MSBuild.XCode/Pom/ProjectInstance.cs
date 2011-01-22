@@ -10,7 +10,10 @@ namespace MSBuild.XCode
     public class ProjectInstance
     {
         private ProjectResource mResource;
-        private CppProject mMsDevProject;
+        
+        private CppProject mMsDevCppProject;
+        private CsProject mMsDevCsProject;
+
         private bool mIsFinalProject;
 
         public Dictionary<string, StringItems> Configs { get { return mResource.Configs; } }
@@ -35,12 +38,25 @@ namespace MSBuild.XCode
             Main = main;
 
             mIsFinalProject = false;
-            mMsDevProject = new CppProject();
-            mMsDevProject.Copy(mResource.MsDevProject);
-            if (Main)
-                mMsDevProject.FilterItems(new string[] { "#" }, new string[] { "@" });
+
+            if (IsCpp)
+            {
+                mMsDevCppProject = new CppProject();
+                mMsDevCppProject.Copy(mResource.MsDevCppProject);
+                if (Main)
+                    mMsDevCppProject.FilterItems(new string[] { "#" }, new string[] { "@" });
+                else
+                    mMsDevCppProject.FilterItems(new string[] { "@" }, new string[] { "#" });
+            }
             else
-                mMsDevProject.FilterItems(new string[] { "@" }, new string[] { "#" });
+            {
+                mMsDevCsProject = new CsProject();
+                mMsDevCsProject.Copy(mResource.MsDevCsProject);
+                if (Main)
+                    mMsDevCsProject.FilterItems(new string[] { "#" }, new string[] { "@" });
+                else
+                    mMsDevCsProject.FilterItems(new string[] { "@" }, new string[] { "#" });
+            }
         }
 
         public void Info()
@@ -68,7 +84,7 @@ namespace MSBuild.XCode
             {
                 CppProject finalProject = new CppProject();
                 finalProject.Copy(PackageInstance.CppTemplateProject);
-                finalProject.Merge(mMsDevProject, true, true, true);
+                finalProject.Merge(mMsDevCppProject, true, true, true);
 
                 Dictionary<string, StringItems> platform_configs = new Dictionary<string, StringItems>();
                 foreach (KeyValuePair<string, StringItems> pair in Configs)
@@ -78,33 +94,36 @@ namespace MSBuild.XCode
                 }
 
                 finalProject.RemoveAllBut(platform_configs);
-                mMsDevProject = finalProject;
+                mMsDevCppProject = finalProject;
                 mIsFinalProject = true;
             }
             else if (IsCs)
             {
-                //CsProject finalProject = new CsProject();
-                //finalProject.Copy(Global.CsTemplateProject);
-                //finalProject.Merge(mMsDevProject, true, true, true);
-                //finalProject.RemoveAllBut(Configs);
-                //mMsDevProject = finalProject;
+                CsProject finalProject = new CsProject();
+                finalProject.Copy(PackageInstance.CsTemplateProject);
+                finalProject.Merge(mMsDevCsProject);
+                finalProject.RemoveAllBut(Configs);
+                mMsDevCsProject = finalProject;
             }
         }
 
         public void MergeWithDependencyProject(ProjectInstance dependencyProject)
         {
-            mMsDevProject.Merge(dependencyProject.mMsDevProject, false, false, false);
+            if (IsCpp)
+                mMsDevCppProject.Merge(dependencyProject.mMsDevCppProject, false, false, false);
+            else if (IsCs)
+                mMsDevCsProject.Merge(dependencyProject.mMsDevCsProject);
         }
 
         public void OnlyKeepPlatformSpecifics(string platform)
         {
             if (IsCpp)
             {
-                mMsDevProject.RemoveAllPlatformsBut(platform);
+                mMsDevCppProject.RemoveAllPlatformsBut(platform);
             }
             else if (IsCs)
             {
-                mMsDevProject.RemoveAllPlatformsBut(platform);
+                mMsDevCsProject.RemoveAllPlatformsBut(platform);
             }
         }
 
@@ -128,8 +147,16 @@ namespace MSBuild.XCode
             string reldir = rootdir + Path.GetDirectoryName(filename);
             reldir = reldir.EndWith('\\');
 
-            mMsDevProject.ExpandGlobs(rootdir, reldir);
-            mMsDevProject.Save(rootdir + filename);
+            if (IsCpp)
+            {
+                mMsDevCppProject.ExpandGlobs(rootdir, reldir);
+                mMsDevCppProject.Save(rootdir + filename);
+            }
+            else if (IsCs)
+            {
+                mMsDevCsProject.ExpandGlobs(rootdir, reldir);
+                mMsDevCsProject.Save(rootdir + filename);
+            }
         }
     }
 }

@@ -28,18 +28,9 @@
     <Reference Include="Microsoft.Build.Engine" />
   </ItemGroup>
   <ItemGroup>
-    <Compile Include="*.cs" />
+    <Compile Include="**\*.cs" />
   </ItemGroup>
   <ItemGroup>
-    <EmbeddedResource Include="*.resx" />
+    <EmbeddedResource Include="**\*.resx" />
   </ItemGroup>
-  <ItemGroup>
-    <None Include="" />
-  </ItemGroup>
-  <ItemGroup>
-    <Content Include="App.ico" />
-  </ItemGroup>
-  <PropertyGroup>
-    <PostBuildEvent>xcopy $(SolutionDir)target\outdir\xcode\bin\Release\xcode.exe  \\cnshasap2\Hg_Repo\PACKAGE_REPO\com\virtuos\xcode\publish\*.* /R /Y /Q</PostBuildEvent>
-  </PropertyGroup>
 </Project>

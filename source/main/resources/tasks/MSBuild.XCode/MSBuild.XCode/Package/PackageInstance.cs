@@ -76,6 +76,9 @@ namespace MSBuild.XCode
         public PomInstance Pom { get { return mPom; } }
         public List<DependencyResource> Dependencies { get { return Pom.Dependencies; } }
 
+        public bool IsCpp { get { return Pom.IsCpp; } }
+        public bool IsCs { get { return Pom.IsCs; } }
+
         private PackageInstance(bool isRoot)
         {
             mIsRoot = isRoot;
@@ -416,30 +419,60 @@ namespace MSBuild.XCode
 
         public bool GenerateSolution()
         {
-            CppSolution solution = new CppSolution(CppSolution.EVersion.VS2010, CppSolution.ELanguage.CPP);
-
-            List<string> projectFilenames = new List<string>();
-            foreach (ProjectInstance prj in Pom.Projects)
+            if (IsCpp)
             {
-                string path = prj.Location.Replace("/", "\\");
-                path = path.EndWith('\\');
-                path = path + prj.Name + prj.Extension;
-                projectFilenames.Add(path);
+                CppSolution solution = new CppSolution(CppSolution.EVersion.VS2010);
 
-                string[] dependencies = prj.DependsOn.Split(new char[] { ';' }, StringSplitOptions.RemoveEmptyEntries);
-                if (dependencies.Length > 0)
+                List<string> projectFilenames = new List<string>();
+                foreach (ProjectInstance prj in Pom.Projects)
                 {
-                    for (int i = 0; i < dependencies.Length; ++i)
-                    {
-                        dependencies[i] = dependencies[i] + prj.Extension;
-                    }
-                    solution.AddDependencies(prj.Name + prj.Extension, dependencies);
-                }
-            }
+                    string path = prj.Location.Replace("/", "\\");
+                    path = path.EndWith('\\');
+                    path = path + prj.Name + prj.Extension;
+                    projectFilenames.Add(path);
 
-            string solutionFilename = RootURL + Name + ".sln";
-            if (solution.Save(solutionFilename, projectFilenames) < 0)
-                return false;
+                    string[] dependencies = prj.DependsOn.Split(new char[] { ';' }, StringSplitOptions.RemoveEmptyEntries);
+                    if (dependencies.Length > 0)
+                    {
+                        for (int i = 0; i < dependencies.Length; ++i)
+                        {
+                            dependencies[i] = dependencies[i] + prj.Extension;
+                        }
+                        solution.AddDependencies(prj.Name + prj.Extension, dependencies);
+                    }
+                }
+
+                string solutionFilename = RootURL + Name + ".sln";
+                if (solution.Save(solutionFilename, projectFilenames) < 0)
+                    return false;
+            }
+            else if (IsCs)
+            {
+                CsSolution solution = new CsSolution(CsSolution.EVersion.VS2010);
+
+                List<string> projectFilenames = new List<string>();
+                foreach (ProjectInstance prj in Pom.Projects)
+                {
+                    string path = prj.Location.Replace("/", "\\");
+                    path = path.EndWith('\\');
+                    path = path + prj.Name + prj.Extension;
+                    projectFilenames.Add(path);
+
+                    string[] dependencies = prj.DependsOn.Split(new char[] { ';' }, StringSplitOptions.RemoveEmptyEntries);
+                    if (dependencies.Length > 0)
+                    {
+                        for (int i = 0; i < dependencies.Length; ++i)
+                        {
+                            dependencies[i] = dependencies[i] + prj.Extension;
+                        }
+                        solution.AddDependencies(prj.Name + prj.Extension, dependencies);
+                    }
+                }
+
+                string solutionFilename = RootURL + Name + ".sln";
+                if (solution.Save(solutionFilename, projectFilenames) < 0)
+                    return false;
+            }
 
             return true;
         }
