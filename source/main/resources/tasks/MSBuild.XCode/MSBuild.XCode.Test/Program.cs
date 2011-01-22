@@ -25,7 +25,7 @@ namespace MSBuild.XCode.Test
             PackageInstance.Initialize();
            
             // Our test project is xproject
-            PackageInstance.RootDir = @"I:\Packages\xbase\";
+            PackageInstance.RootDir = @"I:\Packages\xstl\";
 
             Mercurial.Repository hg_repo = new Mercurial.Repository(PackageInstance.RootDir);
             if (!hg_repo.Exists)
@@ -34,7 +34,7 @@ namespace MSBuild.XCode.Test
                 return;
             }
 
-            Construct("xbase");
+            Construct("xstl");
 
             PackageConfigs configs = new PackageConfigs();
             configs.RootDir = PackageInstance.RootDir;
