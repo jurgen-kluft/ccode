@@ -10,6 +10,7 @@
   </PropertyGroup>
   
   <PropertyGroup>
+  	<PackageLanguage>C++</PackageLanguage>
     <PackageDir>$(MSBuildProjectDirectory)</PackageDir>
     <PackagePlatform>$(Platform)</PackagePlatform>
     <PackageFilename></PackageFilename>

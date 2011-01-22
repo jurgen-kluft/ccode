@@ -61,9 +61,6 @@
     <None Include="" />
   </ItemGroup>
   <ItemGroup>
-    <BootstrapperPackage Include="" />
-  </ItemGroup>
-  <ItemGroup>
     <Content Include="" />
   </ItemGroup>
   <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />
