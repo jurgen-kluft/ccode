@@ -9,7 +9,8 @@ namespace MSBuild.XCode
 {
     public class ProjectResource
     {
-        protected CppProject mMsDevProject;
+        protected CppProject mMsDevCppProject;
+        protected CsProject mMsDevCsProject;
 
         protected Dictionary<string, StringItems> mConfigs = new Dictionary<string, StringItems>();
 
@@ -22,7 +23,8 @@ namespace MSBuild.XCode
         public string Location { get; set; }
         public string DependsOn { get; set; }
 
-        internal CppProject MsDevProject { get { return mMsDevProject; } }
+        internal CppProject MsDevCppProject { get { return mMsDevCppProject; } }
+        internal CsProject MsDevCsProject { get { return mMsDevCsProject; } }
 
         public bool IsCpp { get { return (String.Compare(Language, "C++", true) == 0 || String.Compare(Language, "CPP", true) == 0); } }
         public bool IsCs { get { return (String.Compare(Language, "C#", true) == 0 || String.Compare(Language, "CS", true) == 0); } }
@@ -38,7 +40,8 @@ namespace MSBuild.XCode
             Location = @"source\main\cpp";
             DependsOn = "";
 
-            mMsDevProject = new CppProject();
+            mMsDevCppProject = new CppProject();
+            mMsDevCsProject = new CsProject();
         }
 
         public ProjectInstance CreateInstance(bool main)
@@ -86,8 +89,16 @@ namespace MSBuild.XCode
                 }
                 else if (String.Compare(child.Name, "ProjectFile", true) == 0)
                 {
-                    mMsDevProject = new CppProject(child.ChildNodes);
-                    mMsDevProject.ExpandVars(vars);
+                    if (IsCpp)
+                    {
+                        mMsDevCppProject = new CppProject(child.ChildNodes);
+                        mMsDevCppProject.ExpandVars(vars);
+                    }
+                    else
+                    {
+                        mMsDevCsProject = new CsProject(child.ChildNodes);
+                        mMsDevCsProject.ExpandVars(vars);
+                    }
                 }
                 else
                 {
@@ -95,12 +106,24 @@ namespace MSBuild.XCode
                 }
             }
 
-            // Now extract the platforms and configs from the ProjectFile
-            string[] platforms = mMsDevProject.GetPlatforms();
-            foreach (string platform in platforms)
+            if (IsCpp)
             {
-                string[] configs = mMsDevProject.GetPlatformConfigs(platform);
-                mConfigs.Add(platform, new StringItems(configs));
+                // Now extract the platforms and configs from the ProjectFile
+                string[] platforms = mMsDevCppProject.GetPlatforms();
+                foreach (string platform in platforms)
+                {
+                    string[] configs = mMsDevCppProject.GetPlatformConfigs(platform);
+                    mConfigs.Add(platform, new StringItems(configs));
+                }
+            }
+            else if (IsCs)
+            {
+                string[] platforms = mMsDevCsProject.GetPlatforms();
+                foreach (string platform in platforms)
+                {
+                    string[] configs = mMsDevCsProject.GetPlatformConfigs(platform);
+                    mConfigs.Add(platform, new StringItems(configs));
+                }
             }
         }
 

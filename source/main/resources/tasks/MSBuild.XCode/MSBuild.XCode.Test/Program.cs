@@ -19,22 +19,15 @@ namespace MSBuild.XCode.Test
         [STAThread]
         static void Main()
         {
-            PackageInstance.TemplateDir = @"d:\REMOTE_PACKAGE_REPO\com\virtuos\xcode\publish\templates\";
-            PackageInstance.CacheRepoDir = @"d:\PACKAGE_REPO\";
-            PackageInstance.RemoteRepoDir = @"d:\REMOTE_PACKAGE_REPO\";
+            PackageInstance.RemoteRepoDir = @"j:\Dev.C#.Packages\REMOTE_PACKAGE_REPO\";
+            PackageInstance.TemplateDir = @"j:\Dev.C#.Packages\REMOTE_PACKAGE_REPO\com\virtuos\xcode\publish\templates\";
+            PackageInstance.CacheRepoDir = @"j:\Dev.C#.Packages\PACKAGE_REPO\";
             PackageInstance.Initialize();
            
             // Our test project is xproject
-            PackageInstance.RootDir = @"I:\Packages\xstl\";
+            PackageInstance.RootDir = @"j:\Dev.C#.Packages\xproject\";
 
-            Mercurial.Repository hg_repo = new Mercurial.Repository(PackageInstance.RootDir);
-            if (!hg_repo.Exists)
-            {
-                Loggy.Error(String.Format("Error: Package::Create failed since there is no Hg (SVN) repository!"));
-                return;
-            }
-
-            Construct("xstl");
+            Construct("xproject");
 
             PackageConfigs configs = new PackageConfigs();
             configs.RootDir = PackageInstance.RootDir;
@@ -42,6 +35,8 @@ namespace MSBuild.XCode.Test
             configs.ProjectGroup = "UnitTest";
             configs.TemplateDir = PackageInstance.TemplateDir;
             configs.Execute();
+
+            return;
 
             string createdPackageFilename;
             if (true)
@@ -80,7 +75,7 @@ namespace MSBuild.XCode.Test
             info.RemoteRepoDir = PackageInstance.RemoteRepoDir;
             info.Execute();
 
-            PackageInstance.RootDir = @"I:\Packages\xstring\";
+            PackageInstance.RootDir = @"j:\Dev.C++.Packages\xstring\";
 
             PackageVerify verify = new PackageVerify();
             verify.RootDir = PackageInstance.RootDir;
@@ -93,15 +88,17 @@ namespace MSBuild.XCode.Test
         {
             PackageConstruct construct = new PackageConstruct();
             construct.Name = name;
-            construct.RootDir = @"i:\Packages\";
+            construct.RootDir = @"j:\Dev.C#.Packages\";
             construct.CacheRepoDir = PackageInstance.CacheRepoDir;
             construct.RemoteRepoDir = PackageInstance.RemoteRepoDir;
             construct.TemplateDir = PackageInstance.TemplateDir;
-            //construct.Action = "init";
-            //construct.Execute();
+            construct.Language = "C#";
+            construct.Action = "init";
+            construct.Execute();
             construct.RootDir = construct.RootDir + construct.Name + "\\";
-            //construct.Action = "dir";
-            //construct.Execute();
+            construct.Action = "dir";
+            construct.Execute();
+            construct.Language = "C#";
             construct.Action = "vs2010";
             construct.Execute();
         }

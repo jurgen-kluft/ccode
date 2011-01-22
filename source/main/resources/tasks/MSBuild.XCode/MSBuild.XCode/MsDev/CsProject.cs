@@ -9,11 +9,31 @@ using MSBuild.XCode.Helpers;
 namespace MSBuild.XCode
 {
     /// <summary>
+    /// C# projects are much simpler than C++ projects.
+    /// We do not have to merge anything, the only action
+    /// that has to be done is to add references like:
+    /// 
+    ///     <Reference Include="#Ionic.Zip">
+    ///       <HintPath>$(packageName_TargetDir)lib\Ionic.Zip.dll</HintPath>
+    ///     </Reference>
+    /// 
+    /// No need for include files, preprocessor definitions
+    /// and all that.
+    /// 
     /// </summary>
     public class CsProject
     {
         private bool mAllowRemoval;
         private XmlDocument mXmlDocMain;
+
+        private readonly static string[] mContentItems = new string[]
+        {
+            "Reference",
+            "Compile", 
+            "EmbeddedResource", 
+            "BootstrapperPackage", 
+            "None" 
+        };
 
         /// <summary>
         /// Copy a node from a source XmlDocument to a target XmlDocument
@@ -28,6 +48,13 @@ namespace MSBuild.XCode
             else
                 xmlDoc.AppendChild(copy);
             return copy;
+        }
+
+        private string ReplaceVars(string str, Dictionary<string, string> vars)
+        {
+            foreach (KeyValuePair<string, string> var in vars)
+                str = str.Replace(String.Format("${{{0}}}", var.Key), var.Value);
+            return str;
         }
 
         public CsProject()
@@ -58,7 +85,7 @@ namespace MSBuild.XCode
             XmlDocument result = new XmlDocument();
             mAllowRemoval = true;
             Merge(result, mXmlDocMain,
-                delegate(XmlNode node)
+                delegate(bool isMainNode, XmlNode node)
                 {
                     return !HasCondition(node, platform, string.Empty);
                 },
@@ -75,9 +102,56 @@ namespace MSBuild.XCode
             XmlDocument result = new XmlDocument();
             mAllowRemoval = true; 
             Merge(result, mXmlDocMain,
-                delegate(XmlNode node)
+                delegate(bool isMainNode, XmlNode node)
                 {
                     return !HasCondition(node, platform, config);
+                },
+                delegate(XmlNode main, XmlNode other)
+                {
+                });
+
+            mXmlDocMain = result;
+            mAllowRemoval = false;
+        }
+
+        private static bool IsOneOf(string str, string[] strs)
+        {
+            if (String.IsNullOrEmpty(str))
+                return false;
+
+            foreach (string s in strs)
+            {
+                if ((str.Length == s.Length) && (str[0] == s[0]))
+                {
+                    if (String.Compare(str, s, true) == 0)
+                        return true;
+                }
+            }
+            return false;
+        }
+
+        public void RemoveAllPlatformsBut(string platformToKeep)
+        {
+            XmlDocument result = (XmlDocument)mXmlDocMain.Clone();
+            mAllowRemoval = true;
+            string platform, config;
+            Merge(result, mXmlDocMain,
+                delegate(bool isMainNode, XmlNode node)
+                {
+                    if (GetPlatformConfig(node, out platform, out config))
+                    {
+                        if (String.Compare(platform, platformToKeep, true) == 0)
+                        {
+                            return true;
+                        }
+                        return false;
+                    }
+                    if (node.Name == "ItemGroup" && node.HasChildNodes)
+                    {
+                        if (IsOneOf(node.ChildNodes[0].Name, mContentItems))
+                            return false;
+                    }
+                    return true;
                 },
                 delegate(XmlNode main, XmlNode other)
                 {
@@ -93,7 +167,7 @@ namespace MSBuild.XCode
             mAllowRemoval = true;
             string platform, config;
             Merge(result, mXmlDocMain,
-                delegate(XmlNode node)
+                delegate(bool isMainNode, XmlNode node)
                 {
                     if (GetPlatformConfig(node, out platform, out config))
                     {
@@ -112,27 +186,6 @@ namespace MSBuild.XCode
 
             mXmlDocMain = result;
             mAllowRemoval = false;
-        }
-
-        public bool FilterItems(string[] to_remove, string[] to_keep)
-        {
-            Merge(mXmlDocMain, mXmlDocMain,
-                delegate(XmlNode node)
-                {
-                    return true;
-                },
-                delegate(XmlNode main, XmlNode other)
-                {
-                    if (main.ParentNode.Name == "DefineConstants")
-                    {
-                        StringItems items = new StringItems();
-                        items.Add(main.Value, true);
-                        items.Filter(to_remove, to_keep);
-                        main.Value = items.ToString();
-                    }
-                });
-
-            return true;
         }
 
         /// if action == "Compile" and filename.endswith(".cs")
@@ -240,13 +293,47 @@ namespace MSBuild.XCode
             }
         }
 
+        public bool ExpandVars(Dictionary<string, string> vars)
+        {
+            Merge(mXmlDocMain, mXmlDocMain,
+                delegate(bool isMainNode, XmlNode node)
+                {
+                    if (node.Attributes != null)
+                    {
+                        foreach (XmlAttribute a in node.Attributes)
+                        {
+                            a.Value = ReplaceVars(a.Value, vars);
+                        }
+                    }
+                    return true;
+                },
+                delegate(XmlNode main, XmlNode other)
+                {
+                    if (main.Attributes != null)
+                    {
+                        foreach (XmlAttribute a in main.Attributes)
+                        {
+                            foreach (KeyValuePair<string, string> var in vars)
+                                a.Value = ReplaceVars(a.Value, vars);
+                        }
+                    }
+
+                    foreach (KeyValuePair<string, string> var in vars)
+                    {
+                        if (!String.IsNullOrEmpty(main.Value))
+                            main.Value = ReplaceVars(main.Value, vars);
+                    }
+                });
+            return true;
+        }
+
         public bool ExpandGlobs(string rootdir, string reldir)
         {
             List<XmlNode> removals = new List<XmlNode>();
             List<XmlNode> globs = new List<XmlNode>();
 
             Merge(mXmlDocMain, mXmlDocMain,
-                delegate(XmlNode node)
+                delegate(bool isMainNode, XmlNode node)
                 {
                     if (node.Name == "Compile" || node.Name == "EmbeddedResource" || node.Name == "Content" || node.Name == "None")
                     {
@@ -371,6 +458,9 @@ namespace MSBuild.XCode
                         if (cursor >= 0)
                         {
                             cursor += 2;
+                            if (a.Value[cursor] == ' ')
+                                cursor++;
+
                             if ((cursor + 1) < a.Value.Length && a.Value[cursor] == '\'')
                                 cursor += 1;
                             else
@@ -403,6 +493,7 @@ namespace MSBuild.XCode
             platform = null;
             return false;
         }
+
         private bool HasCondition(XmlNode node, string platform, string config)
         {
             if (node.Attributes != null)
@@ -425,53 +516,13 @@ namespace MSBuild.XCode
             return true;
         }
 
-        private string GetItem(string platform, string config, string itemName)
-        {
-            StringItems concat = new StringItems();
-
-            Merge(mXmlDocMain, mXmlDocMain,
-                delegate(XmlNode node)
-                {
-                    return HasCondition(node, platform, config);
-                },
-                delegate(XmlNode main, XmlNode other)
-                {
-                    if (main.ParentNode.Name == itemName)
-                    {
-                        concat.Add(main.Value, true);
-                        concat.Add(other.Value, true);
-                    }
-                });
-            return concat.Get();
-        }
-
-        public bool GetPreprocessorDefinitions(string platform, string config, out string defines)
-        {
-            defines = GetItem(platform, config, "PreprocessorDefinitions");
-            return true;
-        }
-        public bool GetAdditionalIncludeDirectories(string platform, string config, out string includeDirectories)
-        {
-            includeDirectories = GetItem(platform, config, "AdditionalIncludeDirectories");
-            return true;
-        }
-        public bool GetAdditionalLibraryDirectories(string platform, string config, out string libraryDirectories)
-        {
-            libraryDirectories = GetItem(platform, config, "AdditionalLibraryDirectories");
-            return true;
-        }
-        public bool GetAdditionalDependencies(string platform, string config, out string libraryDependencies)
-        {
-            libraryDependencies = GetItem(platform, config, "AdditionalDependencies");
-            return true;
-        }
         public string[] GetPlatforms()
         {
             HashSet<string> platforms = new HashSet<string>();
             string platform, config;
 
             Merge(mXmlDocMain, mXmlDocMain,
-                delegate(XmlNode node)
+                delegate(bool isMainNode, XmlNode node)
                 {
                     if (GetPlatformConfig(node, out platform, out config))
                     {
@@ -485,13 +536,14 @@ namespace MSBuild.XCode
                 });
             return platforms.ToArray();
         }
+
         public string[] GetPlatformConfigs(string platform)
         {
             HashSet<string> configs = new HashSet<string>();
             string _platform, config;
 
             Merge(mXmlDocMain, mXmlDocMain,
-                delegate(XmlNode node)
+                delegate(bool isMainNode, XmlNode node)
                 {
                     if (GetPlatformConfig(node, out _platform, out config))
                     {
@@ -509,42 +561,41 @@ namespace MSBuild.XCode
             return configs.ToArray();
         }
 
-        public bool SetItem(string platform, string config, string itemName, string itemValue)
+        public bool FilterItems(string[] to_remove, string[] to_keep)
         {
-            StringItems concat = new StringItems();
-            concat.Add(itemValue, true);
-
-            Merge(mXmlDocMain, mXmlDocMain,
-                delegate(XmlNode node)
+            mAllowRemoval = true;
+            XmlDocument result = (XmlDocument)mXmlDocMain.Clone();
+            Merge(result, mXmlDocMain,
+                delegate(bool isMainNode, XmlNode node)
                 {
-                    return HasCondition(node, platform, config);
+                    if (node.Name == "Reference")
+                    {
+                        string include = Attribute.Get("Include", node, string.Empty);
+                        foreach (string keeper in to_keep)
+                        {
+                            if (include.StartsWith(keeper))
+                            {
+                                Attribute.Set("Include", node, include.Substring(keeper.Length));
+                                return true;
+                            }
+                        }
+                        foreach (string remover in to_remove)
+                        {
+                            if (include.StartsWith(remover))
+                            {
+                                return false;
+                            }
+                        }
+                    }
+                    return true;
                 },
                 delegate(XmlNode main, XmlNode other)
                 {
-                    if (main.ParentNode.Name == itemName)
-                    {
-                        concat.Add(main.Value, true);
-                        concat.Add(other.Value, true);
-                        main.Value = concat.Get();
-                    }
                 });
+
+            mXmlDocMain = result;
+            mAllowRemoval = false;
             return true;
-        }
-        public bool SetPreprocessorDefinitions(string platform, string config, string defines)
-        {
-            return SetItem(platform, config, "PreprocessorDefinitions", defines);
-        }
-        public bool SetAdditionalIncludeDirectories(string platform, string config, string includeDirectories)
-        {
-            return SetItem(platform, config, "AdditionalIncludeDirectories", includeDirectories);
-        }
-        public bool SetAdditionalLibraryDirectories(string platform, string config, string libraryDirectories)
-        {
-            return SetItem(platform, config, "AdditionalLibraryDirectories", libraryDirectories);
-        }
-        public bool SetAdditionalDependencies(string platform, string config, string libraryDependencies)
-        {
-            return SetItem(platform, config, "AdditionalDependencies", libraryDependencies);
         }
 
         public bool Save(string filename)
@@ -553,31 +604,67 @@ namespace MSBuild.XCode
             return true;
         }
 
+        public void Copy(CsProject project)
+        {
+            mXmlDocMain = (XmlDocument)project.mXmlDocMain.Clone();
+        }
+
         public bool Merge(CsProject project)
         {
             Merge(mXmlDocMain, project.mXmlDocMain,
-                delegate(XmlNode node)
+                delegate(bool isMainNode, XmlNode node)
                 {
                     return true;
                 },
                 delegate(XmlNode main, XmlNode other)
                 {
-                    // Merge:
-                    // - DefineConstants
-                    if (main.ParentNode.Name == "DefineConstants")
+                    main.Value = other.Value;
+                });
+
+            return true;
+        }
+
+        public bool MergeDependencyProject(CsProject project)
+        {
+            Merge(mXmlDocMain, project.mXmlDocMain,
+                delegate(bool isMainNode, XmlNode node)
+                {
+                    /// Only merge dependency project elements like:
+                    ///     <Reference Include="#Ionic.Zip">
+                    ///       <HintPath>$(packageName_TargetDir)lib\Ionic.Zip.dll</HintPath>
+                    ///     </Reference>
+                    if (!isMainNode)
                     {
-                        StringItems items = new StringItems();
-                        items.Add(other.Value, true);
-                        items.Add(main.Value, true);
-                        main.Value = items.ToString();
+                        if (node.Name == "Reference")
+                        {
+                            string include = Attribute.Get("Include", node, string.Empty);
+                            if (include.StartsWith("#"))
+                            {
+                                return true;
+                            }
+                        }
+                        return false;
                     }
-                    else
+                    return true;
+                },
+                delegate(XmlNode main, XmlNode other)
+                {
+                    if (main.ParentNode.Name == "Reference")
                     {
-                        // Replace
-                        main.Value = other.Value;
+                        foreach (XmlAttribute a in main.ParentNode.Attributes)
+                        {
+                            if (a.Name == "Include")
+                            {
+                                if (a.Value.StartsWith("#"))
+                                {
+                                    a.Value = a.Value.TrimStart('#');
+                                }
+                            }
+                        }
                     }
                 });
-            return false;
+
+            return true;
         }
 
         private bool HasSameAttributes(XmlNode a, XmlNode b)
@@ -586,50 +673,22 @@ namespace MSBuild.XCode
                 return true;
             if (a.Attributes != null && b.Attributes != null)
             {
-                bool the_same = true;
-                int na = 0;
-                foreach (XmlAttribute aa in a.Attributes)
-                {
-                    if (aa.Name == "Concat")
-                        continue;
-                    ++na;
-                }
-                int nb = 0;
-                foreach (XmlAttribute ab in b.Attributes)
-                {
-                    if (ab.Name == "Concat")
-                        continue;
-                    ++nb;
-                }
-
-                the_same = (na == nb);
+                bool the_same = (a.Attributes.Count == b.Attributes.Count);
                 if (the_same)
                 {
                     foreach (XmlAttribute aa in a.Attributes)
                     {
-                        if (aa.Name == "Concat")
-                            continue;
-
-                        bool found = false;
+                        the_same = false;
                         foreach (XmlAttribute ab in b.Attributes)
                         {
-                            if (ab.Name == "Concat")
-                                continue;
-
-                            if (ab.Name == aa.Name)
+                            if ((ab.Name == aa.Name) && (ab.Value == aa.Value))
                             {
-                                if (ab.Value == aa.Value)
-                                {
-                                    found = true;
-                                    break;
-                                }
+                                the_same = true;
+                                break;
                             }
                         }
-                        if (!found)
-                        {
-                            the_same = false;
+                        if (!the_same)
                             break;
-                        }
                     }
                 }
                 return the_same;
@@ -658,7 +717,7 @@ namespace MSBuild.XCode
                         }
                         else if (nodeToFind.HasChildNodes && child.HasChildNodes)
                         {
-                            if (nodeToFind.Name == "ItemGroup" && nodeToFind.Attributes.Count==0)
+                            if (nodeToFind.Name == "ItemGroup" && nodeToFind.Attributes.Count == 0)
                             {
                                 if (nodeToFind.ChildNodes[0].Name == child.ChildNodes[0].Name)
                                 {
@@ -672,7 +731,11 @@ namespace MSBuild.XCode
                                 break;
                             }
                         }
-                        
+                        else
+                        {
+                            foundNode = child;
+                            break;
+                        }
                     }
                 }
             }
@@ -680,7 +743,7 @@ namespace MSBuild.XCode
         }
 
         public delegate void NodeMergeDelegate(XmlNode main, XmlNode other);
-        public delegate bool NodeConditionDelegate(XmlNode node);
+        public delegate bool NodeConditionDelegate(bool isMainNode, XmlNode node);
 
         private void LockStep(XmlDocument mainXmlDoc, XmlDocument otherXmlDoc, Stack<XmlNode> mainPath, Stack<XmlNode> otherPath, NodeConditionDelegate nodeConditionDelegate, NodeMergeDelegate nodeMergeDelegate)
         {
@@ -701,7 +764,7 @@ namespace MSBuild.XCode
                     XmlNode mainChildNode = FindNode(otherChildNode, mainNode.ChildNodes);
                     if (mainChildNode == null)
                     {
-                        if (nodeConditionDelegate(otherChildNode))
+                        if (nodeConditionDelegate(false, otherChildNode))
                         {
                             mainChildNode = CopyTo(mainXmlDoc, mainNode, otherChildNode);
 
@@ -712,7 +775,7 @@ namespace MSBuild.XCode
                     }
                     else
                     {
-                        if (nodeConditionDelegate(mainChildNode))
+                        if (nodeConditionDelegate(true, mainChildNode))
                         {
                             mainPath.Push(mainChildNode);
                             otherPath.Push(otherChildNode);
@@ -739,7 +802,7 @@ namespace MSBuild.XCode
                 XmlNode mainChildNode = FindNode(otherChildNode, mainXmlDoc.ChildNodes);
                 if (mainChildNode == null)
                 {
-                    if (nodeConditionDelegate(otherChildNode))
+                    if (nodeConditionDelegate(false, otherChildNode))
                     {
                         mainChildNode = CopyTo(mainXmlDoc, null, otherChildNode);
 
@@ -750,7 +813,7 @@ namespace MSBuild.XCode
                 }
                 else
                 {
-                    if (nodeConditionDelegate(mainChildNode))
+                    if (nodeConditionDelegate(true, mainChildNode))
                     {
                         mainPath.Push(mainChildNode);
                         otherPath.Push(otherChildNode);

@@ -78,8 +78,12 @@ namespace MSBuild.XCode
                 }
 
                 // For C#
-                // CsTemplateProject = new CsProject();
-                // CsTemplateProject.Load(TemplateDir + "main.vcxproj");
+                CsTemplateProject = new CsProject();
+                if (!CsTemplateProject.Load(TemplateDir + "main.csproj"))
+                {
+                    Loggy.Error(String.Format("Error: Initialization of Global failed in due to failure in loading {0}", TemplateDir + "main.csproj"));
+                    return false;
+                }
             }
 
             IsInitialized = true;
