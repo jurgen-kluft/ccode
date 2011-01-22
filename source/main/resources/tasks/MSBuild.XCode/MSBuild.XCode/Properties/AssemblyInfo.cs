@@ -48,10 +48,12 @@ using System.Runtime.InteropServices;
 // - 
 // -----------------------------------------------------------------------------------
 // 1.0.3.0 (15th January 2011)
-// - PackageRepository: Share added
-// - Fixed a bug in Local Repository handling of multi platform packages
+// - Share Repository
+// - Solution (.sln) now is correctly handling project configurations, projects can have 
+//   different configurations and these are now listed as 'Build=False'
+// - Fixed a bug in Local Repository and other Repository logic, should filter files by
+//   platform!
 // - 
-// 
 // -----------------------------------------------------------------------------------
 // 1.0.2.0 (7th January 2011)
 // - PackageRepository: Local, Target, Cache, Remote
