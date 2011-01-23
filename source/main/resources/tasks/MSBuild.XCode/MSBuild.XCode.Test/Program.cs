@@ -25,9 +25,9 @@ namespace MSBuild.XCode.Test
             PackageInstance.Initialize();
            
             // Our test project is xproject
-            PackageInstance.RootDir = @"j:\Dev.C#.Packages\xproject\";
+            PackageInstance.RootDir = @"j:\Dev.C#.Packages\xprojectB\";
 
-            Construct("xproject");
+            Construct("xprojectB");
 
             PackageConfigs configs = new PackageConfigs();
             configs.RootDir = PackageInstance.RootDir;
@@ -94,10 +94,10 @@ namespace MSBuild.XCode.Test
             construct.TemplateDir = PackageInstance.TemplateDir;
             construct.Language = "C#";
             construct.Action = "init";
-            construct.Execute();
+            //construct.Execute();
             construct.RootDir = construct.RootDir + construct.Name + "\\";
             construct.Action = "dir";
-            construct.Execute();
+            //construct.Execute();
             construct.Language = "C#";
             construct.Action = "vs2010";
             construct.Execute();

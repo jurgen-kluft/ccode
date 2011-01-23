@@ -170,6 +170,8 @@
     <Compile Include="MsDev\CppProject.cs" />
     <Compile Include="MsDev\CppSolution.cs" />
     <Compile Include="MsDev\CsProject.cs" />
+    <Compile Include="MsDev\IProject.cs" />
+    <Compile Include="MsDev\ISolution.cs" />
     <Compile Include="PackageRepository\PackageRepositoryLayoutShare.cs" />
     <Compile Include="PackageRepository\PackageRepositoryShare.cs" />
     <Compile Include="PackageRepository\PackageRepositoryLayoutLocal.cs" />
