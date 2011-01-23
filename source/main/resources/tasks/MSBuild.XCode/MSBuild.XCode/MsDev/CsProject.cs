@@ -568,7 +568,7 @@ namespace MSBuild.XCode.MsDev
                     ///     </Reference>
                     if (!isMainNode)
                     {
-                        if (node.Name == "Reference")
+                        if (node.Name == "Reference" || node.Name == "ImportGroup" || node.Name == "Import")
                         {
                             return true;
                         }
