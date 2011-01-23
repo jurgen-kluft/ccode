@@ -5,9 +5,9 @@ using System.Text.RegularExpressions;
 using System.IO;
 using MSBuild.XCode.Helpers;
 
-namespace MSBuild.XCode
+namespace MSBuild.XCode.MsDev
 {
-    class CsSolution
+    class CsSolution : ISolution
     {
         public enum EVersion
         {

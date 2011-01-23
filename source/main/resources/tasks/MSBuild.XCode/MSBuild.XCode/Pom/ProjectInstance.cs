@@ -11,8 +11,7 @@ namespace MSBuild.XCode
     {
         private ProjectResource mResource;
         
-        private CppProject mMsDevCppProject;
-        private CsProject mMsDevCsProject;
+        private MsDev.IProject mMsDevProject;
 
         private bool mIsFinalProject;
 
@@ -30,7 +29,7 @@ namespace MSBuild.XCode
         public bool IsCs { get { return mResource.IsCs; } }
 
         public bool IsPrivate { get { return mResource.IsPrivate; } }
-        public string Extension { get { if (IsCs) return ".csproj"; return ".vcxproj"; } }
+        public string Extension { get { return mMsDevProject.Extension; } }
 
         public ProjectInstance(bool main, ProjectResource resource)
         {
@@ -41,22 +40,18 @@ namespace MSBuild.XCode
 
             if (IsCpp)
             {
-                mMsDevCppProject = new CppProject();
-                mMsDevCppProject.Copy(mResource.MsDevCppProject);
-                if (Main)
-                    mMsDevCppProject.FilterItems(new string[] { "#" }, new string[] { "@" });
-                else
-                    mMsDevCppProject.FilterItems(new string[] { "@" }, new string[] { "#" });
+                mMsDevProject = new MsDev.CppProject();
             }
             else
             {
-                mMsDevCsProject = new CsProject();
-                mMsDevCsProject.Copy(mResource.MsDevCsProject);
-                if (Main)
-                    mMsDevCsProject.FilterItems(new string[] { "#" }, new string[] { "@" });
-                else
-                    mMsDevCsProject.FilterItems(new string[] { "@" }, new string[] { "#" });
+                mMsDevProject = new MsDev.CsProject();
             }
+
+            mMsDevProject.Xml = mResource.MsDevProject.Xml;
+            if (Main)
+                mMsDevProject.FilterItems(new string[] { "#" }, new string[] { "@" });
+            else
+                mMsDevProject.FilterItems(new string[] { "@" }, new string[] { "#" });
         }
 
         public void Info()
@@ -82,9 +77,7 @@ namespace MSBuild.XCode
 
             if (IsCpp)
             {
-                CppProject finalProject = new CppProject();
-                finalProject.Copy(PackageInstance.CppTemplateProject);
-                finalProject.Merge(mMsDevCppProject, true, true, true);
+                mMsDevProject.Construct(PackageInstance.CppTemplateProject);
 
                 Dictionary<string, StringItems> platform_configs = new Dictionary<string, StringItems>();
                 foreach (KeyValuePair<string, StringItems> pair in Configs)
@@ -93,38 +86,25 @@ namespace MSBuild.XCode
                         platform_configs.Add(pair.Key, pair.Value);
                 }
 
-                finalProject.RemoveAllBut(platform_configs);
-                mMsDevCppProject = finalProject;
+                mMsDevProject.RemoveAllBut(platform_configs);
                 mIsFinalProject = true;
             }
             else if (IsCs)
             {
-                CsProject finalProject = new CsProject();
-                finalProject.Copy(PackageInstance.CsTemplateProject);
-                finalProject.Merge(mMsDevCsProject);
-                finalProject.RemoveAllBut(Configs);
-                mMsDevCsProject = finalProject;
+                mMsDevProject.Construct(PackageInstance.CsTemplateProject);
+                mMsDevProject.RemoveAllBut(Configs);
+                mIsFinalProject = true;
             }
         }
 
         public void MergeWithDependencyProject(ProjectInstance dependencyProject)
         {
-            if (IsCpp)
-                mMsDevCppProject.Merge(dependencyProject.mMsDevCppProject, false, false, false);
-            else if (IsCs)
-                mMsDevCsProject.Merge(dependencyProject.mMsDevCsProject);
+            mMsDevProject.MergeDependencyProject(dependencyProject.mMsDevProject);
         }
 
         public void OnlyKeepPlatformSpecifics(string platform)
         {
-            if (IsCpp)
-            {
-                mMsDevCppProject.RemoveAllPlatformsBut(platform);
-            }
-            else if (IsCs)
-            {
-                mMsDevCsProject.RemoveAllPlatformsBut(platform);
-            }
+            mMsDevProject.RemoveAllPlatformsBut(platform);
         }
 
         public string[] GetPlatforms()
@@ -147,16 +127,8 @@ namespace MSBuild.XCode
             string reldir = rootdir + Path.GetDirectoryName(filename);
             reldir = reldir.EndWith('\\');
 
-            if (IsCpp)
-            {
-                mMsDevCppProject.ExpandGlobs(rootdir, reldir);
-                mMsDevCppProject.Save(rootdir + filename);
-            }
-            else if (IsCs)
-            {
-                mMsDevCsProject.ExpandGlobs(rootdir, reldir);
-                mMsDevCsProject.Save(rootdir + filename);
-            }
+            mMsDevProject.ExpandGlobs(rootdir, reldir);
+            mMsDevProject.Save(rootdir + filename);
         }
     }
 }
