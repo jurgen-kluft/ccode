@@ -23,6 +23,7 @@
   
   <Content>
 		<Item Src="pom.*" Dst="" />  
+    <Item Src="target\outdir\bin\Release\*.dll" Dst="lib\" />
     <Item Src="docs\**\*.*" Dst="docs\" />
     <Item Src="tools\**\*.*" Dst="Tools\" />
   </Content>
@@ -37,7 +38,7 @@
     <ProjectFile>
 			<Project ToolsVersion="4.0" DefaultTargets="Build" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
 			  <PropertyGroup>
-			    <ProjectGuid>${GUID_Main}</ProjectGuid>
+			    <ProjectGuid>{${GUID_Main}}</ProjectGuid>
 			    <OutputType>Library</OutputType>
 			    <RootNamespace>${Name}</RootNamespace>
 			    <AssemblyName>${Name}</AssemblyName>
@@ -74,7 +75,7 @@
     <ProjectFile>
 			<Project ToolsVersion="4.0" DefaultTargets="Build" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
 			  <PropertyGroup>
-			    <ProjectGuid>{03540C28-E226-47A7-A6AE-429281E5E1BF}</ProjectGuid>
+			    <ProjectGuid>{${GUID_UnitTest}}</ProjectGuid>
 			    <OutputType>WinExe</OutputType>
 			    <RootNamespace>${Name}</RootNamespace>
 			    <AssemblyName>${Name}</AssemblyName>

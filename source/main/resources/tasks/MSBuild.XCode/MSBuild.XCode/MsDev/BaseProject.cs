@@ -6,9 +6,10 @@ using System.Text;
 
 namespace MSBuild.XCode.MsDev
 {
-    public abstract class BaseProject : IProject
+    public abstract class BaseProject
     {
         protected XmlDocument mXmlDocMain;
+        protected bool mAllowRemoval = false;
 
         public XmlDocument Xml
         {

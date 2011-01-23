@@ -7,7 +7,7 @@ using MSBuild.XCode.Helpers;
 
 namespace MSBuild.XCode.MsDev
 {
-    class CsSolution : ISolution
+    public class CsSolution : ISolution
     {
         public enum EVersion
         {
@@ -28,6 +28,8 @@ namespace MSBuild.XCode.MsDev
 
             m_Configs = new Dictionary<string, HashSet<string>>();
         }
+
+        public string Extension { get { return ".sln"; } }
 
         private string ProjectTypeGuid()
         {

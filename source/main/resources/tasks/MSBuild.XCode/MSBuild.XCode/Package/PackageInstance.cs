@@ -419,60 +419,34 @@ namespace MSBuild.XCode
 
         public bool GenerateSolution()
         {
+            MsDev.ISolution solution = null;
             if (IsCpp)
+                solution = new MsDev.CppSolution(MsDev.CppSolution.EVersion.VS2010);
+            else
+                solution = new MsDev.CsSolution(MsDev.CsSolution.EVersion.VS2010);
+
+            List<string> projectFilenames = new List<string>();
+            foreach (ProjectInstance prj in Pom.Projects)
             {
-                CppSolution solution = new CppSolution(CppSolution.EVersion.VS2010);
+                string path = prj.Location.Replace("/", "\\");
+                path = path.EndWith('\\');
+                path = path + prj.Name + prj.Extension;
+                projectFilenames.Add(path);
 
-                List<string> projectFilenames = new List<string>();
-                foreach (ProjectInstance prj in Pom.Projects)
+                string[] dependencies = prj.DependsOn.Split(new char[] { ';' }, StringSplitOptions.RemoveEmptyEntries);
+                if (dependencies.Length > 0)
                 {
-                    string path = prj.Location.Replace("/", "\\");
-                    path = path.EndWith('\\');
-                    path = path + prj.Name + prj.Extension;
-                    projectFilenames.Add(path);
-
-                    string[] dependencies = prj.DependsOn.Split(new char[] { ';' }, StringSplitOptions.RemoveEmptyEntries);
-                    if (dependencies.Length > 0)
+                    for (int i = 0; i < dependencies.Length; ++i)
                     {
-                        for (int i = 0; i < dependencies.Length; ++i)
-                        {
-                            dependencies[i] = dependencies[i] + prj.Extension;
-                        }
-                        solution.AddDependencies(prj.Name + prj.Extension, dependencies);
+                        dependencies[i] = dependencies[i] + prj.Extension;
                     }
+                    solution.AddDependencies(prj.Name + prj.Extension, dependencies);
                 }
-
-                string solutionFilename = RootURL + Name + ".sln";
-                if (solution.Save(solutionFilename, projectFilenames) < 0)
-                    return false;
             }
-            else if (IsCs)
-            {
-                CsSolution solution = new CsSolution(CsSolution.EVersion.VS2010);
 
-                List<string> projectFilenames = new List<string>();
-                foreach (ProjectInstance prj in Pom.Projects)
-                {
-                    string path = prj.Location.Replace("/", "\\");
-                    path = path.EndWith('\\');
-                    path = path + prj.Name + prj.Extension;
-                    projectFilenames.Add(path);
-
-                    string[] dependencies = prj.DependsOn.Split(new char[] { ';' }, StringSplitOptions.RemoveEmptyEntries);
-                    if (dependencies.Length > 0)
-                    {
-                        for (int i = 0; i < dependencies.Length; ++i)
-                        {
-                            dependencies[i] = dependencies[i] + prj.Extension;
-                        }
-                        solution.AddDependencies(prj.Name + prj.Extension, dependencies);
-                    }
-                }
-
-                string solutionFilename = RootURL + Name + ".sln";
-                if (solution.Save(solutionFilename, projectFilenames) < 0)
-                    return false;
-            }
+            string solutionFilename = RootURL + Name + solution.Extension;
+            if (solution.Save(solutionFilename, projectFilenames) < 0)
+                return false;
 
             return true;
         }

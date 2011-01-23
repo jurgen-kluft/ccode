@@ -53,7 +53,7 @@
     <ErrorReport>prompt</ErrorReport>
     <WarningLevel>4</WarningLevel>
     <CodeAnalysisRuleSet>AllRules.ruleset</CodeAnalysisRuleSet>
-    <RegisterForComInterop>true</RegisterForComInterop>
+    <RegisterForComInterop>false</RegisterForComInterop>
     <PlatformTarget>x86</PlatformTarget>
   </PropertyGroup>
   <ItemGroup>
@@ -166,6 +166,7 @@
     <Compile Include="Mercurial\XmlSerializationTypes\LogEntryPathNode.cs" />
     <Compile Include="Mercurial\XmlSerializationTypes\LogEntryTagNode.cs" />
     <Compile Include="Mercurial\XmlSerializationTypes\LogNode.cs" />
+    <Compile Include="MsDev\BaseProject.cs" />
     <Compile Include="MsDev\CsSolution.cs" />
     <Compile Include="MsDev\CppProject.cs" />
     <Compile Include="MsDev\CppSolution.cs" />
