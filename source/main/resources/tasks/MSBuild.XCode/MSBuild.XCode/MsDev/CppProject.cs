@@ -30,7 +30,7 @@ namespace MSBuild.XCode.MsDev
     /// 2) ${GUID}
     /// 
     /// </summary>
-    public class CppProject : BaseProject
+    public class CppProject : BaseProject, IProject
     {
         private readonly static string[] mMergeItems = new string[]
         {
@@ -48,8 +48,6 @@ namespace MSBuild.XCode.MsDev
             "ClInclude", 
             "None" 
         };
-
-        private bool mAllowRemoval = false;
 
         public CppProject()
         {
@@ -470,6 +468,15 @@ namespace MSBuild.XCode.MsDev
         public void MergeDependencyProject(IProject project)
         {
             Merge(project, false, false, false);
+        }
+
+        public bool Construct(IProject template)
+        {
+            MsDev.CppProject finalProject = new MsDev.CppProject();
+            finalProject.Xml = template.Xml;
+            finalProject.Merge(this, true, true, true);
+            mXmlDocMain = finalProject.Xml;
+            return true;
         }
 
         private bool Merge(IProject project, bool replaceValues, bool addMissingPlatformConfigurations, bool mergeContentItems)

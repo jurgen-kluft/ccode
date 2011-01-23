@@ -21,10 +21,8 @@ namespace MSBuild.XCode.MsDev
     /// and all that.
     /// 
     /// </summary>
-    public class CsProject : BaseProject
+    public class CsProject : BaseProject, IProject
     {
-        private bool mAllowRemoval;
-
         private readonly static string[] mContentItems = new string[]
         {
             "Reference",
@@ -550,17 +548,18 @@ namespace MSBuild.XCode.MsDev
             return true;
         }
 
-        public bool Construct(XmlDocument main, XmlDocument template)
+        public bool Construct(IProject template)
         {
             MsDev.CsProject finalProject = new MsDev.CsProject();
-            finalProject.Copy(PackageInstance.CppTemplateProject);
+            finalProject.Xml = template.Xml;
             finalProject.Merge(this);
             mXmlDocMain = finalProject.Xml;
+            return true;
         }
 
-        public bool MergeDependencyProject(CsProject project)
+        public void MergeDependencyProject(IProject project)
         {
-            Merge(mXmlDocMain, project.mXmlDocMain,
+            Merge(mXmlDocMain, project.Xml,
                 delegate(bool isMainNode, XmlNode node)
                 {
                     /// Only merge dependency project elements like:
@@ -571,11 +570,7 @@ namespace MSBuild.XCode.MsDev
                     {
                         if (node.Name == "Reference")
                         {
-                            string include = Attribute.Get("Include", node, string.Empty);
-                            if (include.StartsWith("#"))
-                            {
-                                return true;
-                            }
+                            return true;
                         }
                         return false;
                     }
@@ -583,22 +578,8 @@ namespace MSBuild.XCode.MsDev
                 },
                 delegate(XmlNode main, XmlNode other)
                 {
-                    if (main.ParentNode.Name == "Reference")
-                    {
-                        foreach (XmlAttribute a in main.ParentNode.Attributes)
-                        {
-                            if (a.Name == "Include")
-                            {
-                                if (a.Value.StartsWith("#"))
-                                {
-                                    a.Value = a.Value.TrimStart('#');
-                                }
-                            }
-                        }
-                    }
+                    
                 });
-
-            return true;
         }
 
     }
