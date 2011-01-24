@@ -1,0 +1,21 @@
+<Project ToolsVersion="4.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+  <!-- 
+    Package repository configuration
+    1) CACHE_REPO_ROOT
+    2) REMOTE_REPO_ROOT
+  -->
+  <PropertyGroup>
+    <PackageLocalRepoURL>$(CACHE_REPO_ROOT)</PackageLocalRepoURL>
+    <PackageRemoteRepoURL>$(REMOTE_REPO_ROOT)</PackageRemoteRepoURL>
+  </PropertyGroup>
+  
+  <PropertyGroup>
+    <PackageDir>$(MSBuildProjectDirectory)</PackageDir>
+    <PackagePlatform>$(Platform)</PackagePlatform>
+    <PackageFilename></PackageFilename>
+    <PackageConfigs></PackageConfigs>
+    <PackageProjectGroup>Main</PackageProjectGroup>
+  </PropertyGroup>
+
+</Project>
+

@@ -1,0 +1,20 @@
+<Project>
+  <!-- Win32 will inherit all properties from Template/Win32 -->
+  <Win32>
+    <!-- Debug will inherit all properties from Template/Win32/Debug -->
+    <Debug>
+		<ClCompile>
+		    <AdditionalIncludeDirectories></AdditionalIncludeDirectories>
+		</ClCompile>
+    </Debug>
+    <!-- Debug will inherit all properties from Template/Win32/Release -->
+    <Release>
+    </Release>
+    <!-- Debug will inherit all properties from Template/Win32/Profile -->
+    <Profile>
+    </Profile>
+    <!-- Debug will inherit all properties from Template/Win32/Final -->
+    <Final>
+    </Final>
+  </Win32>
+</Project>
