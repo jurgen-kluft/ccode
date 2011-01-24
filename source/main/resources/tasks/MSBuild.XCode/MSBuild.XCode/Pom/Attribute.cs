@@ -37,5 +37,19 @@ namespace MSBuild.XCode
             }
             return v;
         }
+        public static void Set(string attrName, XmlNode node, string _value)
+        {
+            if (node.Attributes != null)
+            {
+                foreach (XmlAttribute a in node.Attributes)
+                {
+                    if (a.Name == attrName)
+                    {
+                        a.Value = _value;
+                        break;
+                    }
+                }
+            }
+        }
     }
 }

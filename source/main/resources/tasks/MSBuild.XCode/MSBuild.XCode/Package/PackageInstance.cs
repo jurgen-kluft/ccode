@@ -76,6 +76,9 @@ namespace MSBuild.XCode
         public PomInstance Pom { get { return mPom; } }
         public List<DependencyResource> Dependencies { get { return Pom.Dependencies; } }
 
+        public bool IsCpp { get { return Pom.IsCpp; } }
+        public bool IsCs { get { return Pom.IsCs; } }
+
         private PackageInstance(bool isRoot)
         {
             mIsRoot = isRoot;
@@ -416,7 +419,11 @@ namespace MSBuild.XCode
 
         public bool GenerateSolution()
         {
-            CppSolution solution = new CppSolution(CppSolution.EVersion.VS2010, CppSolution.ELanguage.CPP);
+            MsDev.ISolution solution = null;
+            if (IsCpp)
+                solution = new MsDev.CppSolution(MsDev.CppSolution.EVersion.VS2010);
+            else
+                solution = new MsDev.CsSolution(MsDev.CsSolution.EVersion.VS2010);
 
             List<string> projectFilenames = new List<string>();
             foreach (ProjectInstance prj in Pom.Projects)
@@ -437,7 +444,7 @@ namespace MSBuild.XCode
                 }
             }
 
-            string solutionFilename = RootURL + Name + ".sln";
+            string solutionFilename = RootURL + Name + solution.Extension;
             if (solution.Save(solutionFilename, projectFilenames) < 0)
                 return false;
 

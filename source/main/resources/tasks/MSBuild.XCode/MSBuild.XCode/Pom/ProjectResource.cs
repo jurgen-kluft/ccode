@@ -9,7 +9,7 @@ namespace MSBuild.XCode
 {
     public class ProjectResource
     {
-        protected CppProject mMsDevProject;
+        protected MsDev.IProject mMsDevProject;
 
         protected Dictionary<string, StringItems> mConfigs = new Dictionary<string, StringItems>();
 
@@ -22,7 +22,7 @@ namespace MSBuild.XCode
         public string Location { get; set; }
         public string DependsOn { get; set; }
 
-        internal CppProject MsDevProject { get { return mMsDevProject; } }
+        internal MsDev.IProject MsDevProject { get { return mMsDevProject; } }
 
         public bool IsCpp { get { return (String.Compare(Language, "C++", true) == 0 || String.Compare(Language, "CPP", true) == 0); } }
         public bool IsCs { get { return (String.Compare(Language, "C#", true) == 0 || String.Compare(Language, "CS", true) == 0); } }
@@ -37,8 +37,6 @@ namespace MSBuild.XCode
             Language = "C++";
             Location = @"source\main\cpp";
             DependsOn = "";
-
-            mMsDevProject = new CppProject();
         }
 
         public ProjectInstance CreateInstance(bool main)
@@ -86,7 +84,10 @@ namespace MSBuild.XCode
                 }
                 else if (String.Compare(child.Name, "ProjectFile", true) == 0)
                 {
-                    mMsDevProject = new CppProject(child.ChildNodes);
+                    if (IsCpp)
+                        mMsDevProject = new MsDev.CppProject(child.ChildNodes);
+                    else
+                        mMsDevProject = new MsDev.CsProject(child.ChildNodes);
                     mMsDevProject.ExpandVars(vars);
                 }
                 else

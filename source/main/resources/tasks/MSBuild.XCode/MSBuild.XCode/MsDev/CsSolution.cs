@@ -7,7 +7,7 @@ using MSBuild.XCode.Helpers;
 
 namespace MSBuild.XCode.MsDev
 {
-    public class CppSolution : ISolution
+    public class CsSolution : ISolution
     {
         public enum EVersion
         {
@@ -21,10 +21,11 @@ namespace MSBuild.XCode.MsDev
         private Dictionary<string, HashSet<string>> m_Configs;
         private Dictionary<string, Guid> m_ProjectGuids;
 
-        public CppSolution(EVersion version)
+        public CsSolution(EVersion version)
         {
             mVersion = version;
             m_Projects = new List<FileSystemInfo>();
+
             m_Configs = new Dictionary<string, HashSet<string>>();
         }
 
@@ -33,7 +34,7 @@ namespace MSBuild.XCode.MsDev
         private string ProjectTypeGuid()
         {
             string guid;
-            guid = "8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942";
+            guid = "FAE04EC0-301F-11D3-BF4B-00C04F79EFBC";
             return guid;
         }
 
@@ -70,27 +71,6 @@ namespace MSBuild.XCode.MsDev
                     project.Name.Substring(0, project.Name.Length - project.Extension.Length),
                     GetRelativePath(mRootDir, project.FullName),
                     projectGuid.ToString().ToUpper()));
-
-                // TODO: write dependencies
-                /// ProjectSection(ProjectDependencies) = postProject
-                /// 	{62068C48-9011-4E7F-A282-1D0F91023756} = {62068C48-9011-4E7F-A282-1D0F91023756}
-                /// EndProjectSection
-                string[] dependencyProjectFiles;
-                if (mProjectDependencies.TryGetValue(project.Name, out dependencyProjectFiles))
-                {
-                    writer.WriteLine(string.Format("\tProjectSection(ProjectDependencies) = postProject"));
-                    foreach (string projectFile in dependencyProjectFiles)
-                    {
-                        FileSystemInfo info = GetProjectByName(projectFile);
-                        if (info != null)
-                        {
-                            Guid guid = GetProjectGuid(info);
-                            writer.WriteLine("\t\t{{{0}}} = {{{0}}}", guid.ToString().ToUpper());
-                        }
-                    }
-                    writer.WriteLine("\tEndProjectSection");
-                }
-
                 writer.WriteLine("EndProject");
             }
         }
@@ -111,8 +91,7 @@ namespace MSBuild.XCode.MsDev
                         writer.WriteLine("\tGlobalSection(SolutionConfigurationPlatforms) = preSolution");
                         foreach (KeyValuePair<string, HashSet<string>> p in m_Configs)
                         {
-                            string c = p.Key;
-                            writer.WriteLine("\t\t" + c + " = " + c);
+                            writer.WriteLine("\t\t" + p.Key + " = " + p.Key);
                         }
                         writer.WriteLine("\tEndGlobalSection");
                     } break;
@@ -126,9 +105,9 @@ namespace MSBuild.XCode.MsDev
                             foreach (KeyValuePair<string, HashSet<string>> p in m_Configs)
                             {
                                 string c = p.Key;
-                                writer.WriteLine("\t\t{" + projectGuid.ToString().ToUpper() + "}." + c + ".ActiveCfg = " + c);
+                                writer.WriteLine("\t\t{" + projectGuid.ToString().ToUpper() + "}." + c + ".ActiveCfg = " + p.Key);
                                 if (p.Value.Contains(project.FullName))
-                                    writer.WriteLine("\t\t{" + projectGuid.ToString().ToUpper() + "}." + c + ".Build.0 = " + c);
+                                    writer.WriteLine("\t\t{" + projectGuid.ToString().ToUpper() + "}." + c + ".Build.0 = " + p.Key);
                             }
                         }
 
@@ -221,29 +200,20 @@ namespace MSBuild.XCode.MsDev
 
         private Guid GetProjectGuid(FileSystemInfo file)
         {
-            if (mVersion == EVersion.VS2010)
+            using (StreamReader reader = File.OpenText(file.FullName))
             {
-                Guid guid;
-                if (m_ProjectGuids.TryGetValue(file.FullName, out guid))
-                    return guid;
-                return Guid.NewGuid();
-            }
-            else
-            {
-                using (StreamReader reader = File.OpenText(file.FullName))
+                string text = reader.ReadToEnd();
+                string pattern = "<ProjectGuid>";
+                int start = text.IndexOf(pattern);
+                if (start > 0)
                 {
-                    string text = reader.ReadToEnd();
-                    string pattern = "ProjectGUID=\"";
-                    int start = text.IndexOf(pattern);
-                    if (start > 0)
+                    start += pattern.Length;
+                    pattern = "</ProjectGuid>";
+                    int end = text.IndexOf(pattern);
+                    if (end > 0)
                     {
-                        start += pattern.Length;
-                        pattern = "\" ";
-                        int end = text.IndexOf(pattern, start);
-                        if (end > 0)
-                        {
-                            return new Guid(text.Substring(start + 1, end - start - 2));
-                        }
+                        string guidStr = text.Substring(start + 1, end - start - 2);
+                        return new Guid(guidStr);
                     }
                 }
             }
@@ -253,15 +223,13 @@ namespace MSBuild.XCode.MsDev
         private Dictionary<string, bool> GetProjectConfigs(FileSystemInfo file)
         {
             Dictionary<string, bool> configs = new Dictionary<string, bool>();
-
-
             using (StreamReader reader = File.OpenText(file.FullName))
             {
                 string text = reader.ReadToEnd();
                 int cursor = 0;
                 while (true)
                 {
-                    string pattern = "ProjectConfiguration Include=\"";
+                    string pattern = "$(Configuration)|$(Platform)";
                     cursor = text.IndexOf(pattern, cursor);
                     if (cursor > 0)
                     {
@@ -270,7 +238,10 @@ namespace MSBuild.XCode.MsDev
                         int end = text.IndexOf(pattern, cursor);
                         if (end > 0)
                         {
-                            string config = text.Substring(cursor, end - cursor).Trim();
+                            string config = text.Substring(cursor + 1, end - cursor - 2).Trim();
+                            config = config.Replace("==", "");
+                            config = config.Replace("'", "");
+                            config = config.Trim();
                             if (!configs.ContainsKey(config))
                                 configs.Add(config, true);
                         }

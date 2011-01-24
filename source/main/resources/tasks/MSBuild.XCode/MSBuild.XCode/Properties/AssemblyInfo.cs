@@ -31,27 +31,31 @@ using System.Runtime.InteropServices;
 //
 // You can specify all the values or you can default the Revision and Build Numbers 
 // by using the '*' as shown below:
-[assembly: AssemblyVersion("1.0.3.0")]
-[assembly: AssemblyFileVersion("1.0.3.0")]
+[assembly: AssemblyVersion("1.0.4.0")]
+[assembly: AssemblyFileVersion("1.0.4.0")]
 
 // -----------------------------------------------------------------------------------
-// Features:
+// Feature List:
 // - Pom.xml validation
-// - Package Type = Source
-// - Internal DependsOn should treat the dependency as a dependency project instance.
-//   Currently we are merging with it as a main project instance.
+// - Package Mode = Shared (default), Local
+// - Package Type = Package, Source
 // - Integration in Visual Studio (Compile, Install and Deploy)
-// - C#
+// - Git support
 // 
+// -----------------------------------------------------------------------------------
 // Coming --> 1.0.4.0 (? January 2011)
 // - MsDev 2010 project now saves .filters file
-// - 
+// - C#
+// - Fixed bug in task logging
+// 
 // -----------------------------------------------------------------------------------
 // 1.0.3.0 (15th January 2011)
-// - PackageRepository: Share added
-// - Fixed a bug in Local Repository handling of multi platform packages
+// - Share Repository
+// - Solution (.sln) now is correctly handling project configurations, projects can have 
+//   different configurations and these are now listed as 'Build=False'
+// - Fixed a bug in Local Repository and other Repository logic, should filter files by
+//   platform!
 // - 
-// 
 // -----------------------------------------------------------------------------------
 // 1.0.2.0 (7th January 2011)
 // - PackageRepository: Local, Target, Cache, Remote

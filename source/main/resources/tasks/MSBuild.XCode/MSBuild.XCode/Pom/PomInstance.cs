@@ -34,6 +34,28 @@ namespace MSBuild.XCode
             }
         }
 
+        public bool IsCpp
+        {
+            get
+            {
+                bool isCpp = true;
+                foreach (ProjectInstance prj in Projects)
+                    isCpp = isCpp && prj.IsCpp;
+                return isCpp;
+            }
+        }
+
+        public bool IsCs
+        {
+            get
+            {
+                bool isCs = true;
+                foreach (ProjectInstance prj in Projects)
+                    isCs = isCs && prj.IsCs;
+                return isCs;
+            }
+        }
+
         public bool Info()
         {
 

@@ -10,7 +10,9 @@ namespace MSBuild.XCode
     public class ProjectInstance
     {
         private ProjectResource mResource;
-        private CppProject mMsDevProject;
+        
+        private MsDev.IProject mMsDevProject;
+
         private bool mIsFinalProject;
 
         public Dictionary<string, StringItems> Configs { get { return mResource.Configs; } }
@@ -27,7 +29,7 @@ namespace MSBuild.XCode
         public bool IsCs { get { return mResource.IsCs; } }
 
         public bool IsPrivate { get { return mResource.IsPrivate; } }
-        public string Extension { get { if (IsCs) return ".csproj"; return ".vcxproj"; } }
+        public string Extension { get { return mMsDevProject.Extension; } }
 
         public ProjectInstance(bool main, ProjectResource resource)
         {
@@ -35,8 +37,17 @@ namespace MSBuild.XCode
             Main = main;
 
             mIsFinalProject = false;
-            mMsDevProject = new CppProject();
-            mMsDevProject.Copy(mResource.MsDevProject);
+
+            if (IsCpp)
+            {
+                mMsDevProject = new MsDev.CppProject();
+            }
+            else
+            {
+                mMsDevProject = new MsDev.CsProject();
+            }
+
+            mMsDevProject.Xml = mResource.MsDevProject.Xml;
             if (Main)
                 mMsDevProject.FilterItems(new string[] { "#" }, new string[] { "@" });
             else
@@ -66,9 +77,7 @@ namespace MSBuild.XCode
 
             if (IsCpp)
             {
-                CppProject finalProject = new CppProject();
-                finalProject.Copy(PackageInstance.CppTemplateProject);
-                finalProject.Merge(mMsDevProject, true, true, true);
+                mMsDevProject.Construct(PackageInstance.CppTemplateProject);
 
                 Dictionary<string, StringItems> platform_configs = new Dictionary<string, StringItems>();
                 foreach (KeyValuePair<string, StringItems> pair in Configs)
@@ -77,35 +86,25 @@ namespace MSBuild.XCode
                         platform_configs.Add(pair.Key, pair.Value);
                 }
 
-                finalProject.RemoveAllBut(platform_configs);
-                mMsDevProject = finalProject;
+                mMsDevProject.RemoveAllBut(platform_configs);
                 mIsFinalProject = true;
             }
             else if (IsCs)
             {
-                //CsProject finalProject = new CsProject();
-                //finalProject.Copy(Global.CsTemplateProject);
-                //finalProject.Merge(mMsDevProject, true, true, true);
-                //finalProject.RemoveAllBut(Configs);
-                //mMsDevProject = finalProject;
+                mMsDevProject.Construct(PackageInstance.CsTemplateProject);
+                mMsDevProject.RemoveAllBut(Configs);
+                mIsFinalProject = true;
             }
         }
 
         public void MergeWithDependencyProject(ProjectInstance dependencyProject)
         {
-            mMsDevProject.Merge(dependencyProject.mMsDevProject, false, false, false);
+            mMsDevProject.MergeDependencyProject(dependencyProject.mMsDevProject);
         }
 
         public void OnlyKeepPlatformSpecifics(string platform)
         {
-            if (IsCpp)
-            {
-                mMsDevProject.RemoveAllPlatformsBut(platform);
-            }
-            else if (IsCs)
-            {
-                mMsDevProject.RemoveAllPlatformsBut(platform);
-            }
+            mMsDevProject.RemoveAllPlatformsBut(platform);
         }
 
         public string[] GetPlatforms()
