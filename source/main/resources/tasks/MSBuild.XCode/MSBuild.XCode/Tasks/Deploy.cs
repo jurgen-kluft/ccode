@@ -40,6 +40,11 @@ namespace MSBuild.XCode
                 return false;
             }
 
+            foreach (Mercurial.Tag hg_tag in hg_repo.Tags())
+            {
+
+            }
+
             if (!PackageInstance.IsInitialized)
             {
                 PackageInstance.TemplateDir = string.Empty;

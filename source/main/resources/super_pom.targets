@@ -101,7 +101,7 @@
   </Target>
 
   <Target Name="Init">
-    <MSBuild.XCode.PackageConstruct Name="$(PackageName)" Action="init" Language="C++" RootDir="$(PackageDir)" TemplateDir="$(PackageLocalRepoURL)com\virtuos\xcode\publish\templates\" CacheRepoDir="$(PackageLocalRepoURL)" RemoteRepoDir="$(PackageRemoteRepoURL)"/>
+    <MSBuild.XCode.PackageConstruct Name="$(PackageName)" Action="init" Language="$(PackageLanguage)" RootDir="$(PackageDir)" TemplateDir="$(PackageLocalRepoURL)com\virtuos\xcode\publish\templates\" CacheRepoDir="$(PackageLocalRepoURL)" RemoteRepoDir="$(PackageRemoteRepoURL)"/>
   </Target>
   <Target Name="InitDirs">
     <MSBuild.XCode.PackageConstruct Name="" Action="dir" RootDir="$(PackageDir)" TemplateDir="$(PackageLocalRepoURL)com\virtuos\xcode\publish\templates\" CacheRepoDir="$(PackageLocalRepoURL)" RemoteRepoDir="$(PackageRemoteRepoURL)"/>

@@ -21,8 +21,8 @@ namespace MSBuild.XCode
         public static IPackageRepository CacheRepo { get; set; }
         public static IPackageRepository ShareRepo { get; set; }
 
-        public static CppProject CppTemplateProject { get; set; }
-        public static CsProject CsTemplateProject { get; set; }
+        public static MsDev.CppProject CppTemplateProject { get; set; }
+        public static MsDev.CsProject CsTemplateProject { get; set; }
 
         static PackageInstance()
         {
@@ -35,7 +35,6 @@ namespace MSBuild.XCode
                 return true;
 
             Loggy.ToConsole = true;
-            Loggy.TaskLogger = null;
             Loggy.Indentor = "\t";
 
             if (!String.IsNullOrEmpty(CacheRepoDir))
@@ -70,16 +69,20 @@ namespace MSBuild.XCode
             if (!String.IsNullOrEmpty(TemplateDir))
             {
                 // For C++
-                CppTemplateProject = new CppProject();
-                if (!CppTemplateProject.Load(TemplateDir + "main.vcxproj"))
+                CppTemplateProject = new MsDev.CppProject();
+                if (!CppTemplateProject.Load(TemplateDir + "main" + CppTemplateProject.Extension))
                 {
-                    Loggy.Error(String.Format("Error: Initialization of Global failed in due to failure in loading {0}", TemplateDir + "main.vcxproj"));
+                    Loggy.Error(String.Format("Error: Initialization of Global failed in due to failure in loading {0}", TemplateDir + "main" + CppTemplateProject.Extension));
                     return false;
                 }
 
                 // For C#
-                // CsTemplateProject = new CsProject();
-                // CsTemplateProject.Load(TemplateDir + "main.vcxproj");
+                CsTemplateProject = new MsDev.CsProject();
+                if (!CsTemplateProject.Load(TemplateDir + "main" + CsTemplateProject.Extension))
+                {
+                    Loggy.Error(String.Format("Error: Initialization of Global failed in due to failure in loading {0}", TemplateDir + "main" + CsTemplateProject.Extension));
+                    return false;
+                }
             }
 
             IsInitialized = true;

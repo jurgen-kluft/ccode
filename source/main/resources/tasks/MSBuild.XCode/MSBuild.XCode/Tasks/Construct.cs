@@ -32,7 +32,7 @@ namespace MSBuild.XCode
                 Action = "dir";
             Action = Action.ToLower();
             if (String.IsNullOrEmpty(Language))
-                Language = "cpp";
+                Language = "C++";
 
             RootDir = RootDir.EndWith('\\');
             TemplateDir = TemplateDir.EndWith('\\');
@@ -126,9 +126,21 @@ namespace MSBuild.XCode
                         {
                             if (FileCopy(TemplateDir + "pom.props.template", DstPath + "pom.props"))
                             {
-                                if (FileCopy(TemplateDir + "pom.xml.template", DstPath + "pom.xml"))
+                                if (String.Compare(Language, "C++", true) == 0 || String.Compare(Language, "CPP", true) == 0)
                                 {
-                                    file_copy_result = true;
+                                    if (FileCopy(TemplateDir + "pom.xml.template", DstPath + "pom.xml"))
+                                    {
+                                        Loggy.Info(String.Format("Info: Generated pom.targets, pom.props and pom.xml C++ files"));
+                                        file_copy_result = true;
+                                    }
+                                }
+                                else
+                                {
+                                    if (FileCopy(TemplateDir + "pom.xml.cs.template", DstPath + "pom.xml"))
+                                    {
+                                        Loggy.Info(String.Format("Info: Generated pom.targets, pom.props and pom.xml C++ files"));
+                                        file_copy_result = true;
+                                    }
                                 }
                             }
                         }
@@ -157,7 +169,7 @@ namespace MSBuild.XCode
             }
             else
             {
-                Loggy.Error(String.Format("Error: Action {0} is not recognized by Package::Construct (Available actions: Dir, MsDev2010)", Action));
+                Loggy.Error(String.Format("Error: Action {0} is not recognized by Package::Construct (Available actions: Init, Dir, MsDev2010)", Action));
                 return false;
             }
 
