@@ -559,7 +559,8 @@ namespace MSBuild.XCode.MsDev
 
         public void MergeDependencyProject(IProject project)
         {
-            Merge(mXmlDocMain, project.Xml,
+            XmlDocument result = (XmlDocument)mXmlDocMain.Clone();
+            Merge(result, project.Xml,
                 delegate(bool isMainNode, XmlNode node)
                 {
                     /// Only merge dependency project elements like:
@@ -580,6 +581,8 @@ namespace MSBuild.XCode.MsDev
                 {
                     
                 });
+
+            mXmlDocMain = result;
         }
 
     }

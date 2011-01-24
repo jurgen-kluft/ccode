@@ -59,8 +59,8 @@ namespace MSBuild.XCode
                 // Delete old .zip packages from the build folder
                 if (!String.IsNullOrEmpty(latest_package_filename))
                 {
-                    string version = Layout.FilenameToVersion(latest_package_filename);
-                    package.LocalFilename = new PackageFilename(Path.GetFileName(latest_package_filename));
+                    string version = Layout.FilenameToVersion(Path.GetFileNameWithoutExtension(latest_package_filename));
+                    package.LocalFilename = new PackageFilename(Path.GetFileNameWithoutExtension(latest_package_filename));
                     package.Platform = package.LocalFilename.Platform;
                     package.Branch = package.LocalFilename.Branch;
                     package.LocalVersion = new ComparableVersion(version);

@@ -35,7 +35,6 @@ namespace MSBuild.XCode
                 return true;
 
             Loggy.ToConsole = true;
-            Loggy.TaskLogger = null;
             Loggy.Indentor = "\t";
 
             if (!String.IsNullOrEmpty(CacheRepoDir))

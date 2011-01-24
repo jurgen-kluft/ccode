@@ -698,6 +698,21 @@ namespace Mercurial
         }
 
         /// <summary>
+        /// Retrieves the tags.
+        /// </summary>
+        /// <param name="command">
+        /// The information object for the tags command.
+        /// </param>
+        /// <returns>
+        /// The <see cref="text"/> of the tags.
+        /// </returns>
+        public IEnumerable<Tag> Tags(TagsCommand command = null)
+        {
+            command = command ?? new TagsCommand();
+            return Execute(command);
+        }
+
+        /// <summary>
         /// Add or remove a tag for a changeset.
         /// </summary>
         /// <param name="name">

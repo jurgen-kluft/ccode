@@ -18,25 +18,21 @@ namespace MSBuild.XCode.Helpers
 
         public static void Info(string line)
         {
-            if (TaskLogger != null && TaskLogger.TaskResources!=null)
-            {
-                TaskLogger.LogMessage(line);
-            }
-            else if (ToConsole)
+            if (ToConsole)
             {
                 for (int i = 0; i < Indent; ++i)
                     Console.Write(Indentor);
                 Console.WriteLine(line);
             }
+            if (TaskLogger != null && TaskLogger.TaskResources != null)
+            {
+                TaskLogger.LogMessage(line);
+            }
         }
 
         public static void Warning(string line)
         {
-            if (TaskLogger != null && TaskLogger.TaskResources != null)
-            {
-                TaskLogger.LogWarning(line);
-            }
-            else if (ToConsole)
+            if (ToConsole)
             {
                 ConsoleColor oldColor = Console.ForegroundColor;
                 Console.ForegroundColor = ConsoleColor.Yellow;
@@ -45,15 +41,15 @@ namespace MSBuild.XCode.Helpers
                 Console.WriteLine(line);
                 Console.ForegroundColor = oldColor;
             }
+            if (TaskLogger != null && TaskLogger.TaskResources != null)
+            {
+                TaskLogger.LogWarning(line);
+            }
         }
 
         public static void Error(string line)
         {
-            if (TaskLogger != null && TaskLogger.TaskResources!=null)
-            {
-                TaskLogger.LogError(line);
-            }
-            else if (ToConsole)
+            if (ToConsole)
             {
                 ConsoleColor oldColor = Console.ForegroundColor;
                 Console.ForegroundColor = ConsoleColor.Red;
@@ -61,6 +57,10 @@ namespace MSBuild.XCode.Helpers
                     Console.Write(Indentor);
                 Console.WriteLine(line);
                 Console.ForegroundColor = oldColor;
+            }
+            if (TaskLogger != null && TaskLogger.TaskResources != null)
+            {
+                TaskLogger.LogError(line);
             }
         }
     }
