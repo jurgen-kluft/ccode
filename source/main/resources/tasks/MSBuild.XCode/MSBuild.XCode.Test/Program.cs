@@ -25,9 +25,9 @@ namespace MSBuild.XCode.Test
             PackageInstance.Initialize();
            
             // Our test project is xproject
-            PackageInstance.RootDir = @"k:\Dev.C++.Packages\sdk_360\";
+            PackageInstance.RootDir = @"k:\Dev.C++.Packages\xunittest\";
 
-            //Construct("xprojectB");
+            Construct("xunittest");
 
             PackageConfigs configs = new PackageConfigs();
             configs.RootDir = PackageInstance.RootDir;
@@ -86,17 +86,18 @@ namespace MSBuild.XCode.Test
         {
             PackageConstruct construct = new PackageConstruct();
             construct.Name = name;
-            construct.RootDir = @"k:\Dev.C#.Packages\";
+            construct.RootDir = @"k:\Dev.C++.Packages\";
             construct.CacheRepoDir = PackageInstance.CacheRepoDir;
             construct.RemoteRepoDir = PackageInstance.RemoteRepoDir;
             construct.TemplateDir = PackageInstance.TemplateDir;
-            construct.Language = "C#";
+            construct.Language = "C++";
             construct.Action = "init";
             //construct.Execute();
             construct.RootDir = construct.RootDir + construct.Name + "\\";
             construct.Action = "dir";
             //construct.Execute();
-            construct.Language = "C#";
+            construct.Language = "C++";
+            construct.Platform = "Xbox 360";
             construct.Action = "vs2010";
             construct.Execute();
         }
