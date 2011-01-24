@@ -19,31 +19,29 @@ namespace MSBuild.XCode.Test
         [STAThread]
         static void Main()
         {
-            PackageInstance.RemoteRepoDir = @"j:\Dev.C#.Packages\REMOTE_PACKAGE_REPO\";
-            PackageInstance.TemplateDir = @"j:\Dev.C#.Packages\REMOTE_PACKAGE_REPO\com\virtuos\xcode\publish\templates\";
-            PackageInstance.CacheRepoDir = @"j:\Dev.C#.Packages\PACKAGE_REPO\";
+            PackageInstance.RemoteRepoDir = @"k:\Dev.C++.Packages\REMOTE_PACKAGE_REPO\";
+            PackageInstance.TemplateDir = @"k:\Dev.C++.Packages\REMOTE_PACKAGE_REPO\com\virtuos\xcode\publish\templates\";
+            PackageInstance.CacheRepoDir = @"k:\Dev.C++.Packages\PACKAGE_REPO\";
             PackageInstance.Initialize();
            
             // Our test project is xproject
-            PackageInstance.RootDir = @"j:\Dev.C#.Packages\xprojectB\";
+            PackageInstance.RootDir = @"k:\Dev.C++.Packages\sdk_360\";
 
-            Construct("xprojectB");
+            //Construct("xprojectB");
 
             PackageConfigs configs = new PackageConfigs();
             configs.RootDir = PackageInstance.RootDir;
-            configs.Platform = "Win32";
-            configs.ProjectGroup = "UnitTest";
+            configs.Platform = "Xbox 360";
+            configs.ProjectGroup = "SDK";
             configs.TemplateDir = PackageInstance.TemplateDir;
             configs.Execute();
-
-            return;
 
             string createdPackageFilename;
             if (true)
             {
                 PackageCreate create = new PackageCreate();
                 create.RootDir = PackageInstance.RootDir;
-                create.Platform = "Win32";
+                create.Platform = "Xbox 360";
                 bool result1 = create.Execute();
                 createdPackageFilename = create.Filename;
             }
@@ -75,7 +73,7 @@ namespace MSBuild.XCode.Test
             info.RemoteRepoDir = PackageInstance.RemoteRepoDir;
             info.Execute();
 
-            PackageInstance.RootDir = @"j:\Dev.C++.Packages\xstring\";
+            PackageInstance.RootDir = @"k:\Dev.C++.Packages\xstring\";
 
             PackageVerify verify = new PackageVerify();
             verify.RootDir = PackageInstance.RootDir;
@@ -88,7 +86,7 @@ namespace MSBuild.XCode.Test
         {
             PackageConstruct construct = new PackageConstruct();
             construct.Name = name;
-            construct.RootDir = @"j:\Dev.C#.Packages\";
+            construct.RootDir = @"k:\Dev.C#.Packages\";
             construct.CacheRepoDir = PackageInstance.CacheRepoDir;
             construct.RemoteRepoDir = PackageInstance.RemoteRepoDir;
             construct.TemplateDir = PackageInstance.TemplateDir;

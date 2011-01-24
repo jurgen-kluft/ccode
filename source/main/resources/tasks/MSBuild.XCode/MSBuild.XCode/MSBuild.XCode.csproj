@@ -154,6 +154,8 @@
     <Compile Include="Mercurial\CommitCommand.cs" />
     <Compile Include="Mercurial\ConfigurationEntry.cs" />
     <Compile Include="Mercurial\Configuration\ClientConfigurationCollection.cs" />
+    <Compile Include="Mercurial\Tag.cs" />
+    <Compile Include="Mercurial\TagsCommand.cs" />
     <Compile Include="Mercurial\DebugObserver.cs" />
     <Compile Include="Mercurial\Extensions\CaseGuard\CaseGuardAddCommandExtensions.cs" />
     <Compile Include="Mercurial\Extensions\CaseGuard\CaseGuardAddRemoveCommandExtensions.cs" />
