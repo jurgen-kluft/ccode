@@ -66,7 +66,6 @@ namespace MSBuild.XCode.MsDev
         public void RemovePlatform(string platform)
         {
             XmlDocument result = (XmlDocument)mXmlDocMain.Clone();
-            mAllowRemoval = true;
             Merge(result, mXmlDocMain,
                 delegate(bool isMainNode, XmlNode node)
                 {
@@ -74,16 +73,14 @@ namespace MSBuild.XCode.MsDev
                 },
                 delegate(XmlNode main, XmlNode other)
                 {
-                });
+                }, true);
 
             mXmlDocMain = result;
-            mAllowRemoval = false;
         }
 
         public void RemoveConfigForPlatform(string config, string platform)
         {
             XmlDocument result = (XmlDocument)mXmlDocMain.Clone();
-            mAllowRemoval = true;
             Merge(result, mXmlDocMain,
                 delegate(bool isMainNode, XmlNode node)
                 {
@@ -91,16 +88,14 @@ namespace MSBuild.XCode.MsDev
                 },
                 delegate(XmlNode main, XmlNode other)
                 {
-                });
+                }, true);
 
             mXmlDocMain = result;
-            mAllowRemoval = false;
         }
 
         public void RemoveAllBut(Dictionary<string, StringItems> platformConfigs)
         {
             XmlDocument result = (XmlDocument)mXmlDocMain.Clone();
-            mAllowRemoval = true;
             string platform, config;
             Merge(result, mXmlDocMain,
                 delegate(bool isMainNode, XmlNode node)
@@ -118,16 +113,14 @@ namespace MSBuild.XCode.MsDev
                 },
                 delegate(XmlNode main, XmlNode other)
                 {
-                });
+                }, true);
 
             mXmlDocMain = result;
-            mAllowRemoval = false;
         }
 
         public void RemoveAllPlatformsBut(string platformToKeep)
         {
             XmlDocument result = (XmlDocument)mXmlDocMain.Clone();
-            mAllowRemoval = true;
             string platform, config;
             Merge(result, mXmlDocMain,
                 delegate(bool isMainNode, XmlNode node)
@@ -149,10 +142,9 @@ namespace MSBuild.XCode.MsDev
                 },
                 delegate(XmlNode main, XmlNode other)
                 {
-                });
+                }, true);
 
             mXmlDocMain = result;
-            mAllowRemoval = false;
         }
 
         public bool FilterItems(string[] to_remove, string[] to_keep)
@@ -171,7 +163,7 @@ namespace MSBuild.XCode.MsDev
                         items.Filter(to_remove, to_keep);
                         main.Value = items.ToString();
                     }
-                });
+                }, false);
 
             return true;
         }
@@ -206,7 +198,7 @@ namespace MSBuild.XCode.MsDev
                 },
                 delegate(XmlNode main, XmlNode other)
                 {
-                });
+                }, false);
 
             // Removal
             foreach (XmlNode node in removals)
@@ -312,7 +304,7 @@ namespace MSBuild.XCode.MsDev
                 },
                 delegate(XmlNode main, XmlNode other)
                 {
-                });
+                }, false);
             return platforms.ToArray();
         }
 
@@ -336,7 +328,7 @@ namespace MSBuild.XCode.MsDev
                 },
                 delegate(XmlNode main, XmlNode other)
                 {
-                });
+                },false);
             return configs.ToArray();
         }
         
@@ -442,7 +434,7 @@ namespace MSBuild.XCode.MsDev
                 },
                 delegate(XmlNode main, XmlNode other)
                 {
-                });
+                }, false);
 
             string tool_version_and_xmlns = "ToolsVersion=\"4.0\" xmlns=\"http://schemas.microsoft.com/developer/msbuild/2003\"";
             string xml_version_and_encoding = "<?xml version=\"1.0\" encoding=\"utf-8\"?>";
@@ -541,7 +533,8 @@ namespace MSBuild.XCode.MsDev
                         if (replaceValues)
                             main.Value = other.Value;
                     }
-                });
+                }, false);
+
             return true;
         }
     }
