@@ -9,7 +9,6 @@ namespace MSBuild.XCode.MsDev
     public abstract class BaseProject
     {
         protected XmlDocument mXmlDocMain;
-        protected bool mAllowRemoval = false;
 
         public XmlDocument Xml
         {
@@ -64,7 +63,7 @@ namespace MSBuild.XCode.MsDev
                         if (!String.IsNullOrEmpty(main.Value))
                             main.Value = ReplaceVars(main.Value, vars);
                     }
-                });
+                }, false);
             return true;
         }
 
@@ -73,7 +72,7 @@ namespace MSBuild.XCode.MsDev
         /// </summary>
         /// <param name="domTarget">The XmlDocument to which we want to copy</param>
         /// <param name="node">The node we want to copy</param>
-        protected XmlNode CopyTo(XmlDocument xmlDoc, XmlNode xmlDocNode, XmlNode nodeToCopy)
+        protected static XmlNode CopyTo(XmlDocument xmlDoc, XmlNode xmlDocNode, XmlNode nodeToCopy)
         {
             XmlNode copy = xmlDoc.ImportNode(nodeToCopy, true);
             if (xmlDocNode != null)
@@ -106,7 +105,7 @@ namespace MSBuild.XCode.MsDev
             return false;
         }
 
-        protected bool HasSameAttributes(XmlNode a, XmlNode b)
+        protected static bool HasSameAttributes(XmlNode a, XmlNode b)
         {
             if (a.Attributes == null && b.Attributes == null)
                 return true;
@@ -135,7 +134,7 @@ namespace MSBuild.XCode.MsDev
             return false;
         }
 
-        protected XmlNode FindNode(XmlNode nodeToFind, XmlNodeList children)
+        protected static XmlNode FindNode(XmlNode nodeToFind, XmlNodeList children)
         {
             // vcxproj has multiple <ItemGroup> nodes with different content, we
             // need to make sure we pick the right one
@@ -184,7 +183,7 @@ namespace MSBuild.XCode.MsDev
         public delegate void NodeMergeDelegate(XmlNode main, XmlNode other);
         public delegate bool NodeConditionDelegate(bool isMainNode, XmlNode node);
 
-        protected void LockStep(XmlDocument mainXmlDoc, XmlDocument otherXmlDoc, Stack<XmlNode> mainPath, Stack<XmlNode> otherPath, NodeConditionDelegate nodeConditionDelegate, NodeMergeDelegate nodeMergeDelegate)
+        protected static void LockStep(XmlDocument mainXmlDoc, XmlDocument otherXmlDoc, Stack<XmlNode> mainPath, Stack<XmlNode> otherPath, NodeConditionDelegate nodeConditionDelegate, NodeMergeDelegate nodeMergeDelegate, bool allowRemoval)
         {
             XmlNode mainNode = mainPath.Peek();
             XmlNode otherNode = otherPath.Peek();
@@ -209,7 +208,7 @@ namespace MSBuild.XCode.MsDev
 
                             mainPath.Push(mainChildNode);
                             otherPath.Push(otherChildNode);
-                            LockStep(mainXmlDoc, otherXmlDoc, mainPath, otherPath, nodeConditionDelegate, nodeMergeDelegate);
+                            LockStep(mainXmlDoc, otherXmlDoc, mainPath, otherPath, nodeConditionDelegate, nodeMergeDelegate, allowRemoval);
                         }
                     }
                     else
@@ -218,9 +217,9 @@ namespace MSBuild.XCode.MsDev
                         {
                             mainPath.Push(mainChildNode);
                             otherPath.Push(otherChildNode);
-                            LockStep(mainXmlDoc, otherXmlDoc, mainPath, otherPath, nodeConditionDelegate, nodeMergeDelegate);
+                            LockStep(mainXmlDoc, otherXmlDoc, mainPath, otherPath, nodeConditionDelegate, nodeMergeDelegate, allowRemoval);
                         }
-                        else if (mAllowRemoval)
+                        else if (allowRemoval)
                         {
                             // Removal
                             mainNode.RemoveChild(mainChildNode);
@@ -230,7 +229,7 @@ namespace MSBuild.XCode.MsDev
             }
         }
 
-        protected void Merge(XmlDocument mainXmlDoc, XmlDocument otherXmlDoc, NodeConditionDelegate nodeConditionDelegate, NodeMergeDelegate nodeMergeDelegate)
+        protected static void Merge(XmlDocument mainXmlDoc, XmlDocument otherXmlDoc, NodeConditionDelegate nodeConditionDelegate, NodeMergeDelegate nodeMergeDelegate, bool allowRemoval)
         {
             // Lock-Step Merge the xml tree
             // 1) When encountering a node which does not exist in the main doc, insert it
@@ -247,7 +246,7 @@ namespace MSBuild.XCode.MsDev
 
                         mainPath.Push(mainChildNode);
                         otherPath.Push(otherChildNode);
-                        LockStep(mainXmlDoc, otherXmlDoc, mainPath, otherPath, nodeConditionDelegate, nodeMergeDelegate);
+                        LockStep(mainXmlDoc, otherXmlDoc, mainPath, otherPath, nodeConditionDelegate, nodeMergeDelegate, allowRemoval);
                     }
                 }
                 else
@@ -256,9 +255,9 @@ namespace MSBuild.XCode.MsDev
                     {
                         mainPath.Push(mainChildNode);
                         otherPath.Push(otherChildNode);
-                        LockStep(mainXmlDoc, otherXmlDoc, mainPath, otherPath, nodeConditionDelegate, nodeMergeDelegate);
+                        LockStep(mainXmlDoc, otherXmlDoc, mainPath, otherPath, nodeConditionDelegate, nodeMergeDelegate, allowRemoval);
                     }
-                    else if (mAllowRemoval)
+                    else if (allowRemoval)
                     {
                         // Removal
                         mainXmlDoc.RemoveChild(mainChildNode);

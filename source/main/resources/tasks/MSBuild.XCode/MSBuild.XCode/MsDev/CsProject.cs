@@ -49,7 +49,6 @@ namespace MSBuild.XCode.MsDev
         public void RemovePlatform(string platform)
         {
             XmlDocument result = new XmlDocument();
-            mAllowRemoval = true;
             Merge(result, mXmlDocMain,
                 delegate(bool isMainNode, XmlNode node)
                 {
@@ -57,16 +56,14 @@ namespace MSBuild.XCode.MsDev
                 },
                 delegate(XmlNode main, XmlNode other)
                 {
-                });
+                }, true);
 
             mXmlDocMain = result;
-            mAllowRemoval = false;
         }
 
         public void RemoveConfigForPlatform(string config, string platform)
         {
             XmlDocument result = new XmlDocument();
-            mAllowRemoval = true; 
             Merge(result, mXmlDocMain,
                 delegate(bool isMainNode, XmlNode node)
                 {
@@ -74,17 +71,15 @@ namespace MSBuild.XCode.MsDev
                 },
                 delegate(XmlNode main, XmlNode other)
                 {
-                });
+                }, true);
 
             mXmlDocMain = result;
-            mAllowRemoval = false;
         }
 
 
         public void RemoveAllPlatformsBut(string platformToKeep)
         {
             XmlDocument result = (XmlDocument)mXmlDocMain.Clone();
-            mAllowRemoval = true;
             string platform, config;
             Merge(result, mXmlDocMain,
                 delegate(bool isMainNode, XmlNode node)
@@ -113,16 +108,14 @@ namespace MSBuild.XCode.MsDev
                 },
                 delegate(XmlNode main, XmlNode other)
                 {
-                });
+                }, true);
 
             mXmlDocMain = result;
-            mAllowRemoval = false;
         }
 
         public void RemoveAllBut(Dictionary<string, StringItems> platformConfigs)
         {
             XmlDocument result = new XmlDocument();
-            mAllowRemoval = true;
             string platform, config;
             Merge(result, mXmlDocMain,
                 delegate(bool isMainNode, XmlNode node)
@@ -140,10 +133,9 @@ namespace MSBuild.XCode.MsDev
                 },
                 delegate(XmlNode main, XmlNode other)
                 {
-                });
+                }, true);
 
             mXmlDocMain = result;
-            mAllowRemoval = false;
         }
 
         /// if action == "Compile" and filename.endswith(".cs")
@@ -281,7 +273,7 @@ namespace MSBuild.XCode.MsDev
                 },
                 delegate(XmlNode main, XmlNode other)
                 {
-                });
+                }, false);
 
             // Removal
             foreach (XmlNode node in removals)
@@ -457,7 +449,7 @@ namespace MSBuild.XCode.MsDev
                 },
                 delegate(XmlNode main, XmlNode other)
                 {
-                });
+                }, false);
             return platforms.ToArray();
         }
 
@@ -481,13 +473,12 @@ namespace MSBuild.XCode.MsDev
                 },
                 delegate(XmlNode main, XmlNode other)
                 {
-                });
+                }, false);
             return configs.ToArray();
         }
 
         public bool FilterItems(string[] to_remove, string[] to_keep)
         {
-            mAllowRemoval = true;
             XmlDocument result = (XmlDocument)mXmlDocMain.Clone();
             Merge(result, mXmlDocMain,
                 delegate(bool isMainNode, XmlNode node)
@@ -515,10 +506,9 @@ namespace MSBuild.XCode.MsDev
                 },
                 delegate(XmlNode main, XmlNode other)
                 {
-                });
+                }, true);
 
             mXmlDocMain = result;
-            mAllowRemoval = false;
             return true;
         }
 
@@ -543,7 +533,7 @@ namespace MSBuild.XCode.MsDev
                 delegate(XmlNode main, XmlNode other)
                 {
                     main.Value = other.Value;
-                });
+                }, false);
 
             return true;
         }
@@ -579,8 +569,8 @@ namespace MSBuild.XCode.MsDev
                 },
                 delegate(XmlNode main, XmlNode other)
                 {
-                    
-                });
+
+                }, false);
 
             mXmlDocMain = result;
         }
