@@ -40,11 +40,6 @@ namespace MSBuild.XCode
                 return false;
             }
 
-            foreach (Mercurial.Tag hg_tag in hg_repo.Tags())
-            {
-
-            }
-
             if (!PackageInstance.IsInitialized)
             {
                 PackageInstance.TemplateDir = string.Empty;
@@ -60,6 +55,9 @@ namespace MSBuild.XCode
                 PackageRepositoryLocal localPackageRepo = new PackageRepositoryLocal(RootDir);
                 if (localPackageRepo.Update(package))
                 {
+                    hg_repo.Tag(package.LocalVersion.ToString());
+                    hg_repo.Commit("XCode: tag");
+
                     // - Commit version to remote package repository from local
                     ok = PackageInstance.RemoteRepo.Add(package, localPackageRepo.Location);
                 }
