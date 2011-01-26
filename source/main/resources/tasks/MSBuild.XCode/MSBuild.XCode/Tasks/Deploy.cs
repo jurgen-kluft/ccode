@@ -29,17 +29,6 @@ namespace MSBuild.XCode
 
             RootDir = RootDir.EndWith('\\');
             
-            // - Verify that there are no local changes 
-            // - Verify that there are no outgoing changes
-            Mercurial.Repository hg_repo = new Mercurial.Repository(RootDir);
-            Mercurial.StatusCommand hg_status = new Mercurial.StatusCommand(Mercurial.FileStatusIncludes.Tracked);
-            IEnumerable<Mercurial.FileStatus> repo_status = hg_repo.Status(hg_status);
-            if (!repo_status.IsEmpty())
-            {
-                Loggy.Error("Error: Package::Deploy requires you to commit all outstanding changes into VCS!");
-                return false;
-            }
-
             if (!PackageInstance.IsInitialized)
             {
                 PackageInstance.TemplateDir = string.Empty;
@@ -55,8 +44,8 @@ namespace MSBuild.XCode
                 PackageRepositoryLocal localPackageRepo = new PackageRepositoryLocal(RootDir);
                 if (localPackageRepo.Update(package))
                 {
-                    hg_repo.Tag(package.LocalVersion.ToString());
-                    hg_repo.Commit("XCode: tag");
+                    //hg_repo.Tag(package.LocalVersion.ToString());
+                    //hg_repo.Commit("XCode: tag");
 
                     // - Commit version to remote package repository from local
                     ok = PackageInstance.RemoteRepo.Add(package, localPackageRepo.Location);
