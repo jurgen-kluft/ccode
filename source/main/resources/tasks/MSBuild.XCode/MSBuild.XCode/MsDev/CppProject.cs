@@ -36,6 +36,7 @@ namespace MSBuild.XCode.MsDev
         {
             "IncludePath",
             "LibraryPath",
+            "ExecutablePath",
             "PreprocessorDefinitions", 
             "AdditionalDependencies", 
             "AdditionalLibraryDirectories", 
