@@ -125,10 +125,12 @@ namespace MSBuild.XCode.MsDev
                             Guid projectGuid = GetProjectGuid(project);
                             foreach (KeyValuePair<string, HashSet<string>> p in m_Configs)
                             {
-                                string c = p.Key;
-                                writer.WriteLine("\t\t{" + projectGuid.ToString().ToUpper() + "}." + c + ".ActiveCfg = " + c);
                                 if (p.Value.Contains(project.FullName))
+                                {
+                                    string c = p.Key;
+                                    writer.WriteLine("\t\t{" + projectGuid.ToString().ToUpper() + "}." + c + ".ActiveCfg = " + c);
                                     writer.WriteLine("\t\t{" + projectGuid.ToString().ToUpper() + "}." + c + ".Build.0 = " + c);
+                                }
                             }
                         }
 

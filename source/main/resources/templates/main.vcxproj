@@ -706,7 +706,7 @@
       <PreprocessorDefinitions>%()</PreprocessorDefinitions>
       <PrecompiledHeader>NotUsing</PrecompiledHeader>
       <AdditionalIncludeDirectories>%()</AdditionalIncludeDirectories>
-      <ExceptionHandling>Sync</ExceptionHandling>
+      <ExceptionsAndRTTI>UsingRTTIandExceptions</ExceptionsAndRTTI>
     </ClCompile>
     <Link>
       <GenerateDebugInformation>true</GenerateDebugInformation>
@@ -722,7 +722,7 @@
       <PreprocessorDefinitions>%()</PreprocessorDefinitions>
       <PrecompiledHeader>NotUsing</PrecompiledHeader>
       <AdditionalIncludeDirectories>%()</AdditionalIncludeDirectories>
-      <ExceptionHandling>Sync</ExceptionHandling>
+      <ExceptionsAndRTTI>UsingRTTIandExceptions</ExceptionsAndRTTI>
       <RuntimeTypeInfo>false</RuntimeTypeInfo>
       <Optimization>Debuggable</Optimization>
     </ClCompile>
@@ -853,11 +853,12 @@
       <AdditionalIncludeDirectories>%()</AdditionalIncludeDirectories>
       <ExceptionHandling>false</ExceptionHandling>
       <RuntimeTypeInfo>false</RuntimeTypeInfo>
-      <Optimization>Debuggable</Optimization>
+      <Optimization>Full</Optimization>
     </ClCompile>
     <Link>
       <GenerateDebugInformation>true</GenerateDebugInformation>
       <AdditionalDependencies>%()</AdditionalDependencies>
+      <LCFName>$(sdk_wii_TargetDir)source\main\include\sdk_wii\rvl\revolution\eppc.RVL.lcf</LCFName>
     </Link>
     <Lib>
       <OutputFile>$(OutDir)\$(TargetName)$(TargetExt)</OutputFile>
@@ -875,6 +876,7 @@
     <Link>
       <GenerateDebugInformation>true</GenerateDebugInformation>
       <AdditionalDependencies>%()</AdditionalDependencies>
+      <LCFName>$(sdk_wii_TargetDir)source\main\include\sdk_wii\rvl\revolution\eppc.RVL.lcf</LCFName>
     </Link>
     <Lib>
       <OutputFile>$(OutDir)\$(TargetName)$(TargetExt)</OutputFile>
@@ -895,6 +897,7 @@
     <Link>
       <GenerateDebugInformation>true</GenerateDebugInformation>
       <AdditionalDependencies>%()</AdditionalDependencies>
+      <LCFName>$(sdk_wii_TargetDir)source\main\include\sdk_wii\rvl\revolution\eppc.RVL.lcf</LCFName>
     </Link>
     <Lib>
       <OutputFile>$(OutDir)\$(TargetName)$(TargetExt)</OutputFile>
@@ -917,6 +920,7 @@
     <Link>
       <GenerateDebugInformation>true</GenerateDebugInformation>
       <AdditionalDependencies>%()</AdditionalDependencies>
+      <LCFName>$(sdk_wii_TargetDir)source\main\include\sdk_wii\rvl\revolution\eppc.RVL.lcf</LCFName>
     </Link>
     <Lib>
       <OutputFile>$(OutDir)\$(TargetName)$(TargetExt)</OutputFile>
