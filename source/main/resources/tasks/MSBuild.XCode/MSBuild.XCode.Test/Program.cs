@@ -25,9 +25,9 @@ namespace MSBuild.XCode.Test
             PackageInstance.Initialize();
            
             // Our test project is xproject
-            PackageInstance.RootDir = @"k:\Dev.C++.Packages\xbase\";
+            PackageInstance.RootDir = @"k:\Dev.C++.Packages\xallocator\";
 
-            Construct("xbase");
+            Construct("xallocator");
 
             PackageConfigs configs = new PackageConfigs();
             configs.RootDir = PackageInstance.RootDir;
@@ -96,7 +96,7 @@ namespace MSBuild.XCode.Test
             construct.Action = "dir";
             //construct.Execute();
             construct.Language = "C++";
-            construct.Platform = "*";
+            construct.Platform = "Win32";
             construct.Action = "vs2010";
             construct.Execute();
         }

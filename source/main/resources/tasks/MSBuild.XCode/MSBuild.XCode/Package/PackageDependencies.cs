@@ -47,15 +47,13 @@ namespace MSBuild.XCode
 
         public bool IsDependencyForPlatform(string DependencyName, string platform)
         {
-            platform = platform.ToLower();
-
             // It could be asking for ourselves, so check if this dependency name is the root package
             if (String.Compare(Package.Name, DependencyName, true) == 0)
                 return true;
 
             // It was not the root package so it might be a dependency package, check the dependency tree
             DependencyTree tree;
-            if (mDependencyTree.TryGetValue(platform, out tree))
+            if (mDependencyTree.TryGetValue(platform.ToLower(), out tree))
             {
                 return tree.ContainsDependencyForPlatform(DependencyName, platform);
             }
@@ -64,10 +62,8 @@ namespace MSBuild.XCode
 
         private DependencyTree GetDependencyTree(string platform)
         {
-            platform = platform.ToLower();
-
             DependencyTree tree;
-            if (!mDependencyTree.TryGetValue(platform, out tree))
+            if (!mDependencyTree.TryGetValue(platform.ToLower(), out tree))
             {
                 List<DependencyInstance> dependencies = new List<DependencyInstance>();
                 foreach (DependencyResource resource in Package.Dependencies)
@@ -76,7 +72,7 @@ namespace MSBuild.XCode
                         dependencies.Add(new DependencyInstance(platform, resource));
                 }
                 tree = new DependencyTree(Package, platform, dependencies);
-                mDependencyTree.Add(platform, tree);
+                mDependencyTree.Add(platform.ToLower(), tree);
             }
             return tree;
         }

@@ -170,7 +170,7 @@ namespace MSBuild.XCode
             if (node.Name == "Dependency")
             {
                 mName = Attribute.Get("Package", node, "Unknown");
-                mPlatform = Attribute.Get("Platform", node, "*").ToLower();
+                mPlatform = Attribute.Get("Platform", node, "*");
 
                 if (node.HasChildNodes)
                 {
@@ -185,13 +185,13 @@ namespace MSBuild.XCode
                         }
                         else if (child.Name == "Version")
                         {
-                            string platform = Attribute.Get("Platform", child, "*").ToLower();
+                            string platform = Attribute.Get("Platform", child, "*");
                             // When the dependency itself is platform dependent then 'Version'
                             // cannot (shouldn't) be constrained to a platform!
                             if (Platform != "*")
                                 platform = "*";
 
-                            string branch = Attribute.Get("Branch", child, "default").ToLower();
+                            string branch = Attribute.Get("Branch", child, "default");
                             if (branch == "*")
                                 branch = "default";
 

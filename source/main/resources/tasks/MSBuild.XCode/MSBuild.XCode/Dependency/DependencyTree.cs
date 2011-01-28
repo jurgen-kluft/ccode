@@ -165,7 +165,7 @@ namespace MSBuild.XCode
                 }
             }
 
-            // Check if the Remote has a better version
+            // Check if the Remote has a better version, Remote may not exist
             if (node.Package.RemoteExists)
             {
                 if (!node.Package.CacheExists || (node.Package.RemoteVersion > node.Package.CacheVersion))
@@ -193,7 +193,16 @@ namespace MSBuild.XCode
                         result = -1;
                     }
                 }
+            }
+            else
+            {
+                // Failed to get package from Remote to Cache
+                Loggy.Error(String.Format("Dependency {0} in group {1} doesn't exist at the remote and cache package repositories", node.Dependency.Name, node.Dependency.Group.ToString()));
+                result = -1;
+            }
 
+            if (node.Package.ShareExists)
+            {
                 if (!node.Package.TargetExists || (node.Package.ShareVersion > node.Package.TargetVersion))
                 {
                     if (mTargetRepo.Add(node.Package, ELocation.Share))
