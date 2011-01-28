@@ -49,6 +49,11 @@ namespace MSBuild.XCode
         {
             platform = platform.ToLower();
 
+            // It could be asking for ourselves, so check if this dependency name is the root package
+            if (String.Compare(Package.Name, DependencyName, true) == 0)
+                return true;
+
+            // It was not the root package so it might be a dependency package, check the dependency tree
             DependencyTree tree;
             if (mDependencyTree.TryGetValue(platform, out tree))
             {
