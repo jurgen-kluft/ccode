@@ -30,9 +30,20 @@ namespace MSBuild.XCode
 
             if (String.IsNullOrEmpty(Action))
                 Action = "dir";
+
             Action = Action.ToLower();
             if (String.IsNullOrEmpty(Language))
                 Language = "C++";
+
+            if (!String.IsNullOrEmpty(Platform))
+            {
+                if (Platform.ToLower() == "all")
+                    Platform = "*";
+            }
+            else
+            {
+                Platform = "*";
+            }
 
             RootDir = RootDir.EndWith('\\');
             TemplateDir = TemplateDir.EndWith('\\');
@@ -58,7 +69,7 @@ namespace MSBuild.XCode
                     PackageDependencies dependencies = new PackageDependencies(package);
 
                     List<string> platforms = new List<string>(package.Pom.Platforms);
-                    if (!String.IsNullOrEmpty(Platform) && String.Compare(Platform, "all", true) != 0)
+                    if (Platform != "*")
                     {
                         platforms.Clear();
                         platforms.Add(Platform);

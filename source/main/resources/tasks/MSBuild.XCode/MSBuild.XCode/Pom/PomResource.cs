@@ -12,7 +12,7 @@ namespace MSBuild.XCode
         private string mName;
         private Group mGroup;
 
-        public string Name { get { return mName; } }
+        public string Name { get { return mName; } private set { mName = value; } }
         public Group Group { get { return mGroup; } }
 
         public bool IsValid { get { return !String.IsNullOrEmpty(Name); } }
@@ -28,7 +28,7 @@ namespace MSBuild.XCode
 
         public PomResource()
         {
-            mName = string.Empty;
+            Name = string.Empty;
             mGroup = new Group(string.Empty);
 
             DirectoryStructure = new List<Attribute>();
@@ -43,7 +43,7 @@ namespace MSBuild.XCode
         public static PomResource From(string name, string group)
         {
             PomResource resource = new PomResource();
-            resource.mName = name;
+            resource.Name = name;
             resource.mGroup = new Group(group);
             return resource;
         }
@@ -111,7 +111,7 @@ namespace MSBuild.XCode
                     {
                         if (a.Name == "Name")
                         {
-                            mName = a.Value;
+                            Name = a.Value;
                         }
                         else if (a.Name == "Group")
                         {
@@ -207,7 +207,7 @@ namespace MSBuild.XCode
                 }
             }
 
-            mName = ReplaceVars(mName, Vars);
+            Name = ReplaceVars(Name, Vars);
             Group.ExpandVars(Vars);
 
             foreach (DependencyResource dependencyResource in Dependencies)

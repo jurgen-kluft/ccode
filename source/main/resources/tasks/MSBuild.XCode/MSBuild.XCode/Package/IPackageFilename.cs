@@ -20,6 +20,11 @@ namespace MSBuild.XCode
 
     public class PackageFilename : IPackageFilename
     {
+        private string mName;
+        private string mBranch;
+        private string mPlatform;
+        private string mExtension;
+
         public PackageFilename()
         {
             Name = string.Empty;
@@ -70,12 +75,12 @@ namespace MSBuild.XCode
             DateTime = dateTime;
         }
 
-        public string Name { get; set; }
+        public string Name { get { return mName; } set { mName = value; } }
         public ComparableVersion Version { get; set; }
         public DateTime? DateTime { get; set; }
-        public string Branch { get; set; }
-        public string Platform { get; set; }
-        public string Extension { get; set; }
+        public string Branch { get { return mBranch; } set { mBranch = value; } }
+        public string Platform { get { return mPlatform; } set { mPlatform = value; } }
+        public string Extension { get { return mExtension; } set { mExtension = value; } }
 
         public string FilenameWithoutExtension
         {
