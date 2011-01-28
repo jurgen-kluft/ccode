@@ -25,13 +25,13 @@ namespace MSBuild.XCode.Test
             PackageInstance.Initialize();
            
             // Our test project is xproject
-            PackageInstance.RootDir = @"k:\Dev.C++.Packages\xstring\";
+            PackageInstance.RootDir = @"k:\Dev.C++.Packages\xunittest\";
 
-            Construct("xstring");
+            Construct("xunittest");
 
             PackageConfigs configs = new PackageConfigs();
             configs.RootDir = PackageInstance.RootDir;
-            configs.Platform = "Xbox 360";
+            configs.Platform = "PS3";
             configs.TemplateDir = PackageInstance.TemplateDir;
             configs.Execute();
 

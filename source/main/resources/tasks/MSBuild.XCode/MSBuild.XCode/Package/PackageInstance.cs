@@ -422,11 +422,13 @@ namespace MSBuild.XCode
                     else
                     {
                         // Error; unable to find the project in the dependency package
+                        Loggy.Error(String.Format("Error: unable to find project {0} in package {1} for platform {2}", platform_package_project[2], platform_package_project[1], platform_package_project[0]));
                     }
                 }
                 else
                 {
                     // Error; unable to find the dependency package
+                    Loggy.Error(String.Format("Error: unable to find package {0} for platform {1}", platform_package_project[1], platform_package_project[0]));
                 }
             }
 
@@ -473,6 +475,7 @@ namespace MSBuild.XCode
                             {
                                 ///<<<<<<< PROJECT MERGE <<<<<<<<<<
                                 rootProject.MergeWithDependencyProject(dependencyProject);
+
 
                                 /// Now queue all the dependencies of this dependencyProject, since
                                 /// we also have to merge them and also the dependencies of those
@@ -529,7 +532,11 @@ namespace MSBuild.XCode
                 {
                     for (int i = 0; i < dependencies.Length; ++i)
                     {
-                        dependencies[i] = dependencies[i] + prj.Extension;
+                        string[] package_project = dependencies[i].Split(new char[] { ':' }, StringSplitOptions.RemoveEmptyEntries);
+                        if (package_project.Length == 0)
+                            dependencies[i] = package_project[0] + prj.Extension;
+                        else
+                            dependencies[i] = package_project[1] + prj.Extension;
                     }
                     solution.AddDependencies(prj.Name + prj.Extension, dependencies);
                 }
