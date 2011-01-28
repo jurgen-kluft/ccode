@@ -303,7 +303,7 @@ namespace MSBuild.XCode
             return Pom.Info();
         }
 
-        private static bool ContainsPlatform(List<string> platforms, string platform)
+        private static bool ContainsPlatform(string[] platforms, string platform)
         {
             foreach (string p in platforms)
                 if (String.Compare(p, platform, true) == 0)
@@ -319,94 +319,185 @@ namespace MSBuild.XCode
             foreach (ProjectInstance rootProject in Pom.Projects)
                 rootProject.ConstructFullMsDevProject(platforms);
 
+            // First, build all the dictionaries:
+            // Dictionary<PackageName,PackageInstance>
+            // Dictionary<ProjectName,ProjectInstance>
+            // Stack<ProjectInstance> dependencyProjects;
+
+            // PackageInstances and ProjectInstances are registered with a key like:
+            //      Key = platform:package_name:project_name
+            Dictionary<string, PackageInstance> packageMap = new Dictionary<string, PackageInstance>();
+            Dictionary<string, ProjectInstance> projectMap = new Dictionary<string, ProjectInstance>();
+            Dictionary<string, List<string>> projectDependsOnMap = new Dictionary<string, List<string>>();
+            Dictionary<string, bool> projectDependenciesToResolve = new Dictionary<string, bool>();
+
             foreach (ProjectInstance rootProject in Pom.Projects)
             {
-                // Every platform has a dependency tree and every dependency package for that platform has filtered their
-                // project to only keep their platform specific xml elements.
-
-                string[] projectPlatforms = rootProject.GetPlatforms();
-                foreach (string projectPlatform in projectPlatforms)
+                // Also put the root projects in the map for every platform
+                foreach (string platform in platforms)
                 {
-                    if (ContainsPlatform(platforms, projectPlatform))
+                    string key = (platform + ":" + Name + ":" + rootProject.Name).ToLower();
+                    if (!projectMap.ContainsKey(key))
                     {
-                        List<PackageInstance> allDependencyPackages = dependencies.GetAllDependencyPackages(projectPlatform);
+                        projectMap.Add(key, rootProject);
 
-                        // Merge in all Projects of those dependency packages which are already filtered on the platform
+                        // Store the root project DependsOn items and also schedule them for resolving them
+                        string[] projectDependencies = rootProject.DependsOn.Split(new char[] { ';' }, StringSplitOptions.RemoveEmptyEntries);
+                        for (int i = 0; i < projectDependencies.Length; ++i)
+                        {
+                            if (!projectDependencies[i].Contains(":"))
+                                projectDependencies[i] = projectDependencies[i] + ":" + projectDependencies[i];
+
+                            projectDependencies[i] = (platform + ":" + projectDependencies[i]).ToLower();
+
+                            // See if this 'dependency' is part of this platform
+                            string[] platform_package_project = projectDependencies[i].Split(new char[] { ':' }, StringSplitOptions.RemoveEmptyEntries);
+                            if (dependencies.IsDependencyForPlatform(platform_package_project[1], platform_package_project[0]))
+                            {
+                                if (!projectDependenciesToResolve.ContainsKey(projectDependencies[i]))
+                                    projectDependenciesToResolve.Add(projectDependencies[i], true);
+                            }
+                        }
+
+                        // Store the DependsOn array for future use
+                        projectDependsOnMap.Add(key, new List<string>(projectDependencies));
+                    }
+
+                    string[] projectPlatforms = rootProject.GetPlatforms();
+                    if (ContainsPlatform(projectPlatforms, platform))
+                    {
+                        List<PackageInstance> allDependencyPackages = dependencies.GetAllDependencyPackages(platform);
                         foreach (PackageInstance dependencyPackage in allDependencyPackages)
                         {
-                            ProjectInstance dependencyProject = dependencyPackage.Pom.GetProjectByGroup(rootProject.Group);
-                            if (dependencyProject != null && !dependencyProject.IsPrivate)
-                                rootProject.MergeWithDependencyProject(dependencyProject);
+                            if (!packageMap.ContainsKey(dependencyPackage.Name.ToLower()))
+                                packageMap.Add(dependencyPackage.Name.ToLower(), dependencyPackage);
+
+                            foreach (ProjectInstance project in dependencyPackage.Pom.Projects)
+                            {
+                                string projectKey = (platform + ":" + dependencyPackage.Name + ":" + project.Name).ToLower();
+                                if (!projectMap.ContainsKey(projectKey))
+                                {
+                                    projectMap.Add(projectKey, project);
+
+                                    string[] projectDependencies = project.DependsOn.Split(new char[] { ';' }, StringSplitOptions.RemoveEmptyEntries);
+                                    for (int i = 0; i < projectDependencies.Length; ++i)
+                                    {
+                                        if (!projectDependencies[i].Contains(":"))
+                                            projectDependencies[i] = projectDependencies[i] + ":" + projectDependencies[i];
+
+                                        projectDependencies[i] = (platform + ":" + projectDependencies[i]).ToLower();
+
+                                        // See if this 'dependency' is part of this platform
+                                        string[] platform_package_project = projectDependencies[i].Split(new char[] { ':' }, StringSplitOptions.RemoveEmptyEntries);
+                                        if (dependencies.IsDependencyForPlatform(platform_package_project[1], platform_package_project[0]))
+                                        {
+                                            if (!projectDependenciesToResolve.ContainsKey(projectDependencies[i]))
+                                                projectDependenciesToResolve.Add(projectDependencies[i], true);
+                                        }
+                                    }
+
+                                    // Store the DependsOn array for future use
+                                    projectDependsOnMap.Add(projectKey, new List<string>(projectDependencies));
+                                }
+                            }
                         }
                     }
                 }
             }
 
-            // And the root package UnitTest project generally merges with Main, since UnitTest will use Main.
-            // Although the user could specify more projects and different internal project dependencies with 'ProjectName'.
-            // It is also possible to define external project references, these are specified by 'PackageName:ProjectGroup'.
+            foreach (string projectDependency in projectDependenciesToResolve.Keys)
+            {
+                string[] platform_package_project = projectDependency.Split(new char[] { ':' }, StringSplitOptions.RemoveEmptyEntries);
+
+                PackageInstance packageInstance;
+                if (packageMap.TryGetValue(platform_package_project[1], out packageInstance))
+                {
+                    ProjectInstance project = packageInstance.Pom.GetProjectByName(platform_package_project[2]);
+                    if (project != null)
+                    {
+                        string key = (platform_package_project[0] + ":" + packageInstance.Name + ":" + project.Name).ToLower();
+                        if (!projectMap.ContainsKey(key))
+                            projectMap.Add(key, project);
+                    }
+                    else
+                    {
+                        // Error; unable to find the project in the dependency package
+                    }
+                }
+                else
+                {
+                    // Error; unable to find the dependency package
+                }
+            }
+
+            // We need to change the way things are merged, from now we only use 'DependsOn' and we do not magically
+            // merge groups anymore. Group is to be removed from the project settings.
+            // The format of DependsOn (seperated with a ';'):
+            // - 'PackageNameA:ProjectNameA';'PackageNameA:ProjectNameB';'PackageNameB:ProjectNameA'
+
+            // Second, now that we have the dictionaries setup, we can start to merge dependency projects
+            // 1. Merge with the dependency projects
             foreach (ProjectInstance rootProject in Pom.Projects)
             {
-                if (!String.IsNullOrEmpty(rootProject.DependsOn))
+                Queue<ProjectInstance> dependencyProjects = new Queue<ProjectInstance>();
                 {
-                    string[] projectDependencies = rootProject.DependsOn.Split(new char[] { ';' }, StringSplitOptions.RemoveEmptyEntries);
+                    Queue<string> projectDependenciesQueue = new Queue<string>();
+                    HashSet<string> projectsMerged = new HashSet<string>();
 
-                    // External project dependencies (Format is "PackageName:ProjectGroup;PackageName:ProjectGroup;PackageName:ProjectGroup;etc..")
-                    foreach (string dependency in projectDependencies)
+                    foreach (string platform in platforms)
                     {
-                        if (!dependency.Contains(":")) ///< This is not an external project reference
-                            continue;
-
-                        // Here the reference is PackageName:ProjectGroup
-                        string[] package_projectgroup = dependency.Split(new char[] { ':' }, StringSplitOptions.RemoveEmptyEntries);
-                        if (package_projectgroup.Length == 2 && !String.IsNullOrEmpty(package_projectgroup[0]) && !String.IsNullOrEmpty(package_projectgroup[1]))
+                        List<string> dependsOn;
+                        string key = (platform + ":" + Name + ":" + rootProject.Name).ToLower();
+                        if (projectDependsOnMap.TryGetValue(key, out dependsOn))
                         {
-                            string[] projectPlatforms = rootProject.GetPlatforms();
-                            foreach (string projectPlatform in projectPlatforms)
+                            foreach (string dependencyProjectDependency in dependsOn)
                             {
-                                if (ContainsPlatform(platforms, projectPlatform))
+                                string[] platform_package_project = dependencyProjectDependency.Split(new char[] { ':' }, StringSplitOptions.RemoveEmptyEntries);
+                                if (dependencies.IsDependencyForPlatform(platform_package_project[1], platform_package_project[0]))
                                 {
-                                    List<PackageInstance> allDependencyPackages = dependencies.GetAllDependencyPackages(projectPlatform);
-                                    foreach (PackageInstance dependencyPackage in allDependencyPackages)
+                                    if (!projectsMerged.Contains(dependencyProjectDependency))
+                                        projectDependenciesQueue.Enqueue(dependencyProjectDependency);
+                                }
+                            }
+                        }
+                    }
+
+                    while (projectDependenciesQueue.Count > 0)
+                    {
+                        // Variable projectDependency is a full key at thist stage
+                        string projectDependency = projectDependenciesQueue.Dequeue();
+                        if (!projectsMerged.Contains(projectDependency))
+                        {
+                            ProjectInstance dependencyProject;
+                            if (projectMap.TryGetValue(projectDependency, out dependencyProject))
+                            {
+                                ///<<<<<<< PROJECT MERGE <<<<<<<<<<
+                                rootProject.MergeWithDependencyProject(dependencyProject);
+
+                                /// Now queue all the dependencies of this dependencyProject, since
+                                /// we also have to merge them and also the dependencies of those
+                                /// dependencies etc..
+                                projectsMerged.Add(projectDependency);
+                                List<string> dependsOn;
+                                if (projectDependsOnMap.TryGetValue(projectDependency, out dependsOn))
+                                {
+                                    foreach (string dependencyProjectDependency in dependsOn)
                                     {
-                                        if (String.Compare(dependencyPackage.Name, package_projectgroup[0], true) == 0)
+                                        // See if this 'dependency' is part of this platform
+                                        string[] platform_package_project = dependencyProjectDependency.Split(new char[] { ':' }, StringSplitOptions.RemoveEmptyEntries);
+                                        if (dependencies.IsDependencyForPlatform(platform_package_project[1], platform_package_project[0]))
                                         {
-                                            ProjectInstance dependencyProject = dependencyPackage.Pom.GetProjectByGroup(package_projectgroup[1]);
-                                            if (dependencyProject != null)
-                                                rootProject.MergeWithDependencyProject(dependencyProject);
+                                            if (!projectsMerged.Contains(dependencyProjectDependency))
+                                                projectDependenciesQueue.Enqueue(dependencyProjectDependency);
                                         }
                                     }
                                 }
                             }
                         }
-                        else
-                        {
-                            Loggy.Error(String.Format("Error: PackageInstance:GenerateProjects, invalid project reference {0}", dependency));
-                        }
                     }
                 }
             }
 
-            // And the root package UnitTest project generally merges with Main, since UnitTest will use Main.
-            // Although the user could specify more project and different internal dependencies.
-            foreach (ProjectInstance rootProject in Pom.Projects)
-            {
-                if (!String.IsNullOrEmpty(rootProject.DependsOn))
-                {
-                    string[] projectDependencies = rootProject.DependsOn.Split(new char[] { ';' }, StringSplitOptions.RemoveEmptyEntries);
-
-                    // Internal pom project dependencies (Format is "ProjectName;ProjectName;etc..")
-                    foreach (string dependency in projectDependencies)
-                    {
-                        if (dependency.Contains(":")) ///< This is an external project reference
-                            continue;
-
-                        ProjectInstance dependencyProject = Pom.GetProjectByName(dependency);
-                        if (dependencyProject != null)
-                            rootProject.MergeWithDependencyProject(dependencyProject);
-                    }
-                }
-            }
 
             foreach (ProjectInstance p in Pom.Projects)
             {

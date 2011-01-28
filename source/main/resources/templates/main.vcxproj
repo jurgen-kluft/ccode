@@ -379,7 +379,7 @@
     <LinkIncremental>true</LinkIncremental>
     <OutDir>$(SolutionDir)target\$(SolutionName)\outdir\$(ProjectName)_$(Configuration)_$(PlatformName)\</OutDir>
     <IntDir>$(SolutionDir)target\$(SolutionName)\outdir\$(ProjectName)_$(Configuration)_$(PlatformName)\</IntDir>
-    <ExecutablePath>C:\Program Files\Microsoft DirectX SDK (August 2009)\Utilities\Bin\x86;$(VCInstallDir)bin;$(WindowsSdkDir)bin\NETFX 4.0 Tools;$(WindowsSdkDir)bin;$(VSInstallDir)Common7\Tools\bin;$(VSInstallDir)Common7\tools;$(VSInstallDir)Common7\ide;$(ProgramFiles)\HTML Help Workshop;$(FrameworkSDKDir)\bin;$(MSBuildToolsPath32);$(VSInstallDir);$(SystemRoot)\SysWow64</ExecutablePath>
+    <ExecutablePath></ExecutablePath>
     <TargetName>$(ProjectName)_$(Configuration)_$(PlatformName)</TargetName>
     <ExtensionsToDeleteOnClean>*.obj%3b*.d%3b*.map%3b*.lst%3b*.pch%3b$(TargetPath)</ExtensionsToDeleteOnClean>
     <GenerateManifest>false</GenerateManifest>
@@ -388,7 +388,7 @@
     <LinkIncremental>false</LinkIncremental>
     <OutDir>$(SolutionDir)target\$(SolutionName)\outdir\$(ProjectName)_$(Configuration)_$(PlatformName)\</OutDir>
     <IntDir>$(SolutionDir)target\$(SolutionName)\outdir\$(ProjectName)_$(Configuration)_$(PlatformName)\</IntDir>
-    <ExecutablePath>C:\Program Files\Microsoft DirectX SDK (August 2009)\Utilities\Bin\x86;$(VCInstallDir)bin;$(WindowsSdkDir)bin\NETFX 4.0 Tools;$(WindowsSdkDir)bin;$(VSInstallDir)Common7\Tools\bin;$(VSInstallDir)Common7\tools;$(VSInstallDir)Common7\ide;$(ProgramFiles)\HTML Help Workshop;$(FrameworkSDKDir)\bin;$(MSBuildToolsPath32);$(VSInstallDir);$(SystemRoot)\SysWow64</ExecutablePath>
+    <ExecutablePath></ExecutablePath>
     <TargetName>$(ProjectName)_$(Configuration)_$(PlatformName)</TargetName>
     <ExtensionsToDeleteOnClean>*.obj%3b*.d%3b*.map%3b*.lst%3b*.pch%3b$(TargetPath)</ExtensionsToDeleteOnClean>
     <GenerateManifest>false</GenerateManifest>
@@ -397,7 +397,7 @@
     <LinkIncremental>false</LinkIncremental>
     <OutDir>$(SolutionDir)target\$(SolutionName)\outdir\$(ProjectName)_$(Configuration)_$(PlatformName)\</OutDir>
     <IntDir>$(SolutionDir)target\$(SolutionName)\outdir\$(ProjectName)_$(Configuration)_$(PlatformName)\</IntDir>
-    <ExecutablePath>C:\Program Files\Microsoft DirectX SDK (August 2009)\Utilities\Bin\x86;$(VCInstallDir)bin;$(WindowsSdkDir)bin\NETFX 4.0 Tools;$(WindowsSdkDir)bin;$(VSInstallDir)Common7\Tools\bin;$(VSInstallDir)Common7\tools;$(VSInstallDir)Common7\ide;$(ProgramFiles)\HTML Help Workshop;$(FrameworkSDKDir)\bin;$(MSBuildToolsPath32);$(VSInstallDir);$(SystemRoot)\SysWow64</ExecutablePath>
+    <ExecutablePath></ExecutablePath>
     <TargetName>$(ProjectName)_$(Configuration)_$(PlatformName)</TargetName>
     <ExtensionsToDeleteOnClean>*.obj%3b*.d%3b*.map%3b*.lst%3b*.pch%3b$(TargetPath)</ExtensionsToDeleteOnClean>
     <GenerateManifest>false</GenerateManifest>
@@ -406,7 +406,7 @@
     <LinkIncremental>true</LinkIncremental>
     <OutDir>$(SolutionDir)target\$(SolutionName)\outdir\$(ProjectName)_$(Configuration)_$(PlatformName)\</OutDir>
     <IntDir>$(SolutionDir)target\$(SolutionName)\outdir\$(ProjectName)_$(Configuration)_$(PlatformName)\</IntDir>
-    <ExecutablePath>C:\Program Files\Microsoft DirectX SDK (August 2009)\Utilities\Bin\x86;$(VCInstallDir)bin;$(WindowsSdkDir)bin\NETFX 4.0 Tools;$(WindowsSdkDir)bin;$(VSInstallDir)Common7\Tools\bin;$(VSInstallDir)Common7\tools;$(VSInstallDir)Common7\ide;$(ProgramFiles)\HTML Help Workshop;$(FrameworkSDKDir)\bin;$(MSBuildToolsPath32);$(VSInstallDir);$(SystemRoot)\SysWow64</ExecutablePath>
+    <ExecutablePath></ExecutablePath>
     <TargetName>$(ProjectName)_$(Configuration)_$(PlatformName)</TargetName>
     <ExtensionsToDeleteOnClean>*.obj%3b*.d%3b*.map%3b*.lst%3b*.pch%3b$(TargetPath)</ExtensionsToDeleteOnClean>
     <GenerateManifest>false</GenerateManifest>
@@ -415,7 +415,7 @@
     <LinkIncremental>true</LinkIncremental>
     <OutDir>$(SolutionDir)target\$(SolutionName)\outdir\$(ProjectName)_$(Configuration)_$(PlatformName)\</OutDir>
     <IntDir>$(SolutionDir)target\$(SolutionName)\outdir\$(ProjectName)_$(Configuration)_$(PlatformName)\</IntDir>
-    <ExecutablePath>C:\Program Files\Microsoft DirectX SDK (August 2009)\Utilities\Bin\x86;$(VCInstallDir)bin;$(WindowsSdkDir)bin\NETFX 4.0 Tools;$(WindowsSdkDir)bin;$(VSInstallDir)Common7\Tools\bin;$(VSInstallDir)Common7\tools;$(VSInstallDir)Common7\ide;$(ProgramFiles)\HTML Help Workshop;$(FrameworkSDKDir)\bin;$(MSBuildToolsPath32);$(VSInstallDir);$(SystemRoot)\SysWow64</ExecutablePath>
+    <ExecutablePath></ExecutablePath>
     <TargetName>$(ProjectName)_$(Configuration)_$(PlatformName)</TargetName>
     <ExtensionsToDeleteOnClean>*.obj%3b*.d%3b*.map%3b*.lst%3b*.pch%3b$(TargetPath)</ExtensionsToDeleteOnClean>
     <GenerateManifest>false</GenerateManifest>
@@ -424,7 +424,7 @@
     <LinkIncremental>true</LinkIncremental>
     <OutDir>$(SolutionDir)target\$(SolutionName)\outdir\$(ProjectName)_$(Configuration)_$(PlatformName)\</OutDir>
     <IntDir>$(SolutionDir)target\$(SolutionName)\outdir\$(ProjectName)_$(Configuration)_$(PlatformName)\</IntDir>
-    <ExecutablePath>C:\Program Files\Microsoft DirectX SDK (August 2009)\Utilities\Bin\x86;$(VCInstallDir)bin;$(WindowsSdkDir)bin\NETFX 4.0 Tools;$(WindowsSdkDir)bin;$(VSInstallDir)Common7\Tools\bin;$(VSInstallDir)Common7\tools;$(VSInstallDir)Common7\ide;$(ProgramFiles)\HTML Help Workshop;$(FrameworkSDKDir)\bin;$(MSBuildToolsPath32);$(VSInstallDir);$(SystemRoot)\SysWow64</ExecutablePath>
+    <ExecutablePath></ExecutablePath>
     <TargetName>$(ProjectName)_$(Configuration)_$(PlatformName)</TargetName>
     <ExtensionsToDeleteOnClean>*.obj%3b*.d%3b*.map%3b*.lst%3b*.pch%3b$(TargetPath)</ExtensionsToDeleteOnClean>
     <IncludePath>$(Xbox360InstallDir)include\xbox</IncludePath>
@@ -434,7 +434,7 @@
     <LinkIncremental>false</LinkIncremental>
     <OutDir>$(SolutionDir)target\$(SolutionName)\outdir\$(ProjectName)_$(Configuration)_$(PlatformName)\</OutDir>
     <IntDir>$(SolutionDir)target\$(SolutionName)\outdir\$(ProjectName)_$(Configuration)_$(PlatformName)\</IntDir>
-    <ExecutablePath>C:\Program Files\Microsoft DirectX SDK (August 2009)\Utilities\Bin\x86;$(VCInstallDir)bin;$(WindowsSdkDir)bin\NETFX 4.0 Tools;$(WindowsSdkDir)bin;$(VSInstallDir)Common7\Tools\bin;$(VSInstallDir)Common7\tools;$(VSInstallDir)Common7\ide;$(ProgramFiles)\HTML Help Workshop;$(FrameworkSDKDir)\bin;$(MSBuildToolsPath32);$(VSInstallDir);$(SystemRoot)\SysWow64</ExecutablePath>
+    <ExecutablePath></ExecutablePath>
     <TargetName>$(ProjectName)_$(Configuration)_$(PlatformName)</TargetName>
     <ExtensionsToDeleteOnClean>*.obj%3b*.d%3b*.map%3b*.lst%3b*.pch%3b$(TargetPath)</ExtensionsToDeleteOnClean>
     <IncludePath>$(Xbox360InstallDir)include\xbox</IncludePath>
@@ -444,7 +444,7 @@
     <LinkIncremental>false</LinkIncremental>
     <OutDir>$(SolutionDir)target\$(SolutionName)\outdir\$(ProjectName)_$(Configuration)_$(PlatformName)\</OutDir>
     <IntDir>$(SolutionDir)target\$(SolutionName)\outdir\$(ProjectName)_$(Configuration)_$(PlatformName)\</IntDir>
-    <ExecutablePath>C:\Program Files\Microsoft DirectX SDK (August 2009)\Utilities\Bin\x86;$(VCInstallDir)bin;$(WindowsSdkDir)bin\NETFX 4.0 Tools;$(WindowsSdkDir)bin;$(VSInstallDir)Common7\Tools\bin;$(VSInstallDir)Common7\tools;$(VSInstallDir)Common7\ide;$(ProgramFiles)\HTML Help Workshop;$(FrameworkSDKDir)\bin;$(MSBuildToolsPath32);$(VSInstallDir);$(SystemRoot)\SysWow64</ExecutablePath>
+    <ExecutablePath></ExecutablePath>
     <TargetName>$(ProjectName)_$(Configuration)_$(PlatformName)</TargetName>
     <ExtensionsToDeleteOnClean>*.obj%3b*.d%3b*.map%3b*.lst%3b*.pch%3b$(TargetPath)</ExtensionsToDeleteOnClean>
     <IncludePath>$(Xbox360InstallDir)include\xbox</IncludePath>
@@ -454,7 +454,7 @@
     <LinkIncremental>true</LinkIncremental>
     <OutDir>$(SolutionDir)target\$(SolutionName)\outdir\$(ProjectName)_$(Configuration)_$(PlatformName)\</OutDir>
     <IntDir>$(SolutionDir)target\$(SolutionName)\outdir\$(ProjectName)_$(Configuration)_$(PlatformName)\</IntDir>
-    <ExecutablePath>C:\Program Files\Microsoft DirectX SDK (August 2009)\Utilities\Bin\x86;$(VCInstallDir)bin;$(WindowsSdkDir)bin\NETFX 4.0 Tools;$(WindowsSdkDir)bin;$(VSInstallDir)Common7\Tools\bin;$(VSInstallDir)Common7\tools;$(VSInstallDir)Common7\ide;$(ProgramFiles)\HTML Help Workshop;$(FrameworkSDKDir)\bin;$(MSBuildToolsPath32);$(VSInstallDir);$(SystemRoot)\SysWow64</ExecutablePath>
+    <ExecutablePath></ExecutablePath>
     <TargetName>$(ProjectName)_$(Configuration)_$(PlatformName)</TargetName>
     <ExtensionsToDeleteOnClean>*.obj%3b*.d%3b*.map%3b*.lst%3b*.pch%3b$(TargetPath)</ExtensionsToDeleteOnClean>
     <IncludePath>$(Xbox360InstallDir)include\xbox</IncludePath>
@@ -464,7 +464,7 @@
     <LinkIncremental>true</LinkIncremental>
     <OutDir>$(SolutionDir)target\$(SolutionName)\outdir\$(ProjectName)_$(Configuration)_$(PlatformName)\</OutDir>
     <IntDir>$(SolutionDir)target\$(SolutionName)\outdir\$(ProjectName)_$(Configuration)_$(PlatformName)\</IntDir>
-    <ExecutablePath>C:\Program Files\Microsoft DirectX SDK (August 2009)\Utilities\Bin\x86;$(VCInstallDir)bin;$(WindowsSdkDir)bin\NETFX 4.0 Tools;$(WindowsSdkDir)bin;$(VSInstallDir)Common7\Tools\bin;$(VSInstallDir)Common7\tools;$(VSInstallDir)Common7\ide;$(ProgramFiles)\HTML Help Workshop;$(FrameworkSDKDir)\bin;$(MSBuildToolsPath32);$(VSInstallDir);$(SystemRoot)\SysWow64</ExecutablePath>
+    <ExecutablePath></ExecutablePath>
     <TargetName>$(ProjectName)_$(Configuration)_$(PlatformName)</TargetName>
     <ExtensionsToDeleteOnClean>*.obj%3b*.d%3b*.map%3b*.lst%3b*.pch%3b$(TargetPath)</ExtensionsToDeleteOnClean>
     <IncludePath>$(Xbox360InstallDir)include\xbox</IncludePath>
@@ -474,7 +474,7 @@
     <LinkIncremental>true</LinkIncremental>
     <OutDir>$(SolutionDir)target\$(SolutionName)\outdir\$(ProjectName)_$(Configuration)_$(PlatformName)\</OutDir>
     <IntDir>$(SolutionDir)target\$(SolutionName)\outdir\$(ProjectName)_$(Configuration)_$(PlatformName)\</IntDir>
-    <ExecutablePath>C:\Program Files\Microsoft DirectX SDK (August 2009)\Utilities\Bin\x86;$(VCInstallDir)bin;$(WindowsSdkDir)bin\NETFX 4.0 Tools;$(WindowsSdkDir)bin;$(VSInstallDir)Common7\Tools\bin;$(VSInstallDir)Common7\tools;$(VSInstallDir)Common7\ide;$(ProgramFiles)\HTML Help Workshop;$(FrameworkSDKDir)\bin;$(MSBuildToolsPath32);$(VSInstallDir);$(SystemRoot)\SysWow64</ExecutablePath>
+    <ExecutablePath></ExecutablePath>
     <TargetName>$(ProjectName)_$(Configuration)_$(PlatformName)</TargetName>
     <ExtensionsToDeleteOnClean>*.obj%3b*.d%3b*.map%3b*.lst%3b*.pch%3b$(TargetPath)</ExtensionsToDeleteOnClean>
     <GenerateManifest>false</GenerateManifest>
@@ -483,7 +483,7 @@
     <LinkIncremental>false</LinkIncremental>
     <OutDir>$(SolutionDir)target\$(SolutionName)\outdir\$(ProjectName)_$(Configuration)_$(PlatformName)\</OutDir>
     <IntDir>$(SolutionDir)target\$(SolutionName)\outdir\$(ProjectName)_$(Configuration)_$(PlatformName)\</IntDir>
-    <ExecutablePath>C:\Program Files\Microsoft DirectX SDK (August 2009)\Utilities\Bin\x86;$(VCInstallDir)bin;$(WindowsSdkDir)bin\NETFX 4.0 Tools;$(WindowsSdkDir)bin;$(VSInstallDir)Common7\Tools\bin;$(VSInstallDir)Common7\tools;$(VSInstallDir)Common7\ide;$(ProgramFiles)\HTML Help Workshop;$(FrameworkSDKDir)\bin;$(MSBuildToolsPath32);$(VSInstallDir);$(SystemRoot)\SysWow64</ExecutablePath>
+    <ExecutablePath></ExecutablePath>
     <TargetName>$(ProjectName)_$(Configuration)_$(PlatformName)</TargetName>
     <ExtensionsToDeleteOnClean>*.obj%3b*.d%3b*.map%3b*.lst%3b*.pch%3b$(TargetPath)</ExtensionsToDeleteOnClean>
     <GenerateManifest>false</GenerateManifest>
@@ -492,7 +492,7 @@
     <LinkIncremental>false</LinkIncremental>
     <OutDir>$(SolutionDir)target\$(SolutionName)\outdir\$(ProjectName)_$(Configuration)_$(PlatformName)\</OutDir>
     <IntDir>$(SolutionDir)target\$(SolutionName)\outdir\$(ProjectName)_$(Configuration)_$(PlatformName)\</IntDir>
-    <ExecutablePath>C:\Program Files\Microsoft DirectX SDK (August 2009)\Utilities\Bin\x86;$(VCInstallDir)bin;$(WindowsSdkDir)bin\NETFX 4.0 Tools;$(WindowsSdkDir)bin;$(VSInstallDir)Common7\Tools\bin;$(VSInstallDir)Common7\tools;$(VSInstallDir)Common7\ide;$(ProgramFiles)\HTML Help Workshop;$(FrameworkSDKDir)\bin;$(MSBuildToolsPath32);$(VSInstallDir);$(SystemRoot)\SysWow64</ExecutablePath>
+    <ExecutablePath></ExecutablePath>
     <TargetName>$(ProjectName)_$(Configuration)_$(PlatformName)</TargetName>
     <ExtensionsToDeleteOnClean>*.obj%3b*.d%3b*.map%3b*.lst%3b*.pch%3b$(TargetPath)</ExtensionsToDeleteOnClean>
     <GenerateManifest>false</GenerateManifest>
@@ -501,7 +501,7 @@
     <LinkIncremental>true</LinkIncremental>
     <OutDir>$(SolutionDir)target\$(SolutionName)\outdir\$(ProjectName)_$(Configuration)_$(PlatformName)\</OutDir>
     <IntDir>$(SolutionDir)target\$(SolutionName)\outdir\$(ProjectName)_$(Configuration)_$(PlatformName)\</IntDir>
-    <ExecutablePath>C:\Program Files\Microsoft DirectX SDK (August 2009)\Utilities\Bin\x86;$(VCInstallDir)bin;$(WindowsSdkDir)bin\NETFX 4.0 Tools;$(WindowsSdkDir)bin;$(VSInstallDir)Common7\Tools\bin;$(VSInstallDir)Common7\tools;$(VSInstallDir)Common7\ide;$(ProgramFiles)\HTML Help Workshop;$(FrameworkSDKDir)\bin;$(MSBuildToolsPath32);$(VSInstallDir);$(SystemRoot)\SysWow64</ExecutablePath>
+    <ExecutablePath></ExecutablePath>
     <TargetName>$(ProjectName)_$(Configuration)_$(PlatformName)</TargetName>
     <ExtensionsToDeleteOnClean>*.obj%3b*.d%3b*.map%3b*.lst%3b*.pch%3b$(TargetPath)</ExtensionsToDeleteOnClean>
     <GenerateManifest>false</GenerateManifest>
@@ -510,7 +510,7 @@
     <LinkIncremental>true</LinkIncremental>
     <OutDir>$(SolutionDir)target\$(SolutionName)\outdir\$(ProjectName)_$(Configuration)_$(PlatformName)\</OutDir>
     <IntDir>$(SolutionDir)target\$(SolutionName)\outdir\$(ProjectName)_$(Configuration)_$(PlatformName)\</IntDir>
-    <ExecutablePath>C:\Program Files\Microsoft DirectX SDK (August 2009)\Utilities\Bin\x86;$(VCInstallDir)bin;$(WindowsSdkDir)bin\NETFX 4.0 Tools;$(WindowsSdkDir)bin;$(VSInstallDir)Common7\Tools\bin;$(VSInstallDir)Common7\tools;$(VSInstallDir)Common7\ide;$(ProgramFiles)\HTML Help Workshop;$(FrameworkSDKDir)\bin;$(MSBuildToolsPath32);$(VSInstallDir);$(SystemRoot)\SysWow64</ExecutablePath>
+    <ExecutablePath></ExecutablePath>
     <TargetName>$(ProjectName)_$(Configuration)_$(PlatformName)</TargetName>
     <ExtensionsToDeleteOnClean>*.obj%3b*.d%3b*.map%3b*.lst%3b*.pch%3b$(TargetPath)</ExtensionsToDeleteOnClean>
     <GenerateManifest>false</GenerateManifest>
@@ -519,7 +519,7 @@
     <LinkIncremental>true</LinkIncremental>
     <OutDir>$(SolutionDir)target\$(SolutionName)\outdir\$(ProjectName)_$(Configuration)_$(PlatformName)\</OutDir>
     <IntDir>$(SolutionDir)target\$(SolutionName)\outdir\$(ProjectName)_$(Configuration)_$(PlatformName)\</IntDir>
-    <ExecutablePath>C:\Program Files\Microsoft DirectX SDK (August 2009)\Utilities\Bin\x86;$(VCInstallDir)bin;$(WindowsSdkDir)bin\NETFX 4.0 Tools;$(WindowsSdkDir)bin;$(VSInstallDir)Common7\Tools\bin;$(VSInstallDir)Common7\tools;$(VSInstallDir)Common7\ide;$(ProgramFiles)\HTML Help Workshop;$(FrameworkSDKDir)\bin;$(MSBuildToolsPath32);$(VSInstallDir);$(SystemRoot)\SysWow64</ExecutablePath>
+    <ExecutablePath></ExecutablePath>
     <TargetName>$(ProjectName)_$(Configuration)_$(PlatformName)</TargetName>
     <ExtensionsToDeleteOnClean>*.obj%3b*.d%3b*.map%3b*.lst%3b*.pch%3b$(TargetPath)</ExtensionsToDeleteOnClean>
     <GenerateManifest>false</GenerateManifest>
@@ -528,7 +528,7 @@
     <LinkIncremental>false</LinkIncremental>
     <OutDir>$(SolutionDir)target\$(SolutionName)\outdir\$(ProjectName)_$(Configuration)_$(PlatformName)\</OutDir>
     <IntDir>$(SolutionDir)target\$(SolutionName)\outdir\$(ProjectName)_$(Configuration)_$(PlatformName)\</IntDir>
-    <ExecutablePath>C:\Program Files\Microsoft DirectX SDK (August 2009)\Utilities\Bin\x86;$(VCInstallDir)bin;$(WindowsSdkDir)bin\NETFX 4.0 Tools;$(WindowsSdkDir)bin;$(VSInstallDir)Common7\Tools\bin;$(VSInstallDir)Common7\tools;$(VSInstallDir)Common7\ide;$(ProgramFiles)\HTML Help Workshop;$(FrameworkSDKDir)\bin;$(MSBuildToolsPath32);$(VSInstallDir);$(SystemRoot)\SysWow64</ExecutablePath>
+    <ExecutablePath></ExecutablePath>
     <TargetName>$(ProjectName)_$(Configuration)_$(PlatformName)</TargetName>
     <ExtensionsToDeleteOnClean>*.obj%3b*.d%3b*.map%3b*.lst%3b*.pch%3b$(TargetPath)</ExtensionsToDeleteOnClean>
     <GenerateManifest>false</GenerateManifest>
@@ -537,7 +537,7 @@
     <LinkIncremental>false</LinkIncremental>
     <OutDir>$(SolutionDir)target\$(SolutionName)\outdir\$(ProjectName)_$(Configuration)_$(PlatformName)\</OutDir>
     <IntDir>$(SolutionDir)target\$(SolutionName)\outdir\$(ProjectName)_$(Configuration)_$(PlatformName)\</IntDir>
-    <ExecutablePath>C:\Program Files\Microsoft DirectX SDK (August 2009)\Utilities\Bin\x86;$(VCInstallDir)bin;$(WindowsSdkDir)bin\NETFX 4.0 Tools;$(WindowsSdkDir)bin;$(VSInstallDir)Common7\Tools\bin;$(VSInstallDir)Common7\tools;$(VSInstallDir)Common7\ide;$(ProgramFiles)\HTML Help Workshop;$(FrameworkSDKDir)\bin;$(MSBuildToolsPath32);$(VSInstallDir);$(SystemRoot)\SysWow64</ExecutablePath>
+    <ExecutablePath></ExecutablePath>
     <TargetName>$(ProjectName)_$(Configuration)_$(PlatformName)</TargetName>
     <ExtensionsToDeleteOnClean>*.obj%3b*.d%3b*.map%3b*.lst%3b*.pch%3b$(TargetPath)</ExtensionsToDeleteOnClean>
     <GenerateManifest>false</GenerateManifest>
@@ -546,7 +546,7 @@
     <LinkIncremental>true</LinkIncremental>
     <OutDir>$(SolutionDir)target\$(SolutionName)\outdir\$(ProjectName)_$(Configuration)_$(PlatformName)\</OutDir>
     <IntDir>$(SolutionDir)target\$(SolutionName)\outdir\$(ProjectName)_$(Configuration)_$(PlatformName)\</IntDir>
-    <ExecutablePath>C:\Program Files\Microsoft DirectX SDK (August 2009)\Utilities\Bin\x86;$(VCInstallDir)bin;$(WindowsSdkDir)bin\NETFX 4.0 Tools;$(WindowsSdkDir)bin;$(VSInstallDir)Common7\Tools\bin;$(VSInstallDir)Common7\tools;$(VSInstallDir)Common7\ide;$(ProgramFiles)\HTML Help Workshop;$(FrameworkSDKDir)\bin;$(MSBuildToolsPath32);$(VSInstallDir);$(SystemRoot)\SysWow64</ExecutablePath>
+    <ExecutablePath></ExecutablePath>
     <TargetName>$(ProjectName)_$(Configuration)_$(PlatformName)</TargetName>
     <ExtensionsToDeleteOnClean>*.obj%3b*.d%3b*.map%3b*.lst%3b*.pch%3b$(TargetPath)</ExtensionsToDeleteOnClean>
     <GenerateManifest>false</GenerateManifest>
@@ -555,7 +555,7 @@
     <LinkIncremental>true</LinkIncremental>
     <OutDir>$(SolutionDir)target\$(SolutionName)\outdir\$(ProjectName)_$(Configuration)_$(PlatformName)\</OutDir>
     <IntDir>$(SolutionDir)target\$(SolutionName)\outdir\$(ProjectName)_$(Configuration)_$(PlatformName)\</IntDir>
-    <ExecutablePath>C:\Program Files\Microsoft DirectX SDK (August 2009)\Utilities\Bin\x86;$(VCInstallDir)bin;$(WindowsSdkDir)bin\NETFX 4.0 Tools;$(WindowsSdkDir)bin;$(VSInstallDir)Common7\Tools\bin;$(VSInstallDir)Common7\tools;$(VSInstallDir)Common7\ide;$(ProgramFiles)\HTML Help Workshop;$(FrameworkSDKDir)\bin;$(MSBuildToolsPath32);$(VSInstallDir);$(SystemRoot)\SysWow64</ExecutablePath>
+    <ExecutablePath></ExecutablePath>
     <TargetName>$(ProjectName)_$(Configuration)_$(PlatformName)</TargetName>
     <ExtensionsToDeleteOnClean>*.obj%3b*.d%3b*.map%3b*.lst%3b*.pch%3b$(TargetPath)</ExtensionsToDeleteOnClean>
     <GenerateManifest>false</GenerateManifest>

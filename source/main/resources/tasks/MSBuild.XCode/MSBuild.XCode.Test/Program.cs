@@ -25,9 +25,9 @@ namespace MSBuild.XCode.Test
             PackageInstance.Initialize();
            
             // Our test project is xproject
-            PackageInstance.RootDir = @"k:\Dev.C++.Packages\xunittest\";
+            PackageInstance.RootDir = @"k:\Dev.C++.Packages\xstring\";
 
-            Construct("xunittest");
+            Construct("xstring");
 
             PackageConfigs configs = new PackageConfigs();
             configs.RootDir = PackageInstance.RootDir;
@@ -97,7 +97,7 @@ namespace MSBuild.XCode.Test
             construct.Action = "dir";
             //construct.Execute();
             construct.Language = "C++";
-            construct.Platform = "Xbox 360";
+            construct.Platform = "PS3";
             construct.Action = "vs2010";
             construct.Execute();
         }
