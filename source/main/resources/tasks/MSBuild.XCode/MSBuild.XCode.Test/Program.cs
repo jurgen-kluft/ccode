@@ -31,7 +31,7 @@ namespace MSBuild.XCode.Test
 
             PackageConfigs configs = new PackageConfigs();
             configs.RootDir = PackageInstance.RootDir;
-            configs.Platform = "PS3";
+            configs.Platform = "Win32";
             configs.TemplateDir = PackageInstance.TemplateDir;
             configs.Execute();
 
@@ -96,7 +96,7 @@ namespace MSBuild.XCode.Test
             construct.Action = "dir";
             //construct.Execute();
             construct.Language = "C++";
-            construct.Platform = "PS3";
+            construct.Platform = "Win32";
             construct.Action = "vs2010";
             construct.Execute();
         }

@@ -331,6 +331,9 @@ namespace MSBuild.XCode
             Dictionary<string, List<string>> projectDependsOnMap = new Dictionary<string, List<string>>();
             Dictionary<string, bool> projectDependenciesToResolve = new Dictionary<string, bool>();
 
+            // Add ourselves in the package map
+            packageMap.Add(Name.ToLower(), this);
+
             foreach (ProjectInstance rootProject in Pom.Projects)
             {
                 // Also put the root projects in the map for every platform
