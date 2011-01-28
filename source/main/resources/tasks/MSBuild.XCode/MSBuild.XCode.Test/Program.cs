@@ -32,7 +32,6 @@ namespace MSBuild.XCode.Test
             PackageConfigs configs = new PackageConfigs();
             configs.RootDir = PackageInstance.RootDir;
             configs.Platform = "Xbox 360";
-            configs.ProjectGroup = "SDK";
             configs.TemplateDir = PackageInstance.TemplateDir;
             configs.Execute();
 

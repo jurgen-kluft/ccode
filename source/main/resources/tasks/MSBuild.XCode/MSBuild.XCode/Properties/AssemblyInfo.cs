@@ -47,6 +47,9 @@ using System.Runtime.InteropServices;
 // - MsDev 2010 project now saves .filters file
 // - C#
 // - Fixed bug in task logging
+// - Fixed bug in the construction of the final project
+// - Format of DependsOn has changed to 'PackageName:ProjectName'
+// - Group element of Project has been depricated
 // 
 // -----------------------------------------------------------------------------------
 // 1.0.3.0 (15th January 2011)

@@ -20,8 +20,6 @@ namespace MSBuild.XCode
         [Required]
         public string Platform { get; set; }
         [Required]
-        public string ProjectGroup { get; set; }
-        [Required]
         public string TemplateDir { get; set; }
 
         [Output]
@@ -43,9 +41,13 @@ namespace MSBuild.XCode
             if (package.IsValid)
             {
                 // Get all platforms and configs, e.g: DevDebug|Win32;DevRelease|Win32;DevFinal|Win32
-                string[] configs = package.Pom.GetConfigsForPlatformsForGroup(Platform, ProjectGroup);
-                Configurations = configs;
-                success = true;
+                ProjectInstance project = package.Pom.GetProjectByName(package.Name);
+                if (project != null)
+                {
+                    string[] configs = project.GetConfigsForPlatform(Platform);
+                    Configurations = configs;
+                    success = true;
+                }
             }
             else
             {
