@@ -48,8 +48,13 @@ namespace MSBuild.XCode
         {
             if (Platform == "*")
                 return true;
-
-            return String.Compare(Platform, platform, true) == 0;
+            string[] platforms = Platform.Split(new char[] { ';' }, StringSplitOptions.RemoveEmptyEntries);
+            foreach (string p in platforms)
+            {
+                if (String.Compare(p, platform, true) == 0)
+                    return true;
+            }
+            return false;
         }
 
         public void Info()

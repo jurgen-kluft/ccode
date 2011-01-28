@@ -45,8 +45,22 @@ namespace MSBuild.XCode
             return allDependencyPackages;
         }
 
+        public bool IsDependencyForPlatform(string DependencyName, string platform)
+        {
+            platform = platform.ToLower();
+
+            DependencyTree tree;
+            if (mDependencyTree.TryGetValue(platform, out tree))
+            {
+                return tree.ContainsDependencyForPlatform(DependencyName, platform);
+            }
+            return false;
+        }
+
         private DependencyTree GetDependencyTree(string platform)
         {
+            platform = platform.ToLower();
+
             DependencyTree tree;
             if (!mDependencyTree.TryGetValue(platform, out tree))
             {

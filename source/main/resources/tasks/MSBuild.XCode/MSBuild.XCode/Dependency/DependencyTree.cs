@@ -46,6 +46,16 @@ namespace MSBuild.XCode
             return allDependencyPackages;
         }
 
+        public bool ContainsDependencyForPlatform(string DependencyName, string Platform)
+        {
+            foreach (DependencyTreeNode node in mAllNodesMap.Values)
+            {
+                if (String.Compare(node.Name, DependencyName, true) == 0)
+                    return true;
+            }
+            return false;
+        }
+
         public bool HasNode(string name)
         {
             return mAllNodesMap.ContainsKey(name);
