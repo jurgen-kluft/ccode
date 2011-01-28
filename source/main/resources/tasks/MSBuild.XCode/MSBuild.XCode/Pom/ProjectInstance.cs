@@ -20,7 +20,6 @@ namespace MSBuild.XCode
         public string Name { get { return mResource.Name; } }
         public bool Main { get; set; }
         public string Scope { get { return mResource.Scope; } }
-        public string Group { get { return mResource.Group; } }
         public string Language { get { return mResource.Language; } }
         public string Location{ get { return mResource.Location; } }
         public string DependsOn { get { return mResource.DependsOn; } }
@@ -57,7 +56,6 @@ namespace MSBuild.XCode
         public void Info()
         {
             Loggy.Info(String.Format("Project                    : {0}", Name));
-            Loggy.Info(String.Format("Category                   : {0}", Group));
             Loggy.Info(String.Format("Language                   : {0}", Language));
             Loggy.Info(String.Format("Location                   : {0}", Location));
         }

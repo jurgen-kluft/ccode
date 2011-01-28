@@ -17,7 +17,6 @@ namespace MSBuild.XCode
 
         public string Name { get; set; }
         public string Scope { get; set; }       ///< Public / Private
-        public string Group { get; set; }
         public string Language { get; set; }
         public string Location { get; set; }
         public string DependsOn { get; set; }
@@ -33,7 +32,6 @@ namespace MSBuild.XCode
         {
             Name = "Unknown";
             Scope = "Public";
-            Group = "Main";
             Language = "C++";
             Location = @"source\main\cpp";
             DependsOn = "";
@@ -48,7 +46,6 @@ namespace MSBuild.XCode
         public void Info()
         {
             Loggy.Info(String.Format("Project                    : {0}", Name));
-            Loggy.Info(String.Format("Category                   : {0}", Group));
             Loggy.Info(String.Format("Language                   : {0}", Language));
             Loggy.Info(String.Format("Location                   : {0}", Location));
         }
@@ -63,14 +60,12 @@ namespace MSBuild.XCode
         public void Read(XmlNode node, Dictionary<string, string> vars)
         {
             this.Name = Attribute.Get("Name", node, "Unknown");
-            this.Group = Attribute.Get("Group", node, "Main");
             this.Language = Attribute.Get("Language", node, "C++");
             this.Location = Attribute.Get("Location", node, "source\\main\\cpp");
             this.Scope = Attribute.Get("Scope", node, "Public");
             this.DependsOn = Attribute.Get("DependsOn", node, "");
 
             this.Name = ReplaceVars(this.Name, vars);
-            this.Group = ReplaceVars(this.Group, vars);
             this.Language = ReplaceVars(this.Language, vars);
             this.Location = ReplaceVars(this.Location, vars);
             this.Scope = ReplaceVars(this.Scope, vars);

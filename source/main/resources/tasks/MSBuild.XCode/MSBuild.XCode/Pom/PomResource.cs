@@ -51,7 +51,7 @@ namespace MSBuild.XCode
         public bool Info()
         {
             Loggy.Info(String.Format("Name                       : {0}", Name));
-            Loggy.Info(String.Format("Group                      : {0}", Group.ToString()));
+
             Versions.Info();
             {
                 Loggy.Indent += 1;
@@ -70,16 +70,6 @@ namespace MSBuild.XCode
             return true;
         }
 
-        public ProjectResource GetProjectByGroup(string group)
-        {
-            foreach (ProjectResource p in Projects)
-            {
-                if (String.Compare(p.Group, group, true) == 0)
-                    return p;
-            }
-            return null;
-        }
-
         public ProjectResource GetProjectByName(string name)
         {
             foreach (ProjectResource p in Projects)
@@ -88,32 +78,6 @@ namespace MSBuild.XCode
                     return p;
             }
             return null;
-        }
-
-        public string[] GetGroups()
-        {
-            List<string> categories = new List<string>();
-            foreach (ProjectResource prj in Projects)
-            {
-                categories.Add(prj.Group);
-            }
-            return categories.ToArray();
-        }
-
-        public string[] GetPlatformsForGroup(string inGroup)
-        {
-            ProjectResource project = GetProjectByGroup(inGroup);
-            if (project != null)
-                return project.GetPlatforms();
-            return new string[0];
-        }
-
-        public string[] GetConfigsForPlatformsForGroup(string Platform, string inGroup)
-        {
-            ProjectResource project = GetProjectByGroup(inGroup);
-            if (project!=null)
-                return project.GetConfigsForPlatform(Platform);
-            return new string[0];
         }
 
         public void LoadFile(string filename)
@@ -250,10 +214,9 @@ namespace MSBuild.XCode
                 dependencyResource.ExpandVars(Vars);
 
             HashSet<string> all_platforms = new HashSet<string>();
-            string[] groups = GetGroups();
-            foreach (string group in groups)
+            foreach (ProjectResource project in Projects)
             {
-                string[] platforms = GetPlatformsForGroup(group);
+                string[] platforms = project.GetPlatforms();
                 foreach (string platform in platforms)
                 {
                     if (!all_platforms.Contains(platform))

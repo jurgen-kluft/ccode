@@ -62,16 +62,6 @@ namespace MSBuild.XCode
             return mResource.Info();
         }
 
-        public ProjectInstance GetProjectByGroup(string group)
-        {
-            foreach (ProjectInstance p in Projects)
-            {
-                if (String.Compare(p.Group, group, true) == 0)
-                    return p;
-            }
-            return null;
-        }
-
         public ProjectInstance GetProjectByName(string name)
         {
             foreach (ProjectInstance p in Projects)
@@ -80,30 +70,6 @@ namespace MSBuild.XCode
                     return p;
             }
             return null;
-        }
-
-        public string[] GetGroups()
-        {
-            List<string> groups = new List<string>();
-            foreach (ProjectInstance prj in Projects)
-                groups.Add(prj.Group);
-            return groups.ToArray();
-        }
-
-        public string[] GetPlatformsForGroup(string inGroup)
-        {
-            ProjectInstance project = GetProjectByGroup(inGroup);
-            if (project != null)
-                return project.GetPlatforms();
-            return new string[0];
-        }
-
-        public string[] GetConfigsForPlatformsForGroup(string Platform, string inGroup)
-        {
-            ProjectInstance project = GetProjectByGroup(inGroup);
-            if (project!=null)
-                return project.GetConfigsForPlatform(Platform);
-            return new string[0];
         }
 
         public bool IsDependencyForPlatform(string DependencyName, string Platform)
