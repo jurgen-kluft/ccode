@@ -30,18 +30,11 @@ namespace MSBuild.XCode
         public Group Group { get { return mGroup; } }
         public string Type { get { return mType; } }
 
-        private string ReplaceVars(string str, Dictionary<string,string> vars)
+        public void ExpandVars(PackageVars vars)
         {
-            foreach (KeyValuePair<string, string> var in vars)
-                str = str.Replace(String.Format("${{{0}}}", var.Key), var.Value);
-            return str;
-        }
-
-        public void ExpandVars(Dictionary<string, string> vars)
-        {
-            mName = ReplaceVars(mName, vars);
+            mName = vars.ReplaceVars(mName);
             mGroup.ExpandVars(vars);
-            mType = ReplaceVars(mType, vars);
+            mType = vars.ReplaceVars(mType);
         }
 
         public bool IsForPlatform(string platform)

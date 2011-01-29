@@ -104,15 +104,7 @@ namespace MSBuild.XCode
                 PackageInstance package = PackageInstance.LoadFromRoot(RootDir);
                 if (package.IsValid)
                 {
-                    // Check directory structure
-                    foreach (Attribute xa in package.Pom.DirectoryStructure)
-                    {
-                        if (xa.Name == "Folder")
-                        {
-                            if (!Directory.Exists(RootDir + xa.Value))
-                                Directory.CreateDirectory(RootDir + xa.Value);
-                        }
-                    }
+                    package.Pom.DirectoryStructure.Create(RootDir);
                 }
                 else
                 {

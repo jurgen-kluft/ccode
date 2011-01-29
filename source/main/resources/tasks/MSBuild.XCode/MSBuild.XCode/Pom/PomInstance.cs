@@ -15,9 +15,9 @@ namespace MSBuild.XCode
         public string Name { get { return mResource.Name; } }
         public Group Group { get { return mResource.Group; } }
 
-        public List<Attribute> DirectoryStructure { get { return mResource.DirectoryStructure; } }
+        public PackageStructure DirectoryStructure { get { return mResource.DirectoryStructure; } }
 
-        public Dictionary<string, List<KeyValuePair<string, string>>> Content { get { return mResource.Content; } }
+        public PackageContent Content { get { return mResource.Content; } }
         public List<DependencyResource> Dependencies { get { return mResource.Dependencies; } }
         public List<ProjectInstance> Projects { get { return mProjects; } }
         public List<string> Platforms { get { return mResource.Platforms; } }
