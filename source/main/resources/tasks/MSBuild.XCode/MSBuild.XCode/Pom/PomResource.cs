@@ -17,10 +17,10 @@ namespace MSBuild.XCode
 
         public bool IsValid { get { return !String.IsNullOrEmpty(Name); } }
 
-        public List<Attribute> DirectoryStructure { get; set; }
+        public PackageStructure DirectoryStructure { get; set; }
 
-        public Dictionary<string, List<KeyValuePair<string,string>>> Content { get; set; }
-        public Dictionary<string, string> Vars { get; set; }
+        public PackageContent Content { get; set; }
+        public PackageVars Vars { get; set; }
         public List<DependencyResource> Dependencies { get; set; }
         public List<ProjectResource> Projects { get; set; }
         public List<string> Platforms { get; set; }
@@ -31,9 +31,9 @@ namespace MSBuild.XCode
             Name = string.Empty;
             mGroup = new Group(string.Empty);
 
-            DirectoryStructure = new List<Attribute>();
-            Content = new Dictionary<string, List<KeyValuePair<string, string>>>();
-            Vars = new Dictionary<string, string>();
+            DirectoryStructure = new PackageStructure();
+            Content = new PackageContent();
+            Vars = new PackageVars();
             Dependencies = new List<DependencyResource>();
             Projects = new List<ProjectResource>();
             Platforms = new List<string>();
@@ -94,13 +94,6 @@ namespace MSBuild.XCode
             Read(xmlDoc.FirstChild);
         }
 
-        private string ReplaceVars(string str, Dictionary<string, string> vars)
-        {
-            foreach (KeyValuePair<string, string> var in vars)
-                str = str.Replace(String.Format("${{{0}}}", var.Key), var.Value);
-            return str;
-        }
-
         private void Read(XmlNode node)
         {
             if (node.Name == "Package")
@@ -112,6 +105,7 @@ namespace MSBuild.XCode
                         if (a.Name == "Name")
                         {
                             Name = a.Value;
+                            Vars.Add("Name", Name);
                         }
                         else if (a.Name == "Group")
                         {
@@ -124,51 +118,20 @@ namespace MSBuild.XCode
                 {
                     foreach (XmlNode child in node.ChildNodes)
                     {
+                        if (child.Name == "Variables")
+                            Vars.Read(child);
+                    }
+
+                    foreach (XmlNode child in node.ChildNodes)
+                    {
                         if (child.Name == "Versions")
                         {
                             Versions.Read(child);
                         }
-                        else if (child.Name == "Variables")
-                        {
-                            if (child.HasChildNodes)
-                            {
-                                foreach (XmlNode item in child.ChildNodes)
-                                {
-                                    string text;
-                                    if (!Vars.TryGetValue(item.Name, out text))
-                                    {
-                                        text = Element.GetText(item);
-                                        Vars.Add(item.Name, text);
-                                    }
-                                }
-                            }
-                        }
                         else if (child.Name == "Content")
                         {
                             if (child.HasChildNodes)
-                            {
-                                foreach (XmlNode item in child.ChildNodes)
-                                {
-                                    string platform = Attribute.Get("Platform", item, "*");
-                                    string src = Attribute.Get("Src", item, null);
-                                    if (src != null)
-                                    {
-                                        ReplaceVars(src, Vars);
-                                        string dst = Attribute.Get("Dst", item, null);
-                                        if (dst != null)
-                                        {
-                                            ReplaceVars(dst, Vars);
-                                            List<KeyValuePair<string, string>> items;
-                                            if (!Content.TryGetValue(platform, out items))
-                                            {
-                                                items = new List<KeyValuePair<string, string>>();
-                                                Content.Add(platform, items);
-                                            }
-                                            items.Add(new KeyValuePair<string, string>(src, dst));
-                                        }
-                                    }
-                                }
-                            }
+                                Content.Read(child, Vars);
                         }
                         else if (child.Name == "Dependency")
                         {
@@ -184,30 +147,12 @@ namespace MSBuild.XCode
                         }
                         else if (child.Name == "DirectoryStructure")
                         {
-                            if (child.HasChildNodes)
-                            {
-                                foreach (XmlNode item in child.ChildNodes)
-                                {
-                                    string folder = Attribute.Get("Folder", item, string.Empty);
-                                    if (!String.IsNullOrEmpty(folder))
-                                    {
-                                        folder = folder.Replace("${Name}", Name);
-                                        DirectoryStructure.Add(new Attribute("Folder", folder));
-                                    }
-                                    string file = Attribute.Get("File", item, string.Empty);
-                                    if (!String.IsNullOrEmpty(file))
-                                    {
-                                        file = file.Replace("${Name}", Name);
-                                        DirectoryStructure.Add(new Attribute("File", file));
-                                    }
-                                }
-                            }
+                            DirectoryStructure.Read(child, Vars);
                         }
                     }
                 }
             }
 
-            Name = ReplaceVars(Name, Vars);
             Group.ExpandVars(Vars);
 
             foreach (DependencyResource dependencyResource in Dependencies)

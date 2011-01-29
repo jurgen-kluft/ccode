@@ -18,10 +18,9 @@ namespace MSBuild.XCode
             Full = group.Full;
         }
 
-        public void ExpandVars(Dictionary<string, string> vars)
+        public void ExpandVars(PackageVars vars)
         {
-            foreach (KeyValuePair<string, string> var in vars)
-                mGroup = mGroup.Replace(String.Format("${{{0}}}", var.Key), var.Value);
+            mGroup = vars.ReplaceVars(mGroup);
         }
 
         public string Full 

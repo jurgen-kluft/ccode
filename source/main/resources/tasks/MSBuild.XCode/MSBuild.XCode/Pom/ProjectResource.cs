@@ -50,14 +50,7 @@ namespace MSBuild.XCode
             Loggy.Info(String.Format("Location                   : {0}", Location));
         }
 
-        private string ReplaceVars(string str, Dictionary<string, string> vars)
-        {
-            foreach (KeyValuePair<string, string> var in vars)
-                str = str.Replace(String.Format("${{{0}}}", var.Key), var.Value);
-            return str;
-        }
-
-        public void Read(XmlNode node, Dictionary<string, string> vars)
+        public void Read(XmlNode node, PackageVars vars)
         {
             this.Name = Attribute.Get("Name", node, "Unknown");
             this.Language = Attribute.Get("Language", node, "C++");
@@ -65,11 +58,11 @@ namespace MSBuild.XCode
             this.Scope = Attribute.Get("Scope", node, "Public");
             this.DependsOn = Attribute.Get("DependsOn", node, "");
 
-            this.Name = ReplaceVars(this.Name, vars);
-            this.Language = ReplaceVars(this.Language, vars);
-            this.Location = ReplaceVars(this.Location, vars);
-            this.Scope = ReplaceVars(this.Scope, vars);
-            this.DependsOn = ReplaceVars(this.DependsOn, vars);
+            this.Name = vars.ReplaceVars(this.Name);
+            this.Language = vars.ReplaceVars(this.Language);
+            this.Location = vars.ReplaceVars(this.Location);
+            this.Scope = vars.ReplaceVars(this.Scope);
+            this.DependsOn = vars.ReplaceVars(this.DependsOn);
 
             foreach (XmlNode child in node.ChildNodes)
             {

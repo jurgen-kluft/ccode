@@ -22,7 +22,7 @@ namespace MSBuild.XCode.MsDev
         void RemoveAllPlatformsBut(string platformToKeep);
 
         bool FilterItems(string[] to_remove, string[] to_keep);
-        bool ExpandVars(Dictionary<string, string> vars);
+        bool ExpandVars(PackageVars vars);
         bool ExpandGlobs(string rootdir, string reldir);
 
         bool Save(string filename);

@@ -33,7 +33,7 @@ namespace MSBuild.XCode.MsDev
             return false;
         }
 
-        public bool ExpandVars(Dictionary<string, string> vars)
+        public bool ExpandVars(PackageVars vars)
         {
             Merge(mXmlDocMain, mXmlDocMain,
                 delegate(bool isMainNode, XmlNode node)
@@ -42,7 +42,7 @@ namespace MSBuild.XCode.MsDev
                     {
                         foreach (XmlAttribute a in node.Attributes)
                         {
-                            a.Value = ReplaceVars(a.Value, vars);
+                            a.Value = vars.ReplaceVars(a.Value);
                         }
                     }
                     return true;
@@ -53,16 +53,12 @@ namespace MSBuild.XCode.MsDev
                     {
                         foreach (XmlAttribute a in main.Attributes)
                         {
-                            foreach (KeyValuePair<string, string> var in vars)
-                                a.Value = ReplaceVars(a.Value, vars);
+                            a.Value = vars.ReplaceVars(a.Value);
                         }
                     }
 
-                    foreach (KeyValuePair<string, string> var in vars)
-                    {
-                        if (!String.IsNullOrEmpty(main.Value))
-                            main.Value = ReplaceVars(main.Value, vars);
-                    }
+                    if (!String.IsNullOrEmpty(main.Value))
+                        main.Value = vars.ReplaceVars(main.Value);
                 }, false);
             return true;
         }
@@ -80,13 +76,6 @@ namespace MSBuild.XCode.MsDev
             else
                 xmlDoc.AppendChild(copy);
             return copy;
-        }
-
-        protected string ReplaceVars(string str, Dictionary<string, string> vars)
-        {
-            foreach (KeyValuePair<string, string> var in vars)
-                str = str.Replace(String.Format("${{{0}}}", var.Key), var.Value);
-            return str;
         }
 
         protected static bool IsOneOf(string str, string[] strs)

@@ -117,23 +117,11 @@ namespace MSBuild.XCode
             if (File.Exists(buildURL + sfv_filename))
                 File.Delete(buildURL + sfv_filename);
 
-            List<KeyValuePair<string, string>> content;
-            if (!package.Pom.Content.TryGetValue(platform, out content))
+            Dictionary<string, string> files;
+            if (!package.Pom.Content.Collect(package.Name, platform, rootURL, out files))
             {
-                if (!package.Pom.Content.TryGetValue("*", out content))
-                {
-                    package.LocalFilename = new PackageFilename();
-                    return false;
-                }
-            }
-            Dictionary<string, string> files = new Dictionary<string,string>();
-            foreach (KeyValuePair<string, string> pair in content)
-            {
-                string src = rootURL + pair.Key;
-                src = src.Replace("${Name}", package.Name);
-                src = src.Replace("${Platform}", platform);
-
-                Glob(src, pair.Value, files);
+                package.LocalFilename = new PackageFilename();
+                return false;
             }
             
             // Is pom.xml included?
@@ -203,24 +191,6 @@ namespace MSBuild.XCode
         }
 
 
-        private static void Glob(string src, string dst, Dictionary<string, string> files)
-        {
-            List<string> globbedFiles = PathUtil.getFiles(src);
 
-            int r = src.IndexOf("**");
-            string reldir = r >= 0 ? src.Substring(0, src.IndexOf("**")) : string.Empty;
-
-            foreach (string src_filename in globbedFiles)
-            {
-                string dst_filename;
-                if (r >= 0)
-                    dst_filename = dst + src_filename.Substring(reldir.Length);
-                else
-                    dst_filename = dst + Path.GetFileName(src_filename);
-
-                if (!files.ContainsKey(src_filename))
-                    files.Add(src_filename, Path.GetDirectoryName(dst_filename));
-            }
-        }
     }
 }

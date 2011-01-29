@@ -18,10 +18,10 @@ namespace MSBuild.XCode
 
         public bool IsValid { get { return mPom.IsValid; } }
 
-        public Dictionary<string, List<KeyValuePair<string, string>>> Content { get { return mPom.Content; } }
-        public Dictionary<string, string> Vars { get { return mPom.Vars; } }
+        public PackageContent Content { get { return mPom.Content; } }
+        public PackageVars Vars { get { return mPom.Vars; } }
         public List<DependencyResource> Dependencies { get { return mPom.Dependencies; } }
-        public List<Attribute> DirectoryStructure { get { return mPom.DirectoryStructure; } }
+        public PackageStructure DirectoryStructure { get { return mPom.DirectoryStructure; } }
         public List<ProjectResource> Projects { get { return mPom.Projects; } }
         public List<string> Platforms { get { return mPom.Platforms; } }
         public Versions Versions { get { return mPom.Versions; } }
