@@ -115,7 +115,7 @@
 
   <Target Name="PackageInstall">
   	<Message Text="Install package $(PackageFilename) from $(PackageDir) to $(PackageLocalRepoURL)" />
-    <MSBuild.XCode.PackageInstall RootDir="$(PackageDir)" Filename="$(PackageFilename)" CacheRepoDir="$(PackageLocalRepoURL)" RemoteRepoDir="$(PackageRemoteRepoURL)"/>
+    <MSBuild.XCode.PackageInstall RootDir="$(PackageDir)" Platform="$(PackagePlatform)" Filename="$(PackageFilename)" CacheRepoDir="$(PackageLocalRepoURL)" RemoteRepoDir="$(PackageRemoteRepoURL)"/>
   </Target>
   <Target Name="__Install" DependsOnTargets="PackageInstall">
   </Target>

@@ -66,7 +66,10 @@ namespace MSBuild.XCode
             // Write a dependency.info file containing dependency package info, this will be included in the package
             if (package.IsValid)
             {
-                string buildURL = PackageInstance.RootDir + "target\\" + package.Name + "\\build\\";
+                package.Branch = hg_changeset.Branch;
+                package.Platform = Platform;
+
+                string buildURL = PackageInstance.RootDir + "target\\" + package.Name + "\\build\\" + Platform + "\\";
                 if (!Directory.Exists(buildURL))
                     Directory.CreateDirectory(buildURL);
 
@@ -79,9 +82,6 @@ namespace MSBuild.XCode
                         fs.Close();
                     }
                 }
-
-                package.Branch = hg_changeset.Branch;
-                package.Platform = Platform;
 
                 PackageRepositoryLocal localRepo = new PackageRepositoryLocal(RootDir);
                 localRepo.Update(package);

@@ -47,7 +47,7 @@ namespace MSBuild.XCode
                     Loggy.Error(String.Format("Error: Failed to build dependencies in Package::Sync"));
                     return false;
                 }
-                dependencies.SaveInfo(Platform, new FileDirectoryPath.FilePathAbsolute(RootDir + "\\target\\" + package.Name + "\\build\\dependencies.info"));
+                dependencies.SaveInfo(Platform, new FileDirectoryPath.FilePathAbsolute(RootDir + "\\target\\" + package.Name + "\\build\\"  + Platform + "\\dependencies.info"));
             }
             else
             {
