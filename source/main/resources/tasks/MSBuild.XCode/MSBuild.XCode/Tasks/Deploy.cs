@@ -44,8 +44,10 @@ namespace MSBuild.XCode
                 PackageRepositoryLocal localPackageRepo = new PackageRepositoryLocal(RootDir);
                 if (localPackageRepo.Update(package))
                 {
-                    //hg_repo.Tag(package.LocalVersion.ToString());
-                    //hg_repo.Commit("XCode: tag");
+                    // Tag the mercurial repository
+                    Mercurial.Repository hg_repo = new Mercurial.Repository(RootDir);
+                    if (hg_repo.Exists)
+                        hg_repo.Tag(package.LocalVersion.ToString());
 
                     // - Commit version to remote package repository from local
                     ok = PackageInstance.RemoteRepo.Add(package, localPackageRepo.Location);

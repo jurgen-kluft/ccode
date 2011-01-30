@@ -40,7 +40,7 @@ namespace MSBuild.XCode
             // If pom.xml is not modified and all content of the previous package are identical
             // Lastly delete any old zip packages.
             string rootURL = RepoDir;
-            string buildURL = rootURL + "target\\" + package.Name + "\\build\\";
+            string buildURL = rootURL + "target\\" + package.Name + "\\build\\" + package.Platform + "\\";
             string[] package_filenames = Directory.GetFiles(buildURL, String.Format("*{0}.zip", package.Platform), SearchOption.TopDirectoryOnly);
             if (package_filenames.Length > 0)
             {
@@ -109,7 +109,7 @@ namespace MSBuild.XCode
             /// Delete the .sfv file
             string sfv_filename = package.Name + ".md5";
             string rootURL = RepoDir;
-            string buildURL = rootURL + "target\\" + package.Name + "\\build\\";
+            string buildURL = rootURL + "target\\" + package.Name + "\\build\\" + platform + "\\";
 
             if (!Directory.Exists(buildURL))
                 Directory.CreateDirectory(buildURL);

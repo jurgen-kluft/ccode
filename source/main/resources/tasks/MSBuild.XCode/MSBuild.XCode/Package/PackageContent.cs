@@ -13,19 +13,20 @@ namespace MSBuild.XCode
         {
             private ContentItem()
             {
-                Required = -1;
+                Required = false;
             }
 
             public string Src { get; private set; }
             public string Dst { get; private set; }
             public string Platform { get; private set; }
-            public int Required { get; private set; }
+            public bool Required { get; private set; }
 
             public static ContentItem Read(XmlNode node, PackageVars vars)
             {
                 ContentItem item = new ContentItem();
 
                 item.Platform = Attribute.Get("Platform", node, "*");
+                item.Required = Boolean.Parse(Attribute.Get("Required", node, "false"));
 
                 item.Src = Attribute.Get("Src", node, null);
                 if (item.Src != null)
@@ -63,9 +64,19 @@ namespace MSBuild.XCode
             foreach (ContentItem item in content)
             {
                 string src = rootDir + item.Src;
-                src = src.Replace("${Name}", name);
-                src = src.Replace("${Platform}", platform);
+                while (src.Contains("${Name}"))
+                    src = src.Replace("${Name}", name);
+                while (src.Contains("${Platform}"))
+                    src = src.Replace("${Platform}", platform);
+
+                int m = outFiles.Count;
                 Glob(src, item.Dst, outFiles);
+                int n = outFiles.Count - m;
+
+                if (n == 0 && item.Required)
+                {
+                    Loggy.Error(String.Format("PackageContent::Collect, error; required file {0} does not exist", src));
+                }
             }
             return true;
         }

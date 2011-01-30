@@ -122,7 +122,7 @@ namespace MSBuild.XCode
 
         public static PackageInstance LoadFromLocal(string rootURL, IPackageFilename filename)
         {
-            string subDir = "target\\" + filename.Name + "\\build\\";
+            string subDir = "target\\" + filename.Name + "\\build\\" + filename.Platform + "\\";
             PackageResource resource = PackageResource.LoadFromPackage(rootURL + subDir, filename);
             PackageInstance instance = resource.CreateInstance(false);
             instance.mRootURL = rootURL;

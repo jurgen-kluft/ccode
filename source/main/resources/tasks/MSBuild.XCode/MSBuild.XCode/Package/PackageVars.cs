@@ -19,7 +19,11 @@ namespace MSBuild.XCode
         public string ReplaceVars(string str)
         {
             foreach (KeyValuePair<string, string> var in mVars)
-                str = str.Replace(String.Format("${{{0}}}", var.Key), var.Value);
+            {
+                string occurence = String.Format("${{{0}}}", var.Key);
+                while (str.Contains(occurence))
+                    str = str.Replace(occurence, var.Value);
+            }
             return str;
         }
 
