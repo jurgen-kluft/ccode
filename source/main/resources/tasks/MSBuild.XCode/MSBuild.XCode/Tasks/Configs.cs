@@ -40,6 +40,8 @@ namespace MSBuild.XCode
             PackageInstance package = PackageInstance.LoadFromRoot(RootDir);
             if (package.IsValid)
             {
+                package.Platform = Platform;
+
                 // Get all platforms and configs, e.g: DevDebug|Win32;DevRelease|Win32;DevFinal|Win32
                 ProjectInstance project = package.Pom.GetProjectByName(package.Name);
                 if (project != null)

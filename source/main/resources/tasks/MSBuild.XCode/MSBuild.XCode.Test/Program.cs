@@ -27,41 +27,40 @@ namespace MSBuild.XCode.Test
             // Our test project is xproject
             PackageInstance.RootDir = @"k:\Dev.C++.Packages\xallocator\";
 
-            Construct("xallocator");
+            string platform = "Win32";
+            Construct("xallocator", platform);
 
             PackageConfigs configs = new PackageConfigs();
             configs.RootDir = PackageInstance.RootDir;
-            configs.Platform = "Win32";
+            configs.Platform = platform;
             configs.TemplateDir = PackageInstance.TemplateDir;
             configs.Execute();
 
-            string createdPackageFilename;
             if (true)
             {
                 PackageCreate create = new PackageCreate();
                 create.RootDir = PackageInstance.RootDir;
-                create.Platform = "Xbox 360";
+                create.Platform = platform;
                 bool result1 = create.Execute();
-                createdPackageFilename = create.Filename;
             }
 
             PackageInstall install = new PackageInstall();
             install.RootDir = PackageInstance.RootDir;
             install.CacheRepoDir = PackageInstance.CacheRepoDir;
             install.RemoteRepoDir = PackageInstance.RemoteRepoDir;
-            install.Filename = createdPackageFilename;
+            install.Platform = platform;
             bool result3 = install.Execute();
 
             PackageDeploy deploy = new PackageDeploy();
             deploy.RootDir = PackageInstance.RootDir;
             deploy.CacheRepoDir = PackageInstance.CacheRepoDir;
             deploy.RemoteRepoDir = PackageInstance.RemoteRepoDir;
-            deploy.Filename = createdPackageFilename;
+            deploy.Platform = platform;
             bool result4 = deploy.Execute();
 
             PackageSync sync = new PackageSync();
             sync.RootDir = PackageInstance.RootDir;
-            sync.Platform = "Win32";
+            sync.Platform = platform;
             sync.CacheRepoDir = PackageInstance.CacheRepoDir;
             sync.RemoteRepoDir = PackageInstance.RemoteRepoDir;
             sync.Execute();
@@ -77,11 +76,11 @@ namespace MSBuild.XCode.Test
             PackageVerify verify = new PackageVerify();
             verify.RootDir = PackageInstance.RootDir;
             verify.Name = "xbase";
-            verify.Platform = "Win32";
+            verify.Platform = platform;
             bool result2 = verify.Execute();
         }
 
-        public static void Construct(string name)
+        public static void Construct(string name, string platform)
         {
             PackageConstruct construct = new PackageConstruct();
             construct.Name = name;
@@ -96,7 +95,7 @@ namespace MSBuild.XCode.Test
             construct.Action = "dir";
             //construct.Execute();
             construct.Language = "C++";
-            construct.Platform = "Win32";
+            construct.Platform = platform;
             construct.Action = "vs2010";
             construct.Execute();
         }
