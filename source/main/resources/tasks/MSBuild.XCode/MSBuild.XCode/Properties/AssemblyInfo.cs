@@ -49,7 +49,8 @@ using System.Runtime.InteropServices;
 // - Fixed bug in task logging
 // - Fixed bug in the construction of the final project
 // - Format of DependsOn has changed to 'PackageName:ProjectName'
-// - Group element of Project has been depricated
+// - Group="" attribute of Project has been deprecated
+// - <Content>; absolute items can be tagged as Required=True/False
 // 
 // -----------------------------------------------------------------------------------
 // 1.0.3.0 (15th January 2011)
@@ -63,7 +64,7 @@ using System.Runtime.InteropServices;
 // 1.0.2.0 (7th January 2011)
 // - PackageRepository: Local, Target, Cache, Remote
 // - Instance/Resource for some objects
-// - Package dependency tree is now a seperate object
+// - Package dependency tree is now a separate object
 // - Dependency package update is faster, since we now know the version of the target
 // - 
 // -----------------------------------------------------------------------------------
