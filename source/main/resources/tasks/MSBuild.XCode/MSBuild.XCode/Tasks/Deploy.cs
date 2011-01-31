@@ -17,7 +17,7 @@ namespace MSBuild.XCode
         [Required]
         public string RootDir { get; set; }
         [Required]
-        public string Filename { get; set; }
+        public string Platform { get; set; }
         [Required]
         public string CacheRepoDir { get; set; }
         [Required]
@@ -41,6 +41,8 @@ namespace MSBuild.XCode
             PackageInstance package = PackageInstance.LoadFromRoot(RootDir);
             if (package.IsValid)
             {
+                package.Platform = Platform;
+
                 PackageRepositoryLocal localPackageRepo = new PackageRepositoryLocal(RootDir);
                 if (localPackageRepo.Update(package))
                 {

@@ -19,7 +19,6 @@ namespace MSBuild.XCode
         public string RootDir { get; set; }
         [Required]
         public string Platform { get; set; }
-
         [Output]
         public string Filename { get; set; }
 

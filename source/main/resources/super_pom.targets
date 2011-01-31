@@ -122,7 +122,7 @@
 
   <Target Name="PackageDeploy">
   	<Message Text="Deploy package $(PackageFilename) from $(PackageDir) to $(PackageRemoteRepoURL)" />
-    <MSBuild.XCode.PackageDeploy RootDir="$(PackageDir)" Filename="$(PackageFilename)" CacheRepoDir="$(PackageLocalRepoURL)" RemoteRepoDir="$(PackageRemoteRepoURL)"/>
+    <MSBuild.XCode.PackageDeploy RootDir="$(PackageDir)" Platform="$(PackagePlatform)" Filename="$(PackageFilename)" CacheRepoDir="$(PackageLocalRepoURL)" RemoteRepoDir="$(PackageRemoteRepoURL)"/>
   </Target>
   <Target Name="__Deploy" DependsOnTargets="PackageDeploy">
   </Target>
