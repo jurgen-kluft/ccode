@@ -82,8 +82,22 @@ namespace Mercurial
         /// Default is <c>false</c>.
         /// </summary>
         [BooleanArgument(TrueOption = "--force")]
+        [DefaultValue(true)]
+        public bool Force
+        {
+            get;
+            set;
+        }
+
+        /// <summary>
+        /// Gets or sets whether to replace an existing tag, in effect moving the tag to
+        /// a different changeset. Without this flag, adding a tag that already exists
+        /// will result in a <see cref="MercurialExecutionException"/> being thrown.
+        /// Default is <c>false</c>.
+        /// </summary>
+        [BooleanArgument(TrueOption = "--remove")]
         [DefaultValue(false)]
-        public bool ReplaceExisting
+        public bool Remove
         {
             get;
             set;
@@ -236,9 +250,9 @@ namespace Mercurial
         /// <remarks>
         /// This method is part of the fluent interface.
         /// </remarks>
-        public TagCommand WithReplaceExisting(bool value = true)
+        public TagCommand WithForce(bool value = true)
         {
-            ReplaceExisting = value;
+            Force = value;
             return this;
         }
 

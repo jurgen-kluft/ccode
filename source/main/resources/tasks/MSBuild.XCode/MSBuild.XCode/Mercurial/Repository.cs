@@ -735,7 +735,11 @@ namespace Mercurial
             if (command != null && !StringEx.IsNullOrWhiteSpace(command.Name))
                 throw new InvalidOperationException("Both name and command.Name cannot be set before calling Tag");
 
-            command = command ?? new TagCommand();
+            if (command == null)
+            {
+                command = new TagCommand();
+                command.Force = true;
+            }
             command.Name = name;
             Execute(command);
         }

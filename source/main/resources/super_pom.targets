@@ -115,14 +115,14 @@
 
   <Target Name="PackageInstall">
   	<Message Text="Install package $(PackageFilename) from $(PackageDir) to $(PackageLocalRepoURL)" />
-    <MSBuild.XCode.PackageInstall RootDir="$(PackageDir)" Platform="$(PackagePlatform)" Filename="$(PackageFilename)" CacheRepoDir="$(PackageLocalRepoURL)" RemoteRepoDir="$(PackageRemoteRepoURL)"/>
+    <MSBuild.XCode.PackageInstall RootDir="$(PackageDir)" Platform="$(PackagePlatform)" CacheRepoDir="$(PackageLocalRepoURL)" RemoteRepoDir="$(PackageRemoteRepoURL)"/>
   </Target>
   <Target Name="__Install" DependsOnTargets="PackageInstall">
   </Target>
 
   <Target Name="PackageDeploy">
   	<Message Text="Deploy package $(PackageFilename) from $(PackageDir) to $(PackageRemoteRepoURL)" />
-    <MSBuild.XCode.PackageDeploy RootDir="$(PackageDir)" Platform="$(PackagePlatform)" Filename="$(PackageFilename)" CacheRepoDir="$(PackageLocalRepoURL)" RemoteRepoDir="$(PackageRemoteRepoURL)"/>
+    <MSBuild.XCode.PackageDeploy RootDir="$(PackageDir)" Platform="$(PackagePlatform)" CacheRepoDir="$(PackageLocalRepoURL)" RemoteRepoDir="$(PackageRemoteRepoURL)"/>
   </Target>
   <Target Name="__Deploy" DependsOnTargets="PackageDeploy">
   </Target>
