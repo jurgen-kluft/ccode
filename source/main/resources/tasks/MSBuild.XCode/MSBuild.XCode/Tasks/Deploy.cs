@@ -37,19 +37,27 @@ namespace MSBuild.XCode
                 PackageInstance.Initialize();
             }
 
+            Mercurial.Repository hg_repo = new Mercurial.Repository(RootDir);
+            Mercurial.Changeset hg_changeset = hg_repo.GetChangeSet();
+
             bool ok = false;
             PackageInstance package = PackageInstance.LoadFromRoot(RootDir);
             if (package.IsValid)
             {
+                package.Branch = hg_changeset.Branch;
                 package.Platform = Platform;
 
                 PackageRepositoryLocal localPackageRepo = new PackageRepositoryLocal(RootDir);
                 if (localPackageRepo.Update(package))
                 {
                     // Tag the mercurial repository
-                    Mercurial.Repository hg_repo = new Mercurial.Repository(RootDir);
                     if (hg_repo.Exists)
-                        hg_repo.Tag(package.LocalVersion.ToString());
+                    {
+                        ComparableVersion packageVersion = package.Pom.Versions.GetForPlatformWithBranch(package.Platform, package.Branch);
+
+                        // Strip the date-time from the version, only tag with the package version + platform
+                        hg_repo.Tag(packageVersion.ToString() + "_" + package.Platform);
+                    }
 
                     // - Commit version to remote package repository from local
                     ok = PackageInstance.RemoteRepo.Add(package, localPackageRepo.Location);

@@ -49,11 +49,10 @@
 					<ProjectGuid>{${GUID_Main}}</ProjectGuid>
 				</PropertyGroup>
 				<ImportGroup Label="TargetDirs">
-					<Import Project="$(SolutionDir)target\${PackageName}\${PackageName}.$(Platform).props" Condition="exists('$(SolutionDir)target\${PackageName}\${PackageName}.$(Platform).props')" Label="${PackageName}_TargetDir" />
+					<Import Project="$(SolutionDir)target\${Name}\${Name}.$(Platform).props" Condition="exists('$(SolutionDir)target\${Name}\${Name}.$(Platform).props')" Label="${Name}_TargetDir" />
 				</ImportGroup>
 				<ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='DevDebug|Win32'">
 					<ClCompile>
-						<PreprocessorDefinitions>WIN32;_DEBUG;%(PreprocessorDefinitions)</PreprocessorDefinitions>
 						<AdditionalIncludeDirectories>#$(${Name}_TargetDir)source\main\include;@$(SolutionDir)source\main\include;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
 					</ClCompile>
 					<Link>
@@ -63,7 +62,6 @@
 				</ItemDefinitionGroup>
 				<ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='DevRelease|Win32'">
 					<ClCompile>
-						<PreprocessorDefinitions>WIN32;NDEBUG;%(PreprocessorDefinitions)</PreprocessorDefinitions>
 						<AdditionalIncludeDirectories>#$(${Name}_TargetDir)source\main\include;@$(SolutionDir)source\main\include;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
 					</ClCompile>
 					<Link>
@@ -73,7 +71,6 @@
 				</ItemDefinitionGroup>
 				<ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='DevFinal|Win32'">
 					<ClCompile>
-						<PreprocessorDefinitions>WIN32;NDEBUG;%(PreprocessorDefinitions)</PreprocessorDefinitions>
 						<AdditionalIncludeDirectories>#$(${Name}_TargetDir)source\main\include;@$(SolutionDir)source\main\include;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
 					</ClCompile>
 					<Link>
@@ -83,7 +80,6 @@
 				</ItemDefinitionGroup>
 				<ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='TestDebug|Win32'">
 					<ClCompile>
-						<PreprocessorDefinitions>WIN32;_DEBUG;%(PreprocessorDefinitions)</PreprocessorDefinitions>
 						<AdditionalIncludeDirectories>#$(${Name}_TargetDir)source\main\include;@$(SolutionDir)source\main\include;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
 					</ClCompile>
 					<Link>
@@ -93,7 +89,6 @@
 				</ItemDefinitionGroup>
 				<ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='TestRelease|Win32'">
 					<ClCompile>
-						<PreprocessorDefinitions>WIN32;NDEBUG;%(PreprocessorDefinitions)</PreprocessorDefinitions>
 						<AdditionalIncludeDirectories>#$(${Name}_TargetDir)source\main\include;@$(SolutionDir)source\main\include;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
 					</ClCompile>
 					<Link>
@@ -103,7 +98,6 @@
 				</ItemDefinitionGroup>
 				<ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='DevDebug|PS3'">
 					<ClCompile>
-						<PreprocessorDefinitions>%(PreprocessorDefinitions)</PreprocessorDefinitions>
 						<AdditionalIncludeDirectories>#$(${Name}_TargetDir)source\main\include;@$(SolutionDir)source\main\include;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
 					</ClCompile>
 					<Link>
@@ -113,7 +107,6 @@
 				</ItemDefinitionGroup>
 				<ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='DevRelease|PS3'">
 					<ClCompile>
-						<PreprocessorDefinitions>%(PreprocessorDefinitions)</PreprocessorDefinitions>
 						<AdditionalIncludeDirectories>#$(${Name}_TargetDir)source\main\include;@$(SolutionDir)source\main\include;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
 					</ClCompile>
 					<Link>
@@ -123,7 +116,6 @@
 				</ItemDefinitionGroup>
 				<ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='DevFinal|PS3'">
 					<ClCompile>
-						<PreprocessorDefinitions>%(PreprocessorDefinitions)</PreprocessorDefinitions>
 						<AdditionalIncludeDirectories>#$(${Name}_TargetDir)source\main\include;@$(SolutionDir)source\main\include;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
 					</ClCompile>
 					<Link>
@@ -133,7 +125,6 @@
 				</ItemDefinitionGroup>
 				<ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='TestDebug|PS3'">
 					<ClCompile>
-						<PreprocessorDefinitions>%(PreprocessorDefinitions)</PreprocessorDefinitions>
 						<AdditionalIncludeDirectories>#$(${Name}_TargetDir)source\main\include;@$(SolutionDir)source\main\include;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
 					</ClCompile>
 					<Link>
@@ -143,7 +134,6 @@
 				</ItemDefinitionGroup>
 				<ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='TestRelease|PS3'">
 					<ClCompile>
-						<PreprocessorDefinitions>%(PreprocessorDefinitions)</PreprocessorDefinitions>
 						<AdditionalIncludeDirectories>#$(${Name}_TargetDir)source\main\include;@$(SolutionDir)source\main\include;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
 					</ClCompile>
 					<Link>
@@ -153,7 +143,6 @@
 				</ItemDefinitionGroup>
 				<ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='DevDebug|Xbox 360'">
 					<ClCompile>
-						<PreprocessorDefinitions>%(PreprocessorDefinitions)</PreprocessorDefinitions>
 						<AdditionalIncludeDirectories>#$(${Name}_TargetDir)source\main\include;@$(SolutionDir)source\main\include;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
 					</ClCompile>
 					<Link>
@@ -163,7 +152,6 @@
 				</ItemDefinitionGroup>
 				<ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='DevRelease|Xbox 360'">
 					<ClCompile>
-						<PreprocessorDefinitions>%(PreprocessorDefinitions)</PreprocessorDefinitions>
 						<AdditionalIncludeDirectories>#$(${Name}_TargetDir)source\main\include;@$(SolutionDir)source\main\include;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
 					</ClCompile>
 					<Link>
@@ -173,7 +161,6 @@
 				</ItemDefinitionGroup>
 				<ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='DevFinal|Xbox 360'">
 					<ClCompile>
-						<PreprocessorDefinitions>%(PreprocessorDefinitions)</PreprocessorDefinitions>
 						<AdditionalIncludeDirectories>#$(${Name}_TargetDir)source\main\include;@$(SolutionDir)source\main\include;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
 					</ClCompile>
 					<Link>
@@ -183,7 +170,6 @@
 				</ItemDefinitionGroup>
 				<ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='TestDebug|Xbox 360'">
 					<ClCompile>
-						<PreprocessorDefinitions>%(PreprocessorDefinitions)</PreprocessorDefinitions>
 						<AdditionalIncludeDirectories>#$(${Name}_TargetDir)source\main\include;@$(SolutionDir)source\main\include;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
 					</ClCompile>
 					<Link>
@@ -193,7 +179,6 @@
 				</ItemDefinitionGroup>
 				<ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='TestRelease|Xbox 360'">
 					<ClCompile>
-						<PreprocessorDefinitions>%(PreprocessorDefinitions)</PreprocessorDefinitions>
 						<AdditionalIncludeDirectories>#$(${Name}_TargetDir)source\main\include;@$(SolutionDir)source\main\include;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
 					</ClCompile>
 					<Link>
@@ -203,7 +188,6 @@
 				</ItemDefinitionGroup>
 				<ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='DevDebug|WII'">
 					<ClCompile>
-						<PreprocessorDefinitions>%(PreprocessorDefinitions)</PreprocessorDefinitions>
 						<AdditionalIncludeDirectories>#$(${Name}_TargetDir)source\main\include;@$(SolutionDir)source\main\include;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
 					</ClCompile>
 					<Link>
@@ -213,7 +197,6 @@
 				</ItemDefinitionGroup>
 				<ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='DevRelease|WII'">
 					<ClCompile>
-						<PreprocessorDefinitions>%(PreprocessorDefinitions)</PreprocessorDefinitions>
 						<AdditionalIncludeDirectories>#$(${Name}_TargetDir)source\main\include;@$(SolutionDir)source\main\include;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
 					</ClCompile>
 					<Link>
@@ -223,7 +206,6 @@
 				</ItemDefinitionGroup>
 				<ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='DevFinal|WII'">
 					<ClCompile>
-						<PreprocessorDefinitions>%(PreprocessorDefinitions)</PreprocessorDefinitions>
 						<AdditionalIncludeDirectories>#$(${Name}_TargetDir)source\main\include;@$(SolutionDir)source\main\include;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
 					</ClCompile>
 					<Link>
@@ -233,7 +215,6 @@
 				</ItemDefinitionGroup>
 				<ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='TestDebug|WII'">
 					<ClCompile>
-						<PreprocessorDefinitions>%(PreprocessorDefinitions)</PreprocessorDefinitions>
 						<AdditionalIncludeDirectories>#$(${Name}_TargetDir)source\main\include;@$(SolutionDir)source\main\include;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
 					</ClCompile>
 					<Link>
@@ -243,7 +224,6 @@
 				</ItemDefinitionGroup>
 				<ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='TestRelease|WII'">
 					<ClCompile>
-						<PreprocessorDefinitions>%(PreprocessorDefinitions)</PreprocessorDefinitions>
 						<AdditionalIncludeDirectories>#$(${Name}_TargetDir)source\main\include;@$(SolutionDir)source\main\include;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
 					</ClCompile>
 					<Link>
@@ -253,7 +233,6 @@
 				</ItemDefinitionGroup>
 				<ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='DevDebug|N3DS'">
 					<ClCompile>
-						<PreprocessorDefinitions>%(PreprocessorDefinitions)</PreprocessorDefinitions>
 						<AdditionalIncludeDirectories>#$(${Name}_TargetDir)source\main\include;@$(SolutionDir)source\main\include;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
 					</ClCompile>
 					<Link>
@@ -263,7 +242,6 @@
 				</ItemDefinitionGroup>
 				<ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='DevRelease|N3DS'">
 					<ClCompile>
-						<PreprocessorDefinitions>%(PreprocessorDefinitions)</PreprocessorDefinitions>
 						<AdditionalIncludeDirectories>#$(${Name}_TargetDir)source\main\include;@$(SolutionDir)source\main\include;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
 					</ClCompile>
 					<Link>
@@ -273,7 +251,6 @@
 				</ItemDefinitionGroup>
 				<ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='DevFinal|N3DS'">
 					<ClCompile>
-						<PreprocessorDefinitions>%(PreprocessorDefinitions)</PreprocessorDefinitions>
 						<AdditionalIncludeDirectories>#$(${Name}_TargetDir)source\main\include;@$(SolutionDir)source\main\include;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
 					</ClCompile>
 					<Link>
@@ -283,7 +260,6 @@
 				</ItemDefinitionGroup>
 				<ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='TestDebug|N3DS'">
 					<ClCompile>
-						<PreprocessorDefinitions>%(PreprocessorDefinitions)</PreprocessorDefinitions>
 						<AdditionalIncludeDirectories>#$(${Name}_TargetDir)source\main\include;@$(SolutionDir)source\main\include;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
 					</ClCompile>
 					<Link>
@@ -293,7 +269,6 @@
 				</ItemDefinitionGroup>
 				<ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='TestRelease|N3DS'">
 					<ClCompile>
-						<PreprocessorDefinitions>%(PreprocessorDefinitions)</PreprocessorDefinitions>
 						<AdditionalIncludeDirectories>#$(${Name}_TargetDir)source\main\include;@$(SolutionDir)source\main\include;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
 					</ClCompile>
 					<Link>
@@ -348,7 +323,6 @@
 				</PropertyGroup>
 				<ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='TestDebug|Win32'">
 					<ClCompile>
-						<PreprocessorDefinitions>%()</PreprocessorDefinitions>
 						<AdditionalIncludeDirectories>$(SolutionDir)source\test\include;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
 					</ClCompile>
 					<Link>
@@ -358,7 +332,6 @@
 				</ItemDefinitionGroup>
 				<ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='TestRelease|Win32'">
 					<ClCompile>
-						<PreprocessorDefinitions>%()</PreprocessorDefinitions>
 						<AdditionalIncludeDirectories>$(SolutionDir)source\test\include;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
 					</ClCompile>
 					<Link>
@@ -368,7 +341,6 @@
 				</ItemDefinitionGroup>
 				<ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='TestDebug|PS3'">
 					<ClCompile>
-						<PreprocessorDefinitions>%()</PreprocessorDefinitions>
 						<AdditionalIncludeDirectories>$(SolutionDir)source\test\include;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
 					</ClCompile>
 					<Link>
@@ -378,7 +350,6 @@
 				</ItemDefinitionGroup>
 				<ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='TestRelease|PS3'">
 					<ClCompile>
-						<PreprocessorDefinitions>%()</PreprocessorDefinitions>
 						<AdditionalIncludeDirectories>$(SolutionDir)source\test\include;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
 					</ClCompile>
 					<Link>
@@ -388,7 +359,6 @@
 				</ItemDefinitionGroup>
 				<ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='TestDebug|Xbox 360'">
 					<ClCompile>
-						<PreprocessorDefinitions>%()</PreprocessorDefinitions>
 						<AdditionalIncludeDirectories>$(SolutionDir)source\test\include;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
 					</ClCompile>
 					<Link>
@@ -398,7 +368,6 @@
 				</ItemDefinitionGroup>
 				<ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='TestRelease|Xbox 360'">
 					<ClCompile>
-						<PreprocessorDefinitions>%()</PreprocessorDefinitions>
 						<AdditionalIncludeDirectories>$(SolutionDir)source\test\include;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
 					</ClCompile>
 					<Link>
@@ -408,7 +377,6 @@
 				</ItemDefinitionGroup>
 				<ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='TestDebug|WII'">
 					<ClCompile>
-						<PreprocessorDefinitions>%()</PreprocessorDefinitions>
 						<AdditionalIncludeDirectories>$(SolutionDir)source\test\include;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
 					</ClCompile>
 					<Link>
@@ -418,7 +386,6 @@
 				</ItemDefinitionGroup>
 				<ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='TestRelease|WII'">
 					<ClCompile>
-						<PreprocessorDefinitions>%()</PreprocessorDefinitions>
 						<AdditionalIncludeDirectories>$(SolutionDir)source\test\include;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
 					</ClCompile>
 					<Link>
@@ -428,7 +395,6 @@
 				</ItemDefinitionGroup>
 				<ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='TestDebug|N3DS'">
 					<ClCompile>
-						<PreprocessorDefinitions>%()</PreprocessorDefinitions>
 						<AdditionalIncludeDirectories>$(SolutionDir)source\test\include;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
 					</ClCompile>
 					<Link>
@@ -438,7 +404,6 @@
 				</ItemDefinitionGroup>
 				<ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='TestRelease|N3DS'">
 					<ClCompile>
-						<PreprocessorDefinitions>%()</PreprocessorDefinitions>
 						<AdditionalIncludeDirectories>$(SolutionDir)source\test\include;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
 					</ClCompile>
 					<Link>

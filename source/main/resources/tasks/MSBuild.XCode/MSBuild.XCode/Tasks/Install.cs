@@ -22,9 +22,6 @@ namespace MSBuild.XCode
         [Required]
         public string RemoteRepoDir { get; set; }
 
-        [Required]
-        public string Filename { get; set; }
-
         public override bool Execute()
         {
             Loggy.TaskLogger = Log;
@@ -47,11 +44,18 @@ namespace MSBuild.XCode
                 {
                     // - Commit version to cache package repository
                     ok = PackageInstance.CacheRepo.Add(package, localPackageRepo.Location);
+                    if (!ok)
+                        Loggy.Error(String.Format("Error: Package::Install, failed to add package {0} to cache package repository at {1}", package.LocalURL, PackageInstance.CacheRepo.RepoDir));
+                }
+                else
+                {
+                    Loggy.Error(String.Format("Error: Package::Install, failed to update local package repository"));
                 }
             }
-            
-            if (!ok)
-                Loggy.Error(String.Format("Error: Package::Install, failed to add {0} to {1}", Filename, CacheRepoDir));
+            else
+            {
+                Loggy.Error(String.Format("Error: Package::Install, failed to load pom.xml"));
+            }
 
             return ok;
         }
