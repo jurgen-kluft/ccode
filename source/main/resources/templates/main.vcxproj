@@ -429,7 +429,8 @@
     <ExtensionsToDeleteOnClean>*.obj%3b*.d%3b*.map%3b*.lst%3b*.pch%3b$(TargetPath)</ExtensionsToDeleteOnClean>
     <IncludePath>$(Xbox360InstallDir)include\xbox</IncludePath>
     <GenerateManifest>false</GenerateManifest>
-    <OutputFile>$(OutDir)$(TargetName)$(TargetExt)</OutputFile>
+    <OutputFile>$(SolutionDir)target\$(SolutionName)\outdir\$(ProjectName)_$(Configuration)_$(PlatformName)\$(TargetName)$(TargetExt)</OutputFile>
+    <ImageXexOutput>$(SolutionDir)target\$(SolutionName)\outdir\$(ProjectName)_$(Configuration)_$(PlatformName)\$(ProjectName).xex2</ImageXexOutput>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='DevRelease|Xbox 360'">
     <LinkIncremental>false</LinkIncremental>
@@ -440,7 +441,8 @@
     <ExtensionsToDeleteOnClean>*.obj%3b*.d%3b*.map%3b*.lst%3b*.pch%3b$(TargetPath)</ExtensionsToDeleteOnClean>
     <IncludePath>$(Xbox360InstallDir)include\xbox</IncludePath>
     <GenerateManifest>false</GenerateManifest>
-    <OutputFile>$(OutDir)$(TargetName)$(TargetExt)</OutputFile>
+    <OutputFile>$(SolutionDir)target\$(SolutionName)\outdir\$(ProjectName)_$(Configuration)_$(PlatformName)\$(TargetName)$(TargetExt)</OutputFile>
+    <ImageXexOutput>$(SolutionDir)target\$(SolutionName)\outdir\$(ProjectName)_$(Configuration)_$(PlatformName)\$(ProjectName).xex2</ImageXexOutput>
   </PropertyGroup>  
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='DevFinal|Xbox 360'">
     <LinkIncremental>false</LinkIncremental>
@@ -451,7 +453,8 @@
     <ExtensionsToDeleteOnClean>*.obj%3b*.d%3b*.map%3b*.lst%3b*.pch%3b$(TargetPath)</ExtensionsToDeleteOnClean>
     <IncludePath>$(Xbox360InstallDir)include\xbox</IncludePath>
     <GenerateManifest>false</GenerateManifest>
-    <OutputFile>$(OutDir)$(TargetName)$(TargetExt)</OutputFile>
+    <OutputFile>$(SolutionDir)target\$(SolutionName)\outdir\$(ProjectName)_$(Configuration)_$(PlatformName)\$(TargetName)$(TargetExt)</OutputFile>
+    <ImageXexOutput>$(SolutionDir)target\$(SolutionName)\outdir\$(ProjectName)_$(Configuration)_$(PlatformName)\$(ProjectName).xex2</ImageXexOutput>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='TestDebug|Xbox 360'">
     <LinkIncremental>true</LinkIncremental>
@@ -462,7 +465,8 @@
     <ExtensionsToDeleteOnClean>*.obj%3b*.d%3b*.map%3b*.lst%3b*.pch%3b$(TargetPath)</ExtensionsToDeleteOnClean>
     <IncludePath>$(Xbox360InstallDir)include\xbox</IncludePath>
     <GenerateManifest>false</GenerateManifest>
-    <OutputFile>$(OutDir)$(TargetName)$(TargetExt)</OutputFile>
+    <OutputFile>$(SolutionDir)target\$(SolutionName)\outdir\$(ProjectName)_$(Configuration)_$(PlatformName)\$(TargetName)$(TargetExt)</OutputFile>
+    <ImageXexOutput>$(SolutionDir)target\$(SolutionName)\outdir\$(ProjectName)_$(Configuration)_$(PlatformName)\$(ProjectName).xex2</ImageXexOutput>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='TestRelease|Xbox 360'">
     <LinkIncremental>true</LinkIncremental>
@@ -473,7 +477,8 @@
     <ExtensionsToDeleteOnClean>*.obj%3b*.d%3b*.map%3b*.lst%3b*.pch%3b$(TargetPath)</ExtensionsToDeleteOnClean>
     <IncludePath>$(Xbox360InstallDir)include\xbox</IncludePath>
     <GenerateManifest>false</GenerateManifest>
-    <OutputFile>$(OutDir)$(TargetName)$(TargetExt)</OutputFile>
+    <OutputFile>$(SolutionDir)target\$(SolutionName)\outdir\$(ProjectName)_$(Configuration)_$(PlatformName)\$(TargetName)$(TargetExt)</OutputFile>
+    <ImageXexOutput>$(SolutionDir)target\$(SolutionName)\outdir\$(ProjectName)_$(Configuration)_$(PlatformName)\$(ProjectName).xex2</ImageXexOutput>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='DevDebug|WII'">
     <LinkIncremental>true</LinkIncremental>
