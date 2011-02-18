@@ -933,7 +933,8 @@
       <PreprocessorDefinitions>%()</PreprocessorDefinitions>
       <PrecompiledHeader>NotUsing</PrecompiledHeader>
       <AdditionalIncludeDirectories>%()</AdditionalIncludeDirectories>
-      <ExceptionHandling>false</ExceptionHandling>
+      <Exceptions>Disabled</Exceptions>
+      <RTTI>Off</RTTI>
     </ClCompile>
     <Link>
       <GenerateDebugInformation>true</GenerateDebugInformation>
@@ -949,9 +950,9 @@
       <PreprocessorDefinitions>%()</PreprocessorDefinitions>
       <PrecompiledHeader>NotUsing</PrecompiledHeader>
       <AdditionalIncludeDirectories>%()</AdditionalIncludeDirectories>
-      <ExceptionHandling>false</ExceptionHandling>
-      <RuntimeTypeInfo>false</RuntimeTypeInfo>
       <Optimization>Maximum</Optimization>
+      <Exceptions>Disabled</Exceptions>
+      <RTTI>Off</RTTI>
     </ClCompile>
     <Link>
       <GenerateDebugInformation>true</GenerateDebugInformation>
@@ -967,8 +968,9 @@
       <PreprocessorDefinitions>%()</PreprocessorDefinitions>
       <PrecompiledHeader>NotUsing</PrecompiledHeader>
       <AdditionalIncludeDirectories>%()</AdditionalIncludeDirectories>
-      <ExceptionHandling>false</ExceptionHandling>
       <Optimization>Maximum</Optimization>
+      <Exceptions>Disabled</Exceptions>
+      <RTTI>Off</RTTI>
     </ClCompile>
     <Link>
       <GenerateDebugInformation>true</GenerateDebugInformation>
@@ -985,7 +987,8 @@
       <PreprocessorDefinitions>%()</PreprocessorDefinitions>
       <PrecompiledHeader>NotUsing</PrecompiledHeader>
       <AdditionalIncludeDirectories>%()</AdditionalIncludeDirectories>
-      <ExceptionHandling>Sync</ExceptionHandling>
+      <Exceptions>Enabled</Exceptions>
+      <RTTI>Off</RTTI>
     </ClCompile>
     <Link>
       <GenerateDebugInformation>true</GenerateDebugInformation>
@@ -1001,9 +1004,9 @@
       <PreprocessorDefinitions>%()</PreprocessorDefinitions>
       <PrecompiledHeader>NotUsing</PrecompiledHeader>
       <AdditionalIncludeDirectories>%()</AdditionalIncludeDirectories>
-      <ExceptionHandling>Sync</ExceptionHandling>
-      <RuntimeTypeInfo>false</RuntimeTypeInfo>
       <Optimization>Maximum</Optimization>
+      <Exceptions>Enabled</Exceptions>
+      <RTTI>Off</RTTI>
     </ClCompile>
     <Link>
       <GenerateDebugInformation>true</GenerateDebugInformation>
