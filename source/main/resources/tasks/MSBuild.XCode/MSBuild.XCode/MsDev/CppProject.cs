@@ -46,7 +46,8 @@ namespace MSBuild.XCode.MsDev
         private readonly static string[] mContentItems = new string[]
         {
             "ClCompile", 
-            "ClInclude", 
+            "ClInclude",
+            "ResourceCompile",
             "None" 
         };
 
@@ -425,7 +426,7 @@ namespace MSBuild.XCode.MsDev
                             clAll.Add(includeAttrValue);
                             clNone.Add(includeAttrValue);
                         }
-                        else if (String.Compare(node.Name, "ClResourceCompile", true) == 0)
+                        else if (String.Compare(node.Name, "ResourceCompile", true) == 0)
                         {
                             clAll.Add(includeAttrValue);
                             clResourceCompile.Add(includeAttrValue);
