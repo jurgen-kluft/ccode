@@ -57,7 +57,7 @@
 					</ClCompile>
 					<Link>
 						<AdditionalLibraryDirectories>#$(${Name}_TargetDir)libs</AdditionalLibraryDirectories>
-						<AdditionalDependencies>#${Name}_DevDebug_Win32.lib</AdditionalDependencies>
+						<AdditionalDependencies>#${Name}_DevDebug_$(Platform).lib</AdditionalDependencies>
 					</Link>
 				</ItemDefinitionGroup>
 				<ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='DevRelease|Win32'">
@@ -84,7 +84,7 @@
 					</ClCompile>
 					<Link>
 						<AdditionalLibraryDirectories>#$(${Name}_TargetDir)libs</AdditionalLibraryDirectories>
-						<AdditionalDependencies>#${Name}_TestDebug_Win32.lib</AdditionalDependencies>
+						<AdditionalDependencies>#${Name}_TestDebug_$(Platform).lib</AdditionalDependencies>
 					</Link>
 				</ItemDefinitionGroup>
 				<ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='TestRelease|Win32'">
@@ -102,7 +102,7 @@
 					</ClCompile>
 					<Link>
 						<AdditionalLibraryDirectories>#$(${Name}_TargetDir)libs</AdditionalLibraryDirectories>
-						<AdditionalDependencies>#${Name}_DevDebug_Win32.lib</AdditionalDependencies>
+						<AdditionalDependencies>#${Name}_DevDebug_$(Platform).lib</AdditionalDependencies>
 					</Link>
 				</ItemDefinitionGroup>
 				<ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='DevRelease|PS3'">
@@ -129,7 +129,7 @@
 					</ClCompile>
 					<Link>
 						<AdditionalLibraryDirectories>#$(${Name}_TargetDir)libs</AdditionalLibraryDirectories>
-						<AdditionalDependencies>#${Name}_TestDebug_Win32.lib</AdditionalDependencies>
+						<AdditionalDependencies>#${Name}_TestDebug_$(Platform).lib</AdditionalDependencies>
 					</Link>
 				</ItemDefinitionGroup>
 				<ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='TestRelease|PS3'">
@@ -147,7 +147,7 @@
 					</ClCompile>
 					<Link>
 						<AdditionalLibraryDirectories>#$(${Name}_TargetDir)libs</AdditionalLibraryDirectories>
-						<AdditionalDependencies>#${Name}_DevDebug_Win32.lib</AdditionalDependencies>
+						<AdditionalDependencies>#${Name}_DevDebug_$(Platform).lib</AdditionalDependencies>
 					</Link>
 				</ItemDefinitionGroup>
 				<ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='DevRelease|Xbox 360'">
@@ -174,7 +174,7 @@
 					</ClCompile>
 					<Link>
 						<AdditionalLibraryDirectories>#$(${Name}_TargetDir)libs</AdditionalLibraryDirectories>
-						<AdditionalDependencies>#${Name}_TestDebug_Win32.lib</AdditionalDependencies>
+						<AdditionalDependencies>#${Name}_TestDebug_$(Platform).lib</AdditionalDependencies>
 					</Link>
 				</ItemDefinitionGroup>
 				<ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='TestRelease|Xbox 360'">
@@ -192,7 +192,7 @@
 					</ClCompile>
 					<Link>
 						<AdditionalLibraryDirectories>#$(${Name}_TargetDir)libs</AdditionalLibraryDirectories>
-						<AdditionalDependencies>#${Name}_DevDebug_Win32.lib</AdditionalDependencies>
+						<AdditionalDependencies>#${Name}_DevDebug_$(Platform).lib</AdditionalDependencies>
 					</Link>
 				</ItemDefinitionGroup>
 				<ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='DevRelease|WII'">
@@ -219,7 +219,7 @@
 					</ClCompile>
 					<Link>
 						<AdditionalLibraryDirectories>#$(${Name}_TargetDir)libs</AdditionalLibraryDirectories>
-						<AdditionalDependencies>#${Name}_TestDebug_Win32.lib</AdditionalDependencies>
+						<AdditionalDependencies>#${Name}_TestDebug_$(Platform).lib</AdditionalDependencies>
 					</Link>
 				</ItemDefinitionGroup>
 				<ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='TestRelease|WII'">
@@ -237,7 +237,7 @@
 					</ClCompile>
 					<Link>
 						<AdditionalLibraryDirectories>#$(${Name}_TargetDir)libs</AdditionalLibraryDirectories>
-						<AdditionalDependencies>#${Name}_DevDebug_Win32.lib</AdditionalDependencies>
+						<AdditionalDependencies>#${Name}_DevDebug_$(Platform).lib</AdditionalDependencies>
 					</Link>
 				</ItemDefinitionGroup>
 				<ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='DevRelease|N3DS'">
@@ -264,7 +264,7 @@
 					</ClCompile>
 					<Link>
 						<AdditionalLibraryDirectories>#$(${Name}_TargetDir)libs</AdditionalLibraryDirectories>
-						<AdditionalDependencies>#${Name}_TestDebug_Win32.lib</AdditionalDependencies>
+						<AdditionalDependencies>#${Name}_TestDebug_$(Platform).lib</AdditionalDependencies>
 					</Link>
 				</ItemDefinitionGroup>
 				<ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='TestRelease|N3DS'">
