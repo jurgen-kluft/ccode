@@ -531,6 +531,7 @@
     <IntDir>$(SolutionDir)target\$(SolutionName)\outdir\$(ProjectName)_$(Configuration)_$(PlatformName)\</IntDir>
     <ExecutablePath></ExecutablePath>
     <TargetName>$(ProjectName)_$(Configuration)_$(PlatformName)</TargetName>
+    <TargetExt>.lib</TargetExt>
     <ExtensionsToDeleteOnClean>*.obj%3b*.d%3b*.map%3b*.lst%3b*.pch%3b$(TargetPath)</ExtensionsToDeleteOnClean>
     <GenerateManifest>false</GenerateManifest>
   </PropertyGroup>
@@ -540,6 +541,7 @@
     <IntDir>$(SolutionDir)target\$(SolutionName)\outdir\$(ProjectName)_$(Configuration)_$(PlatformName)\</IntDir>
     <ExecutablePath></ExecutablePath>
     <TargetName>$(ProjectName)_$(Configuration)_$(PlatformName)</TargetName>
+    <TargetExt>.lib</TargetExt>
     <ExtensionsToDeleteOnClean>*.obj%3b*.d%3b*.map%3b*.lst%3b*.pch%3b$(TargetPath)</ExtensionsToDeleteOnClean>
     <GenerateManifest>false</GenerateManifest>
   </PropertyGroup>  
@@ -549,6 +551,7 @@
     <IntDir>$(SolutionDir)target\$(SolutionName)\outdir\$(ProjectName)_$(Configuration)_$(PlatformName)\</IntDir>
     <ExecutablePath></ExecutablePath>
     <TargetName>$(ProjectName)_$(Configuration)_$(PlatformName)</TargetName>
+    <TargetExt>.lib</TargetExt>
     <ExtensionsToDeleteOnClean>*.obj%3b*.d%3b*.map%3b*.lst%3b*.pch%3b$(TargetPath)</ExtensionsToDeleteOnClean>
     <GenerateManifest>false</GenerateManifest>
   </PropertyGroup>
@@ -558,6 +561,7 @@
     <IntDir>$(SolutionDir)target\$(SolutionName)\outdir\$(ProjectName)_$(Configuration)_$(PlatformName)\</IntDir>
     <ExecutablePath></ExecutablePath>
     <TargetName>$(ProjectName)_$(Configuration)_$(PlatformName)</TargetName>
+    <TargetExt>.lib</TargetExt>
     <ExtensionsToDeleteOnClean>*.obj%3b*.d%3b*.map%3b*.lst%3b*.pch%3b$(TargetPath)</ExtensionsToDeleteOnClean>
     <GenerateManifest>false</GenerateManifest>
   </PropertyGroup>
@@ -567,6 +571,7 @@
     <IntDir>$(SolutionDir)target\$(SolutionName)\outdir\$(ProjectName)_$(Configuration)_$(PlatformName)\</IntDir>
     <ExecutablePath></ExecutablePath>
     <TargetName>$(ProjectName)_$(Configuration)_$(PlatformName)</TargetName>
+    <TargetExt>.lib</TargetExt>
     <ExtensionsToDeleteOnClean>*.obj%3b*.d%3b*.map%3b*.lst%3b*.pch%3b$(TargetPath)</ExtensionsToDeleteOnClean>
     <GenerateManifest>false</GenerateManifest>
   </PropertyGroup>
@@ -634,6 +639,7 @@
     <Link>
       <GenerateDebugInformation>true</GenerateDebugInformation>
       <AdditionalDependencies>%()</AdditionalDependencies>
+      <SubSystem>Console</SubSystem>
     </Link>
     <Lib>
       <OutputFile>$(OutDir)\$(TargetName)$(TargetExt)</OutputFile>
@@ -652,6 +658,7 @@
     <Link>
       <GenerateDebugInformation>true</GenerateDebugInformation>
       <AdditionalDependencies>%()</AdditionalDependencies>
+      <SubSystem>Console</SubSystem>
     </Link>
     <Lib>
       <OutputFile>$(OutDir)\$(TargetName)$(TargetExt)</OutputFile>
