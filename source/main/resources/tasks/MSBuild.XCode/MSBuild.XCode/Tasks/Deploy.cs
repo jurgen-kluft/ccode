@@ -59,8 +59,30 @@ namespace MSBuild.XCode
                         hg_repo.Tag(packageVersion.ToString() + "_" + package.Platform);
                     }
 
-                    // - Commit version to remote package repository from local
-                    ok = PackageInstance.RemoteRepo.Add(package, localPackageRepo.Location);
+                    // - If there are outgoing or incoming changesets, then do not deploy
+                    bool any_incoming_changesets = !hg_repo.Incoming().IsEmpty();
+                    bool any_outgoing_changesets = !hg_repo.Outgoing().IsEmpty();
+
+                    if (any_outgoing_changesets && any_incoming_changesets)
+                    {
+                        Loggy.Error(String.Format("Error: Package::Deploy failed since there are incoming and outgoing changesets, pull, merge, build, test, commit and push before deploying!"));
+                        ok = false;
+                    }
+                    else if (any_incoming_changesets)
+                    {
+                        Loggy.Error(String.Format("Error: Package::Deploy failed since there are incoming changesets, pull, merge, build, test and commit before deploying!"));
+                        ok = false;
+                    }
+                    else if (any_outgoing_changesets)
+                    {
+                        Loggy.Error(String.Format("Error: Package::Deploy failed since there are outgoing changesets, push before deploying!"));
+                        ok = false;
+                    }
+                    else
+                    {
+                        // - Commit version to remote package repository from local
+                        ok = PackageInstance.RemoteRepo.Add(package, localPackageRepo.Location);
+                    }
                 }
             }
             return ok;
