@@ -27,7 +27,7 @@ namespace MSBuild.XCode.Test
             // Our test project is xbase
             PackageInstance.RootDir = @"k:\Dev.C++.Packages\xbase\";
 
-            string platform = "Win32";
+            string platform = "PS3";
             Construct("xbase", platform);
             return;
 
