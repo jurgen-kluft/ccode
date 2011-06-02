@@ -112,6 +112,29 @@ namespace MSBuild.XCode
             return false;
         }
 
+        public class ZipExtractionProgress
+        {
+            private int mNumCharsDisplayed = 0;
+
+            private int mNumEntries;
+            public ZipExtractionProgress(int numEntries)
+            {
+                mNumEntries = numEntries;
+            }
+
+            public void EventHandler(object sender, ExtractProgressEventArgs e)
+            {
+                int numChars = ((100 * e.EntriesExtracted) / mNumEntries);
+                while (mNumCharsDisplayed < numChars)
+                {
+                    Console.Write("{0, 3}%", numChars);
+                    Console.CursorLeft = Console.CursorLeft - 4;
+                    
+                    ++mNumCharsDisplayed;
+                }
+            }
+        }
+
         public bool Add(PackageInstance package, ELocation from)
         {
             // Cannot add from Target! should normally be added from Cache
@@ -125,7 +148,11 @@ namespace MSBuild.XCode
                 {
                     Directory.CreateDirectory(shareURL);
                     ZipFile zip = new ZipFile(package.GetURL(from) + package.GetFilename(from));
+                    ZipExtractionProgress progress = new ZipExtractionProgress(zip.Entries.Count);
+                    Console.Write("Extracting Package {0} for platform {1}: ", package.Name, package.Platform);
+                    zip.ExtractProgress += progress.EventHandler;
                     zip.ExtractAll(shareURL, ExtractExistingFileAction.OverwriteSilently);
+                    Console.WriteLine("Done");
                 }
                 else
                 {
