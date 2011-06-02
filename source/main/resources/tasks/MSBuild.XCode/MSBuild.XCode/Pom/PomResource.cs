@@ -22,6 +22,7 @@ namespace MSBuild.XCode
         public PackageContent Content { get; set; }
         public PackageVars Vars { get; set; }
         public List<DependencyResource> Dependencies { get; set; }
+        public ProjectProperties ProjectProperties { get; set; }
         public List<ProjectResource> Projects { get; set; }
         public List<string> Platforms { get; set; }
         public Versions Versions { get; set; }
@@ -35,6 +36,7 @@ namespace MSBuild.XCode
             Content = new PackageContent();
             Vars = new PackageVars();
             Dependencies = new List<DependencyResource>();
+            ProjectProperties = new ProjectProperties();
             Projects = new List<ProjectResource>();
             Platforms = new List<string>();
             Versions = new Versions();
@@ -96,6 +98,8 @@ namespace MSBuild.XCode
 
         private void Read(XmlNode node)
         {
+            bool hasProjectProperties = false;
+
             if (node.Name == "Package")
             {
                 if (node.Attributes != null)
@@ -139,6 +143,11 @@ namespace MSBuild.XCode
                             dependency.Read(child);
                             Dependencies.Add(dependency);
                         }
+                        else if (child.Name == "ProjectProperties")
+                        {
+                            ProjectProperties.Read(child);
+                            hasProjectProperties = true;
+                        }
                         else if (child.Name == "Project")
                         {
                             ProjectResource project = new ProjectResource();
@@ -154,6 +163,10 @@ namespace MSBuild.XCode
             }
 
             Group.ExpandVars(Vars);
+
+            if (!hasProjectProperties)
+                ProjectProperties.SetDefault(Name);
+            ProjectProperties.ExpandVars(Vars);
 
             foreach (DependencyResource dependencyResource in Dependencies)
                 dependencyResource.ExpandVars(Vars);

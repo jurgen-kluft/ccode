@@ -37,9 +37,9 @@ namespace MSBuild.XCode
             DependsOn = "";
         }
 
-        public ProjectInstance CreateInstance(bool main)
+        public ProjectInstance CreateInstance(bool main, PomInstance pom_instance)
         {
-            ProjectInstance instance = new ProjectInstance(main, this);
+            ProjectInstance instance = new ProjectInstance(main, pom_instance, this);
             return instance;
         }
 

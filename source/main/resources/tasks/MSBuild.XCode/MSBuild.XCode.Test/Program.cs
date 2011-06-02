@@ -24,11 +24,12 @@ namespace MSBuild.XCode.Test
             PackageInstance.CacheRepoDir = @"k:\Dev.C++.Packages\PACKAGE_REPO\";
             PackageInstance.Initialize();
            
-            // Our test project is xproject
-            PackageInstance.RootDir = @"k:\Dev.C++.Packages\xallocator\";
+            // Our test project is xbase
+            PackageInstance.RootDir = @"k:\Dev.C++.Packages\xbase\";
 
             string platform = "Win32";
-            Construct("xallocator", platform);
+            Construct("xbase", platform);
+            return;
 
             PackageConfigs configs = new PackageConfigs();
             configs.RootDir = PackageInstance.RootDir;
@@ -89,10 +90,10 @@ namespace MSBuild.XCode.Test
             construct.RemoteRepoDir = PackageInstance.RemoteRepoDir;
             construct.TemplateDir = PackageInstance.TemplateDir;
             construct.Language = "C++";
-            construct.Action = "init";
+            //construct.Action = "init";
             //construct.Execute();
             construct.RootDir = construct.RootDir + construct.Name + "\\";
-            construct.Action = "dir";
+            //construct.Action = "dir";
             //construct.Execute();
             construct.Language = "C++";
             construct.Platform = platform;

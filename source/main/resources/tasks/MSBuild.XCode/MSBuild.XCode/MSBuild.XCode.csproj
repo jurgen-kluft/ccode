@@ -216,6 +216,7 @@
     <Compile Include="PackageRepository\PackageRepositoryLayoutTarget.cs" />
     <Compile Include="PackageRepository\PackageRepositoryTarget.cs" />
     <Compile Include="PackageRepository\PackageRepositoryActor.cs" />
+    <Compile Include="Pom\ProjectProperties.cs" />
     <Compile Include="Package\PackageStructure.cs" />
     <Compile Include="Package\PackageVars.cs" />
     <Compile Include="Package\PackageContent.cs" />

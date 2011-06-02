@@ -133,14 +133,14 @@ namespace MSBuild.XCode
                 package.SetVersion(Location, package.GetVersion(from));
                 package.SetSignature(Location, lastWriteTime);
 
-                GenerateProps(package);
+                //GenerateProps(package);
 
                 return true;
             }
             return false;
         }
 
-        private bool GenerateProps(PackageInstance package)
+        private bool GenerateProps_DEPRECATED(PackageInstance package)
         {
             // <?xml version="1.0" encoding="utf-8"?>
             // <Project ToolsVersion="4.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
