@@ -16,7 +16,45 @@
     </Task>
   </UsingTask>
 
-
+  <UsingTask
+    TaskName="SyncFolders"
+    TaskFactory="CodeTaskFactory"
+    AssemblyFile="$(MSBuildToolsPath)\Microsoft.Build.Tasks.v4.0.dll">
+    <ParameterGroup>
+      <SrcDir ParameterType="System.String" Required="true"/>
+      <DstDir ParameterType="System.String" Required="true"/>
+    </ParameterGroup>
+    <Task>
+      <Using Namespace="System.Collections.Generic" />
+      <Code Type="Fragment" Language="cs">
+        <![CDATA[
+            Stack<KeyValuePair<string, string>> folderStack = new Stack<KeyValuePair<string, string>>();
+            folderStack.Push(new KeyValuePair<string, string>(SrcDir, DstDir));
+            while (folderStack.Count > 0)
+            {
+                KeyValuePair<string, string> op = folderStack.Pop();
+                if (!Directory.Exists(op.Value))
+                    Directory.CreateDirectory(op.Value);
+                string[] files = Directory.GetFiles(op.Key);
+                foreach (string file in files)
+                {
+                    string name = Path.GetFileName(file);
+                    string dest = Path.Combine(op.Value, name);
+                    File.Copy(file, dest, true);
+                }
+                string[] folders = Directory.GetDirectories(op.Key);
+                foreach (string folder in folders)
+                {
+                    string name = Path.GetFileName(folder);
+                    string dest = Path.Combine(op.Value, name);
+                    folderStack.Push(new KeyValuePair<string,string>(folder, dest));
+                }
+            }
+        ]]>
+      </Code>
+    </Task>
+  </UsingTask>
+  
   <UsingTask
     TaskName="SplitGroup"
     TaskFactory="CodeTaskFactory"

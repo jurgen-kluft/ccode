@@ -4,6 +4,7 @@
   <Import Project="super_pom.inline"/>
 
   <!-- These are the XCode lifecycle targets that can be overriden -->
+  <Target Name = "__UpdateToLatest"/>
   <Target Name = "__Validate"/>
   <Target Name = "__Initialize"/>
   <Target Name = "__SourcesGenerate"/>
@@ -30,7 +31,8 @@
   <Target Name = "__Deploy"/>
 
   <!-- These are the core xcode lifecycle targets and should not be overriden!! -->
-  <Target Name = "Validate" DependsOnTargets=""><CallTarget Targets="__Validate"/></Target>
+  <Target Name = "UpdateToLatest" DependsOnTargets=""><CallTarget Targets="__UpdateToLatest"/></Target>
+  <Target Name = "Validate" DependsOnTargets="UpdateToLatest"><CallTarget Targets="__Validate"/></Target>
   <Target Name = "Initialize" DependsOnTargets="Validate"><CallTarget Targets="__Initialize"/></Target>
   <Target Name = "SourcesGenerate" DependsOnTargets="Initialize"><CallTarget Targets="__SourcesGenerate"/></Target>
   <Target Name = "SourcesProcess" DependsOnTargets="SourcesGenerate"><CallTarget Targets="__SourcesProcess"/></Target>
@@ -99,17 +101,17 @@
     <CallTarget Targets="CleanPlatformForEveryTarget"/>
   </Target>
 
-  <Target Name="Init">
+  <Target Name="Init" DependsOnTargets="UpdateToLatest">
     <MSBuild.XCode.PackageConstruct Name="$(PackageName)" Action="init" Language="$(PackageLanguage)" RootDir="$(PackageDir)" TemplateDir="$(PackageLocalRepoURL)com\virtuos\xcode\publish\templates\" CacheRepoDir="$(PackageLocalRepoURL)" RemoteRepoDir="$(PackageRemoteRepoURL)"/>
   </Target>
-  <Target Name="InitDirs">
+  <Target Name="InitDirs" DependsOnTargets="UpdateToLatest">
     <MSBuild.XCode.PackageConstruct Name="" Action="dir" RootDir="$(PackageDir)" TemplateDir="$(PackageLocalRepoURL)com\virtuos\xcode\publish\templates\" CacheRepoDir="$(PackageLocalRepoURL)" RemoteRepoDir="$(PackageRemoteRepoURL)"/>
   </Target>
-  <Target Name="Construct">
+  <Target Name="Construct" DependsOnTargets="UpdateToLatest">
     <MSBuild.XCode.PackageConstruct Name="" Action="vs2010" Platform="$(PackagePlatform)" RootDir="$(PackageDir)" TemplateDir="$(PackageLocalRepoURL)com\virtuos\xcode\publish\templates\" CacheRepoDir="$(PackageLocalRepoURL)" RemoteRepoDir="$(PackageRemoteRepoURL)"/>
   </Target>
 
-  <Target Name="Info">
+  <Target Name="Info" DependsOnTargets="UpdateToLatest">
     <MSBuild.XCode.PackageInfo RootDir="$(PackageDir)" CacheRepoDir="$(PackageLocalRepoURL)" RemoteRepoDir="$(PackageRemoteRepoURL)"/>
   </Target>
 
@@ -133,6 +135,15 @@
   <Target Name="__Sync" DependsOnTargets="PackageSync">
   </Target>
 
+  <Target Name="XCode_UpdateToLatest">
+    <Message Text="Checking for an update of XCode for $(PackageLocalRepoURL) at $(PackageRemoteRepoURL)" />
+    <SyncFolders SrcDir="$(PackageRemoteRepoURL)com\virtuos\xcode\publish" DstDir="$(PackageLocalRepoURL)com\virtuos\xcode\publish" />
+    <Message Text="Already has the latest XCode" />
+  </Target>
+  <Target Name="__UpdateToLatest" DependsOnTargets="XCode_UpdateToLatest">
+  </Target>
+
+  
 </Project>
 
 
