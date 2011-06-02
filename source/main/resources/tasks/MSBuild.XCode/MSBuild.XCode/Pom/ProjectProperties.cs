@@ -40,7 +40,11 @@ namespace MSBuild.XCode
                 // <Project ToolsVersion="4.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
                 //     mXmlDoc
                 // </Project>
-                //             
+                //
+                string path = Path.GetDirectoryName(propsFilePath);
+                if (!Directory.Exists(path))
+                    Directory.CreateDirectory(path);
+
                 using (FileStream stream = new FileStream(propsFilePath, FileMode.Create, FileAccess.Write))
                 {
                     using (StreamWriter writer = new StreamWriter(stream))
