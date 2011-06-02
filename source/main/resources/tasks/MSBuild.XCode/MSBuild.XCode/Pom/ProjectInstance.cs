@@ -10,6 +10,7 @@ namespace MSBuild.XCode
     public class ProjectInstance
     {
         private ProjectResource mResource;
+        private PomInstance mPomInstance;
         
         private MsDev.IProject mMsDevProject;
 
@@ -30,8 +31,11 @@ namespace MSBuild.XCode
         public bool IsPrivate { get { return mResource.IsPrivate; } }
         public string Extension { get { return mMsDevProject.Extension; } }
 
-        public ProjectInstance(bool main, ProjectResource resource)
+        public PomInstance Pom { get { return mPomInstance; } }
+
+        public ProjectInstance(bool main, PomInstance pom_instance, ProjectResource resource)
         {
+            mPomInstance = pom_instance;
             mResource = resource;
             Main = main;
 

@@ -84,21 +84,24 @@ namespace MSBuild.XCode
             mIsRoot = isRoot;
         }
 
-        internal PackageInstance(PackageResource resource)
+        internal PackageInstance(bool isRoot, PackageResource resource)
         {
+            mIsRoot = isRoot;
             mResource = resource;
         }
 
-        internal PackageInstance(PackageResource resource, PomInstance pom)
+        internal PackageInstance(bool isRoot, PackageResource resource, PomInstance pom)
         {
+            mIsRoot = isRoot;
             mResource = resource;
             mPom = pom;
+            mPom.Package = this;
         }
 
-        public static PackageInstance From(string name, string group, string branch, string platform)
+        public static PackageInstance From(bool isRoot, string name, string group, string branch, string platform)
         {
             PackageResource resource = PackageResource.From(name, group);
-            PackageInstance instance = resource.CreateInstance(false);
+            PackageInstance instance = resource.CreateInstance(isRoot);
             instance.mBranch = branch;
             instance.mPlatform = platform;
             return instance;
@@ -145,6 +148,7 @@ namespace MSBuild.XCode
             {
                 PackageResource resource = PackageResource.LoadFromFile(RootURL);
                 mPom = resource.CreatePomInstance(true);
+                mPom.Package = this;
                 mResource = resource;
                 return true;
             }
@@ -156,6 +160,7 @@ namespace MSBuild.XCode
                 {
                     PackageResource resource = PackageResource.LoadFromFile(ShareURL);
                     mPom = resource.CreatePomInstance(false);
+                    mPom.Package = this;
                     mResource = resource;
                     return true;
                 }
@@ -164,6 +169,7 @@ namespace MSBuild.XCode
             {
                 PackageResource resource = PackageResource.LoadFromPackage(CacheURL, CacheFilename);
                 mPom = resource.CreatePomInstance(false);
+                mPom.Package = this;
                 mResource = resource;
                 return true;
             }
@@ -221,6 +227,27 @@ namespace MSBuild.XCode
                 case ELocation.Target: TargetVersion = version; break;
                 case ELocation.Root: RootVersion = version; break;
             }
+        }
+
+        public string GetLocalURL()
+        {
+            if (RootExists)
+            {
+                return RootURL;
+            }
+            else if (TargetExists)
+            {
+                if (ShareExists)
+                {
+                    return ShareURL;
+                }
+                return TargetURL;
+            }
+            else if (ShareExists)
+            {
+                return ShareURL;
+            }
+            return string.Empty;
         }
 
         public string GetURL(ELocation location)
@@ -313,6 +340,14 @@ namespace MSBuild.XCode
 
         public void GenerateProjects(PackageDependencies dependencies, List<string> platforms)
         {
+            // Generate the project .props file for every platform
+            foreach(string platform in platforms)
+            {
+                string path = RootURL.EndWith('\\') + "target\\" + this.Name + "\\";
+                string filename = path + this.Name + "." + platform + ".props";
+                Pom.ProjectProperties.Write(filename, platform, "Root", RootURL);
+            }
+
             // Generating project files is a bit complex in that it has to merge project definitions on a per platform basis.
             // Every platform is considered to have its own package (zip -> pom.xml) containing the project settings for that platform.
             // For every platform we have to merge in only the conditional xml elements into the final project file.
@@ -469,7 +504,7 @@ namespace MSBuild.XCode
 
                     while (projectDependenciesQueue.Count > 0)
                     {
-                        // Variable projectDependency is a full key at thist stage
+                        // Variable projectDependency is a full key at this stage
                         string projectDependency = projectDependenciesQueue.Dequeue();
                         if (!projectsMerged.Contains(projectDependency))
                         {
@@ -479,6 +514,16 @@ namespace MSBuild.XCode
                                 ///<<<<<<< PROJECT MERGE <<<<<<<<<<
                                 rootProject.MergeWithDependencyProject(dependencyProject);
 
+                                // Write the project properties .props file of this dependency project
+                                foreach (string platform in platforms)
+                                {
+                                    string name = dependencyProject.Pom.Name;
+                                    string packageRoot = dependencyProject.Pom.Package.GetLocalURL();
+                                    string path = RootURL.EndWith('\\') + "target\\" + name + "\\";
+                                    string filename = path + name + "." + platform + ".props";
+                                    string type = dependencyProject.Pom.Package.IsRootPackage ? "Root" : "Package";
+                                    dependencyProject.Pom.ProjectProperties.Write(filename, platform, type, packageRoot);
+                                }
 
                                 /// Now queue all the dependencies of this dependencyProject, since
                                 /// we also have to merge them and also the dependencies of those

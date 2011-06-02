@@ -10,6 +10,7 @@ namespace MSBuild.XCode
     public class PomInstance
     {
         private PomResource mResource;
+        private PackageInstance mPackage;
         private List<ProjectInstance> mProjects;
 
         public string Name { get { return mResource.Name; } }
@@ -19,17 +20,21 @@ namespace MSBuild.XCode
 
         public PackageContent Content { get { return mResource.Content; } }
         public List<DependencyResource> Dependencies { get { return mResource.Dependencies; } }
+        public ProjectProperties ProjectProperties { get { return mResource.ProjectProperties; } }
         public List<ProjectInstance> Projects { get { return mProjects; } }
         public List<string> Platforms { get { return mResource.Platforms; } }
         public Versions Versions { get { return mResource.Versions; } }
 
+        public PackageInstance Package { set { mPackage = value; } get { return mPackage; } }
+
         public PomInstance(bool main, PomResource resource)
         {
             mResource = resource;
+            mPackage = null;
             mProjects = new List<ProjectInstance>();
             foreach (ProjectResource projectResource in resource.Projects)
             {
-                ProjectInstance projectInstance = projectResource.CreateInstance(main);
+                ProjectInstance projectInstance = projectResource.CreateInstance(main, this);
                 mProjects.Add(projectInstance);
             }
         }
