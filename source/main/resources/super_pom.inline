@@ -1,145 +1,64 @@
 <Project ToolsVersion="4.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
 
   <UsingTask
-    TaskName="MkFile"
-    TaskFactory="CodeTaskFactory"
-    AssemblyFile="$(MSBuildToolsPath)\Microsoft.Build.Tasks.v4.0.dll">
-    <ParameterGroup>
-      <SourceFile ParameterType="System.String" Required="true"/>
-    </ParameterGroup>
-    <Task>
-      <Code Type="Fragment" Language="cs">
-        <![CDATA[
-          File.Create(SourceFile);
-        ]]>
-      </Code>
-    </Task>
-  </UsingTask>
-
-  <UsingTask
     TaskName="SyncFolders"
     TaskFactory="CodeTaskFactory"
     AssemblyFile="$(MSBuildToolsPath)\Microsoft.Build.Tasks.v4.0.dll">
     <ParameterGroup>
       <SrcDir ParameterType="System.String" Required="true"/>
       <DstDir ParameterType="System.String" Required="true"/>
+      <Result ParameterType="System.String" Output="True"/>
     </ParameterGroup>
     <Task>
       <Using Namespace="System.Collections.Generic" />
       <Code Type="Fragment" Language="cs">
         <![CDATA[
-            Stack<KeyValuePair<string, string>> folderStack = new Stack<KeyValuePair<string, string>>();
-            folderStack.Push(new KeyValuePair<string, string>(SrcDir, DstDir));
-            while (folderStack.Count > 0)
+            if (!SrcDir.EndsWith("\\")) SrcDir = SrcDir + "\\";
+            if (!DstDir.EndsWith("\\")) DstDir = DstDir + "\\";
+            FileInfo srcSyncFile = new FileInfo(SrcDir + "sync.rev");
+            FileInfo dstSyncFile = new FileInfo(DstDir + "sync.rev");
+            if (!srcSyncFile.Exists || !dstSyncFile.Exists || srcSyncFile.LastWriteTime != dstSyncFile.LastWriteTime)
             {
-                KeyValuePair<string, string> op = folderStack.Pop();
-                if (!Directory.Exists(op.Value))
-                    Directory.CreateDirectory(op.Value);
-                string[] files = Directory.GetFiles(op.Key);
-                foreach (string file in files)
+                if (!srcSyncFile.Exists)
                 {
-                    string name = Path.GetFileName(file);
-                    string dest = Path.Combine(op.Value, name);
-                    File.Copy(file, dest, true);
+                    try { srcSyncFile.Create().Close(); }
+                    catch (System.Exception ex) { }
                 }
-                string[] folders = Directory.GetDirectories(op.Key);
-                foreach (string folder in folders)
+
+                Stack<KeyValuePair<string, string>> folderStack = new Stack<KeyValuePair<string, string>>();
+                folderStack.Push(new KeyValuePair<string, string>(SrcDir, DstDir));
+                while (folderStack.Count > 0)
                 {
-                    string name = Path.GetFileName(folder);
-                    string dest = Path.Combine(op.Value, name);
-                    folderStack.Push(new KeyValuePair<string,string>(folder, dest));
+                    KeyValuePair<string, string> op = folderStack.Pop();
+                    if (!Directory.Exists(op.Value))
+                        Directory.CreateDirectory(op.Value);
+                    string[] files = Directory.GetFiles(op.Key);
+                    foreach (string file in files)
+                    {
+                        string name = Path.GetFileName(file);
+                        string dest = Path.Combine(op.Value, name);
+                        File.Copy(file, dest, true);
+                    }
+                    string[] folders = Directory.GetDirectories(op.Key);
+                    foreach (string folder in folders)
+                    {
+                        string name = Path.GetFileName(folder);
+                        string dest = Path.Combine(op.Value, name);
+                        folderStack.Push(new KeyValuePair<string, string>(folder, dest));
+                    }
                 }
+                dstSyncFile.LastWriteTime = srcSyncFile.LastWriteTime;
+                Result = "Updated";
             }
+            else
+            {
+                // Already up-to-date!
+                Result = "Already up to date";
+            }
+
         ]]>
       </Code>
     </Task>
   </UsingTask>
   
-  <UsingTask
-    TaskName="SplitGroup"
-    TaskFactory="CodeTaskFactory"
-    AssemblyFile="$(MSBuildToolsPath)\Microsoft.Build.Tasks.v4.0.dll">
-    <ParameterGroup>
-      <Group ParameterType="System.String" Required="true"/>
-      <GroupH ParameterType="System.String" Output="True"/>
-      <GroupM ParameterType="System.String" Output="True"/>
-      <GroupL ParameterType="System.String" Output="True"/>
-    </ParameterGroup>
-    <Task>
-      <Code Type="Fragment" Language="cs">
-        <![CDATA[
-          string[] tokens = Group.Split(new char[] { '.' }, StringSplitOptions.RemoveEmptyEntries);
-          GroupH = "com";
-          GroupM = "virtuos";
-          GroupL = "temp";
-          if (tokens.Length>0) GroupH = tokens[0];
-          if (tokens.Length>1) GroupM = tokens[1];
-          if (tokens.Length>2) GroupL = tokens[2];
-        ]]>
-      </Code>
-    </Task>
-  </UsingTask>
-
-  <UsingTask
-  TaskName="CreateGuid"
-  TaskFactory="CodeTaskFactory"
-  AssemblyFile="$(MSBuildToolsPath)\Microsoft.Build.Tasks.v4.0.dll">
-    <ParameterGroup>
-      <NewGuid ParameterType="System.String" Output="True"/>
-    </ParameterGroup>
-    <Task>
-      <Using Namespace="System" />
-      <Code Type="Fragment" Language="cs">
-        <![CDATA[
-          NewGuid = System.Guid.NewGuid().ToString();
-        ]]>
-      </Code>
-    </Task>
-  </UsingTask>
-
-  <UsingTask
-  TaskName="FileTemplate"
-  TaskFactory="CodeTaskFactory"
-  AssemblyFile="$(MSBuildToolsPath)\Microsoft.Build.Tasks.v4.0.dll">
-    <ParameterGroup>
-      <Template ParameterType="System.String" Required="true"/>
-      <Tokens ParameterType="Microsoft.Build.Framework.ITaskItem[]" Required="true"/>
-      <Destination ParameterType="System.String" Required="true"/>
-    </ParameterGroup>
-    <Task>
-      <Code Type="Fragment" Language="cs">
-        <![CDATA[
-            if (File.Exists(Template))
-            {
-                string[] lines = File.ReadAllLines(Template);
-                FileStream wfs = new FileStream(Destination, FileMode.Create, FileAccess.Write);
-                StreamWriter writer = new StreamWriter(wfs);
-                foreach(string l in lines)
-                {
-                    string line = l;
-                    foreach (ITaskItem item in Tokens)
-                    {
-                        foreach (string name in item.MetadataNames)
-                        {
-                            string value = string.Empty;
-                            try
-                            {
-                                value = item.GetMetadata(name);
-                            }
-                            catch (Exception)
-                            {
-                            }
-                            line = line.Replace("${" + name + "}", value);
-                        }
-                    }
-                    writer.WriteLine(line);
-                }
-                writer.Close();
-                wfs.Close();
-            }
-        ]]>
-      </Code>
-    </Task>
-  </UsingTask>
-
 </Project>

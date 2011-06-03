@@ -137,8 +137,10 @@
 
   <Target Name="XCode_UpdateToLatest">
     <Message Text="Checking for an update of XCode for $(PackageLocalRepoURL) at $(PackageRemoteRepoURL)" />
-    <SyncFolders SrcDir="$(PackageRemoteRepoURL)com\virtuos\xcode\publish" DstDir="$(PackageLocalRepoURL)com\virtuos\xcode\publish" />
-    <Message Text="Already has the latest XCode" />
+    <SyncFolders SrcDir="$(PackageRemoteRepoURL)com\virtuos\xcode\publish" DstDir="$(PackageLocalRepoURL)com\virtuos\xcode\publish">
+      <Output PropertyName="SyncResult" TaskParameter="Result"/>
+    </SyncFolders>
+    <Message Text="$(SyncResult)" />
   </Target>
   <Target Name="__UpdateToLatest" DependsOnTargets="XCode_UpdateToLatest">
   </Target>
