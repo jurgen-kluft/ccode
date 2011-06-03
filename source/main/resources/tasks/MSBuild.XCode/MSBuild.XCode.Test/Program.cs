@@ -11,7 +11,7 @@ using FileDirectoryPath;
 
 namespace MSBuild.XCode.Test
 {
-    static class Program
+     static class Program
     {
         /// <summary>
         /// The main entry point for the application.
@@ -23,10 +23,10 @@ namespace MSBuild.XCode.Test
             PackageInstance.TemplateDir = @"k:\Dev.C++.Packages\REMOTE_PACKAGE_REPO\com\virtuos\xcode\publish\templates\";
             PackageInstance.CacheRepoDir = @"k:\Dev.C++.Packages\PACKAGE_REPO\";
             PackageInstance.Initialize();
-           
+
             // Our test project is xbase
             PackageInstance.RootDir = @"k:\Dev.C++.Packages\xbase\";
-
+            
             string platform = "PS3";
             Construct("xbase", platform);
             return;
