@@ -50,7 +50,12 @@ namespace MSBuild.XCode
                 PackageRepositoryLocal localPackageRepo = new PackageRepositoryLocal(RootDir);
                 if (localPackageRepo.Update(package))
                 {
+                    // - If there are outgoing or incoming change sets, then do not deploy
+                    bool any_incoming_changesets = !hg_repo.Incoming().IsEmpty();
+                    bool any_outgoing_changesets = !hg_repo.Outgoing().IsEmpty();
+
                     // Tag the mercurial repository
+                    /*
                     if (hg_repo.Exists)
                     {
                         ComparableVersion packageVersion = package.Pom.Versions.GetForPlatformWithBranch(package.Platform, package.Branch);
@@ -58,10 +63,7 @@ namespace MSBuild.XCode
                         // Strip the date-time from the version, only tag with the package version + platform
                         hg_repo.Tag(packageVersion.ToString() + "_" + package.Platform);
                     }
-
-                    // - If there are outgoing or incoming changesets, then do not deploy
-                    bool any_incoming_changesets = !hg_repo.Incoming().IsEmpty();
-                    bool any_outgoing_changesets = !hg_repo.Outgoing().IsEmpty();
+                    */ 
 
                     if (any_outgoing_changesets && any_incoming_changesets)
                     {

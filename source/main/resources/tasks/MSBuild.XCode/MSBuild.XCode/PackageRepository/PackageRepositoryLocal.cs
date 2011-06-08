@@ -182,7 +182,11 @@ namespace MSBuild.XCode
                 foreach (KeyValuePair<string, string> p in files)
                     zip.AddFile(p.Key, p.Value);
 
+                ZipSaveProgress progress = new ZipSaveProgress(files.Count);
+                Console.Write("Creating Package {0} for platform {1}: ", package.Name, package.Platform);
+                zip.SaveProgress += progress.EventHandler;
                 zip.Save();
+                Console.WriteLine("Done");
                 File.SetLastWriteTime(zipPath, package.LocalSignature);
                 package.LocalURL = buildURL;
                 success = true;
@@ -190,6 +194,29 @@ namespace MSBuild.XCode
             return success;
         }
 
+
+        public class ZipSaveProgress
+        {
+            private int mNumCharsDisplayed = 0;
+
+            private int mNumEntries;
+            public ZipSaveProgress(int numEntries)
+            {
+                mNumEntries = numEntries;
+            }
+
+            public void EventHandler(object sender, SaveProgressEventArgs e)
+            {
+                int numChars = ((100 * e.EntriesSaved) / mNumEntries);
+                while (mNumCharsDisplayed < numChars)
+                {
+                    Console.Write("{0, 3}%", numChars);
+                    Console.CursorLeft = Console.CursorLeft - 4;
+
+                    ++mNumCharsDisplayed;
+                }
+            }
+        }
 
 
     }

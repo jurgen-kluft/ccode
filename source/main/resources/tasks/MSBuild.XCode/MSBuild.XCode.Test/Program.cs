@@ -19,16 +19,16 @@ namespace MSBuild.XCode.Test
         [STAThread]
         static void Main()
         {
-            PackageInstance.RemoteRepoDir = @"k:\Dev.C++.Packages\REMOTE_PACKAGE_REPO\";
+            PackageInstance.RemoteRepoDir = @"\\cnshasap2\Hg_Repo\PACKAGE_REPO\";
             PackageInstance.TemplateDir = @"k:\Dev.C++.Packages\REMOTE_PACKAGE_REPO\com\virtuos\xcode\publish\templates\";
             PackageInstance.CacheRepoDir = @"k:\Dev.C++.Packages\PACKAGE_REPO\";
             PackageInstance.Initialize();
 
             // Our test project is xbase
-            PackageInstance.RootDir = @"k:\Dev.C++.Packages\xbase\";
+            PackageInstance.RootDir = @"k:\Dev.C++.Packages\xstl\";
             
-            string platform = "PS3";
-            Construct("xbase", platform);
+            string platform = "N3DS";
+            Construct("xstl", platform);
             return;
 
             PackageConfigs configs = new PackageConfigs();
