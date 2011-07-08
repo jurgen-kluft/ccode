@@ -16,8 +16,6 @@ namespace MSBuild.XCode
     public class XCodeUpdate : Task
     {
         [Required]
-        public string WorkDir { get; set; }
-        [Required]
         public string CacheRepoDir { get; set; }
         [Required]
         public string XCodeRepoDir { get; set; }
@@ -27,7 +25,6 @@ namespace MSBuild.XCode
             bool success = false;
             Loggy.TaskLogger = Log;
 
-            WorkDir = WorkDir.EndWith('\\');
             CacheRepoDir = CacheRepoDir.EndWith('\\');
 
             XCodeRepoDir = XCodeRepoDir.EndWith('\\');

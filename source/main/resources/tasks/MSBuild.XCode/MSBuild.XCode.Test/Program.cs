@@ -25,7 +25,6 @@ namespace MSBuild.XCode.Test
             PackageInstance.Initialize();
 
             XCodeUpdate update = new XCodeUpdate();
-            update.WorkDir = @"k:\Dev.C++.Packages\";
             update.CacheRepoDir = PackageInstance.CacheRepoDir;
             update.XCodeRepoDir = @"k:\Dev.C++.Packages\REMOTE_PACKAGE_REPO\com\virtuos\xcode\publish\";
             update.Execute();
