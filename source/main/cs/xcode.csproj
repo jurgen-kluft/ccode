@@ -15,6 +15,7 @@
     <TargetFrameworkProfile>
     </TargetFrameworkProfile>
     <FileAlignment>512</FileAlignment>
+    <IsWebBootstrapper>false</IsWebBootstrapper>
     <PublishUrl>publish\</PublishUrl>
     <Install>true</Install>
     <InstallFrom>Disk</InstallFrom>
@@ -27,7 +28,6 @@
     <MapFileExtensions>true</MapFileExtensions>
     <ApplicationRevision>0</ApplicationRevision>
     <ApplicationVersion>1.0.0.%2a</ApplicationVersion>
-    <IsWebBootstrapper>false</IsWebBootstrapper>
     <UseApplicationTrust>false</UseApplicationTrust>
     <BootstrapperEnabled>true</BootstrapperEnabled>
   </PropertyGroup>
@@ -75,6 +75,74 @@
     <Compile Include="Main.Designer.cs">
       <DependentUpon>Main.cs</DependentUpon>
     </Compile>
+    <Compile Include="Mercurial\AddCommand.cs" />
+    <Compile Include="Mercurial\AddRemoveCommand.cs" />
+    <Compile Include="Mercurial\AnnotateCommand.cs" />
+    <Compile Include="Mercurial\Annotation.cs" />
+    <Compile Include="Mercurial\Attributes\ArgumentAttribute.cs" />
+    <Compile Include="Mercurial\Attributes\BooleanArgumentAttribute.cs" />
+    <Compile Include="Mercurial\Attributes\DateTimeArgumentAttribute.cs" />
+    <Compile Include="Mercurial\Attributes\NullableArgumentAttribute.cs" />
+    <Compile Include="Mercurial\Attributes\RepeatableArgumentAttribute.cs" />
+    <Compile Include="Mercurial\BranchCommand.cs" />
+    <Compile Include="Mercurial\Changeset.cs" />
+    <Compile Include="Mercurial\ChangesetPathAction.cs" />
+    <Compile Include="Mercurial\ChangesetPathActionType.cs" />
+    <Compile Include="Mercurial\ChangesetXmlParser.cs" />
+    <Compile Include="Mercurial\Client.cs" />
+    <Compile Include="Mercurial\CloneCommand.cs" />
+    <Compile Include="Mercurial\CollectionExtensions.cs" />
+    <Compile Include="Mercurial\CommandBase.cs" />
+    <Compile Include="Mercurial\CommitCommand.cs" />
+    <Compile Include="Mercurial\ConfigurationEntry.cs" />
+    <Compile Include="Mercurial\Configuration\ClientConfigurationCollection.cs" />
+    <Compile Include="Mercurial\DebugObserver.cs" />
+    <Compile Include="Mercurial\Extensions\CaseGuard\CaseGuardAddCommandExtensions.cs" />
+    <Compile Include="Mercurial\Extensions\CaseGuard\CaseGuardAddRemoveCommandExtensions.cs" />
+    <Compile Include="Mercurial\Extensions\CaseGuard\CaseGuardExtension.cs" />
+    <Compile Include="Mercurial\Extensions\Queues\QueueCommandBaseExtensions.cs" />
+    <Compile Include="Mercurial\Extensions\Queues\QueueExtension.cs" />
+    <Compile Include="Mercurial\FileState.cs" />
+    <Compile Include="Mercurial\FileStatus.cs" />
+    <Compile Include="Mercurial\FileStatusIncludes.cs" />
+    <Compile Include="Mercurial\ForgetCommand.cs" />
+    <Compile Include="Mercurial\HeadsCommand.cs" />
+    <Compile Include="Mercurial\HelpCommand.cs" />
+    <Compile Include="Mercurial\IMercurialCommand.cs" />
+    <Compile Include="Mercurial\IMercurialCommandObserver.cs" />
+    <Compile Include="Mercurial\IncludeExcludeCommandBase.cs" />
+    <Compile Include="Mercurial\IncomingCommand.cs" />
+    <Compile Include="Mercurial\InitCommand.cs" />
+    <Compile Include="Mercurial\LogCommand.cs" />
+    <Compile Include="Mercurial\MercurialException.cs" />
+    <Compile Include="Mercurial\MercurialExecutionException.cs" />
+    <Compile Include="Mercurial\MercurialInstallationException.cs" />
+    <Compile Include="Mercurial\MercurialMissingException.cs" />
+    <Compile Include="Mercurial\MercurialTimeoutException.cs" />
+    <Compile Include="Mercurial\OutgoingCommand.cs" />
+    <Compile Include="Mercurial\PathsCommand.cs" />
+    <Compile Include="Mercurial\PullCommand.cs" />
+    <Compile Include="Mercurial\PushCommand.cs" />
+    <Compile Include="Mercurial\RemoteRepositoryPath.cs" />
+    <Compile Include="Mercurial\RemoveCommand.cs" />
+    <Compile Include="Mercurial\Repository.cs" />
+    <Compile Include="Mercurial\RevSpec.cs" />
+    <Compile Include="Mercurial\ShowConfigCommand.cs" />
+    <Compile Include="Mercurial\StatusCommand.cs" />
+    <Compile Include="Mercurial\StringEx.cs" />
+    <Compile Include="Mercurial\Tag.cs" />
+    <Compile Include="Mercurial\TagAction.cs" />
+    <Compile Include="Mercurial\TagCommand.cs" />
+    <Compile Include="Mercurial\TagsCommand.cs" />
+    <Compile Include="Mercurial\TipCommand.cs" />
+    <Compile Include="Mercurial\UpdateCommand.cs" />
+    <Compile Include="Mercurial\VersionCommand.cs" />
+    <Compile Include="Mercurial\XmlSerializationTypes\LogEntryAuthorNode.cs" />
+    <Compile Include="Mercurial\XmlSerializationTypes\LogEntryNode.cs" />
+    <Compile Include="Mercurial\XmlSerializationTypes\LogEntryParentNode.cs" />
+    <Compile Include="Mercurial\XmlSerializationTypes\LogEntryPathNode.cs" />
+    <Compile Include="Mercurial\XmlSerializationTypes\LogEntryTagNode.cs" />
+    <Compile Include="Mercurial\XmlSerializationTypes\LogNode.cs" />
     <Compile Include="Program.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
     <Compile Include="SysInfo.cs" />
@@ -129,7 +197,8 @@
   </ItemGroup>
   <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />
   <PropertyGroup>
-    <PostBuildEvent>xcopy $(SolutionDir)target\outdir\xcode\bin\Release\xcode.exe  \\cnshasap2\Hg_Repo\PACKAGE_REPO\com\virtuos\xcode\publish\*.* /R /Y /Q</PostBuildEvent>
+    <PostBuildEvent>
+    </PostBuildEvent>
   </PropertyGroup>
   <!-- To modify your build process, add your task inside one of the targets below and uncomment it. 
        Other similar extension points exist, see Microsoft.Common.targets.

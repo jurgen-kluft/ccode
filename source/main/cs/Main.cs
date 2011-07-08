@@ -151,41 +151,52 @@ namespace xcode
                 AddToLog("Failed to validate remote package repository at " + this.tbRemoteRepo.Text + " (reason: " + e.Message + ")\n", Color.DarkRed);
             }
 
-            // Copy:
-            // remote com\virtuos\xcode to cache com\virtuos\xcode
-            // dev.targets and dev.props to cache repo dir
-            if (!tbRemoteRepo.Text.EndsWith("\\"))
-                tbRemoteRepo.Text += "\\";
-            if (!tbLocalRepo.Text.EndsWith("\\"))
-                tbLocalRepo.Text += "\\";
+            // Version 2
+            // Hg Clone
             if (!tbLocalWorkDir.Text.EndsWith("\\"))
                 tbLocalWorkDir.Text += "\\";
+            if (!tbLocalRepo.Text.EndsWith("\\"))
+                tbLocalRepo.Text += "\\";
+            if (!tbRemoteRepo.Text.EndsWith("\\"))
+                tbRemoteRepo.Text += "\\";
+            if (!tbXCodeRepo.Text.EndsWith("\\"))
+                tbXCodeRepo.Text += "\\";
 
-            string sub_path = @"com\virtuos\xcode\publish\";
-            string src_path = tbRemoteRepo.Text;
+            string sub_path = @"com\virtuos\xcode\publish";
             string dst_path = tbLocalRepo.Text;
-            if (Directory.Exists(src_path))
+
+            if (Directory.Exists(dst_path + sub_path))
             {
-                string[] files = Directory.GetFiles(src_path + sub_path, "*.*", SearchOption.AllDirectories);
-                foreach (string src_file in files)
-                {
-                    string dst_file = dst_path + src_file.Substring(src_path.Length);
-                    AddToLog("Copy file from file://" + src_file + " to file://" + dst_file + "\n", Color.Blue);
-                    if (!Directory.Exists(Path.GetDirectoryName(dst_file)))
-                        Directory.CreateDirectory(Path.GetDirectoryName(dst_file));
-                    File.Copy(src_file, dst_file, true);
-                }
+                Directory.Delete(dst_path + sub_path);
+            }
+            Directory.CreateDirectory(dst_path + sub_path);
+
+            Mercurial.Repository hg_repo = new Mercurial.Repository(tbXCodeRepo.Text);
+            if (hg_repo.Exists)
+            {
+                Mercurial.CloneCommand clone_cmd = new Mercurial.CloneCommand();
+                clone_cmd.CompressedTransfer = false;
+                clone_cmd.Source = tbXCodeRepo.Text.Replace('\\', '/');
+
+                Mercurial.Repository new_hg_repo = new Mercurial.Repository(dst_path + sub_path);
+                new_hg_repo.Clone(clone_cmd);
+            }
+            else
+            {
+                // Error
             }
 
-            src_path = tbLocalRepo.Text + @"com\virtuos\xcode\publish\";
+            string src_path = tbLocalRepo.Text + @"com\virtuos\xcode\publish\";
             dst_path = tbLocalWorkDir.Text;
+            
             if (!Directory.Exists(dst_path))
                 Directory.CreateDirectory(dst_path);
+
             {
                 AddToLog("Copy file from file://" + src_path + "templates\\dev.targets.template" + " to file://" + dst_path + "dev.targets" + "\n", Color.Blue);
                 File.Copy(src_path + "templates\\dev.targets.template", dst_path + "dev.targets", true);
                 AddToLog("Copy file from file://" + src_path + "templates\\dev.props.template" + " to file://" + dst_path + "dev.props" + "\n", Color.Blue);
-                FileCopy(src_path + "templates\\dev.props.template", dst_path + "dev.props", tbLocalRepo.Text, tbRemoteRepo.Text);
+                FileCopy(src_path + "templates\\dev.props.template", dst_path + "dev.props", tbLocalRepo.Text, tbRemoteRepo.Text, tbXCodeRepo.Text);
             }
 
             AddToLog("Done -----\n", Color.Black);
@@ -193,7 +204,7 @@ namespace xcode
             // Copy 
         }
 
-        private bool FileCopy(string srcfile, string dstfile, string cacheRepoDir, string remoteRepoDir)
+        private bool FileCopy(string srcfile, string dstfile, string cacheRepoDir, string remoteRepoDir, string xcodeRepoDir)
         {
             string[] lines = File.ReadAllLines(srcfile);
 
@@ -205,6 +216,7 @@ namespace xcode
                     {
                         string l = line.Replace("${CacheRepoRoot}", cacheRepoDir);
                         l = l.Replace("${RemoteRepoRoot}", remoteRepoDir);
+                        l = l.Replace("${XCodeRepoRoot}", xcodeRepoDir);
                         writer.WriteLine(l);
                     }
                     writer.Close();

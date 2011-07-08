@@ -42,6 +42,8 @@
             this.mFolderBrowser = new System.Windows.Forms.FolderBrowserDialog();
             this.btLocalWorkDir = new System.Windows.Forms.Button();
             this.tbLocalWorkDir = new System.Windows.Forms.TextBox();
+            this.tbXCodeRepo = new System.Windows.Forms.TextBox();
+            this.btXCodeRepoUrl = new System.Windows.Forms.Button();
             this.groupBox1.SuspendLayout();
             this.groupBox2.SuspendLayout();
             ((System.ComponentModel.ISupportInitialize)(this.pictureBox1)).BeginInit();
@@ -63,7 +65,7 @@
             this.tbLocalRepo.Name = "tbLocalRepo";
             this.tbLocalRepo.Size = new System.Drawing.Size(484, 20);
             this.tbLocalRepo.TabIndex = 1;
-            this.tbLocalRepo.Text = "D:\\PACKAGE_REPO\\";
+            this.tbLocalRepo.Text = "D:\\Packages\\PACKAGE_REPO\\";
             // 
             // btLocalRepo
             // 
@@ -108,7 +110,7 @@
             // groupBox1
             // 
             this.groupBox1.Controls.Add(this.rtbLog);
-            this.groupBox1.Location = new System.Drawing.Point(189, 98);
+            this.groupBox1.Location = new System.Drawing.Point(189, 139);
             this.groupBox1.Name = "groupBox1";
             this.groupBox1.Size = new System.Drawing.Size(484, 241);
             this.groupBox1.TabIndex = 6;
@@ -131,7 +133,7 @@
             this.groupBox2.Controls.Add(this.btExit);
             this.groupBox2.Controls.Add(this.btInstall);
             this.groupBox2.Controls.Add(this.btVerify);
-            this.groupBox2.Location = new System.Drawing.Point(12, 99);
+            this.groupBox2.Location = new System.Drawing.Point(12, 140);
             this.groupBox2.Name = "groupBox2";
             this.groupBox2.Size = new System.Drawing.Size(171, 240);
             this.groupBox2.TabIndex = 7;
@@ -175,14 +177,33 @@
             this.tbLocalWorkDir.Name = "tbLocalWorkDir";
             this.tbLocalWorkDir.Size = new System.Drawing.Size(484, 20);
             this.tbLocalWorkDir.TabIndex = 9;
-            this.tbLocalWorkDir.Text = "I:\\Packages";
+            this.tbLocalWorkDir.Text = "D:\\Packages";
+            // 
+            // tbXCodeRepo
+            // 
+            this.tbXCodeRepo.Location = new System.Drawing.Point(189, 101);
+            this.tbXCodeRepo.Name = "tbXCodeRepo";
+            this.tbXCodeRepo.Size = new System.Drawing.Size(484, 20);
+            this.tbXCodeRepo.TabIndex = 11;
+            this.tbXCodeRepo.Text = "\\\\cnshasap2\\Hg_Repo\\PACKAGE_REPO\\com\\virtuos\\xcode\\publish\\";
+            // 
+            // btXCodeRepoUrl
+            // 
+            this.btXCodeRepoUrl.Location = new System.Drawing.Point(13, 99);
+            this.btXCodeRepoUrl.Name = "btXCodeRepoUrl";
+            this.btXCodeRepoUrl.Size = new System.Drawing.Size(170, 23);
+            this.btXCodeRepoUrl.TabIndex = 10;
+            this.btXCodeRepoUrl.Text = "XCode Repository...";
+            this.btXCodeRepoUrl.UseVisualStyleBackColor = true;
             // 
             // Main
             // 
             this.AutoScaleDimensions = new System.Drawing.SizeF(6F, 13F);
             this.AutoScaleMode = System.Windows.Forms.AutoScaleMode.Font;
             this.CancelButton = this.btExit;
-            this.ClientSize = new System.Drawing.Size(680, 348);
+            this.ClientSize = new System.Drawing.Size(680, 393);
+            this.Controls.Add(this.tbXCodeRepo);
+            this.Controls.Add(this.btXCodeRepoUrl);
             this.Controls.Add(this.tbLocalWorkDir);
             this.Controls.Add(this.btLocalWorkDir);
             this.Controls.Add(this.groupBox2);
@@ -219,6 +240,8 @@
         private System.Windows.Forms.Button btLocalWorkDir;
         private System.Windows.Forms.TextBox tbLocalWorkDir;
         private System.Windows.Forms.PictureBox pictureBox1;
+        private System.Windows.Forms.TextBox tbXCodeRepo;
+        private System.Windows.Forms.Button btXCodeRepoUrl;
     }
 }
 
