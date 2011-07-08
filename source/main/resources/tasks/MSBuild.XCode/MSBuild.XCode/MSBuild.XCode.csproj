@@ -243,6 +243,7 @@
     <Compile Include="Package\PackageResource.cs" />
     <Compile Include="Package\Global.cs" />
     <Compile Include="Tasks\Configs.cs" />
+    <Compile Include="Tasks\Update.cs" />
     <Compile Include="Version\ComparableVersion.Parser.cs" />
     <Compile Include="Package\IPackageFilename.cs" />
     <Compile Include="Dependency\DependencyTreeNode.cs" />
