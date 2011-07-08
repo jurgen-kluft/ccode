@@ -1,0 +1,12 @@
+mkdir source
+mkdir source\main\resources
+mkdir source\main\include
+mkdir source\main\cpp
+mkdir source\test\resources
+mkdir source\test\include
+mkdir source\test\cpp
+mkdir docs
+mkdir docs\manuals
+mkdir docs\references
+mkdir tools
+mkdir target
