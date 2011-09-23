@@ -116,7 +116,7 @@ namespace MSBuild.XCode
             return false;
         }
 
-        public bool WriteAll(string propsFilePath, string[] platforms, string dependencyType, string location)
+        public bool X_WriteAll(string propsFilePath, string[] platforms, string dependencyType, string location)
         {
             foreach(string platform in platforms)
             {

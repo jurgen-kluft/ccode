@@ -119,11 +119,6 @@ namespace MSBuild.XCode
             return mResource.GetConfigsForPlatform(platform);
         }
 
-        public bool HasPlatformWithConfig(string platform, string config)
-        {
-            return mResource.HasPlatformWithConfig(platform, config);
-        }
-
         public void Save(string rootdir, string filename)
         {
             string reldir = rootdir + Path.GetDirectoryName(filename);

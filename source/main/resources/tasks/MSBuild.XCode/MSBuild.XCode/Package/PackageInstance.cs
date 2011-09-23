@@ -9,71 +9,23 @@ using MSBuild.XCode.Helpers;
 
 namespace MSBuild.XCode
 {
-    public enum ELocation
-    {
-        Remote,     ///< Remote package repository
-        Cache,      ///< Cache package repository (on local machine)
-        Local,      ///< Local package, a 'Created' package of the Root
-        Target,     ///< Target package, an 'Extracted' package in the target folder of a root package
-        Share,      ///< Share package, an 'Extracted' package in the shared package repo
-        Root,       ///< Root package
-    }
-
     public partial class PackageInstance
     {
         private PackageResource mResource;
-
-        private string mRootURL = string.Empty;
-
-        private string mBranch;
-        private string mPlatform;
-        private bool mIsRoot;
-
         private PomInstance mPom;
+        private Package mPackage;
 
         public Group Group { get { return mResource.Group; } }
         public string Name { get { return mResource.Name; } }
-        public string Branch { get { return mBranch; } set { mBranch = value; } }
-        public string Platform { get { return mPlatform; } set { mPlatform = value; } }
+        public string Branch { get; set; }
 
         public bool IsValid { get { return mResource.IsValid; } }
 
-        public DateTime RemoteSignature { get; set; }
-        public DateTime CacheSignature { get; set; }
-        public DateTime ShareSignature { get; set; }
-        public DateTime TargetSignature { get; set; }
-        public DateTime LocalSignature { get; set; }
-
-        public IPackageFilename RemoteFilename { get; set; }
-        public IPackageFilename CacheFilename { get; set; }
-        public IPackageFilename ShareFilename { get; set; }
-        public IPackageFilename TargetFilename { get; set; }
-        public IPackageFilename LocalFilename { get; set; }
-
-        public ComparableVersion RemoteVersion { get; set; }
-        public ComparableVersion CacheVersion { get; set; }
-        public ComparableVersion ShareVersion { get; set; }
-        public ComparableVersion TargetVersion { get; set; }
-        public ComparableVersion LocalVersion { get; set; }
-        public ComparableVersion RootVersion { get; set; }
-
-        public bool RemoteExists { get { return !String.IsNullOrEmpty(RemoteURL); } }
-        public bool CacheExists { get { return !String.IsNullOrEmpty(CacheURL); } }
-        public bool LocalExists { get { return !String.IsNullOrEmpty(LocalURL); } }
-        public bool ShareExists { get { return !String.IsNullOrEmpty(ShareURL); } }
-        public bool TargetExists { get { return !String.IsNullOrEmpty(TargetURL); } }
-        public bool RootExists { get { return !String.IsNullOrEmpty(RootURL); } }
-
-        public string RemoteURL { get; set; }
-        public string CacheURL { get; set; }
-        public string LocalURL { get; set; }
-        public string ShareURL { get; set; }
-        public string TargetURL { get; set; }
-        public string RootURL { get { return mRootURL; } }
-
-        public bool IsRootPackage { get { return mIsRoot; } }
+        public string RootURL { get; set; }
+        public bool IsRootPackage { get; private set; }
 
         public PomInstance Pom { get { return mPom; } }
+        public Package Package { get { return mPackage; } }
         public List<DependencyResource> Dependencies { get { return Pom.Dependencies; } }
 
         public bool IsCpp { get { return Pom.IsCpp; } }
@@ -81,18 +33,19 @@ namespace MSBuild.XCode
 
         private PackageInstance(bool isRoot)
         {
-            mIsRoot = isRoot;
+            IsRootPackage = isRoot;
+            mPackage = new Package();
         }
 
         internal PackageInstance(bool isRoot, PackageResource resource)
+            : this(isRoot)
         {
-            mIsRoot = isRoot;
             mResource = resource;
         }
 
         internal PackageInstance(bool isRoot, PackageResource resource, PomInstance pom)
+            : this(isRoot)
         {
-            mIsRoot = isRoot;
             mResource = resource;
             mPom = pom;
             mPom.Package = this;
@@ -102,8 +55,8 @@ namespace MSBuild.XCode
         {
             PackageResource resource = PackageResource.From(name, group);
             PackageInstance instance = resource.CreateInstance(isRoot);
-            instance.mBranch = branch;
-            instance.mPlatform = platform;
+            instance.Branch = branch;
+            instance.SetPlatform(platform);
             return instance;
         }
 
@@ -111,7 +64,13 @@ namespace MSBuild.XCode
         {
             PackageResource resource = PackageResource.LoadFromFile(dir);
             PackageInstance instance = resource.CreateInstance(true);
-            instance.mRootURL = dir;
+            instance.RootURL = dir;
+
+            foreach (string platform in resource.Platforms)
+            {
+                instance.SetPlatform(platform);
+                instance.Package.RootURL = dir;
+            }
             return instance;
         }
 
@@ -119,26 +78,27 @@ namespace MSBuild.XCode
         {
             PackageResource resource = PackageResource.LoadFromFile(dir);
             PackageInstance instance = resource.CreateInstance(false);
-            instance.TargetURL = dir;
+            foreach (string platform in resource.Platforms)
+            {
+                instance.SetPlatform(platform);
+                instance.Package.TargetURL = dir;
+            }
             return instance;
         }
 
-        public static PackageInstance LoadFromLocal(string rootURL, IPackageFilename filename)
+        private void InitPackage(string platform)
         {
-            string subDir = "target\\" + filename.Name + "\\build\\" + filename.Platform + "\\";
-            PackageResource resource = PackageResource.LoadFromPackage(rootURL + subDir, filename);
-            PackageInstance instance = resource.CreateInstance(false);
-            instance.mRootURL = rootURL;
-            instance.LocalURL = rootURL + subDir;
-            instance.LocalFilename = filename;
-            instance.LocalVersion = filename.Version;
-            return instance;
+            mPackage.Name = Name;
+            mPackage.Group = Group.ToString();
+            mPackage.Branch = Branch;
+            mPackage.Platform = platform;
+            mPackage.Language = IsCpp ? "C++" : "C#";
         }
 
         public void SetPlatform(string platform)
         {
-            mPlatform = platform;
-            RootVersion = Pom.Versions.GetForPlatform(Platform);
+            InitPackage(platform);
+            mPackage.RootVersion = Pom.Versions.GetForPlatform(platform);
         }
 
         public bool Load()
@@ -152,177 +112,29 @@ namespace MSBuild.XCode
                 mResource = resource;
                 return true;
             }
-            else if (TargetExists)
+
+            if (mPackage.TargetExists)
             {
                 // Target actually is a dummy, it doesn't contain the content, the actual content
                 // is in the Share repository. The Target only contains the full filename .
-                if (ShareExists)
+                if (mPackage.ShareExists)
                 {
-                    PackageResource resource = PackageResource.LoadFromFile(ShareURL);
+                    PackageResource resource = PackageResource.LoadFromFile(mPackage.ShareURL);
                     mPom = resource.CreatePomInstance(false);
                     mPom.Package = this;
                     mResource = resource;
                     return true;
                 }
             }
-            else if (CacheExists)
+            else if (mPackage.CacheExists)
             {
-                PackageResource resource = PackageResource.LoadFromPackage(CacheURL, CacheFilename);
+                PackageResource resource = PackageResource.LoadFromPackage(mPackage.CacheURL, mPackage.CacheFilename);
                 mPom = resource.CreatePomInstance(false);
                 mPom.Package = this;
                 mResource = resource;
                 return true;
             }
             return false;
-        }
-
-        public void SetURL(ELocation location, string url)
-        {
-            switch (location)
-            {
-                case ELocation.Remote: RemoteURL = url; break;
-                case ELocation.Cache: CacheURL = url; break;
-                case ELocation.Local: LocalURL = url; break;
-                case ELocation.Share: ShareURL = url; break;
-                case ELocation.Target: TargetURL = url; break;
-                case ELocation.Root: mRootURL = url; break;
-            }
-        }
-
-        public void SetFilename(ELocation location, IPackageFilename filename)
-        {
-            switch (location)
-            {
-                case ELocation.Remote: RemoteFilename = filename; break;
-                case ELocation.Cache: CacheFilename = filename; break;
-                case ELocation.Local: LocalFilename = filename; break;
-                case ELocation.Share: ShareFilename = filename; break;
-                case ELocation.Target: TargetFilename = filename; break;
-                case ELocation.Root: break;
-            }
-        }
-
-        public void SetSignature(ELocation location, DateTime signature)
-        {
-            switch (location)
-            {
-                case ELocation.Remote: RemoteSignature = signature; break;
-                case ELocation.Cache: CacheSignature = signature; break;
-                case ELocation.Local: LocalSignature = signature; break;
-                case ELocation.Share: ShareSignature = signature; break;
-                case ELocation.Target: TargetSignature = signature; break;
-                case ELocation.Root: break;
-            }
-        }
-
-
-        public void SetVersion(ELocation location, ComparableVersion version)
-        {
-            switch (location)
-            {
-                case ELocation.Remote: RemoteVersion = version; break;
-                case ELocation.Cache: CacheVersion = version; break;
-                case ELocation.Local: LocalVersion = version; break;
-                case ELocation.Share: ShareVersion = version; break;
-                case ELocation.Target: TargetVersion = version; break;
-                case ELocation.Root: RootVersion = version; break;
-            }
-        }
-
-        public string GetLocalURL()
-        {
-            if (RootExists)
-            {
-                return RootURL;
-            }
-            else if (TargetExists)
-            {
-                if (ShareExists)
-                {
-                    return ShareURL;
-                }
-                return TargetURL;
-            }
-            else if (ShareExists)
-            {
-                return ShareURL;
-            }
-            return string.Empty;
-        }
-
-        public string GetURL(ELocation location)
-        {
-            string url = string.Empty;
-            switch (location)
-            {
-                case ELocation.Remote: url = RemoteURL; break;
-                case ELocation.Cache: url = CacheURL; break;
-                case ELocation.Local: url = LocalURL; break;
-                case ELocation.Share: url = ShareURL; break;
-                case ELocation.Target: url = TargetURL; break;
-                case ELocation.Root: url = RootURL; break;
-            }
-            return url;
-        }
-
-        public bool HasURL(ELocation location)
-        {
-            bool has = false;
-            switch (location)
-            {
-                case ELocation.Remote: has = RemoteExists; break;
-                case ELocation.Cache: has = CacheExists; break;
-                case ELocation.Local: has = LocalExists; break;
-                case ELocation.Share: has = ShareExists; break;
-                case ELocation.Target: has = TargetExists; break;
-                case ELocation.Root: has = RootExists; break;
-            }
-            return has;
-        }
-
-        public IPackageFilename GetFilename(ELocation location)
-        {
-            IPackageFilename filename = null;
-            switch (location)
-            {
-                case ELocation.Remote: filename = RemoteFilename; break;
-                case ELocation.Cache: filename = CacheFilename; break;
-                case ELocation.Local: filename = LocalFilename; break;
-                case ELocation.Share: filename = ShareFilename; break;
-                case ELocation.Target: filename = TargetFilename; break;
-                case ELocation.Root: break;
-            }
-            return filename;
-        }
-
-        public DateTime GetSignature(ELocation location)
-        {
-            DateTime signature = DateTime.MinValue;
-            switch (location)
-            {
-                case ELocation.Remote: signature = RemoteSignature; break;
-                case ELocation.Cache: signature = CacheSignature; break;
-                case ELocation.Local: signature = LocalSignature; break;
-                case ELocation.Share: signature = ShareSignature; break;
-                case ELocation.Target: signature = TargetSignature; break;
-                case ELocation.Root: break;
-            }
-            return signature;
-        }
-
-        public ComparableVersion GetVersion(ELocation location)
-        {
-            ComparableVersion version = null;
-            switch (location)
-            {
-                case ELocation.Remote: version = RemoteVersion; break;
-                case ELocation.Cache: version = CacheVersion; break;
-                case ELocation.Local: version = LocalVersion; break;
-                case ELocation.Share: version = ShareVersion; break;
-                case ELocation.Target: version = TargetVersion; break;
-                case ELocation.Root: version = RootVersion; break;
-            }
-            return version;
         }
 
         public bool Info()
@@ -341,11 +153,20 @@ namespace MSBuild.XCode
         public void GenerateProjects(PackageDependencies dependencies, List<string> platforms)
         {
             // Generate the project .props file for every platform
-            foreach(string platform in platforms)
+            foreach (string platform in platforms)
             {
-                string path = RootURL.EndWith('\\') + "target\\" + this.Name + "\\";
-                string filename = path + this.Name + "." + platform + ".props";
-                Pom.ProjectProperties.Write(filename, platform, "Root", RootURL);
+                List<PackageInstance> packageInstances = dependencies.GetAllDependencyPackages(platform);
+                packageInstances.Add(this);
+
+                foreach (PackageInstance pi in packageInstances)
+                {
+                    bool isRoot = pi.IsRootPackage;
+                    string path = RootURL.EndWith('\\') + "target\\" + pi.Name + "\\";
+                    string filename = path + pi.Name + "." + platform + ".props";
+                    string type = isRoot ? "Root" : "Package";
+                    string location = isRoot ? pi.Package.RootURL : pi.Package.ShareURL;
+                    pi.Pom.ProjectProperties.Write(filename, platform, type, location);
+                }
             }
 
             // Generating project files is a bit complex in that it has to merge project definitions on a per platform basis.
@@ -472,7 +293,7 @@ namespace MSBuild.XCode
 
             // We need to change the way things are merged, from now we only use 'DependsOn' and we do not magically
             // merge groups anymore. Group is to be removed from the project settings.
-            // The format of DependsOn (seperated with a ';'):
+            // The format of DependsOn (separated with a ';'):
             // - 'PackageNameA:ProjectNameA';'PackageNameA:ProjectNameB';'PackageNameB:ProjectNameA'
 
             // Second, now that we have the dictionaries setup, we can start to merge dependency projects
@@ -514,16 +335,21 @@ namespace MSBuild.XCode
                                 ///<<<<<<< PROJECT MERGE <<<<<<<<<<
                                 rootProject.MergeWithDependencyProject(dependencyProject);
 
+#if WRITE_PROJECT_PROPS_FILE_HERE
                                 // Write the project properties .props file of this dependency project
                                 foreach (string platform in platforms)
                                 {
+                                    Package dependencyPackage = dependencyProject.Pom.Package.GetPackageForPlatform(platform);
+                                    bool isRoot = dependencyProject.Pom.Package.IsRootPackage;
+
                                     string name = dependencyProject.Pom.Name;
-                                    string packageRoot = dependencyProject.Pom.Package.GetLocalURL();
+                                    string packageLocation = isRoot ? dependencyPackage.RootURL : dependencyPackage.ShareURL;
                                     string path = RootURL.EndWith('\\') + "target\\" + name + "\\";
                                     string filename = path + name + "." + platform + ".props";
-                                    string type = dependencyProject.Pom.Package.IsRootPackage ? "Root" : "Package";
-                                    dependencyProject.Pom.ProjectProperties.Write(filename, platform, type, packageRoot);
+                                    string type = isRoot ? "Root" : "Package";
+                                    dependencyProject.Pom.ProjectProperties.Write(filename, platform, type, packageLocation);
                                 }
+#endif
 
                                 /// Now queue all the dependencies of this dependencyProject, since
                                 /// we also have to merge them and also the dependencies of those

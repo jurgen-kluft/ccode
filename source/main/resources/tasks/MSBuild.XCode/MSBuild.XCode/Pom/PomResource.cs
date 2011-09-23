@@ -9,13 +9,8 @@ namespace MSBuild.XCode
 {
     public class PomResource
     {
-        private string mName;
-        private Group mGroup;
-
-        public string Name { get { return mName; } private set { mName = value; } }
-        public Group Group { get { return mGroup; } }
-
-        public bool IsValid { get { return !String.IsNullOrEmpty(Name); } }
+        public string Name { get; set; }
+        public Group Group { get; set; }
 
         public PackageStructure DirectoryStructure { get; set; }
 
@@ -27,10 +22,12 @@ namespace MSBuild.XCode
         public List<string> Platforms { get; set; }
         public Versions Versions { get; set; }
 
+        public bool IsValid { get { return !String.IsNullOrEmpty(Name); } }
+
         public PomResource()
         {
             Name = string.Empty;
-            mGroup = new Group(string.Empty);
+            Group = new Group(string.Empty);
 
             DirectoryStructure = new PackageStructure();
             Content = new PackageContent();
@@ -46,7 +43,7 @@ namespace MSBuild.XCode
         {
             PomResource resource = new PomResource();
             resource.Name = name;
-            resource.mGroup = new Group(group);
+            resource.Group = new Group(group);
             return resource;
         }
 
@@ -70,16 +67,6 @@ namespace MSBuild.XCode
                 Loggy.Indent -= 1;
             }
             return true;
-        }
-
-        public ProjectResource GetProjectByName(string name)
-        {
-            foreach (ProjectResource p in Projects)
-            {
-                if (String.Compare(p.Name, name, true) == 0)
-                    return p;
-            }
-            return null;
         }
 
         public void LoadFile(string filename)
@@ -113,7 +100,7 @@ namespace MSBuild.XCode
                         }
                         else if (a.Name == "Group")
                         {
-                            mGroup = new Group(a.Value);
+                            Group = new Group(a.Value);
                         }
                     }
                 }

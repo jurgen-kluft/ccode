@@ -32,22 +32,25 @@ namespace MSBuild.XCode
             RootDir = RootDir.EndWith('\\');
 
             PackageInstance.TemplateDir = TemplateDir;
-            PackageInstance.CacheRepoDir = CacheRepoDir;
-            PackageInstance.RemoteRepoDir = RemoteRepoDir;
-            PackageInstance.Initialize();
+            if (!PackageInstance.Initialize(RemoteRepoDir, CacheRepoDir, RootDir))
+            {
+                Loggy.Error(String.Format("Error: Failed to initialize in Package::Sync"));
+                return false;
+            }
 
             PackageInstance package = PackageInstance.LoadFromRoot(RootDir);
+            package.SetPlatform(Platform);
             if (package.IsValid)
             {
-                package.SetPlatform(Platform);
                 PackageDependencies dependencies = new PackageDependencies(package);
-
                 if (!dependencies.BuildForPlatform(Platform))
                 {
                     Loggy.Error(String.Format("Error: Failed to build dependencies in Package::Sync"));
                     return false;
                 }
-                dependencies.SaveInfo(Platform, new FileDirectoryPath.FilePathAbsolute(RootDir + "\\target\\" + package.Name + "\\build\\"  + Platform + "\\dependencies.info"));
+                List<string> platforms = new List<string>();
+                platforms.Add(Platform);
+                dependencies.SaveInfoForPlatforms(platforms);
             }
             else
             {

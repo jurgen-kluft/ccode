@@ -20,33 +20,65 @@ namespace MSBuild.XCode
             mFileHashes = new Dictionary<string, string>();
         }
 
-        public static PackageSfvFile Load(string URL, string filename)
+        public static bool AreEqual(PackageSfvFile a, PackageSfvFile b)
+        {
+            if (a.mFileHashes.Count != b.mFileHashes.Count)
+                return false;
+
+            foreach (KeyValuePair<string, string> k in a.mFileHashes)
+            {
+                string val;
+                if (b.mFileHashes.TryGetValue(k.Key, out val))
+                {
+                    if (String.Compare(k.Value, val, true) != 0)
+                        return false;
+                }
+            }
+            return true;
+        }
+
+        public static PackageSfvFile Load(string sfv_text)
         {
             PackageSfvFile sfvFile = new PackageSfvFile();
+
+            StringReader reader = new StringReader(sfv_text);
+            while (true)
+            {
+                string entry = reader.ReadLine();
+                if (String.IsNullOrEmpty(entry))
+                    break;
+
+                if (entry.Trim().StartsWith(";"))   /// Skip comments
+                    continue;
+
+                // Get the MD5 and Filename
+                int s = entry.IndexOf('*');
+                if (s >= 0)
+                {
+                    string entry_md5 = entry.Substring(s + 1).Trim();
+                    string entry_filename = entry.Substring(0, s).Trim();
+                    sfvFile.mFileHashes.Add(entry_filename, entry_md5);
+                }
+            }
+            reader.Close();
+
+            return sfvFile;
+        }
+
+        public static PackageSfvFile Load(string URL, string filename)
+        {
+            PackageSfvFile sfvFile;
 
             string md5_file = filename + ".md5";
             if (File.Exists(URL + md5_file))
             {
                 // Load SFV file
-                FileStream stream = new FileStream(URL + md5_file, FileMode.Open, FileAccess.Read);
-                StreamReader reader = new StreamReader(stream);
-                while (!reader.EndOfStream)
-                {
-                    string entry = reader.ReadLine();
-                    if (entry.Trim().StartsWith(";"))   /// Skip comments
-                        continue;
-
-                    // Get the MD5 and Filename
-                    int s = entry.IndexOf('*');
-                    if (s >= 0)
-                    {
-                        string entry_md5 = entry.Substring(s + 1).Trim();
-                        string entry_filename = entry.Substring(0, s).Trim();
-                        sfvFile.mFileHashes.Add(entry_filename, entry_md5);
-                    }
-                }
-                stream.Close();
-                reader.Close();
+                string sfv_text = File.ReadAllText(URL + md5_file);
+                sfvFile = Load(sfv_text);
+            }
+            else
+            {
+                sfvFile = new PackageSfvFile();
             }
 
             return sfvFile;

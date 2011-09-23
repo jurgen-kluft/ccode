@@ -20,8 +20,6 @@ namespace MSBuild.XCode
         private PackageInstance mPackage;
         private List<DependencyInstance> mDependencies;
 
-        private IPackageRepository mTargetRepo;
-
         public PackageInstance Package { get { return mPackage; } }
         public string Platform { get { return mPlatform;  } }
         public List<DependencyInstance> Dependencies { get { return mDependencies; } }
@@ -35,7 +33,6 @@ namespace MSBuild.XCode
             mAllNodesMap = new Dictionary<string, DependencyTreeNode>();
             mCompileQueue = new Queue<DependencyTreeNode>();
             mCompileIteration = 0;
-            mTargetRepo = new PackageRepositoryTarget(package.RootURL + "target\\");
         }
 
         public List<PackageInstance> GetAllDependencyPackages()
@@ -135,124 +132,51 @@ namespace MSBuild.XCode
         {
             int result = 0;
 
-            mTargetRepo.Update(node.Package);
+            PackageInstance pi = node.Package;
+            Package p = pi.Package;
+            result = PackageInstance.RepoActor.Update(p, node.Dependency.VersionRange);
 
-            // Try to get the package from the Cache to Target
-            if (!node.Package.RemoteExists)
-                PackageInstance.RemoteRepo.Update(node.Package, node.Dependency.VersionRange);
-            if (!node.Package.CacheExists)
-                PackageInstance.CacheRepo.Update(node.Package, node.Dependency.VersionRange);
-
-            if (node.Package.CacheExists)
-            {
-                PackageInstance.ShareRepo.Update(node.Package);
-            }
-
-            // Do a signature verification
-            if (node.Package.TargetExists && node.Package.ShareExists && node.Package.CacheExists)
-            {
-                if (node.Package.RemoteExists)
-                {
-                    if (node.Package.RemoteSignature == node.Package.CacheSignature && node.Package.CacheSignature == node.Package.ShareSignature)
-                    {
-                        return 0;
-                    }
-                }
-                else
-                {
-                    if (node.Package.CacheSignature == node.Package.TargetSignature)
-                        return 0;
-                }
-            }
-
-            // Check if the Remote has a better version, Remote may not exist
-            if (node.Package.RemoteExists)
-            {
-                if (!node.Package.CacheExists || (node.Package.RemoteVersion > node.Package.CacheVersion))
-                {
-                    // Update from remote to cache
-                    if (!PackageInstance.CacheRepo.Add(node.Package, ELocation.Remote))
-                    {
-                        // Failed to get package from Remote to Cache
-                        result = -1;
-                    }
-                }
-            }
-
-            if (node.Package.CacheExists)
-            {
-                if (!node.Package.ShareExists || (node.Package.CacheVersion > node.Package.ShareVersion))
-                {
-                    if (PackageInstance.ShareRepo.Add(node.Package, ELocation.Cache))
-                    {
-                        result = 1;
-                    }
-                    else
-                    {
-                        // Failed to get package from Cache to Share
-                        result = -1;
-                    }
-                }
-            }
-            else
-            {
-                // Failed to get package from Remote to Cache
+            if (result == -1)
                 Loggy.Error(String.Format("Dependency {0} in group {1} doesn't exist at the remote and cache package repositories", node.Dependency.Name, node.Dependency.Group.ToString()));
-                result = -1;
-            }
-
-            if (node.Package.ShareExists)
-            {
-                if (!node.Package.TargetExists || (node.Package.ShareVersion > node.Package.TargetVersion))
-                {
-                    if (mTargetRepo.Add(node.Package, ELocation.Share))
-                    {
-                        result = 1;
-                    }
-                    else
-                    {
-                        // Failed to get package from Cache to Target
-                        result = -1;
-                    }
-                }
-            }
-            else
-            {
-                // Failed to get package from Remote to Cache
-                Loggy.Error(String.Format("Dependency {0} in group {1} doesn't exist at the remote and cache package repositories", node.Dependency.Name, node.Dependency.Group.ToString()));
-                result = -1;
-            }
 
             return result;
         }
 
-        public void SaveInfo(FileDirectoryPath.FilePathAbsolute filepath)
+        public bool SaveInfo(FileDirectoryPath.FilePathAbsolute filepath)
         {
-            Loggy.Info(filepath.ParentDirectoryPath.ToString());
-            if (!Directory.Exists(filepath.ParentDirectoryPath.ToString()))
-                Directory.CreateDirectory(filepath.ParentDirectoryPath.ToString());
+            try
+            {
+                if (!Directory.Exists(filepath.ParentDirectoryPath.ToString()))
+                    Directory.CreateDirectory(filepath.ParentDirectoryPath.ToString());
 
-            FileStream stream = new FileStream(filepath.ToString(), FileMode.Create, FileAccess.Write);
-            StreamWriter writer = new StreamWriter(stream);
+                FileStream stream = new FileStream(filepath.ToString(), FileMode.Create, FileAccess.Write);
+                StreamWriter writer = new StreamWriter(stream);
 
-            HashSet<string> register = new HashSet<string>();
+                HashSet<string> register = new HashSet<string>();
 
-            ComparableVersion version = Package.Pom.Versions.GetForPlatform(Platform);
-            string versionStr = version != null ? version.ToString() : "?";
-            writer.WriteLine(String.Format("{0}, version={1}, platform={2}", Package.Name, versionStr, Platform));
-            foreach (DependencyTreeNode node in mRootNodes)
-                node.SaveInfo(writer, register);
+                ComparableVersion version = Package.Pom.Versions.GetForPlatform(Platform);
+                string versionStr = version != null ? version.ToString() : "?";
+                writer.WriteLine(String.Format("{0}, version={1}, platform={2}", Package.Name, versionStr, Platform));
+                foreach (DependencyTreeNode node in mRootNodes)
+                    node.SaveInfo(writer, register);
 
-            writer.Close();
-            stream.Close();
+                writer.Close();
+                stream.Close();
+                return true;
+            }
+            catch (SystemException)
+            {
+                return false;
+            }
         }
 
         public void Info()
         {
             foreach (DependencyTreeNode node in mAllNodesMap.Values)
             {
-                Loggy.Info(String.Format("Name                       : {0}", node.Package.Name));
-                Loggy.Info(String.Format("Version                    : {0}", node.Package.TargetVersion));
+                Package p = node.Package.Package;
+                Loggy.Info(String.Format("Name                       : {0}", p.Name));
+                Loggy.Info(String.Format("Version                    : {0}", p.TargetVersion));
             }
         }
 

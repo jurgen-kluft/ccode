@@ -1,10 +1,5 @@
 ﻿using System;
 using System.IO;
-using System.Text;
-using System.Collections;
-using System.Collections.Generic;
-using System.Security.Cryptography;
-using Ionic.Zip;
 using MSBuild.XCode.Helpers;
 
 namespace MSBuild.XCode
@@ -23,25 +18,30 @@ namespace MSBuild.XCode
     {
         public PackageRepositoryLocal(string rootDir)
         {
-            RepoDir = rootDir.EndWith('\\');
+            RepoURL = rootDir.EndWith('\\');
             Layout = new LayoutLocal();
             Location = ELocation.Local;
+            Valid = true;
         }
 
-        public string RepoDir { get; set; }
-        public ELocation Location { get; set; }
+        public bool Valid { get; private set; }
+        public string RepoURL { get; set; }
+        public ELocation Location { get; private set; }
         public ILayout Layout { get; set; }
 
-        public bool Update(PackageInstance package)
+        public bool Query(Package package)
         {
             // See if there are one or more created packages in the Target\Build\ folder.
             // If so then together with the content description and doing a check if files have been
             // modified see if we need to create a new zipped package.
             // If pom.xml is not modified and all content of the previous package are identical
             // Lastly delete any old zip packages.
-            string rootURL = RepoDir;
-            string buildURL = rootURL + "target\\" + package.Name + "\\build\\" + package.Platform + "\\";
-            string[] package_filenames = Directory.GetFiles(buildURL, String.Format("*{0}.zip", package.Platform), SearchOption.TopDirectoryOnly);
+            string rootURL = RepoURL;
+            string buildURL = String.Format("{0}target\\{1}\\build\\{2}\\", rootURL, package.Name, package.Platform);
+            if (!Directory.Exists(buildURL))
+                return false;
+
+            string[] package_filenames = Directory.GetFiles(buildURL, String.Format("*{0}+{1}.zip", package.Branch, package.Platform), SearchOption.TopDirectoryOnly);
             if (package_filenames.Length > 0)
             {
                 // Find the one with the latest LastWriteTime
@@ -67,7 +67,6 @@ namespace MSBuild.XCode
                     package.LocalURL = buildURL;
                     package.LocalSignature = File.GetLastWriteTime(latest_package_filename);
 
-
                     // Delete the old .zip files
                     foreach (string package_filename in package_filenames)
                     {
@@ -84,140 +83,44 @@ namespace MSBuild.XCode
             return false;
         }
 
-        public bool Update(PackageInstance package, VersionRange versionRange)
+        public bool Query(Package package, VersionRange versionRange)
         {
             // See if this package is in the target folder and valid for the version range
-            if (Update(package))
+            if (Query(package))
             {
                 return true;
             }
             return false;
         }
 
-        public bool Add(PackageInstance package, ELocation from)
+        public bool Link(Package package, out string filename)
         {
-            // From = Root
-            // Create a new package from the root package and store in the local package repository
-            bool success = false;
-            if (from != ELocation.Root)
-                return false;
-
-            string branch = package.Branch;
-            string platform = package.Platform;
-            ComparableVersion version = package.Pom.Versions.GetForPlatformWithBranch(platform, branch);
-
-            /// Delete the .sfv file
-            string sfv_filename = package.Name + ".md5";
-            string rootURL = RepoDir;
-            string buildURL = rootURL + "target\\" + package.Name + "\\build\\" + platform + "\\";
-
-            if (!Directory.Exists(buildURL))
-                Directory.CreateDirectory(buildURL);
-
-            if (File.Exists(buildURL + sfv_filename))
-                File.Delete(buildURL + sfv_filename);
-
-            Dictionary<string, string> files;
-            if (!package.Pom.Content.Collect(package.Name, platform, rootURL, out files))
+            string package_f = package.GetURL(Location) + package.GetFilename(Location);
+            if (File.Exists(package_f))
             {
-                package.LocalFilename = new PackageFilename();
-                return false;
+                filename = package_f;
+                return true;
             }
-            
-            // Is pom.xml included?
-            bool includesPomXml = false;
-            foreach (KeyValuePair<string, string> pair in files)
-            {
-                if (String.Compare(Path.GetFileName(pair.Key), "pom.xml", true) == 0)
-                {
-                    includesPomXml = true;
-                    break;
-                }
-            }
-            if (!includesPomXml)
-            {
-                Loggy.Error(String.Format("Error: PackageRepositoryLocal::Add, package must include pom.xml!"));
-                package.LocalFilename = new PackageFilename();
-                return false;
-            }
-
-            PackageSfvFile sfvFile = PackageSfvFile.New(new List<string>(files.Keys));
-            if (!sfvFile.Save(buildURL, package.Name, files))
-            {
-                Loggy.Error(String.Format("Error: PackageRepositoryLocal::Add, failed to save sfv file!"));
-                return false;
-            }
-            if (!sfvFile.Save(buildURL, package.Name+".source"))
-            {
-                Loggy.Error(String.Format("Error: PackageRepositoryLocal::Add, failed to save sfv source file!"));
-                return false;
-            }
-
-            // Add Sfv file to the package
-            if (File.Exists(buildURL + sfv_filename))
-                files.Add(buildURL + sfv_filename, "");
-
-            // Add VCS Information file to the package
-            if (File.Exists(buildURL + "vcs.info"))
-                files.Add(buildURL + "vcs.info", "");
-
-            // Add Dependency Information file to the package
-            if (File.Exists((buildURL + "dependencies.info")))
-                files.Add(buildURL + "dependencies.info", "");
-
-            package.LocalFilename = new PackageFilename(package.Name, version, branch, platform);
-            package.LocalFilename.DateTime = DateTime.Now;
-            package.LocalVersion = version;
-            package.LocalSignature = package.LocalFilename.DateTime.Value;
-
-            if (File.Exists(buildURL + package.LocalFilename.ToString()))
-            {
-                try { File.Delete(buildURL + package.LocalFilename.ToString()); }
-                catch (Exception) { }
-            }
-
-            string zipPath = buildURL + package.LocalFilename.ToString();
-            using (ZipFile zip = new ZipFile(zipPath))
-            {
-                foreach (KeyValuePair<string, string> p in files)
-                    zip.AddFile(p.Key, p.Value);
-
-                ZipSaveProgress progress = new ZipSaveProgress(files.Count);
-                Console.Write("Creating Package {0} for platform {1}: ", package.Name, package.Platform);
-                zip.SaveProgress += progress.EventHandler;
-                zip.Save();
-                Console.WriteLine("Done");
-                File.SetLastWriteTime(zipPath, package.LocalSignature);
-                package.LocalURL = buildURL;
-                success = true;
-            }
-            return success;
+            filename = string.Empty;
+            return false;
         }
 
-
-        public class ZipSaveProgress
+        public bool Download(Package package, string to_filename)
         {
-            private int mNumCharsDisplayed = 0;
-
-            private int mNumEntries;
-            public ZipSaveProgress(int numEntries)
+            string src_path = package.GetURL(Location) + package.GetFilename(Location);
+            if (File.Exists(src_path))
             {
-                mNumEntries = numEntries;
+                File.Copy(src_path, to_filename, true);
+                return true;
             }
-
-            public void EventHandler(object sender, SaveProgressEventArgs e)
-            {
-                int numChars = ((100 * e.EntriesSaved) / mNumEntries);
-                while (mNumCharsDisplayed < numChars)
-                {
-                    Console.Write("{0, 3}%", numChars);
-                    Console.CursorLeft = Console.CursorLeft - 4;
-
-                    ++mNumCharsDisplayed;
-                }
-            }
+            return false;
         }
 
+        public bool Submit(Package package, IPackageRepository from)
+        {
+            string package_f = package.GetURL(Location) + package.GetFilename(Location);
+            return (File.Exists(package_f));
+        }
 
     }
 }

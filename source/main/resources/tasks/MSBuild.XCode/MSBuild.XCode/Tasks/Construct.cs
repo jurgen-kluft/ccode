@@ -55,15 +55,15 @@ namespace MSBuild.XCode
             }
 
             PackageInstance.TemplateDir = TemplateDir;
-            PackageInstance.CacheRepoDir = CacheRepoDir;
-            PackageInstance.RemoteRepoDir = RemoteRepoDir;
 
             if (Action.StartsWith("vs2010"))
             {
-                if (!PackageInstance.Initialize())
+                if (!PackageInstance.Initialize(RemoteRepoDir, CacheRepoDir, RootDir))
                     return false;
 
                 PackageInstance package = PackageInstance.LoadFromRoot(RootDir);
+                package.SetPlatform(Platform);
+
                 if (package.IsValid)
                 {
                     PackageDependencies dependencies = new PackageDependencies(package);
@@ -77,13 +77,21 @@ namespace MSBuild.XCode
 
                     if (dependencies.BuildForPlatforms(platforms))
                     {
-                        dependencies.PrintForPlatforms(platforms);
-
-                        // Generate the projects and solution
-                        package.GenerateProjects(dependencies, platforms);
-                        if (!package.GenerateSolution())
+                        if (dependencies.SaveInfoForPlatforms(platforms))
                         {
-                            Loggy.Error(String.Format("Error: Action {0} failed in Package::Construct due to failure in saving solution (.sln)", Action));
+                            dependencies.PrintForPlatforms(platforms);
+
+                            // Generate the projects and solution
+                            package.GenerateProjects(dependencies, platforms);
+                            if (!package.GenerateSolution())
+                            {
+                                Loggy.Error(String.Format("Error: Action {0} failed in Package::Construct due to failure in saving solution (.sln)", Action));
+                                return false;
+                            }
+                        }
+                        else
+                        {
+                            Loggy.Error(String.Format("Error: Action {0} failed in Package::Construct due to failure in writing dependency information (dependencies.info)", Action));
                             return false;
                         }
                     }

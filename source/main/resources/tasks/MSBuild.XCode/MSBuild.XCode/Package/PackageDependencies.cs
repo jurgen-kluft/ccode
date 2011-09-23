@@ -137,10 +137,30 @@ namespace MSBuild.XCode
             Loggy.Indent -= 1;
         }
 
-        public void SaveInfo(string platform, FileDirectoryPath.FilePathAbsolute filepath)
+        private bool SaveInfoForPlatform(string platform)
         {
+            Package p = mRootPackage.Package;
+
+            string rootURL = p.RootURL;
+            string filepath = rootURL + "\\target\\" + p.Name + "\\build\\" + platform + "\\dependencies.info";
             DependencyTree tree = GetDependencyTree(platform);
-            tree.SaveInfo(filepath);
+            return tree.SaveInfo(new FileDirectoryPath.FilePathAbsolute(filepath));
+        }
+
+        public bool SaveInfoForPlatforms(List<string> platforms)
+        {
+            bool result = true;
+            Loggy.Indent += 1;
+            foreach (string platform in platforms)
+            {
+                if (!SaveInfoForPlatform(platform))
+                {
+                    result = false;
+                    break;
+                }
+            }
+            Loggy.Indent -= 1;
+            return result;
         }
     }
 }

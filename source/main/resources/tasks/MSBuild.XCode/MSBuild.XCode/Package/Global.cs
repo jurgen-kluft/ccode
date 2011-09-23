@@ -12,14 +12,10 @@ namespace MSBuild.XCode
     {
         public static bool IsInitialized { get; set; }
 
-        public static string CacheRepoDir { get; set; }
-        public static string RemoteRepoDir { get; set; }
         public static string TemplateDir { get; set; }
         public static string RootDir { get; set; }
 
-        public static IPackageRepository RemoteRepo { get; set; }
-        public static IPackageRepository CacheRepo { get; set; }
-        public static IPackageRepository ShareRepo { get; set; }
+        public static PackageRepositoryActor RepoActor { get; set; }
 
         public static MsDev.CppProject CppTemplateProject { get; set; }
         public static MsDev.CsProject CsTemplateProject { get; set; }
@@ -29,7 +25,7 @@ namespace MSBuild.XCode
             IsInitialized = false;
         }
 
-        public static bool Initialize()
+        public static bool Initialize(string RemoteRepoURL, string CacheRepoURL, string RootURL)
         {
             if (IsInitialized)
                 return true;
@@ -37,22 +33,13 @@ namespace MSBuild.XCode
             Loggy.ToConsole = true;
             Loggy.Indentor = "\t";
 
-            if (!String.IsNullOrEmpty(CacheRepoDir))
+            RepoActor = new PackageRepositoryActor();
+            if (!RepoActor.Initialize(RemoteRepoURL, CacheRepoURL, RootURL))
             {
-                if (!Directory.Exists(CacheRepoDir))
-                {
-                    Loggy.Error(String.Format("Error: Initialization of Global failed since cache repo {0} doesn't exist", CacheRepoDir));
-                    return false;
-                }
+                Loggy.Error(String.Format("Error: Initialization of Repository Actor failed", TemplateDir));
+                return false;
             }
-            if (!String.IsNullOrEmpty(RemoteRepoDir))
-            {
-                if (!Directory.Exists(RemoteRepoDir))
-                {
-                    Loggy.Error(String.Format("Error: Initialization of Global failed since remote repo {0} doesn't exist", RemoteRepoDir));
-                    return false;
-                }
-            }
+
             if (!String.IsNullOrEmpty(TemplateDir))
             {
                 if (!Directory.Exists(TemplateDir))
@@ -61,10 +48,6 @@ namespace MSBuild.XCode
                     return false;
                 }
             }
-
-            RemoteRepo = new PackageRepositoryFileSystem(RemoteRepoDir, ELocation.Remote);
-            CacheRepo = new PackageRepositoryFileSystem(CacheRepoDir, ELocation.Cache);
-            ShareRepo = new PackageRepositoryShare(CacheRepoDir + ".share\\");
 
             if (!String.IsNullOrEmpty(TemplateDir))
             {
