@@ -42,24 +42,39 @@ namespace MSBuild.XCode
             Mercurial.Repository hg_repo = new Mercurial.Repository(dst_path + sub_path);
             if (hg_repo.Exists)
             {
-                // Update
-                hg_repo.Update();
+                try
+                {
+                    hg_repo.Update();
+                    success = true;
+                }
+                catch (System.Exception)
+                {
+                    success = false;
+                    Loggy.Error(String.Format("Error: Updating xCode publish repository at {0} failed", dst_path + sub_path));
+                }
             }
             else
             {
-                if (Directory.Exists(dst_path + sub_path))
-                    Directory.Delete(dst_path + sub_path, true);
-                Directory.CreateDirectory(dst_path + sub_path);
+                try
+                {
+                    if (Directory.Exists(dst_path + sub_path))
+                        Directory.Delete(dst_path + sub_path, true);
+                    Directory.CreateDirectory(dst_path + sub_path);
 
-                // Clone
-                hg_repo = new Mercurial.Repository(dst_path + sub_path);
-                Mercurial.CloneCommand clone_cmd = new Mercurial.CloneCommand();
-                clone_cmd.CompressedTransfer = false;
-                clone_cmd.Source = XCodeRepoDir;
+                    hg_repo = new Mercurial.Repository(dst_path + sub_path);
+                    Mercurial.CloneCommand clone_cmd = new Mercurial.CloneCommand();
+                    clone_cmd.CompressedTransfer = false;
+                    clone_cmd.Source = XCodeRepoDir;
 
-                hg_repo.Clone(clone_cmd);
+                    hg_repo.Clone(clone_cmd);
 
-                //Loggy.Error(String.Format("Error: Loading package failed in Package::Configs"));
+                    success = true;
+                }
+                catch (System.Exception)
+                {
+                    success = false;
+                    Loggy.Error(String.Format("Error: Cloning XCode publish repository at {0} to {1} failed", XCodeRepoDir, dst_path + sub_path));
+                }
             }
 
             return success;

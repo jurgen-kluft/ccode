@@ -103,6 +103,10 @@
     <Reference Include="Microsoft.Build.Framework" />
     <Reference Include="Microsoft.Build.Utilities.v4.0" />
     <Reference Include="Microsoft.CSharp" />
+    <Reference Include="MySql.Data, Version=6.4.3.0, Culture=neutral, PublicKeyToken=c5687fc88969c44d, processorArchitecture=MSIL">
+      <HintPath>References\MySql.Data.dll</HintPath>
+      <Private>True</Private>
+    </Reference>
     <Reference Include="System" />
     <Reference Include="System.Data" />
     <Reference Include="System.Xml" />
@@ -110,6 +114,7 @@
   </ItemGroup>
   <ItemGroup>
     <Compile Include="Dependency\DependencyResource.cs" />
+    <Compile Include="Extensions\DateTimeExt.cs" />
     <Compile Include="Extensions\StringExt.cs" />
     <Compile Include="FileDirectoryPath\BasePath.cs" />
     <Compile Include="FileDirectoryPath\DirPath.cs" />
@@ -209,6 +214,8 @@
     <Compile Include="MsDev\CsProject.cs" />
     <Compile Include="MsDev\IProject.cs" />
     <Compile Include="MsDev\ISolution.cs" />
+    <Compile Include="PackageRepository\PackageRepositoryRemoteFs.cs" />
+    <Compile Include="PackageRepository\PackageRepositoryRemoteDb.cs" />
     <Compile Include="PackageRepository\PackageRepositoryLayoutShare.cs" />
     <Compile Include="PackageRepository\PackageRepositoryShare.cs" />
     <Compile Include="PackageRepository\PackageRepositoryLayoutLocal.cs" />
@@ -216,6 +223,18 @@
     <Compile Include="PackageRepository\PackageRepositoryLayoutTarget.cs" />
     <Compile Include="PackageRepository\PackageRepositoryTarget.cs" />
     <Compile Include="PackageRepository\PackageRepositoryActor.cs" />
+    <Compile Include="PackageRepository\Remote\Databases\IPackageDatabase.cs" />
+    <Compile Include="PackageRepository\Remote\Databases\PackageDatabase.cs" />
+    <Compile Include="PackageRepository\Remote\Databases\PackageDatabaseMySQL.cs" />
+    <Compile Include="PackageRepository\Remote\PackageRepos\IPackageRepo.cs" />
+    <Compile Include="PackageRepository\Remote\PackageRepos\PackageRepo.cs" />
+    <Compile Include="PackageRepository\Remote\PackageStruct.cs" />
+    <Compile Include="PackageRepository\Remote\StorageSystems\AsyncFileCopy.cs" />
+    <Compile Include="PackageRepository\Remote\StorageSystems\IStorage.cs" />
+    <Compile Include="PackageRepository\Remote\StorageSystems\StorageFs.cs" />
+    <Compile Include="PackageRepository\Remote\StorageSystems\StorageSystem.cs" />
+    <Compile Include="PackageRepository\Package.cs" />
+    <Compile Include="Package\PackageArchive.cs" />
     <Compile Include="Pom\ProjectProperties.cs" />
     <Compile Include="Package\PackageStructure.cs" />
     <Compile Include="Package\PackageVars.cs" />
@@ -252,7 +271,7 @@
       <SubType>Code</SubType>
     </Compile>
     <Compile Include="Version\Versions.cs" />
-    <Compile Include="PackageRepository\PackageRepositoryFileSystem.cs" />
+    <Compile Include="PackageRepository\PackageRepositoryCache.cs" />
     <Compile Include="Version\VersionRange.cs" />
     <Compile Include="Dependency\DependencyInstance.cs" />
     <Compile Include="Package\Group.cs" />

@@ -63,7 +63,6 @@ namespace MSBuild.XCode
 
         public bool Info()
         {
-
             return mResource.Info();
         }
 
@@ -75,18 +74,6 @@ namespace MSBuild.XCode
                     return p;
             }
             return null;
-        }
-
-        public bool IsDependencyForPlatform(string DependencyName, string Platform)
-        {
-            foreach (DependencyResource dependencyResource in Dependencies)
-            {
-                if (String.Compare(dependencyResource.Name, DependencyName, true) == 0)
-                {
-                    return (dependencyResource.IsForPlatform(Platform));
-                }
-            }
-            return false;
         }
 
         public void OnlyKeepPlatformSpecifics(string platform)

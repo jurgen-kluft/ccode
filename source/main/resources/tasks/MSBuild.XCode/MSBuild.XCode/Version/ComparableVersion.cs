@@ -21,6 +21,16 @@ namespace MSBuild.XCode
             FromString(version.ToString());
         }
 
+        public ComparableVersion(int v) /// MajorMinorBuild
+        {
+            FromString(String.Format("{0}.{1}.{2}", v / (1000 * 1000), ((v / 1000) % 1000), (v % 1000)));
+        }
+
+        public ComparableVersion(int major, int minor, int build)
+        {
+            FromString(String.Format("{0}.{1}.{2}", major, minor, build));
+        }
+
         public bool IsNull
         {
             get
@@ -55,6 +65,53 @@ namespace MSBuild.XCode
         {
             if (include) return this <= v;
             else return this < v;
+        }
+
+        public int GetMajor()
+        {
+            string[] items = mValue.Split('.');
+            int major = 1;
+            if (items.Length > 0)
+                major = Int32.Parse(items[0]);
+            return major;
+        }
+
+        public int GetMinor()
+        {
+            string[] items = mValue.Split('.');
+            int minor = 0;
+            if (items.Length > 1)
+                minor = Int32.Parse(items[1]);
+            return (minor);
+        }
+
+        public int GetBuild()
+        {
+            string[] items = mValue.Split('.');
+            int build = 0;
+            if (items.Length > 2)
+                build = Int32.Parse(items[2]);
+            return build;
+        }
+
+        public int ToInt()
+        {
+            string[] items = mValue.Split('.');
+            int major = 1;
+            if (items.Length > 0)
+                major = Int32.Parse(items[0]);
+            int minor = 0;
+            if (items.Length > 1)
+                minor = Int32.Parse(items[1]);
+            int build = 0;
+            if (items.Length > 2)
+                build = Int32.Parse(items[2]);
+            return (major * 1000000) + (minor * 1000) + build;
+        }
+
+        public int ToInt(int major, int minor, int build)
+        {
+            return (major * 1000000) + (minor * 1000) + build;
         }
 
         public override string ToString()

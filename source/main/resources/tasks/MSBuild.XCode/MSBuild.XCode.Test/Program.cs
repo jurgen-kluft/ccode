@@ -1,13 +1,4 @@
 ﻿using System;
-using System.IO;
-using System.Xml;
-using System.Text;
-using System.Configuration;
-using System.Collections.Generic;
-using Microsoft.Win32;
-using MSBuild.XCode;
-using MSBuild.XCode.Helpers;
-using FileDirectoryPath;
 
 namespace MSBuild.XCode.Test
 {
@@ -16,74 +7,71 @@ namespace MSBuild.XCode.Test
         /// <summary>
         /// The main entry point for the application.
         /// </summary>
+        private static string RemoteRepoDir; 
+        private static string CacheRepoDir;
+        private static string RootDir;
+        private static string TemplateDir;
+
+
         [STAThread]
         static void Main()
         {
-            PackageInstance.RemoteRepoDir = @"\\cnshasap2\Hg_Repo\PACKAGE_REPO\";
-            PackageInstance.TemplateDir = @"k:\Dev.C++.Packages\REMOTE_PACKAGE_REPO\com\virtuos\xcode\publish\templates\";
-            PackageInstance.CacheRepoDir = @"k:\Dev.C++.Packages\PACKAGE_REPO\";
-            PackageInstance.Initialize();
+            string name = "xbase";
 
-            XCodeUpdate update = new XCodeUpdate();
-            update.CacheRepoDir = PackageInstance.CacheRepoDir;
-            update.XCodeRepoDir = @"k:\Dev.C++.Packages\REMOTE_PACKAGE_REPO\com\virtuos\xcode\publish\";
-            update.Execute();
+            RemoteRepoDir = @"db::server=127.0.0.1;port=3309;database=xcode_cpp;uid=root;password=p1|fs::D:\PACKAGE_REPO_TEST\";
+            CacheRepoDir = @"k:\Dev.C++.Packages\PACKAGE_REPO\";
+            RootDir = @"k:\Dev.C++.Packages\" + name + "\\";
+            TemplateDir = @"k:\Dev.C++.Packages\PACKAGE_REPO\com\virtuos\xcode\publish\templates\";
 
-            // Our test project is xbase
-            PackageInstance.RootDir = @"k:\Dev.C++.Packages\xstl\";
-            
-            string platform = "N3DS";
-            Construct("xstl", platform);
-            return;
+            PackageInstance.TemplateDir = TemplateDir;
+            if (!PackageInstance.Initialize(RemoteRepoDir, CacheRepoDir, RootDir))
+                return;
 
-            PackageConfigs configs = new PackageConfigs();
-            configs.RootDir = PackageInstance.RootDir;
-            configs.Platform = platform;
-            configs.TemplateDir = PackageInstance.TemplateDir;
-            configs.Execute();
+            string platform = "Win32";
+            Construct(name, platform);
+            Create(name, platform);
+            Install(name, platform);
+            Deploy(name, platform);
+        }
 
-            if (true)
-            {
-                PackageCreate create = new PackageCreate();
-                create.RootDir = PackageInstance.RootDir;
-                create.Platform = platform;
-                bool result1 = create.Execute();
-            }
+        public static void Create(string name, string platform)
+        {
+            if (platform == "*")
+                platform = "Win32";
 
-            PackageInstall install = new PackageInstall();
-            install.RootDir = PackageInstance.RootDir;
-            install.CacheRepoDir = PackageInstance.CacheRepoDir;
-            install.RemoteRepoDir = PackageInstance.RemoteRepoDir;
-            install.Platform = platform;
-            bool result3 = install.Execute();
+            PackageCreate cmd = new PackageCreate();
+            cmd.RemoteRepoDir = RemoteRepoDir;
+            cmd.CacheRepoDir = CacheRepoDir;
+            cmd.RootDir = @"k:\Dev.C++.Packages\" + name + "\\";
+            cmd.Platform = platform;
+            cmd.IncrementBuild = true;
+            cmd.Execute();
+        }
 
-            PackageDeploy deploy = new PackageDeploy();
-            deploy.RootDir = PackageInstance.RootDir;
-            deploy.CacheRepoDir = PackageInstance.CacheRepoDir;
-            deploy.RemoteRepoDir = PackageInstance.RemoteRepoDir;
-            deploy.Platform = platform;
-            bool result4 = deploy.Execute();
+        public static void Install(string name, string platform)
+        {
+            if (platform == "*")
+                platform = "Win32";
 
-            PackageSync sync = new PackageSync();
-            sync.RootDir = PackageInstance.RootDir;
-            sync.Platform = platform;
-            sync.CacheRepoDir = PackageInstance.CacheRepoDir;
-            sync.RemoteRepoDir = PackageInstance.RemoteRepoDir;
-            sync.Execute();
+            PackageInstall cmd = new PackageInstall();
+            cmd.RemoteRepoDir = RemoteRepoDir;
+            cmd.CacheRepoDir = CacheRepoDir;
+            cmd.RootDir = @"k:\Dev.C++.Packages\" + name + "\\";
+            cmd.Platform = platform;
+            cmd.Execute();
+        }
 
-            PackageInfo info = new PackageInfo();
-            info.RootDir = PackageInstance.RootDir;
-            info.CacheRepoDir = PackageInstance.CacheRepoDir;
-            info.RemoteRepoDir = PackageInstance.RemoteRepoDir;
-            info.Execute();
+        public static void Deploy(string name, string platform)
+        {
+            if (platform == "*")
+                platform = "Win32";
 
-            PackageInstance.RootDir = @"k:\Dev.C++.Packages\xstring\";
-
-            PackageVerify verify = new PackageVerify();
-            verify.RootDir = PackageInstance.RootDir;
-            verify.Name = "xbase";
-            verify.Platform = platform;
-            bool result2 = verify.Execute();
+            PackageDeploy cmd = new PackageDeploy();
+            cmd.RemoteRepoDir = RemoteRepoDir;
+            cmd.CacheRepoDir = CacheRepoDir;
+            cmd.RootDir = @"k:\Dev.C++.Packages\" + name + "\\";
+            cmd.Platform = platform;
+            cmd.Execute();
         }
 
         public static void Construct(string name, string platform)
@@ -91,9 +79,9 @@ namespace MSBuild.XCode.Test
             PackageConstruct construct = new PackageConstruct();
             construct.Name = name;
             construct.RootDir = @"k:\Dev.C++.Packages\";
-            construct.CacheRepoDir = PackageInstance.CacheRepoDir;
-            construct.RemoteRepoDir = PackageInstance.RemoteRepoDir;
-            construct.TemplateDir = PackageInstance.TemplateDir;
+            construct.CacheRepoDir = CacheRepoDir;
+            construct.RemoteRepoDir = RemoteRepoDir;
+            construct.TemplateDir = TemplateDir;
             construct.Language = "C++";
             //construct.Action = "init";
             //construct.Execute();

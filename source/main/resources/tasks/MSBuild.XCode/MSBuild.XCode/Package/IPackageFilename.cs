@@ -9,7 +9,7 @@ namespace MSBuild.XCode
     {
         string Name { get; set; }
         ComparableVersion Version { get; set; }
-        DateTime? DateTime { get; set; }
+        DateTime DateTime { get; set; }
         string Branch { get; set; }
         string Platform { get; set; }
         string Extension { get; set; }
@@ -29,7 +29,7 @@ namespace MSBuild.XCode
         {
             Name = string.Empty;
             Version = new ComparableVersion("1.0.0");
-            DateTime = null;
+            DateTime = System.DateTime.Now;
             Branch = "default";
             Platform = "Win32";
             Extension = ".zip";
@@ -39,10 +39,7 @@ namespace MSBuild.XCode
         {
             Name = filename.Name;
             Version = new ComparableVersion(filename.Version);
-            if (filename.DateTime.HasValue)
-                DateTime = new DateTime(filename.DateTime.Value.Ticks);
-            else
-                DateTime = null;
+            DateTime = new DateTime(filename.DateTime.Ticks);
             Branch = filename.Branch;
             Platform = filename.Platform;
             Extension = filename.Extension;
@@ -54,17 +51,21 @@ namespace MSBuild.XCode
 
             string[] parts = filename.Split(new char[] { '+' }, StringSplitOptions.RemoveEmptyEntries);
             Name = parts[0];
-            Version = new ComparableVersion(parts.Length>1 ? parts[1] : "1.0.0");
-            DateTime = null;
+
+            // Here split the version and datetime
+            // Find the 
+            string[] dparts = parts[1].Split(new char[] { '.' }, StringSplitOptions.RemoveEmptyEntries);
+            Version = dparts.Length>2 ? new ComparableVersion(String.Format("{0}.{1}.{2}", dparts[0], dparts[1], dparts[2])) : new ComparableVersion("1.0.0");
+            DateTime = dparts.Length>8 ? System.DateTime.Parse(String.Format("{0}-{1}-{2} {3}:{4}:{5}", dparts[3], dparts[4], dparts[5], dparts[6], dparts[7], dparts[8])) : System.DateTime.Now;
             Branch = parts.Length>2 ? parts[2] : "default";
-            Platform = parts.Length>2 ? parts[3] : "Win32";
+            Platform = parts.Length>3 ? parts[3] : "Win32";
             Extension = ".zip";
         }
         public PackageFilename(string name, ComparableVersion version, string branch, string platform)
         {
             Name = name;
             Version = version;
-            DateTime = null;
+            DateTime = System.DateTime.Now;
             Branch = branch;
             Platform = platform;
             Extension = ".zip";
@@ -77,22 +78,40 @@ namespace MSBuild.XCode
 
         public string Name { get { return mName; } set { mName = value; } }
         public ComparableVersion Version { get; set; }
-        public DateTime? DateTime { get; set; }
+        public DateTime DateTime { get; set; }
         public string Branch { get { return mBranch; } set { mBranch = value; } }
         public string Platform { get { return mPlatform; } set { mPlatform = value; } }
         public string Extension { get { return mExtension; } set { mExtension = value; } }
+
+        public string VersionAndDateTime
+        {
+            get
+            {
+                DateTime dt = DateTime;
+                string v = String.Format("{0}.{1:yyyy.M.d.H.m.s}", Version.ToString(), dt);
+                return v;
+            }
+        }
+
+        public string VersionAndDateTimeComparable
+        {
+            get
+            {
+                int major = Version.GetMajor();
+                int minor = Version.GetMinor();
+                int build = Version.GetBuild();
+
+                DateTime dt = DateTime;
+                string v = String.Format("{0:D3}.{1:D3}.{2:D3}.{3:yyyy.MM.dd.HH.mm.ss}", major, minor, build, dt);
+                return v;
+            }
+        }
 
         public string FilenameWithoutExtension
         {
             get
             {
-                string datetime = string.Empty;
-                if (DateTime.HasValue)
-                {
-                    DateTime dt = DateTime.Value;
-                    datetime = String.Format(".{0:yyyy.M.d.H.m.s}", dt);
-                }
-                return String.Format("{0}+{1}{2}+{3}+{4}", Name, Version.ToString(), datetime, Branch, Platform);
+                return String.Format("{0}+{1}+{2}+{3}", Name, VersionAndDateTime, Branch, Platform);
             }
         }
 
@@ -100,13 +119,7 @@ namespace MSBuild.XCode
         {
             get
             {
-                string datetime = string.Empty;
-                if (DateTime.HasValue)
-                {
-                    DateTime dt = DateTime.Value;
-                    datetime = String.Format(".{0:yyyy.M.d.H.m.s}", dt);
-                }
-                return String.Format("{0}+{1}{2}+{3}+{4}{5}", Name, Version.ToString(), datetime, Branch, Platform, Extension);
+                return FilenameWithoutExtension + Extension;
             }
         }
 

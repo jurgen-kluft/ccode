@@ -1,7 +1,4 @@
 ﻿using System;
-using System.IO;
-using System.Collections.Generic;
-using System.Text;
 using Microsoft.Build.Framework;
 using Microsoft.Build.Utilities;
 using MSBuild.XCode.Helpers;
@@ -9,7 +6,9 @@ using MSBuild.XCode.Helpers;
 namespace MSBuild.XCode
 {
     /// <summary>
-    ///	Will copy a new package release to the local-package-repository. 
+    ///	Will 
+    ///	   Create
+    ///	   Install
     /// </summary>
     public class PackageInstall : Task
     {
@@ -25,31 +24,36 @@ namespace MSBuild.XCode
         public override bool Execute()
         {
             Loggy.TaskLogger = Log;
+
             RootDir = RootDir.EndWith('\\');
+            if (String.IsNullOrEmpty(Platform))
+                Platform = "Win32";
 
-            PackageInstance.TemplateDir = string.Empty;
-            PackageInstance.CacheRepoDir = CacheRepoDir;
-            PackageInstance.RemoteRepoDir = RemoteRepoDir;
-            PackageInstance.Initialize();
-
-            bool ok = false;
+            if (!PackageInstance.IsInitialized)
+            {
+                PackageInstance.TemplateDir = string.Empty;
+                if (!PackageInstance.Initialize(RemoteRepoDir, CacheRepoDir, RootDir))
+                {
+                    return false;
+                }
+            }
 
             PackageInstance package = PackageInstance.LoadFromRoot(RootDir);
+            package.SetPlatform(Platform);
+
             if (package.IsValid)
             {
-                package.Platform = Platform;
+                Package p = package.Package;
 
-                PackageRepositoryLocal localPackageRepo = new PackageRepositoryLocal(RootDir);
-                if (localPackageRepo.Update(package))
+                // - Commit version to cache package repository
+                if (PackageInstance.RepoActor.Install(p))
                 {
-                    // - Commit version to cache package repository
-                    ok = PackageInstance.CacheRepo.Add(package, localPackageRepo.Location);
-                    if (!ok)
-                        Loggy.Error(String.Format("Error: Package::Install, failed to add package {0} to cache package repository at {1}", package.LocalURL, PackageInstance.CacheRepo.RepoDir));
+                    Loggy.Info(String.Format("Info: Package {0} for Platform {1} on Branch {2} has been installed with version {3}", p.Name, Platform, p.Branch, p.CacheVersion.ToString()));
+                    return true;
                 }
                 else
                 {
-                    Loggy.Error(String.Format("Error: Package::Install, failed to update local package repository"));
+                    Loggy.Error(String.Format("Error: Package::Install, failed to add package {0} to cache package repository at {1}", p.LocalURL, CacheRepoDir));
                 }
             }
             else
@@ -57,7 +61,7 @@ namespace MSBuild.XCode
                 Loggy.Error(String.Format("Error: Package::Install, failed to load pom.xml"));
             }
 
-            return ok;
+            return false;
         }
     }
 }

@@ -44,18 +44,20 @@ namespace MSBuild.XCode
     /// </summary>
     public class PackageRepositoryShare : IPackageRepository
     {
-        public PackageRepositoryShare(string repoDir)
+        public PackageRepositoryShare(string repoURL)
         {
-            RepoDir = repoDir.EndWith('\\');
+            RepoURL = repoURL.EndWith('\\');
             Layout = new LayoutShare();
             Location = ELocation.Share;
+            Valid = true;
         }
 
-        public string RepoDir { get; set; }
-        public ELocation Location { get; set; }
-        public ILayout Layout { get; set; }
+        public bool Valid { get; private set; }
+        public string RepoURL { get; set; }
+        public ELocation Location { get; private set; }
+        private ILayout Layout { get; set; }
 
-        public bool Update(PackageInstance package)
+        public bool Query(Package package)
         {
             // See if this package is in the share folder and valid
             // The package has to have Target properties!
@@ -64,7 +66,8 @@ namespace MSBuild.XCode
             if (!package.CacheExists)
                 return false;
 
-            string packageURL = Layout.PackageVersionDir(RepoDir, package.Group.ToString(), package.Name, package.Platform, package.Branch, package.CacheVersion);
+            IPackageFilename pf = package.GetFilename(ELocation.Cache);
+            string packageURL = RepoURL + package.Group + "\\" + package.Name + "\\" + pf.FilenameWithoutExtension + "\\";
             if (Directory.Exists(packageURL))
             {
                 if (File.Exists(packageURL + "pom.xml"))
@@ -99,16 +102,27 @@ namespace MSBuild.XCode
             return false;
         }
 
-        public bool Update(PackageInstance package, VersionRange versionRange)
+        public bool Query(Package package, VersionRange versionRange)
         {
             // See if this package is in the target folder and valid for the version range
-            if (Update(package))
+            if (Query(package))
             {
                 if (versionRange.IsInRange(package.GetVersion(Location)))
                 {
                     return true;
                 }
             }
+            return false;
+        }
+
+        public bool Download(Package package, string to_filename)
+        {
+            return false;
+        }
+
+        public bool Link(Package package, out string filename)
+        {
+            filename = string.Empty;
             return false;
         }
 
@@ -135,31 +149,33 @@ namespace MSBuild.XCode
             }
         }
 
-        public bool Add(PackageInstance package, ELocation from)
+        public bool Submit(Package package, IPackageRepository from)
         {
             // Cannot add from Target! should normally be added from Cache
-            if (from == ELocation.Target)
+            if (from.Location == ELocation.Target)
                 return false;
 
-            if (File.Exists(package.GetURL(from) + package.GetFilename(from)))
+            string packageFilenameInCache;
+            if (!from.Link(package, out packageFilenameInCache))
+                return false;
+
+            if (File.Exists(packageFilenameInCache))
             {
-                string shareURL = Layout.PackageVersionDir(RepoDir, package.Group.ToString(), package.Name, package.Platform, package.Branch, package.GetVersion(from));
+                PackageFilename pf = new PackageFilename(packageFilenameInCache);
+                string shareURL = RepoURL + package.Group + "\\" + package.Name + "\\" + pf.FilenameWithoutExtension + "\\";
                 if (!Directory.Exists(shareURL))
-                {
                     Directory.CreateDirectory(shareURL);
-                    ZipFile zip = new ZipFile(package.GetURL(from) + package.GetFilename(from));
+                
+                {
+                    ZipFile zip = new ZipFile(packageFilenameInCache);
                     ZipExtractionProgress progress = new ZipExtractionProgress(zip.Entries.Count);
                     Console.Write("Extracting Package {0} for platform {1}: ", package.Name, package.Platform);
                     zip.ExtractProgress += progress.EventHandler;
                     zip.ExtractAll(shareURL, ExtractExistingFileAction.OverwriteSilently);
                     Console.WriteLine("Done");
                 }
-                else
-                {
-                    // Directory already exists, for now we assume the package is available and unmodified
-                }
 
-                string current_t_filename = Path.GetFileNameWithoutExtension(package.GetFilename(from).ToString()) + ".t";
+                string current_t_filename = pf.FilenameWithoutExtension + ".t";
                 string[] t_filenames = Directory.GetFiles(shareURL, "*.t", SearchOption.TopDirectoryOnly);
 
                 // Delete all old .t files?
@@ -172,7 +188,7 @@ namespace MSBuild.XCode
                     }
                 }
 
-                DateTime lastWriteTime = package.GetSignature(from);
+                DateTime lastWriteTime = package.GetSignature(from.Location);
                 FileInfo fi = new FileInfo(shareURL + current_t_filename);
                 if (fi.Exists)
                 {
@@ -185,8 +201,8 @@ namespace MSBuild.XCode
                 }
 
                 package.SetURL(Location, shareURL);
-                package.SetFilename(Location, new PackageFilename(package.GetFilename(from)));
-                package.SetVersion(Location, package.GetVersion(from));
+                package.SetFilename(Location, pf);
+                package.SetVersion(Location, new ComparableVersion(pf.Version));
                 package.SetSignature(Location, lastWriteTime);
 
                 return true;

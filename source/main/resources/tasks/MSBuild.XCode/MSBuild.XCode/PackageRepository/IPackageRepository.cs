@@ -7,15 +7,18 @@ using MSBuild.XCode.Helpers;
 
 namespace MSBuild.XCode
 {
-     public interface IPackageRepository
+    public interface IPackageRepository
     {
-        string RepoDir { get; set; }
-        ELocation Location { get; set; }
-        ILayout Layout { get; set; }
+        bool Valid { get; }
+        string RepoURL { get; }
+        ELocation Location { get; }
 
-        bool Update(PackageInstance package, VersionRange versionRange);
-        bool Update(PackageInstance package);
-        bool Add(PackageInstance package, ELocation from);
+        bool Query(Package package);
+        bool Query(Package package, VersionRange versionRange);
+        bool Link(Package package, out string filename);
+        bool Download(Package package, string to_filename);
+
+        bool Submit(Package package, IPackageRepository from);
     }
 
 }

@@ -16,89 +16,65 @@ namespace MSBuild.XCode
     public class PackageCreate : Task
     {
         [Required]
+        public string RemoteRepoDir { get; set; }
+        [Required]
+        public string CacheRepoDir { get; set; }
+        [Required]
         public string RootDir { get; set; }
         [Required]
         public string Platform { get; set; }
+        [Required]
+        public bool IncrementBuild { get; set; }
         [Output]
         public string Filename { get; set; }
 
         public override bool Execute()
         {
-            bool success = false;
             Loggy.TaskLogger = Log;
 
+            RootDir = RootDir.EndWith('\\');
             if (String.IsNullOrEmpty(Platform))
                 Platform = "Win32";
 
-            RootDir = RootDir.EndWith('\\');
-
-            Environment.CurrentDirectory = RootDir;
-
-            // - Verify that there are no local changes 
-            // - Verify that there are no outgoing changes
-            Mercurial.Repository hg_repo = new Mercurial.Repository(RootDir);
-            if (!hg_repo.Exists)
+            if (!PackageInstance.IsInitialized)
             {
-                Loggy.Error(String.Format("Error: Package::Create failed since there is no Hg (Mercurial) repository!"));
-                return false;
+                PackageInstance.TemplateDir = string.Empty;
+                if (!PackageInstance.Initialize(RemoteRepoDir, CacheRepoDir, RootDir))
+                {
+                    return false;
+                }
             }
-            if (hg_repo.HasOutstandingChanges)
-            {
-                Loggy.Error(String.Format("Error: Package::Create failed since there are still outstanding (non commited) changes!"));
-                return false;
-            }
-
-            Mercurial.Changeset hg_changeset = hg_repo.GetChangeSet();
-
-            // Write a vcs.info file containing VCS information, this will be included in the package
-            dynamic x = new MSBuild.XCode.Helpers.Xml();
-            x.Vcs(MSBuild.XCode.Helpers.Xml.Fragment(u => 
-            { 
-                u.Type("Hg"); 
-                u.Branch(hg_changeset.Branch);
-                u.Revision(hg_changeset.Hash);
-                u.AuthorName(hg_changeset.AuthorName);
-                u.AuthorEmail(hg_changeset.AuthorEmailAddress);
-            }));
 
             PackageInstance package = PackageInstance.LoadFromRoot(RootDir);
-            // Write a dependency.info file containing dependency package info, this will be included in the package
+            package.SetPlatform(Platform);
+
             if (package.IsValid)
             {
-                package.Branch = hg_changeset.Branch;
-                package.Platform = Platform;
+                Package p = package.Package;
+                
+                // - Increment the build ?
+                p.IncrementVersion = IncrementBuild;
+                Loggy.Info(String.Format("Info: Package::Create, increment build number : {0}", IncrementBuild ? "ON" : "OFF"));
 
-                string buildURL = PackageInstance.RootDir + "target\\" + package.Name + "\\build\\" + Platform + "\\";
-                if (!Directory.Exists(buildURL))
-                    Directory.CreateDirectory(buildURL);
+                ComparableVersion rootVersion = package.Pom.Versions.GetForPlatform(Platform);
 
-                using (FileStream fs = new FileStream(buildURL + "vcs.info", FileMode.Create))
+                // - Create
+                bool created = PackageInstance.RepoActor.Create(p, package.Pom.Content, rootVersion);
+                if (created)
                 {
-                    using (StreamWriter sw = new StreamWriter(fs))
-                    {
-                        sw.Write(x.ToString(true));
-                        sw.Close();
-                        fs.Close();
-                    }
-                }
-
-                PackageRepositoryLocal localRepo = new PackageRepositoryLocal(RootDir);
-                localRepo.Update(package);
-
-                if (localRepo.Add(package, ELocation.Root))
-                {
-                    IPackageFilename filename = package.LocalFilename;
-                    Filename = filename.ToString();
-                    success = true;
+                    return true;
                 }
                 else
                 {
-                    Filename = string.Empty;
-                    success = false;
+                    Loggy.Error(String.Format("Error: Package::Create, failed to create package {0}", p.LocalURL));
                 }
             }
+            else
+            {
+                Loggy.Error(String.Format("Error: Package::Create, failed to load pom.xml"));
+            }
 
-            return success;
+            return false;
         }
     }
 }

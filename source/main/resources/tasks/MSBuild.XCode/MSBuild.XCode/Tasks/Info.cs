@@ -34,9 +34,7 @@ namespace MSBuild.XCode
             Environment.CurrentDirectory = RootDir;
 
             PackageInstance.TemplateDir = string.Empty;
-            PackageInstance.CacheRepoDir = CacheRepoDir;
-            PackageInstance.RemoteRepoDir = RemoteRepoDir;
-            PackageInstance.Initialize();
+            PackageInstance.Initialize(RemoteRepoDir, CacheRepoDir, RootDir);
 
             // - Verify that there are no local changes 
             // - Verify that there are no outgoing changes

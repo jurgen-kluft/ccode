@@ -32,19 +32,21 @@ namespace MSBuild.XCode
     {
         public PackageRepositoryTarget(string targetDir)
         {
-            RepoDir = targetDir.EndWith('\\');
+            RepoURL = targetDir.EndWith('\\');
             Layout = new LayoutTarget();
             Location = ELocation.Target;
+            Valid = true;
         }
 
-        public string RepoDir { get; set; }
-        public ELocation Location { get; set; }
-        public ILayout Layout { get; set; }
+        public bool Valid { get; private set; }
+        public string RepoURL { get; set; }
+        public ELocation Location { get; private set; }
+        private ILayout Layout { get; set; }
 
-        public bool Update(PackageInstance package)
+        public bool Query(Package package)
         {
             // See if this package is in the target folder and valid
-            string packageURL = Layout.PackageRootDir(RepoDir, package.Group.ToString(), package.Name, package.Platform);
+            string packageURL = Layout.PackageRootDir(RepoURL, package.Group, package.Name, package.Platform);
             if (Directory.Exists(packageURL))
             {
                 // A .t file needs to exist as well as a .props
@@ -80,10 +82,10 @@ namespace MSBuild.XCode
             return false;
         }
 
-        public bool Update(PackageInstance package, VersionRange versionRange)
+        public bool Query(Package package, VersionRange versionRange)
         {
             // See if this package is in the target folder and valid for the version range
-            if (Update(package))
+            if (Query(package))
             {
                 if (versionRange.IsInRange(package.GetVersion(Location)))
                 {
@@ -93,19 +95,39 @@ namespace MSBuild.XCode
             return false;
         }
 
-        public bool Add(PackageInstance package, ELocation from)
+        public bool Download(Package package, string to_filename)
+        {
+            return false;
+        }
+
+        public bool Link(Package package, out string filename)
+        {
+            string package_d = Layout.PackageVersionDir(RepoURL, package.Group, package.Name, package.Platform, package.Branch, package.GetVersion(Location));
+            string package_f = package.GetFilename(Location).ToString();
+            if (File.Exists(package_d + package_f))
+            {
+                filename = package_d + package_f;
+                return true;
+            }
+            filename = string.Empty;
+            return false;
+        }
+
+        public bool Submit(Package package, IPackageRepository from)
         {
             // Target normally gets packages from Share
+            if (from.Location != ELocation.Share)
+                return false;
 
-            if (package.HasURL(from))
+            if (package.HasURL(from.Location))
             {
-                string targetURL = Layout.PackageVersionDir(RepoDir, package.Group.ToString(), package.Name, package.Platform, package.Branch, package.GetVersion(from));
+                string targetURL = Layout.PackageVersionDir(RepoURL, package.Group, package.Name, package.Platform, package.Branch, package.GetVersion(from.Location));
                 if (!Directory.Exists(targetURL))
                     Directory.CreateDirectory(targetURL);
 
                 // The package itself is extracted in the Share Repo
 
-                string current_t_filename = Path.GetFileNameWithoutExtension(package.GetFilename(from).ToString()) + ".t";
+                string current_t_filename = Path.GetFileNameWithoutExtension(package.GetFilename(from.Location).ToString()) + ".t";
                 string[] t_filenames = Directory.GetFiles(targetURL, String.Format("*{0}.t", package.Platform), SearchOption.TopDirectoryOnly);
                 // Delete all old .t files?
                 foreach (string t_filename in t_filenames)
@@ -116,7 +138,7 @@ namespace MSBuild.XCode
                     }
                 }
 
-                DateTime lastWriteTime = package.GetSignature(from);
+                DateTime lastWriteTime = package.GetSignature(from.Location);
                 FileInfo fi = new FileInfo(targetURL + current_t_filename);
                 if (fi.Exists)
                 {
@@ -129,8 +151,8 @@ namespace MSBuild.XCode
                 }
 
                 package.SetURL(Location, targetURL);
-                package.SetFilename(Location, new PackageFilename(package.GetFilename(from)));
-                package.SetVersion(Location, package.GetVersion(from));
+                package.SetFilename(Location, new PackageFilename(package.GetFilename(from.Location)));
+                package.SetVersion(Location, package.GetVersion(from.Location));
                 package.SetSignature(Location, lastWriteTime);
 
                 //GenerateProps(package);
@@ -140,35 +162,5 @@ namespace MSBuild.XCode
             return false;
         }
 
-        private bool GenerateProps_DEPRECATED(PackageInstance package)
-        {
-            // <?xml version="1.0" encoding="utf-8"?>
-            // <Project ToolsVersion="4.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
-            //   <PropertyGroup Condition="'$(Platform)'=='Win32'" Label="TargetDirs">
-            //     <xunittest_TargetDir>$(SolutionDir)..\PACKAGE_REPO\com.virtuos.tnt\xunittest\xunittest+1.0.1.2011.1.7.20.40.44+default+Win32\</xunittest_TargetDir>
-            //   </PropertyGroup>
-            // </Project>
-            // 
-
-            string shareURL = package.ShareURL;
-
-            string propsFilePath = Layout.PackageRootDir(RepoDir, package.Group.ToString(), package.Name, package.Platform) + package.Name + "." + package.Platform + ".props";
-            using (FileStream stream = new FileStream(propsFilePath, FileMode.Create, FileAccess.Write))
-            {
-                using (StreamWriter writer = new StreamWriter(stream))
-                {
-                    writer.WriteLine("<?xml version=\"1.0\" encoding=\"utf-8\"?>");
-                    writer.WriteLine("<Project ToolsVersion=\"4.0\" xmlns=\"http://schemas.microsoft.com/developer/msbuild/2003\">");
-                    writer.WriteLine("  <PropertyGroup Condition=\"'$(Platform)'=='{0}'\" Label=\"TargetDirs\">", package.Platform);
-                    writer.WriteLine("    <{0}_TargetDir>{1}</{0}_TargetDir>", package.Name, shareURL);
-                    writer.WriteLine("  </PropertyGroup>");
-                    writer.WriteLine("</Project>");
-                    writer.Close();
-                }
-                stream.Close();
-            }
-
-            return true;
-        }
     }
 }
