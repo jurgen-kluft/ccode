@@ -141,7 +141,7 @@ namespace MSBuild.XCode
                                 {
                                     if (FileCopy(TemplateDir + "pom.xml.template", DstPath + "pom.xml"))
                                     {
-                                        Loggy.Info(String.Format("Info: Generated pom.targets, pom.props and pom.xml C++ files"));
+                                        Loggy.Info(String.Format("Generated pom.targets, pom.props and pom.xml files"));
                                         file_copy_result = true;
                                     }
                                 }
@@ -149,7 +149,7 @@ namespace MSBuild.XCode
                                 {
                                     if (FileCopy(TemplateDir + "pom.xml.cs.template", DstPath + "pom.xml"))
                                     {
-                                        Loggy.Info(String.Format("Info: Generated pom.targets, pom.props and pom.xml C++ files"));
+                                        Loggy.Info(String.Format("Generated pom.targets, pom.props and pom.xml files"));
                                         file_copy_result = true;
                                     }
                                 }

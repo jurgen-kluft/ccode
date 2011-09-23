@@ -1,5 +1,4 @@
 ﻿using System.Reflection;
-using System.Runtime.CompilerServices;
 using System.Runtime.InteropServices;
 
 // General Information about an assembly is controlled through the following 
@@ -31,8 +30,8 @@ using System.Runtime.InteropServices;
 //
 // You can specify all the values or you can default the Revision and Build Numbers 
 // by using the '*' as shown below:
-[assembly: AssemblyVersion("1.0.4.0")]
-[assembly: AssemblyFileVersion("1.0.4.0")]
+[assembly: AssemblyVersion("1.1.0.0")]
+[assembly: AssemblyFileVersion("1.1.0.0")]
 
 // -----------------------------------------------------------------------------------
 // Feature List:
@@ -40,10 +39,19 @@ using System.Runtime.InteropServices;
 // - Package Mode = Shared (default), Local
 // - Package Type = Package, Source
 // - Integration in Visual Studio (Compile, Install and Deploy)
-// - Git support
 // 
 // -----------------------------------------------------------------------------------
-// Coming --> 1.0.4.0 (? January 2011)
+// Coming --> 1.1.1.0 (Oktober 2011)
+// - Full C# support
+//
+// -----------------------------------------------------------------------------------
+// 1.1.0.0 (23 September 2011)
+// - Deploying now uses a SQL database which in turn is used by the Package Browser
+// - Package storage is now using a hash based file storage
+// - Fixed bug in multi platform construct
+//
+// -----------------------------------------------------------------------------------
+// 1.0.4.0 (? January 2011)
 // - MsDev 2010 project now saves .filters file
 // - C#
 // - Fixed bug in task logging

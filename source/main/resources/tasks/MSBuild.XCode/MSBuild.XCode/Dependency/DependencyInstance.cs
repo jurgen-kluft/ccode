@@ -1,7 +1,4 @@
 ﻿using System;
-using System.Xml;
-using System.Text;
-using System.Collections.Generic;
 using MSBuild.XCode.Helpers;
 
 namespace MSBuild.XCode

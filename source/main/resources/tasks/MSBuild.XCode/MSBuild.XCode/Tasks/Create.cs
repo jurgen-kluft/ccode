@@ -1,14 +1,6 @@
-﻿using Microsoft.Build.Framework;
+﻿using System;
+using Microsoft.Build.Framework;
 using Microsoft.Build.Utilities;
-using System;
-using System.IO;
-using System.Collections.Generic;
-using System.Security.Cryptography;
-using System.Linq;
-using System.Text;
-using System.Runtime;
-using Ionic.Zip;
-using Ionic.Zlib;
 using MSBuild.XCode.Helpers;
 
 namespace MSBuild.XCode
@@ -54,7 +46,7 @@ namespace MSBuild.XCode
                 
                 // - Increment the build ?
                 p.IncrementVersion = IncrementBuild;
-                Loggy.Info(String.Format("Info: Package::Create, increment build number : {0}", IncrementBuild ? "ON" : "OFF"));
+                Loggy.Info(String.Format("Increment build number : {0}", IncrementBuild ? "ON" : "OFF"));
 
                 ComparableVersion rootVersion = package.Pom.Versions.GetForPlatform(Platform);
 
