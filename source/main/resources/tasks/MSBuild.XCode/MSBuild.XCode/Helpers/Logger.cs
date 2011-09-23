@@ -1,9 +1,4 @@
 ﻿using System;
-using System.IO;
-using System.Linq;
-using System.Collections.Generic;
-
-using Microsoft.Build.Framework;
 using Microsoft.Build.Utilities;
 
 namespace MSBuild.XCode.Helpers
@@ -16,16 +11,28 @@ namespace MSBuild.XCode.Helpers
 
         public static TaskLoggingHelper TaskLogger { get; set; }
 
+        static Loggy()
+        {
+            ToConsole = false;
+            Indent = 0;
+            Indentor = "\t";
+        }
+
         public static void Info(string line)
         {
             if (ToConsole)
             {
+                ConsoleColor oldColor = Console.ForegroundColor;
+                Console.ForegroundColor = ConsoleColor.Green;
                 for (int i = 0; i < Indent; ++i)
                     Console.Write(Indentor);
                 Console.WriteLine(line);
+                Console.ForegroundColor = oldColor;
             }
-            if (TaskLogger != null && TaskLogger.TaskResources != null)
+            if (TaskLogger != null)
             {
+                for (int i = 0; i < Indent; ++i)
+                    line = Indentor + line;
                 TaskLogger.LogMessage(line);
             }
         }
@@ -41,8 +48,11 @@ namespace MSBuild.XCode.Helpers
                 Console.WriteLine(line);
                 Console.ForegroundColor = oldColor;
             }
-            if (TaskLogger != null && TaskLogger.TaskResources != null)
+            if (TaskLogger != null)
             {
+                for (int i = 0; i < Indent; ++i)
+                    line = Indentor + line;
+
                 TaskLogger.LogWarning(line);
             }
         }
@@ -58,8 +68,11 @@ namespace MSBuild.XCode.Helpers
                 Console.WriteLine(line);
                 Console.ForegroundColor = oldColor;
             }
-            if (TaskLogger != null && TaskLogger.TaskResources != null)
+            if (TaskLogger != null)
             {
+                for (int i = 0; i < Indent; ++i)
+                    line = Indentor + line;
+
                 TaskLogger.LogError(line);
             }
         }

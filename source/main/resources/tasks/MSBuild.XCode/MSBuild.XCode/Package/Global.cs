@@ -1,9 +1,5 @@
 ﻿using System;
 using System.IO;
-using System.Xml;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
 using MSBuild.XCode.Helpers;
 
 namespace MSBuild.XCode
@@ -30,7 +26,7 @@ namespace MSBuild.XCode
             if (IsInitialized)
                 return true;
 
-            Loggy.ToConsole = true;
+            //Loggy.ToConsole = true;
             Loggy.Indentor = "\t";
 
             RepoActor = new PackageRepositoryActor();

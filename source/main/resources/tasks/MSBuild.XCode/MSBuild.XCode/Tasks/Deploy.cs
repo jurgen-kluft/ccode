@@ -1,8 +1,4 @@
 ﻿using System;
-using System.IO;
-using System.Collections;
-using System.Collections.Generic;
-using System.Text;
 using Microsoft.Build.Framework;
 using Microsoft.Build.Utilities;
 using MSBuild.XCode.Helpers;
@@ -51,7 +47,7 @@ namespace MSBuild.XCode
                 // - Submit version to remote package repository
                 if (PackageInstance.RepoActor.Deploy(p))
                 {
-                    Loggy.Info(String.Format("Info: Package {0} for Platform {1} on Branch {2} has been deployed with version {3}", p.Name, Platform, p.Branch, p.RemoteVersion.ToString()));
+                    Loggy.Info(String.Format("Package '{0}' for platform '{1}' on branch '{2}' has been deployed with version {3}", p.Name, Platform, p.Branch, p.RemoteVersion.ToString()));
                     return true;
                 }
                 else

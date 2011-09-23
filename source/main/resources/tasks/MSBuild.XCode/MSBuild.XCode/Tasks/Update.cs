@@ -1,14 +1,8 @@
-﻿using Microsoft.Build.Framework;
-using Microsoft.Build.Utilities;
-using System;
+﻿using System;
 using System.IO;
-using System.Collections.Generic;
-using System.Security.Cryptography;
-using System.Linq;
-using System.Text;
-using System.Runtime;
-using Ionic.Zip;
-using Ionic.Zlib;
+using Microsoft.Build.Framework;
+using Microsoft.Build.Utilities;
+using System.Reflection;
 using MSBuild.XCode.Helpers;
 
 namespace MSBuild.XCode
@@ -19,6 +13,8 @@ namespace MSBuild.XCode
         public string CacheRepoDir { get; set; }
         [Required]
         public string XCodeRepoDir { get; set; }
+        [Required]
+        public string XCodeVersion { get; set; }
 
         public override bool Execute()
         {
@@ -29,6 +25,18 @@ namespace MSBuild.XCode
 
             XCodeRepoDir = XCodeRepoDir.EndWith('\\');
             XCodeRepoDir = XCodeRepoDir.Replace('\\', '/');
+
+            ComparableVersion xcode_assembly_version = new ComparableVersion(Assembly.GetExecutingAssembly().GetName().Version.ToString());
+            ComparableVersion xcode_msbuild_version = new ComparableVersion(XCodeVersion);
+            
+            if (xcode_assembly_version > xcode_msbuild_version)
+            {
+                Loggy.Error(String.Format("Error: Msbuild files with xCode version {0} is incompatible with xCode version {1}", xcode_msbuild_version.ToString(), xcode_assembly_version.ToString()));
+                return false;
+            }
+
+            Loggy.Info(String.Format("XCode assembly version: {0}", xcode_assembly_version.ToString()));
+            Loggy.Info(String.Format("XCode msbuild version: {0}", xcode_msbuild_version.ToString()));
 
             Environment.CurrentDirectory = CacheRepoDir;
 

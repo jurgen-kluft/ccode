@@ -48,17 +48,17 @@ namespace MSBuild.XCode
                 // - Commit version to cache package repository
                 if (PackageInstance.RepoActor.Install(p))
                 {
-                    Loggy.Info(String.Format("Info: Package {0} for Platform {1} on Branch {2} has been installed with version {3}", p.Name, Platform, p.Branch, p.CacheVersion.ToString()));
+                    Loggy.Info(String.Format("Package '{0}' for platform '{1}' on branch '{2}' has been installed with version {3}", p.Name, Platform, p.Branch, p.CacheVersion.ToString()));
                     return true;
                 }
                 else
                 {
-                    Loggy.Error(String.Format("Error: Package::Install, failed to add package {0} to cache package repository at {1}", p.LocalURL, CacheRepoDir));
+                    Loggy.Error(String.Format("Package::Install, failed to add package {0} to cache package repository at {1}", p.LocalURL, CacheRepoDir));
                 }
             }
             else
             {
-                Loggy.Error(String.Format("Error: Package::Install, failed to load pom.xml"));
+                Loggy.Error(String.Format("Package::Install, failed to load pom.xml"));
             }
 
             return false;

@@ -10,6 +10,7 @@ namespace MSBuild.XCode.Test
         private static string RemoteRepoDir; 
         private static string CacheRepoDir;
         private static string RootDir;
+        private static string XCodeRepoDir;
         private static string TemplateDir;
 
 
@@ -21,17 +22,30 @@ namespace MSBuild.XCode.Test
             RemoteRepoDir = @"db::server=127.0.0.1;port=3309;database=xcode_cpp;uid=root;password=p1|fs::D:\PACKAGE_REPO_TEST\";
             CacheRepoDir = @"k:\Dev.C++.Packages\PACKAGE_REPO\";
             RootDir = @"k:\Dev.C++.Packages\" + name + "\\";
-            TemplateDir = @"k:\Dev.C++.Packages\PACKAGE_REPO\com\virtuos\xcode\publish\templates\";
+            XCodeRepoDir = @"k:\Dev.C++.Packages\PACKAGE_REPO\com\virtuos\xcode\publish\";
+            TemplateDir = XCodeRepoDir + @"templates\";
 
             PackageInstance.TemplateDir = TemplateDir;
             if (!PackageInstance.Initialize(RemoteRepoDir, CacheRepoDir, RootDir))
                 return;
 
-            string platform = "Win32";
-            Construct(name, platform);
-            Create(name, platform);
-            Install(name, platform);
-            Deploy(name, platform);
+            if (Update("1.1.0.0"))
+            {
+                string platform = "Win32";
+                Construct(name, platform);
+                Create(name, platform);
+                Install(name, platform);
+                Deploy(name, platform);
+            }
+        }
+
+        public static bool Update(string version)
+        {
+            XCodeUpdate cmd = new XCodeUpdate();
+            cmd.CacheRepoDir = CacheRepoDir;
+            cmd.XCodeRepoDir = XCodeRepoDir;
+            cmd.XCodeVersion = version;
+            return cmd.Execute();
         }
 
         public static void Create(string name, string platform)
