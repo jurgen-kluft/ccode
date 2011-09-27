@@ -1,6 +1,7 @@
 ﻿using System;
 using System.IO;
 using System.Security.Cryptography;
+using MSBuild.XCode.Helpers;
 
 namespace xstorage_system
 {
@@ -96,7 +97,7 @@ namespace xstorage_system
             AsyncUnbufferedCopy xcopy = new AsyncUnbufferedCopy();
             try
             {
-                Console.Write("Storing package, progress: ", src, dst);
+                Console.Write("Storing package, progress: ");
                 xcopy.AsyncCopyFileUnbuffered(src, dst, true, false, false, 1 * 1024 * 1024, true);
                 return true;
             }

@@ -229,9 +229,10 @@
     <Compile Include="PackageRepository\Remote\PackageRepos\IPackageRepo.cs" />
     <Compile Include="PackageRepository\Remote\PackageRepos\PackageRepo.cs" />
     <Compile Include="PackageRepository\Remote\PackageStruct.cs" />
-    <Compile Include="PackageRepository\Remote\StorageSystems\AsyncFileCopy.cs" />
+    <Compile Include="Helpers\AsyncFileCopy.cs" />
     <Compile Include="PackageRepository\Remote\StorageSystems\IStorage.cs" />
     <Compile Include="PackageRepository\Remote\StorageSystems\StorageFs.cs" />
+    <Compile Include="PackageRepository\Remote\StorageSystems\StorageFtp.cs" />
     <Compile Include="PackageRepository\Remote\StorageSystems\StorageSystem.cs" />
     <Compile Include="PackageRepository\Package.cs" />
     <Compile Include="Package\PackageArchive.cs" />

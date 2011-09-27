@@ -29,7 +29,7 @@ namespace MSBuild.XCode.Helpers
                 Console.WriteLine(line);
                 Console.ForegroundColor = oldColor;
             }
-            if (TaskLogger != null)
+            else if (TaskLogger != null)
             {
                 for (int i = 0; i < Indent; ++i)
                     line = Indentor + line;
@@ -48,7 +48,7 @@ namespace MSBuild.XCode.Helpers
                 Console.WriteLine(line);
                 Console.ForegroundColor = oldColor;
             }
-            if (TaskLogger != null)
+            else if (TaskLogger != null)
             {
                 for (int i = 0; i < Indent; ++i)
                     line = Indentor + line;
@@ -68,7 +68,7 @@ namespace MSBuild.XCode.Helpers
                 Console.WriteLine(line);
                 Console.ForegroundColor = oldColor;
             }
-            if (TaskLogger != null)
+            else if (TaskLogger != null)
             {
                 for (int i = 0; i < Indent; ++i)
                     line = Indentor + line;
