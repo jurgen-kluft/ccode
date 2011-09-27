@@ -207,11 +207,22 @@ namespace Mercurial
 
         private static string LocateClient()
         {
-            return (from path in Environment.GetEnvironmentVariable("PATH").Split(';')
-                    where !StringEx.IsNullOrWhiteSpace(path)
-                    let executablePath = Path.Combine(path.Trim(), "hg.exe")
-                    where File.Exists(executablePath)
-                    select executablePath).FirstOrDefault();
+            string[] ppaths = Environment.GetEnvironmentVariable("PATH").Split(';');
+            foreach (string path in ppaths)
+            {
+                try
+                {
+                    string hgpath = Path.Combine(path.Trim(), "hg.exe");
+                    if (File.Exists(hgpath))
+                    {
+                        return hgpath;
+                    }
+                }
+                catch (System.Exception e)
+                {
+                }
+            }
+            return string.Empty;
         }
     }
 }
