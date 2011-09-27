@@ -4,7 +4,7 @@ using System.Security.Cryptography;
 using System.Text;
 using System.Threading;
 
-namespace xstorage_system
+namespace MSBuild.XCode.Helpers
 {
     internal class AsyncUnbufferedCopy
     {
@@ -149,7 +149,7 @@ namespace xstorage_system
                         if (progress < 101 - pctinc)
                         {
                             progress = progress + pctinc;
-                            Console.Write("{0}%", Math.Min(Math.Round(progress, 0), 100));
+                            Console.Write("{0}%", Math.Min(Math.Floor(progress), 100));
                         }
                     }
                 }

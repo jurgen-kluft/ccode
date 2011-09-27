@@ -26,7 +26,6 @@ namespace MSBuild.XCode
             if (IsInitialized)
                 return true;
 
-            //Loggy.ToConsole = true;
             Loggy.Indentor = "\t";
 
             RepoActor = new PackageRepositoryActor();

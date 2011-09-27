@@ -1,4 +1,5 @@
 ﻿using System;
+using MSBuild.XCode.Helpers;
 
 namespace MSBuild.XCode.Test
 {
@@ -17,13 +18,15 @@ namespace MSBuild.XCode.Test
         [STAThread]
         static void Main()
         {
-            string name = "xbase";
+            string name = "xunittest";
 
-            RemoteRepoDir = @"db::server=127.0.0.1;port=3309;database=xcode_cpp;uid=root;password=p1|fs::D:\PACKAGE_REPO_TEST\";
+            RemoteRepoDir = @"db::server=127.0.0.1;port=3309;database=xcode_cpp;uid=root;password=p1|ftp::ip=127.0.0.1,username=admin,password=p1,port=1414,base=.storage\";
             CacheRepoDir = @"k:\Dev.C++.Packages\PACKAGE_REPO\";
             RootDir = @"k:\Dev.C++.Packages\" + name + "\\";
             XCodeRepoDir = @"k:\Dev.C++.Packages\PACKAGE_REPO\com\virtuos\xcode\publish\";
             TemplateDir = XCodeRepoDir + @"templates\";
+
+            Loggy.ToConsole = true;
 
             PackageInstance.TemplateDir = TemplateDir;
             if (!PackageInstance.Initialize(RemoteRepoDir, CacheRepoDir, RootDir))
@@ -31,7 +34,7 @@ namespace MSBuild.XCode.Test
 
             if (Update("1.1.0.0"))
             {
-                string platform = "Win32";
+                string platform = "WII";
                 Construct(name, platform);
                 Create(name, platform);
                 Install(name, platform);

@@ -110,7 +110,20 @@ namespace MSBuild.XCode
             string src_path = package.GetURL(Location) + package.GetFilename(Location);
             if (File.Exists(src_path))
             {
-                File.Copy(src_path, to_filename, true);
+                AsyncUnbufferedCopy xcopy = new AsyncUnbufferedCopy();
+                try
+                {
+                    Console.Write("Copy package, progress: ");
+                    xcopy.AsyncCopyFileUnbuffered(src_path, to_filename, true, false, false, 1 * 1024 * 1024, true);
+                }
+                catch (Exception)
+                {
+                    return false;
+                }
+                finally
+                {
+                    xcopy = null;
+                }
                 return true;
             }
             return false;

@@ -141,16 +141,17 @@ namespace MSBuild.XCode
                     return false;
                 }
 
-                string old_package_filename = package.LocalFilename.ToString();
-
-                PackageSfvFile oldSfvFile = PackageSfvFile.Load(RetrieveFileAsText(buildURL + old_package_filename, sfv_filename));
                 PackageSfvFile newSfvFile = PackageSfvFile.New(new List<string>(files.Keys));
 
                 if (package.LocalFilename != null)
                 {
+                    string old_package_filename = package.LocalFilename.ToString();
+                    PackageSfvFile oldSfvFile = PackageSfvFile.LoadFromText("", RetrieveFileAsText(buildURL + old_package_filename, sfv_filename));
+                    PackageSfvFile convertedNewSfvFile = newSfvFile.Rooted(files);
+
                     // If the content of the new package is the same as the package that we
                     // created before than it makes no sense to build a new one.
-                    if (PackageSfvFile.AreEqual(oldSfvFile, newSfvFile) && File.Exists(buildURL + old_package_filename))
+                    if (PackageSfvFile.AreEqual(oldSfvFile, convertedNewSfvFile) && File.Exists(buildURL + old_package_filename))
                     {
                         // Actually we can just rename the current zip file
                         package.LocalFilename = new PackageFilename(package.Name, version, branch, platform);
@@ -173,6 +174,7 @@ namespace MSBuild.XCode
                     Loggy.Error(String.Format("Error: PackageRepositoryLocal::Add, failed to save sfv file!"));
                     return false;
                 }
+                
                 if (!newSfvFile.Save(buildURL, package.Name + ".source"))
                 {
                     Loggy.Error(String.Format("Error: PackageRepositoryLocal::Add, failed to save sfv source file!"));

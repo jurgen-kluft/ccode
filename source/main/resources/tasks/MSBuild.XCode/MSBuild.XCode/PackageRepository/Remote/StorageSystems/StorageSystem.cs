@@ -1,9 +1,4 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-
-namespace xstorage_system
+﻿namespace xstorage_system
 {
     public class StorageSystem
     {
@@ -16,8 +11,16 @@ namespace xstorage_system
 
         public void connect(string connectionURL)
         {
-            mStorage = new StorageFs();
-            mStorage.connect(connectionURL);
+            if (connectionURL.StartsWith("fs::"))
+            {
+                mStorage = new StorageFs();
+                mStorage.connect(connectionURL);
+            }
+            else if (connectionURL.StartsWith("ftp::"))
+            {
+                mStorage = new StorageFtp();
+                mStorage.connect(connectionURL);
+            }
         }
 
         public bool holds(string key)

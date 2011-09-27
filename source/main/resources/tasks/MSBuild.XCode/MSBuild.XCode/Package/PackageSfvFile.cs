@@ -1,6 +1,5 @@
 ﻿using System;
 using System.IO;
-using System.Text;
 using System.Collections.Generic;
 using System.Security.Cryptography;
 using MSBuild.XCode.Helpers;
@@ -33,11 +32,15 @@ namespace MSBuild.XCode
                     if (String.Compare(k.Value, val, true) != 0)
                         return false;
                 }
+                else
+                {
+                    return false;
+                }
             }
             return true;
         }
 
-        public static PackageSfvFile Load(string sfv_text)
+        public static PackageSfvFile LoadFromText(string base_path, string sfv_text)
         {
             PackageSfvFile sfvFile = new PackageSfvFile();
 
@@ -56,7 +59,7 @@ namespace MSBuild.XCode
                 if (s >= 0)
                 {
                     string entry_md5 = entry.Substring(s + 1).Trim();
-                    string entry_filename = entry.Substring(0, s).Trim();
+                    string entry_filename = base_path + entry.Substring(0, s).Trim();
                     sfvFile.mFileHashes.Add(entry_filename, entry_md5);
                 }
             }
@@ -65,7 +68,7 @@ namespace MSBuild.XCode
             return sfvFile;
         }
 
-        public static PackageSfvFile Load(string URL, string filename)
+        public static PackageSfvFile Load(string URL, string filename, string base_path)
         {
             PackageSfvFile sfvFile;
 
@@ -74,13 +77,36 @@ namespace MSBuild.XCode
             {
                 // Load SFV file
                 string sfv_text = File.ReadAllText(URL + md5_file);
-                sfvFile = Load(sfv_text);
+                sfvFile = LoadFromText(base_path, sfv_text);
             }
             else
             {
                 sfvFile = new PackageSfvFile();
             }
 
+            return sfvFile;
+        }
+
+        public static PackageSfvFile New(List<string> files)
+        {
+            Console.Write("Building Package: ");
+
+            int _origCol, _origRow;
+            _origCol = Console.CursorLeft;
+            _origRow = Console.CursorTop;
+
+            float progress_m = files.Count;
+            float progress_i = 1.0f;
+            PackageSfvFile sfvFile = new PackageSfvFile();
+            foreach (string src_filename in files)
+            {
+                float progress = progress_i * 100.0f / progress_m;
+                Console.SetCursorPosition(_origCol, _origRow);
+                Console.Write("{0}%", (int)System.Math.Min(progress, 100.0f));
+                sfvFile.Add(src_filename);
+                progress_i++;
+            }
+            Console.WriteLine();
             return sfvFile;
         }
 
@@ -108,13 +134,53 @@ namespace MSBuild.XCode
             return false;
         }
 
-        public static PackageSfvFile New(List<string> files)
+        public void Unroot(string root)
         {
-            PackageSfvFile sfvFile = new PackageSfvFile();
-            foreach (string src_filename in files)
-                sfvFile.Add(src_filename);
-           
-            return sfvFile;
+            Dictionary<string, string> fileHashes = new Dictionary<string, string>();
+            foreach (KeyValuePair<string, string> k in mFileHashes)
+            {
+                string new_filename = k.Key.Replace(root, "");
+                fileHashes.Add(new_filename, k.Value);
+            }
+            mFileHashes = fileHashes;
+        }
+
+        public void Root(Dictionary<string, string> rootPerFile)
+        {
+            Dictionary<string, string> fileHashes = new Dictionary<string, string>();
+            foreach (KeyValuePair<string, string> k in mFileHashes)
+            {
+                string root;
+                if (rootPerFile.TryGetValue(k.Key, out root))
+                {
+                    string dst_filename = k.Key;
+                    if (String.IsNullOrEmpty(root))
+                        dst_filename = Path.GetFileName(dst_filename);
+                    else
+                        dst_filename = root.EndWith('\\') + Path.GetFileName(dst_filename);
+
+                    fileHashes.Add(dst_filename, k.Value);
+                }
+            }
+            mFileHashes = fileHashes;
+        }
+
+        public PackageSfvFile Rooted(Dictionary<string, string> rootPerFile)
+        {
+            PackageSfvFile n = new PackageSfvFile();
+            n.mFileHashes = new Dictionary<string, string>();
+            foreach (KeyValuePair<string, string> k in mFileHashes)
+                n.mFileHashes.Add(k.Key, k.Value);
+            n.Root(rootPerFile);
+            return n;
+        }
+
+        public void Root(string root)
+        {
+            Dictionary<string, string> fileHashes = new Dictionary<string, string>();
+            foreach (KeyValuePair<string, string> k in mFileHashes)
+                fileHashes.Add(root + k.Key, k.Value);
+            mFileHashes = fileHashes;
         }
 
         public bool Save(string URL, string filename)
@@ -139,29 +205,10 @@ namespace MSBuild.XCode
         /// <param name="filename">The name of the file, will be appended with the .md5 extension</param>
         /// <param name="filenameDstMap">The source file path to destination path map</param>
         /// <returns></returns>
-        public bool Save(string URL, string filename, Dictionary<string, string> filenameDstMap)
+        public bool Save(string URL, string filename, Dictionary<string, string> rootPerFile)
         {
-            using (FileStream wfs = new FileStream(URL + filename + ".md5", FileMode.Create))
-            {
-                StreamWriter writer = new StreamWriter(wfs);
-                foreach (KeyValuePair<string, string> k in mFileHashes)
-                {
-                    string dstPath;
-                    if (filenameDstMap.TryGetValue(k.Key, out dstPath))
-                    {
-                        string dst_filename = k.Key;
-                        if (String.IsNullOrEmpty(dstPath))
-                            dst_filename = Path.GetFileName(dst_filename);
-                        else
-                            dst_filename = dstPath.EndWith('\\') + Path.GetFileName(dst_filename);
-
-                        writer.WriteLine("{0} *{1}", dst_filename, k.Value);
-                    }
-                }
-                writer.Close();
-                wfs.Close();
-                return true;
-            }
+            PackageSfvFile s = Rooted(rootPerFile);
+            return s.Save(URL, filename);
         }
 
         public bool Verify(string URL)
