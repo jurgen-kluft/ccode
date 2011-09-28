@@ -1,10 +1,8 @@
 ﻿using System;
 using System.IO;
-using System.Text;
 using System.Collections.Generic;
-using System.Xml;
-using Ionic.Zip;
 using MSBuild.XCode.Helpers;
+using Ionic.Zip;
 
 namespace MSBuild.XCode
 {
@@ -39,9 +37,9 @@ namespace MSBuild.XCode
             return text;
         }
 
-        public static bool RetrieveDependencies(string package_filename, out List<KeyValuePair<string, int>> dependencies)
+        public static bool RetrieveDependencies(string package_filename, out List<KeyValuePair<string, Int64>> dependencies)
         {
-            dependencies = new List<KeyValuePair<string, int>>();
+            dependencies = new List<KeyValuePair<string, Int64>>();
 
             string text = RetrieveFileAsText(package_filename, "dependencies.info");
             if (text == null)
@@ -66,8 +64,8 @@ namespace MSBuild.XCode
                     string[] version_items = version_str.Split(new char[] { '.' }, StringSplitOptions.RemoveEmptyEntries);
                     version_str = String.Format("{0}.{1}.{2}", version_items[0], version_items[1], version_items[2]);
                     ComparableVersion version_cp = new ComparableVersion(version_str);
-                    int version_int = version_cp.ToInt();
-                    dependencies.Add(new KeyValuePair<string, int>(name, version_int));
+                    Int64 version_int = version_cp.ToInt();
+                    dependencies.Add(new KeyValuePair<string, Int64>(name, version_int));
                 }
                 return true;
             }

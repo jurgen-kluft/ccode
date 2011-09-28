@@ -1,7 +1,4 @@
 ﻿using System;
-using System.IO;
-using System.Text;
-using System.Collections;
 using System.Collections.Generic;
 using MSBuild.XCode.Helpers;
 using xpackage_repo;
@@ -43,10 +40,9 @@ namespace MSBuild.XCode
 
     public class PackageRepositoryRemoteDb : IPackageRepository
     {
-        private string mDatabaseURL;
-        private string mStorageURL;
-
-        private PackageRepo mPackageRepo;
+        private readonly string mDatabaseURL;
+        private readonly string mStorageURL;
+        private readonly PackageRepo mPackageRepo;
 
         public PackageRepositoryRemoteDb(string databaseURL, string storageURL)
         {
@@ -85,19 +81,11 @@ namespace MSBuild.XCode
         public string RepoURL { get; set; }
         public ELocation Location { get; set; }
 
-        private ComparableVersion GetComparableVersion(int version)
-        {
-            int build = version % 1000;
-            int minor = (version / 1000) % 1000;
-            int major = (version / 1000000) % 1000;
-            return new ComparableVersion(String.Format("{0}.{1}.{2}", major, minor, build));
-        }
-
         public bool Query(Package package)
         {
             // Query means that we have to supply the information from the database about
             // the last version.
-            int version;
+            Int64 version;
             if (mPackageRepo.find(package.Name, package.Group, package.Language, package.Platform, package.Branch, out version))
             {
                 Dictionary<string, object> vars;
@@ -109,7 +97,7 @@ namespace MSBuild.XCode
                         object dateTime;
                         if (vars.TryGetValue("DateTime", out dateTime))
                         {
-                            package.SetVersion(Location, GetComparableVersion(version));
+                            package.SetVersion(Location, new ComparableVersion(version));
                             package.SetFilename(Location, new RemoteFilename(storageKey as string));
                             package.SetURL(Location, mStorageURL);
                             package.SetSignature(Location, (DateTime)dateTime);
@@ -127,10 +115,10 @@ namespace MSBuild.XCode
 
         public bool Query(Package package, VersionRange versionRange)
         {
-            int version;
+            Int64 version;
             if (mPackageRepo.find(package.Name, package.Group, package.Language, package.Platform, package.Branch, out version))
             {
-                ComparableVersion cv = GetComparableVersion(version);
+                ComparableVersion cv = new ComparableVersion(version);
                 if (versionRange.IsInRange(cv))
                 {
                     Dictionary<string, object> vars;
@@ -179,12 +167,12 @@ namespace MSBuild.XCode
         {
             // 'From' actually should always be 'cache' which is the local package repository
             // (not to be confused with LocalRepo).
-            int version = package.GetVersion(from.Location).ToInt();
+            Int64 version = package.GetVersion(from.Location).ToInt();
 
             string fromRepoDirectFilename;
             if (from.Link(package, out fromRepoDirectFilename))
             {
-                List<KeyValuePair<string, int>> dependencies;
+                List<KeyValuePair<string, Int64>> dependencies;
                 if (PackageArchive.RetrieveDependencies(fromRepoDirectFilename, out dependencies))
                 {
                     if (mPackageRepo.upLoad(package.Name, package.Group, package.Language, package.Platform, package.Branch, version, package.GetFilename(from.Location).DateTime.ToSql(), package.Changeset, dependencies, fromRepoDirectFilename))

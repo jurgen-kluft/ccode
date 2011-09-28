@@ -20,7 +20,8 @@ namespace MSBuild.XCode.Test
         {
             string name = "xunittest";
 
-            RemoteRepoDir = @"db::server=127.0.0.1;port=3309;database=xcode_cpp;uid=root;password=p1|ftp::ip=127.0.0.1,username=admin,password=p1,port=1414,base=.storage\";
+            //RemoteRepoDir = @"db::server=127.0.0.1;port=3309;database=xcode_cpp;uid=root;password=p1|ftp::ip=127.0.0.1,username=admin,password=p1,port=1414,base=.storage\";
+            RemoteRepoDir = @"db::server=cnshasap2;port=3307;database=xcode_cpp;uid=developer;password=Fastercode189|fs::\\cnshasap2\Hg_Repo\PACKAGE_REPO\.storage\";
             CacheRepoDir = @"k:\Dev.C++.Packages\PACKAGE_REPO\";
             RootDir = @"k:\Dev.C++.Packages\" + name + "\\";
             XCodeRepoDir = @"k:\Dev.C++.Packages\PACKAGE_REPO\com\virtuos\xcode\publish\";

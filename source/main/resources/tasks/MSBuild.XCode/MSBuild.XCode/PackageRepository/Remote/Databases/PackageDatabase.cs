@@ -1,5 +1,4 @@
 ﻿using System;
-using System.Collections;
 using System.Collections.Generic;
 
 namespace xpackage_repo
@@ -31,7 +30,7 @@ namespace xpackage_repo
             return false;
         }
 
-        public bool submit(PackageVersion_pv package, List<KeyValuePair<string, int>> dependencies)
+        public bool submit(PackageVersion_pv package, List<KeyValuePair<string, Int64>> dependencies)
         {
             return mDatabase.submit(package, dependencies);
         }
@@ -41,12 +40,12 @@ namespace xpackage_repo
             return mDatabase.findUniqueVersion(package);
         }
 
-        public bool findLatestVersion(PackageVersion_pv package, out int outVersion)
+        public bool findLatestVersion(PackageVersion_pv package, out Int64 outVersion)
         {
             return mDatabase.findLatestVersion(package, out outVersion);
         }
 
-        public bool findLatestVersion(PackageVersion_pv package, int start_version, bool include_start, int end_version, bool include_end, out int outVersion)
+        public bool findLatestVersion(PackageVersion_pv package, Int64 start_version, bool include_start, Int64 end_version, bool include_end, out Int64 outVersion)
         {
             return mDatabase.findLatestVersion(package, start_version, include_start, end_version, include_end, out outVersion);
         }

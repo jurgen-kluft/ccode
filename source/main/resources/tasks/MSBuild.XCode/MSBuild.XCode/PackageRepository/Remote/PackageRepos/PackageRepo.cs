@@ -19,7 +19,7 @@ namespace xpackage_repo
             mDatabaseSystem.connect(databaseURL);
         }
 
-        public bool upLoad(string Name, string Group, string Language, string Platform, string Branch, int Version, string Datetime, string Changeset, List<KeyValuePair<string, int>> dependencies, string localFilename)
+        public bool upLoad(string Name, string Group, string Language, string Platform, string Branch, Int64 Version, string Datetime, string Changeset, List<KeyValuePair<string, Int64>> dependencies, string localFilename)
         {
             string storage_key;
             if (mStorageSystem.submit(localFilename, out storage_key))
@@ -65,7 +65,7 @@ namespace xpackage_repo
             return mStorageSystem.retrieve(storageKey, destinationPath);
         }
 
-        public bool find(string package_name, string package_group, string package_language, string platform, string branch, out int version)
+        public bool find(string package_name, string package_group, string package_language, string platform, string branch, out Int64 version)
         {
             PackageVersion_pv pv = new PackageVersion_pv();
             pv.Name = package_name;
@@ -74,8 +74,10 @@ namespace xpackage_repo
             pv.Branch = branch;
             pv.Platform = platform;
 
-            int bestVersion;
-            if (mDatabaseSystem.findLatestVersion(pv, 1000000, true, 999999999, true, out bestVersion))
+            Int64 lowestVersion = PackageVersion_pv.LowestVersion;
+            Int64 highestVersion = PackageVersion_pv.HighestVersion;
+            Int64 bestVersion;
+            if (mDatabaseSystem.findLatestVersion(pv, lowestVersion, true, highestVersion, true, out bestVersion))
             {
                 version = bestVersion;
                 return true;
@@ -87,7 +89,7 @@ namespace xpackage_repo
             }
         }
 
-        public bool find(string package_name, string package_group, string package_language, string platform, string branch, int version, out Dictionary<string, object> vars)
+        public bool find(string package_name, string package_group, string package_language, string platform, string branch, Int64 version, out Dictionary<string, object> vars)
         {
             PackageVersion_pv pv = new PackageVersion_pv();
             pv.Name = package_name;
@@ -108,7 +110,7 @@ namespace xpackage_repo
             }
         }
 
-        public bool find(string package_name, string package_group, string package_language, string platform, string branch, int start_version, bool include_start, int end_version, bool include_end, out Dictionary<string, object> vars)
+        public bool find(string package_name, string package_group, string package_language, string platform, string branch, Int64 start_version, bool include_start, Int64 end_version, bool include_end, out Dictionary<string, object> vars)
         {
             PackageVersion_pv pv = new PackageVersion_pv();
             pv.Name = package_name;
@@ -117,7 +119,7 @@ namespace xpackage_repo
             pv.Branch = branch;
             pv.Platform = platform;
 
-            int bestVersion;
+            Int64 bestVersion;
             if (mDatabaseSystem.findLatestVersion(pv, start_version, include_start, end_version, include_end, out bestVersion))
             {
                 pv.Version = bestVersion;

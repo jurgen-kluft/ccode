@@ -1,5 +1,4 @@
 ﻿using System;
-using System.Text;
 using System.Collections.Generic;
 
 namespace MSBuild.XCode
@@ -21,9 +20,11 @@ namespace MSBuild.XCode
             FromString(version.ToString());
         }
 
-        public ComparableVersion(int v) /// MajorMinorBuild
+        public ComparableVersion(Int64 v) /// MajorMinorBuild
         {
-            FromString(String.Format("{0}.{1}.{2}", v / (1000 * 1000), ((v / 1000) % 1000), (v % 1000)));
+            int major, minor, build;
+            Split(v, out major, out minor, out build);
+            FromString(String.Format("{0}.{1}.{2}", major, minor, build));
         }
 
         public ComparableVersion(int major, int minor, int build)
@@ -94,7 +95,7 @@ namespace MSBuild.XCode
             return build;
         }
 
-        public int ToInt()
+        public Int64 ToInt()
         {
             string[] items = mValue.Split('.');
             int major = 1;
@@ -106,12 +107,22 @@ namespace MSBuild.XCode
             int build = 0;
             if (items.Length > 2)
                 build = Int32.Parse(items[2]);
-            return (major * 1000000) + (minor * 1000) + build;
+            return ToInt(major, minor, build);
         }
 
-        public int ToInt(int major, int minor, int build)
+        public static Int64 ToInt(int major, int minor, int build)
         {
-            return (major * 1000000) + (minor * 1000) + build;
+            UInt64 version =     ((UInt64)(major & 0x000fffff)) << 44;
+            version = version | (((UInt64)(minor & 0x000fffff)) << 24);
+            version = version | ((UInt64)build & 0x00ffffff);
+            return (Int64)version;
+        }
+
+        public static void Split(Int64 version, out int major, out int minor, out int build)
+        {
+            major = (int)(((UInt64)version & 0xfffff00000000000) >> 44);
+            minor = (int)(((UInt64)version & 0x00000fffff000000) >> 24);
+            build = (int)(((UInt64)version & 0x0000000000ffffff) >> 0);
         }
 
         public override string ToString()
