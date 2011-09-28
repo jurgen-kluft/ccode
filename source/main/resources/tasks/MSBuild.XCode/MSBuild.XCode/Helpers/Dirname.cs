@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Generic;
 
 namespace MSBuild.XCode.Helpers
 {
@@ -227,6 +228,18 @@ namespace MSBuild.XCode.Helpers
             }
         }
 
+        public string[] Folders
+        {
+            get
+            {
+                string name;
+                int levels;
+                string[] folders;
+                sParseNameAndLevels(mFull, out name, out levels, out folders);
+                return folders;
+            }
+        }
+
         public string Name
         {
             get
@@ -349,6 +362,35 @@ namespace MSBuild.XCode.Helpers
                     ++outLevels;
                 }
             }
+        }
+
+        private static void sParseNameAndLevels(string inFull, out string outName, out int outLevels, out string[] outFolders)
+        {
+            bool outIsNetworkDevice;
+            sParseDevice(inFull, out outName, out outIsNetworkDevice);
+            sRemoveDevice(inFull, outIsNetworkDevice, out outName);
+
+            // Documents\Music.Collection\Beatles.Album
+            // Count levels
+            // Name of folder
+            string[] folders = outName.Split(new char[] { sSlash }, StringSplitOptions.RemoveEmptyEntries);
+
+            if (folders.Length > 0)
+                outName = folders[folders.Length - 1];
+            else
+                outName = string.Empty;
+
+            outLevels = 0;
+            List<string> levels = new List<string>();
+            foreach (string folder in folders)
+            {
+                if (!ContainsChars(folder, sIllegalNameChars))
+                {
+                    ++outLevels;
+                    levels.Add(folder);
+                }
+            }
+            outFolders = levels.ToArray();
         }
 
         private static void sRemoveDevice(string inPathWithDevice, bool inIsNetworkDevice, out string outPath)

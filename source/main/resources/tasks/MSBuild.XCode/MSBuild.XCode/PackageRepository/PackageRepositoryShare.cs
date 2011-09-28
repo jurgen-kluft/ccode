@@ -1,9 +1,5 @@
 ﻿using System;
 using System.IO;
-using System.Text;
-using System.Collections;
-using System.Collections.Generic;
-using System.Security.Cryptography;
 using Ionic.Zip;
 using MSBuild.XCode.Helpers;
 
@@ -163,15 +159,24 @@ namespace MSBuild.XCode
             {
                 PackageFilename pf = new PackageFilename(packageFilenameInCache);
                 string shareURL = RepoURL + package.Group + "\\" + package.Name + "\\" + pf.FilenameWithoutExtension + "\\";
-                if (!Directory.Exists(shareURL))
-                    Directory.CreateDirectory(shareURL);
-                
                 {
                     ZipFile zip = new ZipFile(packageFilenameInCache);
                     ZipExtractionProgress progress = new ZipExtractionProgress(zip.Entries.Count);
                     Console.Write("Extracting Package {0} for platform {1}: ", package.Name, package.Platform);
                     zip.ExtractProgress += progress.EventHandler;
-                    zip.ExtractAll(shareURL, ExtractExistingFileAction.OverwriteSilently);
+                    DateTime now = DateTime.Now;
+                    string destExtractDir = Path.GetPathRoot(RepoURL) + "temp\\" + String.Format("tmp.{0}.{1}.{2}.{3}.{4}.{5}\\", now.Year, now.Month, now.Day, now.Hour, now.Minute, now.Second);
+                    Directory.CreateDirectory(destExtractDir);
+                    zip.ExtractAll(destExtractDir, ExtractExistingFileAction.OverwriteSilently);
+                    zip.Dispose();
+                    zip = null;
+
+                    // Moving a directory only works when the destination doesn't exist
+                    // So make sure the destination directory is not there
+                    if (Directory.Exists(shareURL))
+                        Directory.Delete(shareURL);
+
+                    Directory.Move(destExtractDir, shareURL);
                     Console.WriteLine("Done");
                 }
 

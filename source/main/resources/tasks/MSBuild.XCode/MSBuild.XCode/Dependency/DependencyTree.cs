@@ -1,10 +1,7 @@
 ﻿using System;
 using System.IO;
 using System.Collections.Generic;
-using System.Linq;
-using System.Text;
 using MSBuild.XCode.Helpers;
-using FileDirectoryPath;
 
 namespace MSBuild.XCode
 {
@@ -142,12 +139,12 @@ namespace MSBuild.XCode
             return result;
         }
 
-        public bool SaveInfo(FileDirectoryPath.FilePathAbsolute filepath)
+        public bool SaveInfo(xFilename filepath)
         {
             try
             {
-                if (!Directory.Exists(filepath.ParentDirectoryPath.ToString()))
-                    Directory.CreateDirectory(filepath.ParentDirectoryPath.ToString());
+                if (!Directory.Exists(filepath.Path.Full))
+                    Directory.CreateDirectory(filepath.Path.Full);
 
                 FileStream stream = new FileStream(filepath.ToString(), FileMode.Create, FileAccess.Write);
                 StreamWriter writer = new StreamWriter(stream);

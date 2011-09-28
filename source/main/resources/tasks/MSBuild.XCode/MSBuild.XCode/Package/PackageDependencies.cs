@@ -144,7 +144,7 @@ namespace MSBuild.XCode
             string rootURL = p.RootURL;
             string filepath = rootURL + "\\target\\" + p.Name + "\\build\\" + platform + "\\dependencies.info";
             DependencyTree tree = GetDependencyTree(platform);
-            return tree.SaveInfo(new FileDirectoryPath.FilePathAbsolute(filepath));
+            return tree.SaveInfo(new xFilename(filepath));
         }
 
         public bool SaveInfoForPlatforms(List<string> platforms)

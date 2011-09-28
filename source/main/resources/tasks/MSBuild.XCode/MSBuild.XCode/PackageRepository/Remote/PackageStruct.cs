@@ -1,10 +1,4 @@
 ﻿using System;
-using System.Collections;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Xml;
-using System.IO;
 
 namespace xpackage_repo
 {
@@ -44,7 +38,7 @@ namespace xpackage_repo
     {
         private string m_PackagePlatform;
         private string m_PackageBranch;
-        private int m_PackageVersion;   // Major Minor Build - 999 999 999
+        private Int64 m_PackageVersion;   // Major Minor Build - 999 999 999
 
         private string m_Datetime;
         private string m_Location;
@@ -61,6 +55,40 @@ namespace xpackage_repo
             m_Changeset = "";
         }
 
+        public static Int64 BuildVersion(int major, int minor, int build)
+        {
+            UInt64 version = 0;
+            version = version | (((UInt64)major & 0x000fffff) << 44);
+            version = version | (((UInt64)minor & 0x000fffff) << 24);
+            version = version | (((UInt64)build & 0x00ffffff));
+            return (Int64)version;
+        }
+
+        public static Int64 LowestVersion
+        {
+            get
+            {
+                Int64 lowestVersion = PackageVersion_pv.BuildVersion(1, 0, 0);
+                return lowestVersion;
+            }
+        }
+
+        public static Int64 HighestVersion
+        {
+            get
+            {
+                Int64 highestVersion = PackageVersion_pv.BuildVersion((1 << 20) - 1, (1 << 20) - 1, (1 << 24) - 1);
+                return highestVersion;
+            }
+        }
+
+        public static void SplitVersion(Int64 version, out int major, out int minor, out int build)
+        {
+            major = (int)(((UInt64)version & 0xfffff00000000000) >> 44);
+            minor = (int)(((UInt64)version & 0x00000fffff000000) >> 24);
+            build = (int)(((UInt64)version & 0x0000000000ffffff) >> 0);
+        }
+
         public string Platform
         {
             get { return m_PackagePlatform; }
@@ -73,7 +101,7 @@ namespace xpackage_repo
             set { m_PackageBranch = value; }
         }
         
-        public int Version
+        public Int64 Version
         {
             get { return m_PackageVersion; }
             set { m_PackageVersion = value; }

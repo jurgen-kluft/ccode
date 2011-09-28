@@ -252,7 +252,7 @@ namespace xpackage_repo
             return idPackageVersion;
         }
 
-        private int findVersion(string pk_name, string pk_group, string pk_lang, string pk_platform, string pk_branch, int pk_version)
+        private int findVersion(string pk_name, string pk_group, string pk_lang, string pk_platform, string pk_branch, Int64 pk_version)
         {
             int idPackage = findPackage(pk_name, pk_group, pk_lang);
             if (idPackage == 0)
@@ -275,7 +275,7 @@ namespace xpackage_repo
             return idPackageVersion;
         }
 
-        private int findLatestVersion(PackageVersion_pv package, int start, bool include_start, int end, bool include_end)
+        private int findLatestVersion(PackageVersion_pv package, Int64 start, bool include_start, Int64 end, bool include_end)
         {
             int idPackage = findPackage(package.Name, package.Group, package.Language);
             if (idPackage == 0)
@@ -313,7 +313,7 @@ namespace xpackage_repo
             return idPackageVersion;        
         }
 
-        public bool submit(PackageVersion_pv package, List<KeyValuePair<string, int>> dependencies)
+        public bool submit(PackageVersion_pv package, List<KeyValuePair<string, Int64>> dependencies)
         {
             int idPackage = insertPackage(package.Name, package.Group, package.Language);
             if (idPackage == 0)
@@ -351,7 +351,7 @@ namespace xpackage_repo
                 }
 
                 // Insert dependencies
-                foreach (KeyValuePair<string, int> pv in dependencies)
+                foreach (KeyValuePair<string, Int64> pv in dependencies)
                 {
                     int idPackageDependency = findVersion(pv.Key, package.Group, package.Language, package.Platform, package.Branch, pv.Value);
                     if (idPackageDependency == 0)
@@ -380,9 +380,12 @@ namespace xpackage_repo
             return idPackageVersion != 0;
         }
 
-        public bool findLatestVersion(PackageVersion_pv package, out int outVersion)
+        public bool findLatestVersion(PackageVersion_pv package, out Int64 outVersion)
         {
-            int idPackageVersion = findLatestVersion(package, 1000000, true, 999999999, true);
+            Int64 lowestVersion = PackageVersion_pv.LowestVersion;
+            Int64 highestVersion = PackageVersion_pv.HighestVersion;
+
+            int idPackageVersion = findLatestVersion(package, lowestVersion, true, highestVersion, true);
             if (idPackageVersion != 0)
             {
                 string version_get_Sql = string.Format("select Version_pv from packageversion_pv where idPackageVersion_pv = {0}", idPackageVersion);
@@ -395,13 +398,13 @@ namespace xpackage_repo
             return outVersion != 0;
         }
 
-        public bool findLatestVersion(PackageVersion_pv package, int start_version, bool include_start, int end_version, bool include_end, out int outVersion)
+        public bool findLatestVersion(PackageVersion_pv package, Int64 start_version, bool include_start, Int64 end_version, bool include_end, out Int64 outVersion)
         {
             int idPackageVersion = findLatestVersion(package, start_version, include_start, end_version, include_end);
             if (idPackageVersion != 0)
             {
                 string version_get_Sql = string.Format("select Version_pv from packageversion_pv where idPackageVersion_pv = {0}", idPackageVersion);
-                outVersion = (int)sqlRunExecuteScalar(version_get_Sql);
+                outVersion = (Int64)sqlRunExecuteScalar(version_get_Sql);
             }
             else
             {

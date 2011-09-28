@@ -10,9 +10,6 @@ namespace MSBuild.XCode
 {
     public class PackageRepositoryRemoteFs : IPackageRepository
     {
-        private string mDatabaseURL;
-        private string mStorageURL;
-
         public PackageRepositoryRemoteFs(string repoURL, ELocation location)
         {
             RepoURL = repoURL.EndWith('\\');

@@ -181,8 +181,6 @@ namespace MSBuild.XCode
                     return true;
                 }
             }
-
-            return false;
         }
 
 
