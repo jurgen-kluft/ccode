@@ -81,7 +81,7 @@ namespace MSBuild.XCode
         public string RepoURL { get; set; }
         public ELocation Location { get; set; }
 
-        public bool Query(Package package)
+        public bool Query(PackageState package)
         {
             // Query means that we have to supply the information from the database about
             // the last version.
@@ -94,11 +94,21 @@ namespace MSBuild.XCode
                     object storageKey;
                     if (vars.TryGetValue("Location", out storageKey))
                     {
+                        package.RemoteStorageKey = storageKey as string;
+
                         object dateTime;
                         if (vars.TryGetValue("DateTime", out dateTime))
                         {
                             package.SetVersion(Location, new ComparableVersion(version));
-                            package.SetFilename(Location, new RemoteFilename(storageKey as string));
+                        
+                            PackageFilename pf = new PackageFilename();
+                            pf.Name = package.Name;
+                            pf.Platform = package.Platform;
+                            pf.Branch = package.Branch;
+                            pf.DateTime = (DateTime)dateTime;
+                            pf.Version = new ComparableVersion(version);
+
+                            package.SetFilename(Location, pf);
                             package.SetURL(Location, mStorageURL);
                             package.SetSignature(Location, (DateTime)dateTime);
 
@@ -113,7 +123,7 @@ namespace MSBuild.XCode
             return false;
         }
 
-        public bool Query(Package package, VersionRange versionRange)
+        public bool Query(PackageState package, VersionRange versionRange)
         {
             Int64 version;
             if (mPackageRepo.find(package.Name, package.Group, package.Language, package.Platform, package.Branch, out version))
@@ -127,11 +137,21 @@ namespace MSBuild.XCode
                         object storageKey;
                         if (vars.TryGetValue("Location", out storageKey))
                         {
+                            package.RemoteStorageKey = storageKey as string;
+
                             object dateTime;
                             if (vars.TryGetValue("DateTime", out dateTime))
                             {
                                 package.SetVersion(Location, cv);
-                                package.SetFilename(Location, new RemoteFilename(storageKey as string));
+
+                                PackageFilename pf = new PackageFilename();
+                                pf.Name = package.Name;
+                                pf.Platform = package.Platform;
+                                pf.Branch = package.Branch;
+                                pf.DateTime = (DateTime)dateTime;
+                                pf.Version = new ComparableVersion(version);
+
+                                package.SetFilename(Location, pf);
                                 package.SetURL(Location, mStorageURL);
                                 package.SetSignature(Location, (DateTime)dateTime);
 
@@ -147,23 +167,23 @@ namespace MSBuild.XCode
             return false;
         }
 
-        public bool Link(Package package, out string filename)
+        public bool Link(PackageState package, out string filename)
         {
             filename = string.Empty;
             return false;
         }
 
-        public bool Download(Package package, string to_filename)
+        public bool Download(PackageState package, string to_filename)
         {
             // Here we are asked to download a package to the local machine
             // The package.GetFilename(Location) will give you a storage key.
             // Here we know where and how to get it and we will copy it to
             // the to_filename.
-            string key = package.GetFilename(Location).ToString();
+            string key = package.RemoteStorageKey;
             return mPackageRepo.download(key, to_filename);
         }
 
-        public bool Submit(Package package, IPackageRepository from)
+        public bool Submit(PackageState package, IPackageRepository from)
         {
             // 'From' actually should always be 'cache' which is the local package repository
             // (not to be confused with LocalRepo).
@@ -172,7 +192,7 @@ namespace MSBuild.XCode
             string fromRepoDirectFilename;
             if (from.Link(package, out fromRepoDirectFilename))
             {
-                List<KeyValuePair<string, Int64>> dependencies;
+                List<KeyValuePair<Package, Int64>> dependencies;
                 if (PackageArchive.RetrieveDependencies(fromRepoDirectFilename, out dependencies))
                 {
                     if (mPackageRepo.upLoad(package.Name, package.Group, package.Language, package.Platform, package.Branch, version, package.GetFilename(from.Location).DateTime.ToSql(), package.Changeset, dependencies, fromRepoDirectFilename))

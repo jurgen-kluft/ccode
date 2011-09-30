@@ -1,10 +1,5 @@
 ﻿using System;
-using System.IO;
-using System.Xml;
-using System.Text;
 using System.Collections.Generic;
-using System.Security.Cryptography;
-using Ionic.Zip;
 using MSBuild.XCode.Helpers;
 
 namespace MSBuild.XCode
@@ -13,11 +8,21 @@ namespace MSBuild.XCode
     {
         private PackageResource mResource;
         private PomInstance mPom;
-        private Package mPackage;
+        private PackageState mPackage;
 
         public Group Group { get { return mResource.Group; } }
         public string Name { get { return mResource.Name; } }
         public string Branch { get; set; }
+
+        public string Language
+        {
+            get
+            {
+                if (IsCpp) return "C++";
+                else if (IsCs) return "C#";
+                else return "C++";
+            }
+        }
 
         public bool IsValid { get { return mResource.IsValid; } }
 
@@ -25,7 +30,7 @@ namespace MSBuild.XCode
         public bool IsRootPackage { get; private set; }
 
         public PomInstance Pom { get { return mPom; } }
-        public Package Package { get { return mPackage; } }
+        public PackageState Package { get { return mPackage; } }
         public List<DependencyResource> Dependencies { get { return Pom.Dependencies; } }
 
         public bool IsCpp { get { return Pom.IsCpp; } }
@@ -34,7 +39,7 @@ namespace MSBuild.XCode
         private PackageInstance(bool isRoot)
         {
             IsRootPackage = isRoot;
-            mPackage = new Package();
+            mPackage = new PackageState();
         }
 
         internal PackageInstance(bool isRoot, PackageResource resource)

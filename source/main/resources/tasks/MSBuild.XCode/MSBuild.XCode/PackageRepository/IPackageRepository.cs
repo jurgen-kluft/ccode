@@ -1,11 +1,4 @@
-﻿using System;
-using System.IO;
-using System.Text;
-using System.Collections;
-using System.Collections.Generic;
-using MSBuild.XCode.Helpers;
-
-namespace MSBuild.XCode
+﻿namespace MSBuild.XCode
 {
     public interface IPackageRepository
     {
@@ -13,12 +6,12 @@ namespace MSBuild.XCode
         string RepoURL { get; }
         ELocation Location { get; }
 
-        bool Query(Package package);
-        bool Query(Package package, VersionRange versionRange);
-        bool Link(Package package, out string filename);
-        bool Download(Package package, string to_filename);
+        bool Query(PackageState package);
+        bool Query(PackageState package, VersionRange versionRange);
+        bool Link(PackageState package, out string filename);
+        bool Download(PackageState package, string to_filename);
 
-        bool Submit(Package package, IPackageRepository from);
+        bool Submit(PackageState package, IPackageRepository from);
     }
 
 }

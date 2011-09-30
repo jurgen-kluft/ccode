@@ -42,7 +42,7 @@ namespace MSBuild.XCode
 
             if (package.IsValid)
             {
-                Package p = package.Package;
+                PackageState p = package.Package;
 
                 // - Submit version to remote package repository
                 if (PackageInstance.RepoActor.Deploy(p))

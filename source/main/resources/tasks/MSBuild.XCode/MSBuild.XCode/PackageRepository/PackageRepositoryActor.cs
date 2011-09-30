@@ -123,7 +123,7 @@ namespace MSBuild.XCode
             return false;
         }
 
-        public bool QueryBranch(Package package)
+        public bool QueryBranch(PackageState package)
         {
             if (mHgRepo == null)
                 mHgRepo = new Mercurial.Repository(RootURL);
@@ -137,7 +137,7 @@ namespace MSBuild.XCode
             return false;
         }
 
-        public bool QueryBranchAndChangeset(Package package)
+        public bool QueryBranchAndChangeset(PackageState package)
         {
             if (mHgRepo == null)
                 mHgRepo = new Mercurial.Repository(RootURL);
@@ -184,7 +184,7 @@ namespace MSBuild.XCode
         }
 
 
-        public ComparableVersion MakeVersion(Package package, ComparableVersion root)
+        public ComparableVersion MakeVersion(PackageState package, ComparableVersion root)
         {
             ComparableVersion remote;
             if (package.RemoteExists)
@@ -278,7 +278,7 @@ namespace MSBuild.XCode
             return new ComparableVersion(String.Format("{0}.{1}.{2}", major, minor, build));
         }
 
-        public bool Create(Package package, PackageContent content, ComparableVersion rootVersion)
+        public bool Create(PackageState package, PackageContent content, ComparableVersion rootVersion)
         {
             Environment.CurrentDirectory = RootURL;
 
@@ -320,7 +320,7 @@ namespace MSBuild.XCode
             return false;
         }
 
-        public int Update(Package package, VersionRange versionRange)
+        public int Update(PackageState package, VersionRange versionRange)
         {
             // Find best version on remote
             // Find best version in the cache
@@ -330,36 +330,37 @@ namespace MSBuild.XCode
             // End
             // Update cache to share
             // Update share to target
+            ProgressTracker progress = ProgressTracker.Instance;
+
+            progress.Add(new int[] { 20, 10, 10, 10, 10, 30, 10 });
 
             TargetRepo.Query(package);
+
+            // 1
+            progress.Next();
+            progress.ToConsole();
 
             // Try to get the package from the Cache to Target
             if (!package.RemoteExists)
                 RemoteRepo.Query(package, versionRange);
+
+            // 2
+            progress.Next();
+            progress.ToConsole();
+
             if (!package.CacheExists)
                 CacheRepo.Query(package, versionRange);
 
-            if (package.CacheExists)
-            {
-                ShareRepo.Query(package);
-            }
+            // 3
+            progress.Next();
+            progress.ToConsole();
 
-            // Do a signature verification
-            if (package.TargetExists && package.ShareExists && package.CacheExists)
-            {
-                if (package.RemoteExists)
-                {
-                    if (package.RemoteSignature == package.CacheSignature && package.CacheSignature == package.ShareSignature)
-                    {
-                        return 0;
-                    }
-                }
-                else
-                {
-                    if (package.CacheSignature == package.TargetSignature)
-                        return 0;
-                }
-            }
+            if (package.CacheExists)
+                ShareRepo.Query(package);
+
+            // 4
+            progress.Next();
+            progress.ToConsole();
 
             int result = 0;
 
@@ -376,6 +377,10 @@ namespace MSBuild.XCode
                     }
                 }
             }
+
+            // 5
+            progress.Next();
+            progress.ToConsole();
 
             if (package.CacheExists)
             {
@@ -398,6 +403,10 @@ namespace MSBuild.XCode
                 result = -1;
             }
 
+            // 6
+            progress.Next();
+            progress.ToConsole();
+
             if (package.ShareExists)
             {
                 if (!package.TargetExists || (package.ShareVersion > package.TargetVersion))
@@ -419,10 +428,15 @@ namespace MSBuild.XCode
                 result = -1;
             }
 
+            // 7
+            progress.Next();
+            progress.ToConsole();
+
+
             return result;
         }
 
-        public bool Install(Package package)
+        public bool Install(PackageState package)
         {
             if (CheckForUncommittedModifications())
                 return false;
@@ -441,7 +455,7 @@ namespace MSBuild.XCode
             return false;
         }
 
-        public bool Deploy(Package package)
+        public bool Deploy(PackageState package)
         {
             if (CheckForOutstandingModifications())
                 return false;

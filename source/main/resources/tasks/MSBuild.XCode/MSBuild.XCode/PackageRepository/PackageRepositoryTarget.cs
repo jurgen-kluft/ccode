@@ -1,10 +1,5 @@
 ﻿using System;
 using System.IO;
-using System.Text;
-using System.Collections;
-using System.Collections.Generic;
-using System.Security.Cryptography;
-using Ionic.Zip;
 using MSBuild.XCode.Helpers;
 
 namespace MSBuild.XCode
@@ -43,7 +38,7 @@ namespace MSBuild.XCode
         public ELocation Location { get; private set; }
         private ILayout Layout { get; set; }
 
-        public bool Query(Package package)
+        public bool Query(PackageState package)
         {
             // See if this package is in the target folder and valid
             string packageURL = Layout.PackageRootDir(RepoURL, package.Group, package.Name, package.Platform);
@@ -82,7 +77,7 @@ namespace MSBuild.XCode
             return false;
         }
 
-        public bool Query(Package package, VersionRange versionRange)
+        public bool Query(PackageState package, VersionRange versionRange)
         {
             // See if this package is in the target folder and valid for the version range
             if (Query(package))
@@ -95,12 +90,12 @@ namespace MSBuild.XCode
             return false;
         }
 
-        public bool Download(Package package, string to_filename)
+        public bool Download(PackageState package, string to_filename)
         {
             return false;
         }
 
-        public bool Link(Package package, out string filename)
+        public bool Link(PackageState package, out string filename)
         {
             string package_d = Layout.PackageVersionDir(RepoURL, package.Group, package.Name, package.Platform, package.Branch, package.GetVersion(Location));
             string package_f = package.GetFilename(Location).ToString();
@@ -113,7 +108,7 @@ namespace MSBuild.XCode
             return false;
         }
 
-        public bool Submit(Package package, IPackageRepository from)
+        public bool Submit(PackageState package, IPackageRepository from)
         {
             // Target normally gets packages from Share
             if (from.Location != ELocation.Share)

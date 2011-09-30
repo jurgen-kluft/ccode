@@ -1,8 +1,5 @@
 ﻿using System;
-using System.Xml;
-using System.IO;
 using System.Collections.Generic;
-using System.Text;
 using Microsoft.Build.Framework;
 using Microsoft.Build.Utilities;
 using MSBuild.XCode.Helpers;

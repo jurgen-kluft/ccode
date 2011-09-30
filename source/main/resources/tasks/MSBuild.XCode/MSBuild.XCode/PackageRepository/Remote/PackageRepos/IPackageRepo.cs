@@ -1,7 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
-using System.Linq;
-using System.Text;
+using MSBuild.XCode;
 
 namespace xpackage_repo
 {
@@ -15,7 +14,6 @@ namespace xpackage_repo
     /// key will be updated in the database.
     /// 
     /// </summary>
-
     public interface IPackageRepo
     {
         /// <summary>
@@ -38,7 +36,7 @@ namespace xpackage_repo
         /// <summary>
         /// This method is used for uploading package 
         /// </summary>
-        bool upLoad(string Name, string Group, string Language, string Platform, string Branch, Int64 Version, string Datetime, string Changeset, List<KeyValuePair<string, Int64>> dependencies, string localFilename);
+        bool upLoad(string Name, string Group, string Language, string Platform, string Branch, Int64 Version, string Datetime, string Changeset, List<KeyValuePair<Package, Int64>> dependencies, string localFilename);
 
         /// <summary>
         /// This method is used to retrieve a package from the repository

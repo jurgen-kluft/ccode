@@ -90,17 +90,57 @@ namespace MSBuild.XCode
 
         public bool BuildForPlatform(string platform)
         {
-            int result = Compile(platform);
+            int result;
+            Console.Write("Processing dependencies for platform {0}: ", platform);
+            {
+                ProgressTracker.Instance = new ProgressTracker();
+                result = Compile(platform);
+                ProgressTracker.Instance.Next();
+                ProgressTracker.Instance.ToConsole();
+            }
+            Console.WriteLine();
             return result == 0;
         }
 
         public bool BuildForPlatforms(List<string> platforms)
         {
+            string platformsStr = string.Empty;
             foreach (string platform in platforms)
             {
-                if (!BuildForPlatform(platform))
-                    return false;
+                if (platformsStr.Length == 0)
+                    platformsStr = "'" + platform + "'";
+                else
+                    platformsStr += ", " + "'" + platform + "'";
             }
+
+            Console.Write("Processing dependencies for platforms {0}: ", platformsStr);
+            {
+                ProgressTracker.Instance = new ProgressTracker();
+                if (platforms.Count > 1)
+                {
+                    ProgressTracker.Instance.Add(platforms.Count);
+                    foreach (string platform in platforms)
+                    {
+                        if (Compile(platform) != 0)
+                        {
+                            Console.WriteLine();
+                            return false;
+                        }
+                        ProgressTracker.Instance.Next();
+                    }
+                }
+                else if (platforms.Count == 1)
+                {
+                    if (Compile(platforms[0]) != 0)
+                    {
+                        Console.WriteLine();
+                        return false;
+                    }
+                    ProgressTracker.Instance.Next();
+                    ProgressTracker.Instance.ToConsole();
+                }
+            }
+            Console.WriteLine();
             return true;
         }
 
@@ -139,7 +179,7 @@ namespace MSBuild.XCode
 
         private bool SaveInfoForPlatform(string platform)
         {
-            Package p = mRootPackage.Package;
+            PackageState p = mRootPackage.Package;
 
             string rootURL = p.RootURL;
             string filepath = rootURL + "\\target\\" + p.Name + "\\build\\" + platform + "\\dependencies.info";

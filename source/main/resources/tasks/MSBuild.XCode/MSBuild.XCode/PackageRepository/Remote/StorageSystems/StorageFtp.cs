@@ -374,7 +374,8 @@ namespace Ftp
 			try
 			{
 				this.clientSocket = new Socket( AddressFamily.InterNetwork, SocketType.Stream, ProtocolType.Tcp );
-				addr = Dns.Resolve(this.server).AddressList[0];
+				//addr = Dns.Resolve(this.server).AddressList[0];
+                addr = Dns.GetHostEntry(this.server).AddressList[0];
 				ep = new IPEndPoint( addr, this.port );
 				this.clientSocket.Connect(ep);
 			}
@@ -1137,7 +1138,8 @@ namespace Ftp
 			try
 			{
 				socket = new Socket(AddressFamily.InterNetwork,SocketType.Stream,ProtocolType.Tcp);
-				ep = new IPEndPoint(Dns.Resolve(ipAddress).AddressList[0], port);
+                IPAddress ip = Dns.GetHostEntry(ipAddress).AddressList[0];
+				ep = new IPEndPoint(ip, port);
 				socket.Connect(ep);
 			}
 			catch(Exception ex)

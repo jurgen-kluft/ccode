@@ -115,6 +115,7 @@
     <Compile Include="Extensions\StringExt.cs" />
     <Compile Include="Helpers\DynamicXml.cs" />
     <Compile Include="Helpers\PathUtils.cs" />
+    <Compile Include="Helpers\ProgressTracker.cs" />
     <Compile Include="Helpers\StringItems.cs" />
     <Compile Include="Helpers\Logger.cs" />
     <Compile Include="Helpers\Glob.cs" />
@@ -222,57 +223,7 @@
     <Compile Include="PackageRepository\Remote\StorageSystems\StorageFtp.cs" />
     <Compile Include="PackageRepository\Remote\StorageSystems\StorageSystem.cs" />
     <Compile Include="PackageRepository\Package.cs" />
-    <Compile Include="PackageZip\BitWriter.cs" />
-    <Compile Include="PackageZip\BZip2Compressor.cs" />
-    <Compile Include="PackageZip\BZip2InputStream.cs" />
-    <Compile Include="PackageZip\BZip2OutputStream.cs" />
-    <Compile Include="PackageZip\ComHelper.cs" />
-    <Compile Include="PackageZip\CRC32.cs" />
-    <Compile Include="PackageZip\Deflate.cs" />
-    <Compile Include="PackageZip\DeflateStream.cs" />
-    <Compile Include="PackageZip\EncryptionAlgorithm.cs" />
-    <Compile Include="PackageZip\Events.cs" />
-    <Compile Include="PackageZip\Exceptions.cs" />
-    <Compile Include="PackageZip\ExtractExistingFileAction.cs" />
-    <Compile Include="PackageZip\FileSelector.cs" />
-    <Compile Include="PackageZip\GZipStream.cs" />
-    <Compile Include="PackageZip\Inflate.cs" />
-    <Compile Include="PackageZip\InfTree.cs" />
-    <Compile Include="PackageZip\Iso8859Dash1Encoding.cs" />
-    <Compile Include="PackageZip\OffsetStream.cs" />
-    <Compile Include="PackageZip\ParallelBZip2OutputStream.cs" />
-    <Compile Include="PackageZip\ParallelDeflateOutputStream.cs" />
-    <Compile Include="PackageZip\Rand.cs" />
-    <Compile Include="PackageZip\Shared.cs" />
-    <Compile Include="PackageZip\Tree.cs" />
-    <Compile Include="PackageZip\WinZipAes.cs" />
-    <Compile Include="PackageZip\ZipConstants.cs" />
-    <Compile Include="PackageZip\ZipCrypto.cs" />
-    <Compile Include="PackageZip\ZipDirEntry.cs" />
-    <Compile Include="PackageZip\ZipEntry.cs" />
-    <Compile Include="PackageZip\ZipEntry.Extract.cs" />
-    <Compile Include="PackageZip\ZipEntry.Read.cs" />
-    <Compile Include="PackageZip\ZipEntry.Write.cs" />
-    <Compile Include="PackageZip\ZipEntrySource.cs" />
-    <Compile Include="PackageZip\ZipErrorAction.cs" />
-    <Compile Include="PackageZip\ZipFile.AddUpdate.cs" />
-    <Compile Include="PackageZip\ZipFile.Check.cs" />
-    <Compile Include="PackageZip\ZipFile.cs" />
-    <Compile Include="PackageZip\ZipFile.Events.cs" />
-    <Compile Include="PackageZip\ZipFile.Extract.cs" />
-    <Compile Include="PackageZip\ZipFile.Read.cs" />
-    <Compile Include="PackageZip\ZipFile.Save.cs" />
-    <Compile Include="PackageZip\ZipFile.SaveSelfExtractor.cs" />
-    <Compile Include="PackageZip\ZipFile.Selector.cs" />
-    <Compile Include="PackageZip\ZipFile.x-IEnumerable.cs" />
-    <Compile Include="PackageZip\ZipInputStream.cs" />
-    <Compile Include="PackageZip\ZipOutputStream.cs" />
-    <Compile Include="PackageZip\ZipSegmentedStream.cs" />
-    <Compile Include="PackageZip\Zlib.cs" />
-    <Compile Include="PackageZip\ZlibBaseStream.cs" />
-    <Compile Include="PackageZip\ZlibCodec.cs" />
-    <Compile Include="PackageZip\ZlibConstants.cs" />
-    <Compile Include="PackageZip\ZlibStream.cs" />
+    <Compile Include="PackageZip\PackageZipper.cs" />
     <Compile Include="Package\PackageArchive.cs" />
     <Compile Include="Pom\ProjectProperties.cs" />
     <Compile Include="Package\PackageStructure.cs" />
@@ -351,6 +302,7 @@
       <Install>true</Install>
     </BootstrapperPackage>
   </ItemGroup>
+  <ItemGroup />
   <Import Project="$(MSBuildBinPath)\Microsoft.CSharp.targets" />
   <!-- To modify your build process, add your task inside one of the targets below and uncomment it. 
        Other similar extension points exist, see Microsoft.Common.targets.

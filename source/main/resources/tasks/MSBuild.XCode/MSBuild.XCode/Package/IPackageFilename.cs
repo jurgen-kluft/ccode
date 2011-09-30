@@ -1,7 +1,4 @@
 ﻿using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
 
 namespace MSBuild.XCode
 {
@@ -52,7 +49,7 @@ namespace MSBuild.XCode
             string[] parts = filename.Split(new char[] { '+' }, StringSplitOptions.RemoveEmptyEntries);
             Name = parts[0];
 
-            // Here split the version and datetime
+            // Here split the version and date time
             // Find the 
             string[] dparts = parts[1].Split(new char[] { '.' }, StringSplitOptions.RemoveEmptyEntries);
             Version = dparts.Length>2 ? new ComparableVersion(String.Format("{0}.{1}.{2}", dparts[0], dparts[1], dparts[2])) : new ComparableVersion("1.0.0");
@@ -102,7 +99,7 @@ namespace MSBuild.XCode
                 int build = Version.GetBuild();
 
                 DateTime dt = DateTime;
-                string v = String.Format("{0:D3}.{1:D3}.{2:D3}.{3:yyyy.MM.dd.HH.mm.ss}", major, minor, build, dt);
+                string v = String.Format("{0:D7}.{1:D7}.{2:D8}.{3:yyyy.MM.dd.HH.mm.ss}", major, minor, build, dt);
                 return v;
             }
         }

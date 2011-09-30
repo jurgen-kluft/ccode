@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
 using xstorage_system;
+using MSBuild.XCode;
 using MSBuild.XCode.Helpers;
 
 namespace xpackage_repo
@@ -19,7 +20,7 @@ namespace xpackage_repo
             mDatabaseSystem.connect(databaseURL);
         }
 
-        public bool upLoad(string Name, string Group, string Language, string Platform, string Branch, Int64 Version, string Datetime, string Changeset, List<KeyValuePair<string, Int64>> dependencies, string localFilename)
+        public bool upLoad(string Name, string Group, string Language, string Platform, string Branch, Int64 Version, string Datetime, string Changeset, List<KeyValuePair<Package, Int64>> dependencies, string localFilename)
         {
             string storage_key;
             if (mStorageSystem.submit(localFilename, out storage_key))
@@ -51,7 +52,23 @@ namespace xpackage_repo
                 pv.Datetime = Datetime;
                 pv.Location = storage_key;
                 pv.Changeset = Changeset;
-                return mDatabaseSystem.submit(pv, dependencies);
+
+                List<PackageVersion_pv> deps = new List<PackageVersion_pv>();
+                foreach (KeyValuePair<Package,Int64> d in dependencies)
+                {
+                    PackageVersion_pv p = new PackageVersion_pv();
+                    p.Name = d.Key.Name;
+                    p.Group = d.Key.Group;
+                    p.Language = d.Key.Language;
+                    p.Version = d.Value;
+                    p.Platform = Platform;
+                    p.Branch = Branch;
+                    p.Location = string.Empty;
+                    p.Changeset = d.Key.Changeset;
+                    deps.Add(p);
+                }
+
+                return mDatabaseSystem.submit(pv, deps);
             }
             else
             {
