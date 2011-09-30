@@ -1,8 +1,6 @@
 ﻿using System;
 using System.IO;
 using System.Collections.Generic;
-using System.Linq;
-using System.Text;
 using MSBuild.XCode.Helpers;
 
 namespace MSBuild.XCode
@@ -31,33 +29,55 @@ namespace MSBuild.XCode
 
         public int Compile(DependencyTree dependencyTree)
         {
+            ProgressTracker progress = ProgressTracker.Instance;
+
+            progress.Add(new int[] { 75, 20, 5 });
             if (dependencyTree.Update(this) == -1)
+            {
+                progress.Next();
+                progress.Next();
+                progress.Next();
                 return -1;
+            }
+
+            progress.Next();
+            progress.ToConsole();
+
             if (!Package.Load())
+            {
+                progress.Next();
+                progress.Next();
                 return -1;
+            }
+
+            progress.Next();
+            progress.ToConsole();
 
             Package.Pom.OnlyKeepPlatformSpecifics(Platform);
 
             foreach (DependencyResource dependencyResource in Package.Dependencies)
             {
-                if (!dependencyResource.IsForPlatform(Platform))
-                    continue;
-
-                if (!dependencyTree.HasNode(dependencyResource.Name))
+                if (dependencyResource.IsForPlatform(Platform))
                 {
-                    DependencyInstance dependencyInstance = new DependencyInstance(Platform, dependencyResource);
-                    DependencyTreeNode depNode = new DependencyTreeNode(Platform, dependencyInstance, Depth + 1);
+                    if (!dependencyTree.HasNode(dependencyResource.Name))
+                    {
+                        DependencyInstance dependencyInstance = new DependencyInstance(Platform, dependencyResource);
+                        DependencyTreeNode depNode = new DependencyTreeNode(Platform, dependencyInstance, Depth + 1);
 
-                    Children.Add(depNode.Name, depNode);
-                    dependencyTree.AddNode(depNode);
-                    dependencyTree.EnqueueForCompile(depNode);
-                }
-                else
-                {
-                    DependencyTreeNode depNode = dependencyTree.FindNode(dependencyResource.Name);
-                    Children.Add(depNode.Name, depNode);
+                        Children.Add(depNode.Name, depNode);
+                        dependencyTree.AddNode(depNode);
+                        dependencyTree.EnqueueForCompile(depNode);
+                    }
+                    else
+                    {
+                        DependencyTreeNode depNode = dependencyTree.FindNode(dependencyResource.Name);
+                        Children.Add(depNode.Name, depNode);
+                    }
                 }
             }
+
+            progress.Next();
+            progress.ToConsole();
 
             return 0;
         }
@@ -68,10 +88,10 @@ namespace MSBuild.XCode
             {
                 register.Add(Name);
 
-                Package p = Package.Package;
+                PackageState p = Package.Package;
 
                 string versionStr = p.TargetVersion == null ? "?" : p.TargetVersion.ToString();
-                writer.WriteLine(String.Format("{0}, version={1}, type={2}", Name, versionStr, Dependency.Type));
+                writer.WriteLine(String.Format("name={0}, group={1}, language={2}, version={3}, type={4}", Package.Name, Package.Group.ToString(), Package.Language, versionStr, Dependency.Type));
 
                 if (Children != null)
                 {
@@ -87,7 +107,7 @@ namespace MSBuild.XCode
             else if (indent == "+") indent = "|----+";
             else indent = "     " + indent;
 
-            Package p = Package.Package;
+            PackageState p = Package.Package;
 
             string versionStr = p.TargetVersion == null ? "?" : p.TargetVersion.ToString();
 

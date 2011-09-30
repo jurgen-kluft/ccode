@@ -30,7 +30,7 @@ namespace xpackage_repo
             return false;
         }
 
-        public bool submit(PackageVersion_pv package, List<KeyValuePair<string, Int64>> dependencies)
+        public bool submit(PackageVersion_pv package, List<PackageVersion_pv> dependencies)
         {
             return mDatabase.submit(package, dependencies);
         }

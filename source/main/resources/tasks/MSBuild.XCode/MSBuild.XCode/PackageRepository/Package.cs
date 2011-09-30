@@ -1,11 +1,4 @@
 ﻿using System;
-using System.IO;
-using System.Xml;
-using System.Text;
-using System.Collections.Generic;
-using System.Security.Cryptography;
-using Ionic.Zip;
-using MSBuild.XCode.Helpers;
 
 namespace MSBuild.XCode
 {
@@ -22,13 +15,34 @@ namespace MSBuild.XCode
 
     public class Package
     {
-        public string Group { get; set; }
         public string Name { get; set; }
-        public string Language { get; set; }
+        public string Group { get; set; }
         public string Branch { get; set; }
         public string Platform { get; set; }
+        public string Language { get; set; }
         public string Changeset { get; set; }
 
+        public Package()
+        {
+            Changeset = "?";
+            Language = "C++";
+        }
+
+        public static Package From(string name, string group, string branch, string platform, string language, string changeset)
+        {
+            Package instance = new Package();
+            instance.Name = name;
+            instance.Group = group;
+            instance.Branch = branch;
+            instance.Platform = platform;
+            instance.Language = language;
+            instance.Changeset = changeset;
+            return instance;
+        }
+    }
+
+    public class PackageState : Package
+    {
         public DateTime RemoteSignature { get; set; }
         public DateTime CacheSignature { get; set; }
         public DateTime ShareSignature { get; set; }
@@ -36,6 +50,7 @@ namespace MSBuild.XCode
         public DateTime LocalSignature { get; set; }
 
         public IPackageFilename RemoteFilename { get; set; }
+        public string RemoteStorageKey { get; set; }
         public IPackageFilename CacheFilename { get; set; }
         public IPackageFilename ShareFilename { get; set; }
         public IPackageFilename TargetFilename { get; set; }
@@ -65,16 +80,14 @@ namespace MSBuild.XCode
 
         public bool IncrementVersion { get; set; }
 
-        public Package()
+        public PackageState()
         {
-            Changeset = "?";
-            Language = "C++";
             IncrementVersion = false;
         }
 
-        public static Package From(string name, string group, string branch, string platform)
+        public static PackageState From(string name, string group, string branch, string platform)
         {
-            Package instance = new Package();
+            PackageState instance = new PackageState();
             instance.Name = name;
             instance.Group = group;
             instance.Branch = branch;

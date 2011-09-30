@@ -29,7 +29,7 @@ namespace MSBuild.XCode
         public ELocation Location { get; private set; }
         public ILayout Layout { get; set; }
 
-        public bool Query(Package package)
+        public bool Query(PackageState package)
         {
             // See if there are one or more created packages in the Target\Build\ folder.
             // If so then together with the content description and doing a check if files have been
@@ -83,7 +83,7 @@ namespace MSBuild.XCode
             return false;
         }
 
-        public bool Query(Package package, VersionRange versionRange)
+        public bool Query(PackageState package, VersionRange versionRange)
         {
             // See if this package is in the target folder and valid for the version range
             if (Query(package))
@@ -93,7 +93,7 @@ namespace MSBuild.XCode
             return false;
         }
 
-        public bool Link(Package package, out string filename)
+        public bool Link(PackageState package, out string filename)
         {
             string package_f = package.GetURL(Location) + package.GetFilename(Location);
             if (File.Exists(package_f))
@@ -105,7 +105,7 @@ namespace MSBuild.XCode
             return false;
         }
 
-        public bool Download(Package package, string to_filename)
+        public bool Download(PackageState package, string to_filename)
         {
             string src_path = package.GetURL(Location) + package.GetFilename(Location);
             if (File.Exists(src_path))
@@ -129,7 +129,7 @@ namespace MSBuild.XCode
             return false;
         }
 
-        public bool Submit(Package package, IPackageRepository from)
+        public bool Submit(PackageState package, IPackageRepository from)
         {
             string package_f = package.GetURL(Location) + package.GetFilename(Location);
             return (File.Exists(package_f));

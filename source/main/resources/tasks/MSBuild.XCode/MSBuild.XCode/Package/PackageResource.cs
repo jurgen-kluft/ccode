@@ -1,11 +1,6 @@
 ﻿using System;
 using System.IO;
-using System.Xml;
-using System.Text;
 using System.Collections.Generic;
-using System.Security.Cryptography;
-using Ionic.Zip;
-using MSBuild.XCode.Helpers;
 
 namespace MSBuild.XCode
 {
@@ -88,15 +83,15 @@ namespace MSBuild.XCode
             PackageResource resource = PackageResource.From(filename);
             if (File.Exists(url + filename.ToString()))
             {
-                ZipFile zip = new ZipFile(url + filename.ToString());
-                if (zip.Entries.Count > 0)
+                PackageZipper zip = PackageZipper.Open(url + filename.ToString(), FileAccess.Read);
+                if (zip.Files.Count > 0)
                 {
-                    ZipEntry entry = zip["pom.xml"];
-                    if (entry != null)
+                    PackageZipper.ZipFileEntry entry;
+                    if (zip.FindEntryByFilename("pom.xml", out entry))
                     {
                         using (MemoryStream stream = new MemoryStream())
                         {
-                            entry.Extract(stream);
+                            zip.ExtractFile(entry, stream);
                             stream.Position = 0;
                             using (StreamReader reader = new StreamReader(stream))
                             {

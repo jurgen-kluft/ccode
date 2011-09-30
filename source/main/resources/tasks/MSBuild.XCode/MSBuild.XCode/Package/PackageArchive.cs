@@ -2,7 +2,6 @@
 using System.IO;
 using System.Collections.Generic;
 using MSBuild.XCode.Helpers;
-using Ionic.Zip;
 
 namespace MSBuild.XCode
 {
@@ -13,15 +12,14 @@ namespace MSBuild.XCode
             string text = null;
             if (File.Exists(package_filename))
             {
-                ZipFile zip = new ZipFile(package_filename);
-                if (zip.Entries.Count > 0)
+                PackageZipper pz = PackageZipper.Open(package_filename, FileAccess.Read);
+                PackageZipper.ZipFileEntry e;
+                if (pz.FindEntryByFilename(filename, out e))
                 {
-                    ZipEntry entry = zip[filename];
-                    if (entry != null)
+                    using (MemoryStream stream = new MemoryStream())
                     {
-                        using (MemoryStream stream = new MemoryStream())
+                        if (pz.ExtractFile(e, stream))
                         {
-                            entry.Extract(stream);
                             stream.Position = 0;
                             using (StreamReader reader = new StreamReader(stream))
                             {
@@ -32,14 +30,14 @@ namespace MSBuild.XCode
                         }
                     }
                 }
-                zip.Dispose();
+                pz.Close();
             }
             return text;
         }
 
-        public static bool RetrieveDependencies(string package_filename, out List<KeyValuePair<string, Int64>> dependencies)
+        public static bool RetrieveDependencies(string package_filename, out List<KeyValuePair<Package, Int64>> dependencies)
         {
-            dependencies = new List<KeyValuePair<string, Int64>>();
+            dependencies = new List<KeyValuePair<Package,Int64>>();
 
             string text = RetrieveFileAsText(package_filename, "dependencies.info");
             if (text == null)
@@ -58,14 +56,43 @@ namespace MSBuild.XCode
                         break;
 
                     string[] parts = line.Split(new char[] { ',' }, StringSplitOptions.RemoveEmptyEntries);
+                    for (int i = 0; i < parts.Length; ++i)
+                        parts[i] = parts[i].Trim();
 
-                    string name = parts[0].Trim();
-                    string version_str = parts[1].Replace("version=", "").Trim();
-                    string[] version_items = version_str.Split(new char[] { '.' }, StringSplitOptions.RemoveEmptyEntries);
-                    version_str = String.Format("{0}.{1}.{2}", version_items[0], version_items[1], version_items[2]);
-                    ComparableVersion version_cp = new ComparableVersion(version_str);
-                    Int64 version_int = version_cp.ToInt();
-                    dependencies.Add(new KeyValuePair<string, Int64>(name, version_int));
+                    Int64 v = 0;
+                    Package p = new Package();
+                    foreach (string part in parts)
+                    {
+                        if (part.StartsWith("name="))
+                        {
+                            p.Name = part.Split('=')[1].Trim();
+                        }
+                        else if (part.StartsWith("branch="))
+                        {
+                            p.Branch = part.Split('=')[1].Trim();
+                        }
+                        else if (part.StartsWith("group="))
+                        {
+                            p.Group = part.Split('=')[1].Trim();
+                        }
+                        else if (part.StartsWith("platform="))
+                        {
+                            p.Platform = part.Split('=')[1].Trim();
+                        }
+                        else if (part.StartsWith("language="))
+                        {
+                            p.Language = part.Split('=')[1].Trim();
+                        }
+                        else if (part.StartsWith("version="))
+                        {
+                            string version_str = part.Split('=')[1].Trim();
+                            string[] version_items = version_str.Split(new char[] { '.' }, StringSplitOptions.RemoveEmptyEntries);
+                            version_str = String.Format("{0}.{1}.{2}", version_items[0], version_items[1], version_items[2]);
+                            ComparableVersion version_cp = new ComparableVersion(version_str);
+                            v = version_cp.ToInt();
+                        }
+                    }
+                    dependencies.Add(new KeyValuePair<Package, Int64>(p, v));
                 }
                 return true;
             }
@@ -76,7 +103,7 @@ namespace MSBuild.XCode
             }
         }
 
-        public static bool Create(Package package, PackageContent content, string rootURL)
+        public static bool Create(PackageState package, PackageContent content, string rootURL)
         {
             try
             {
@@ -196,15 +223,27 @@ namespace MSBuild.XCode
                 }
 
                 string zipPath = buildURL + package.LocalFilename.ToString();
-                using (ZipFile zip = new ZipFile(zipPath))
+                using (PackageZipper zip = PackageZipper.Create(zipPath, string.Empty))
                 {
-                    foreach (KeyValuePair<string, string> p in files)
-                        zip.AddFile(p.Key, p.Value);
-
-                    ZipSaveProgress progress = new ZipSaveProgress(files.Count);
                     Console.Write("Creating Package {0} for platform {1}: ", package.Name, package.Platform);
-                    zip.SaveProgress += progress.EventHandler;
-                    zip.Save();
+
+                    int cl, ct;
+                    cl = Console.CursorLeft;
+                    ct = Console.CursorTop;
+                    int max = files.Count;
+                    int cnt = 1;
+                    foreach (KeyValuePair<string, string> p in files)
+                    {
+                        Console.SetCursorPosition(cl, ct);
+                        Console.Write("{0, 3}%", (cnt * 100) / max);
+                        string src_filepath = p.Key;
+                        string zip_filepath = String.IsNullOrEmpty(p.Value) ? (Path.GetFileName(src_filepath)) : (p.Value.EndWith('\\') + Path.GetFileName(src_filepath));
+                        zip.AddFile(src_filepath, zip_filepath);
+                        ++cnt;
+                    }
+                    Console.WriteLine();
+
+                    zip.Close();
                     Console.WriteLine("Done");
                     File.SetLastWriteTime(zipPath, package.LocalSignature);
                     package.LocalURL = buildURL;
@@ -218,30 +257,5 @@ namespace MSBuild.XCode
 
             return false;
         }
-
-        public class ZipSaveProgress
-        {
-            private int mNumCharsDisplayed = 0;
-
-            private int mNumEntries;
-            public ZipSaveProgress(int numEntries)
-            {
-                mNumEntries = numEntries;
-            }
-
-            public void EventHandler(object sender, SaveProgressEventArgs e)
-            {
-                int numChars = ((100 * e.EntriesSaved) / mNumEntries);
-                while (mNumCharsDisplayed < numChars)
-                {
-                    Console.Write("{0, 3}%", numChars);
-                    Console.CursorLeft = Console.CursorLeft - 4;
-
-                    ++mNumCharsDisplayed;
-                }
-            }
-        }
-
-
     }
 }

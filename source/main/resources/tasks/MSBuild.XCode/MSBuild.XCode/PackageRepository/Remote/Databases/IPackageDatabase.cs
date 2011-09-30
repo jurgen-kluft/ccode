@@ -1,13 +1,11 @@
 ﻿using System;
 using System.Collections.Generic;
-using System.Linq;
-using System.Text;
 
 namespace xpackage_repo
 {
     public interface IPackageDatabase
     {
-        bool submit(PackageVersion_pv package, List<KeyValuePair<string, Int64>> dependencies);
+        bool submit(PackageVersion_pv package, List<PackageVersion_pv> dependencies);
 
         bool findUniqueVersion(PackageVersion_pv package);
         bool findLatestVersion(PackageVersion_pv package, out Int64 outVersion);

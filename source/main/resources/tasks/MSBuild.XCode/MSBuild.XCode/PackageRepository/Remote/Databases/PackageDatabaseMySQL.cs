@@ -313,7 +313,7 @@ namespace xpackage_repo
             return idPackageVersion;        
         }
 
-        public bool submit(PackageVersion_pv package, List<KeyValuePair<string, Int64>> dependencies)
+        public bool submit(PackageVersion_pv package, List<PackageVersion_pv> dependencies)
         {
             int idPackage = insertPackage(package.Name, package.Group, package.Language);
             if (idPackage == 0)
@@ -343,6 +343,27 @@ namespace xpackage_repo
             }
             else
             {
+                // First check the existence of the dependencies
+                List<PackageVersion_pv> failedDependencies = new List<PackageVersion_pv>();
+                List<KeyValuePair<PackageVersion_pv, int>> verifiedDependencies = new List<KeyValuePair<PackageVersion_pv, int>>();
+                foreach (PackageVersion_pv pv in dependencies)
+                {
+                    int idPackageDependency = findVersion(pv.Name, pv.Group, pv.Language, pv.Platform, pv.Branch, pv.Version);
+                    if (idPackageDependency == 0)
+                    {
+                        failedDependencies.Add(pv);
+                        ComparableVersion cv = new ComparableVersion(pv.Version);
+                        Loggy.Error(String.Format("Error: Remote Repo Submit: dependency package {0} with version {1} hasn't been deployed yet", pv.Name, cv.ToString()));
+                    }
+                    else
+                    {
+                        verifiedDependencies.Add(new KeyValuePair<PackageVersion_pv, int>(pv, idPackageDependency));
+                    }
+                }
+                if (failedDependencies.Count > 0)
+                    return false;
+
+                // Now we can insert the new version of this package
                 int idPackageVersion = insertVersion(idPackage, idPackagePlatform, idPackageBranch, package);
                 if (idPackageVersion == 0)
                 {
@@ -351,15 +372,9 @@ namespace xpackage_repo
                 }
 
                 // Insert dependencies
-                foreach (KeyValuePair<string, Int64> pv in dependencies)
+                foreach (KeyValuePair<PackageVersion_pv, int> p in verifiedDependencies)
                 {
-                    int idPackageDependency = findVersion(pv.Key, package.Group, package.Language, package.Platform, package.Branch, pv.Value);
-                    if (idPackageDependency == 0)
-                    {
-                        ComparableVersion cv = new ComparableVersion(pv.Value);
-                        Loggy.Error(String.Format("Error: Remote Repo Submit: dependency package {0} with version {1} hasn't been deployed yet", pv.Key, cv.ToString()));
-                        return false;
-                    }
+                    int idPackageDependency = p.Value;
 
                     string table_name = "packagedependency_pd";
                     string insert_sql = string.Format("insert into {0} values({1}, {2})", table_name, idPackageVersion, idPackageDependency);

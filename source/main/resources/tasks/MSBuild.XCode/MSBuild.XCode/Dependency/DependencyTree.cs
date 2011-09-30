@@ -92,6 +92,14 @@ namespace MSBuild.XCode
         // -1 = A package failed to load
         public int Compile()
         {
+            ProgressTracker progress = ProgressTracker.Instance;
+
+            List<int> progress_percentages = new List<int>();
+            foreach (DependencyInstance d in Dependencies)
+                progress_percentages.Add(100);
+            
+            ProgressTracker.Step progress_step = progress.Add(progress_percentages.ToArray());
+
             mCompileQueue.Clear();
             mCompileIteration++;
 
@@ -111,7 +119,14 @@ namespace MSBuild.XCode
                     mAllNodesMap.TryGetValue(d.Name, out depNode);
                     EnqueueForCompile(depNode);
                 }
+                progress.Next();
+                progress.ToConsole();
             }
+
+            progress_percentages.Clear();
+            for (int i = 0; i < mCompileQueue.Count; ++i)
+                progress_percentages.Add(500);
+            progress_step.Add(progress_percentages.ToArray());
 
             // Breadth-First 
             int result = 0;
@@ -119,7 +134,18 @@ namespace MSBuild.XCode
             {
                 DependencyTreeNode node = mCompileQueue.Dequeue();
                 node.Iteration = mCompileIteration;
+                
+                int added_to_queue = mCompileQueue.Count;
                 result = node.Compile(this);
+                added_to_queue = mCompileQueue.Count - added_to_queue;
+                
+                if (added_to_queue > 0)
+                {
+                    progress_percentages.Clear();
+                    for (int i = 0; i < added_to_queue; ++i)
+                        progress_percentages.Add(500);
+                    progress_step.Add(progress_percentages.ToArray());
+                }
             }
 
             return result;
@@ -130,7 +156,7 @@ namespace MSBuild.XCode
             int result = 0;
 
             PackageInstance pi = node.Package;
-            Package p = pi.Package;
+            PackageState p = pi.Package;
             result = PackageInstance.RepoActor.Update(p, node.Dependency.VersionRange);
 
             if (result == -1)
@@ -143,8 +169,8 @@ namespace MSBuild.XCode
         {
             try
             {
-                if (!Directory.Exists(filepath.Path.Full))
-                    Directory.CreateDirectory(filepath.Path.Full);
+                if (!Directory.Exists(filepath.AbsolutePath.Full))
+                    Directory.CreateDirectory(filepath.AbsolutePath.Full);
 
                 FileStream stream = new FileStream(filepath.ToString(), FileMode.Create, FileAccess.Write);
                 StreamWriter writer = new StreamWriter(stream);
@@ -153,7 +179,7 @@ namespace MSBuild.XCode
 
                 ComparableVersion version = Package.Pom.Versions.GetForPlatform(Platform);
                 string versionStr = version != null ? version.ToString() : "?";
-                writer.WriteLine(String.Format("{0}, version={1}, platform={2}", Package.Name, versionStr, Platform));
+                writer.WriteLine(String.Format("name={0}, group={1}, language={2}, version={3}, platform={4}", Package.Name, Package.Group.ToString(), Package.Language, versionStr, Platform));
                 foreach (DependencyTreeNode node in mRootNodes)
                     node.SaveInfo(writer, register);
 
@@ -171,7 +197,7 @@ namespace MSBuild.XCode
         {
             foreach (DependencyTreeNode node in mAllNodesMap.Values)
             {
-                Package p = node.Package.Package;
+                PackageState p = node.Package.Package;
                 Loggy.Info(String.Format("Name                       : {0}", p.Name));
                 Loggy.Info(String.Format("Version                    : {0}", p.TargetVersion));
             }

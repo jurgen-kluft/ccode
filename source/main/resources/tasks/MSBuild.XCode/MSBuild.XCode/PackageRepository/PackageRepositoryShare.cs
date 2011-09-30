@@ -1,6 +1,5 @@
 ﻿using System;
 using System.IO;
-using Ionic.Zip;
 using MSBuild.XCode.Helpers;
 
 namespace MSBuild.XCode
@@ -53,7 +52,7 @@ namespace MSBuild.XCode
         public ELocation Location { get; private set; }
         private ILayout Layout { get; set; }
 
-        public bool Query(Package package)
+        public bool Query(PackageState package)
         {
             // See if this package is in the share folder and valid
             // The package has to have Target properties!
@@ -98,7 +97,7 @@ namespace MSBuild.XCode
             return false;
         }
 
-        public bool Query(Package package, VersionRange versionRange)
+        public bool Query(PackageState package, VersionRange versionRange)
         {
             // See if this package is in the target folder and valid for the version range
             if (Query(package))
@@ -111,41 +110,18 @@ namespace MSBuild.XCode
             return false;
         }
 
-        public bool Download(Package package, string to_filename)
+        public bool Download(PackageState package, string to_filename)
         {
             return false;
         }
 
-        public bool Link(Package package, out string filename)
+        public bool Link(PackageState package, out string filename)
         {
             filename = string.Empty;
             return false;
         }
 
-        public class ZipExtractionProgress
-        {
-            private int mNumCharsDisplayed = 0;
-
-            private int mNumEntries;
-            public ZipExtractionProgress(int numEntries)
-            {
-                mNumEntries = numEntries;
-            }
-
-            public void EventHandler(object sender, ExtractProgressEventArgs e)
-            {
-                int numChars = ((100 * e.EntriesExtracted) / mNumEntries);
-                while (mNumCharsDisplayed < numChars)
-                {
-                    Console.Write("{0, 3}%", numChars);
-                    Console.CursorLeft = Console.CursorLeft - 4;
-                    
-                    ++mNumCharsDisplayed;
-                }
-            }
-        }
-
-        public bool Submit(Package package, IPackageRepository from)
+        public bool Submit(PackageState package, IPackageRepository from)
         {
             // Cannot add from Target! should normally be added from Cache
             if (from.Location == ELocation.Target)
@@ -160,24 +136,23 @@ namespace MSBuild.XCode
                 PackageFilename pf = new PackageFilename(packageFilenameInCache);
                 string shareURL = RepoURL + package.Group + "\\" + package.Name + "\\" + pf.FilenameWithoutExtension + "\\";
                 {
-                    ZipFile zip = new ZipFile(packageFilenameInCache);
-                    ZipExtractionProgress progress = new ZipExtractionProgress(zip.Entries.Count);
-                    Console.Write("Extracting Package {0} for platform {1}: ", package.Name, package.Platform);
-                    zip.ExtractProgress += progress.EventHandler;
+                    PackageZipper zip = PackageZipper.Open(packageFilenameInCache, FileAccess.Read);
                     DateTime now = DateTime.Now;
                     string destExtractDir = Path.GetPathRoot(RepoURL) + "temp\\" + String.Format("tmp.{0}.{1}.{2}.{3}.{4}.{5}\\", now.Year, now.Month, now.Day, now.Hour, now.Minute, now.Second);
                     Directory.CreateDirectory(destExtractDir);
-                    zip.ExtractAll(destExtractDir, ExtractExistingFileAction.OverwriteSilently);
-                    zip.Dispose();
+                    zip.ExtractTo(destExtractDir);
+                    zip.Close();
                     zip = null;
 
                     // Moving a directory only works when the destination doesn't exist
                     // So make sure the destination directory is not there
                     if (Directory.Exists(shareURL))
-                        Directory.Delete(shareURL);
+                        Directory.Delete(shareURL, true);
+
+                    Directory.CreateDirectory(shareURL);
+                    Directory.Delete(shareURL, false);
 
                     Directory.Move(destExtractDir, shareURL);
-                    Console.WriteLine("Done");
                 }
 
                 string current_t_filename = pf.FilenameWithoutExtension + ".t";

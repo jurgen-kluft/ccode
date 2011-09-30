@@ -1,14 +1,6 @@
 ﻿using Microsoft.Build.Framework;
 using Microsoft.Build.Utilities;
 using System;
-using System.IO;
-using System.Collections.Generic;
-using System.Security.Cryptography;
-using System.Linq;
-using System.Text;
-using System.Runtime;
-using Ionic.Zip;
-using Ionic.Zlib;
 using MSBuild.XCode.Helpers;
 
 namespace MSBuild.XCode

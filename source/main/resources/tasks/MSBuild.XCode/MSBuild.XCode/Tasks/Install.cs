@@ -43,7 +43,7 @@ namespace MSBuild.XCode
 
             if (package.IsValid)
             {
-                Package p = package.Package;
+                PackageState p = package.Package;
 
                 // - Commit version to cache package repository
                 if (PackageInstance.RepoActor.Install(p))

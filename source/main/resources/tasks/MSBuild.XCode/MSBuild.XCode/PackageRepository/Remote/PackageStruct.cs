@@ -38,7 +38,7 @@ namespace xpackage_repo
     {
         private string m_PackagePlatform;
         private string m_PackageBranch;
-        private Int64 m_PackageVersion;   // Major Minor Build - 999 999 999
+        private Int64 m_PackageVersion;
 
         private string m_Datetime;
         private string m_Location;
@@ -58,7 +58,7 @@ namespace xpackage_repo
         public static Int64 BuildVersion(int major, int minor, int build)
         {
             UInt64 version = 0;
-            version = version | (((UInt64)major & 0x000fffff) << 44);
+            version = version | (((UInt64)major & 0x0007ffff) << 44);
             version = version | (((UInt64)minor & 0x000fffff) << 24);
             version = version | (((UInt64)build & 0x00ffffff));
             return (Int64)version;
@@ -77,14 +77,14 @@ namespace xpackage_repo
         {
             get
             {
-                Int64 highestVersion = PackageVersion_pv.BuildVersion((1 << 20) - 1, (1 << 20) - 1, (1 << 24) - 1);
+                Int64 highestVersion = PackageVersion_pv.BuildVersion((1 << 19) - 1, (1 << 20) - 1, (1 << 24) - 1);
                 return highestVersion;
             }
         }
 
         public static void SplitVersion(Int64 version, out int major, out int minor, out int build)
         {
-            major = (int)(((UInt64)version & 0xfffff00000000000) >> 44);
+            major = (int)(((UInt64)version & 0x7ffff00000000000) >> 44);
             minor = (int)(((UInt64)version & 0x00000fffff000000) >> 24);
             build = (int)(((UInt64)version & 0x0000000000ffffff) >> 0);
         }

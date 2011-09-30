@@ -1,7 +1,5 @@
 ﻿using System;
 using System.IO;
-using System.Text;
-using System.Collections;
 using System.Collections.Generic;
 using MSBuild.XCode.Helpers;
 
@@ -22,22 +20,22 @@ namespace MSBuild.XCode
         public ELocation Location { get; private set; }
         private ILayout Layout { get; set; }
 
-        public bool Query(Package package)
+        public bool Query(PackageState package)
         {
             return Query(package, new VersionRange("[1.0,)"));
         }
 
-        public bool Query(Package package, VersionRange versionRange)
+        public bool Query(PackageState package, VersionRange versionRange)
         {
             return (FindBestVersion(package, versionRange));
         }
 
-        public bool Download(Package package, string to_filename)
+        public bool Download(PackageState package, string to_filename)
         {
             return false;
         }
 
-        public bool Link(Package package, out string filename)
+        public bool Link(PackageState package, out string filename)
         {
             string package_d = Layout.PackageVersionDir(RepoURL, package.Group, package.Name, package.Platform, package.Branch, package.GetVersion(Location));
             string package_f = package.GetFilename(Location).ToString();
@@ -50,13 +48,13 @@ namespace MSBuild.XCode
             return false;
         }
 
-        public bool Submit(Package package, IPackageRepository from)
+        public bool Submit(PackageState package, IPackageRepository from)
         {
             string package_d = Layout.PackageVersionDir(RepoURL, package.Group, package.Name, package.Platform, package.Branch, package.GetVersion(from.Location));
             if (!Directory.Exists(package_d))
                 Directory.CreateDirectory(package_d);
 
-            string package_f = Layout.VersionToFilename(package.Name, package.Branch, package.Platform, package.GetVersion(from.Location));
+            string package_f = package.GetFilename(from.Location).ToString();
 
             if (!from.Download(package, package_d + package_f))
                 return false;
@@ -113,7 +111,7 @@ namespace MSBuild.XCode
             return new PackageFilename[0];
         }
 
-        private bool FindBestVersion(Package package, VersionRange versionRange)
+        private bool FindBestVersion(PackageState package, VersionRange versionRange)
         {
             PackageFilename[] versions = RetrieveVersionsFor(package.Group, package.Name, package.Branch, package.Platform);
             PackageFilename best = FindBest(versions, versionRange);

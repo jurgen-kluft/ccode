@@ -42,7 +42,7 @@ namespace MSBuild.XCode
 
             if (package.IsValid)
             {
-                Package p = package.Package;
+                PackageState p = package.Package;
                 
                 // - Increment the build ?
                 p.IncrementVersion = IncrementBuild;
