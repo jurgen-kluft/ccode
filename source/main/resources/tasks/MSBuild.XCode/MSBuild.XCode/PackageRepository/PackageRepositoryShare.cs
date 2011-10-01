@@ -146,13 +146,21 @@ namespace MSBuild.XCode
 
                     // Moving a directory only works when the destination doesn't exist
                     // So make sure the destination directory is not there
+                    DirectoryInfo shareURLDirInfo;
                     if (Directory.Exists(shareURL))
-                        Directory.Delete(shareURL, true);
+                    {
+                        shareURLDirInfo = new DirectoryInfo(shareURL);
+                        shareURLDirInfo.Remove();
+                    }
 
                     Directory.CreateDirectory(shareURL);
                     Directory.Delete(shareURL, false);
 
                     Directory.Move(destExtractDir, shareURL);
+
+                    // Set this directory and all its children (files & directories) to readonly
+                    shareURLDirInfo= new DirectoryInfo(shareURL);
+                    shareURLDirInfo.Readonly();
                 }
 
                 string current_t_filename = pf.FilenameWithoutExtension + ".t";

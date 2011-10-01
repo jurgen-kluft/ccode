@@ -112,6 +112,7 @@
   <ItemGroup>
     <Compile Include="Dependency\DependencyResource.cs" />
     <Compile Include="Extensions\DateTimeExt.cs" />
+    <Compile Include="Extensions\DirectoryInfoExt.cs" />
     <Compile Include="Extensions\StringExt.cs" />
     <Compile Include="Helpers\DynamicXml.cs" />
     <Compile Include="Helpers\PathUtils.cs" />
