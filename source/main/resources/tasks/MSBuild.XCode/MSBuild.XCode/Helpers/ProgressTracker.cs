@@ -44,15 +44,15 @@ namespace MSBuild.XCode.Helpers
                 }
             }
 
-            internal Step Add(int[] n, bool add_to_this)
+            internal Step Add(double[] n, bool add_to_this)
             {
                 if (mState == EState.LEAF || add_to_this)
                 {
                     double total = 0.0f;
                     foreach(double p in mPercentages)
                         total += p;
-                    foreach(int p in n)
-                        total += (double)p;
+                    foreach(double p in n)
+                        total += p;
                     mScalar = 100.0 / total;
 
                     for (int i = 0; i < n.Length; ++i)
@@ -74,7 +74,7 @@ namespace MSBuild.XCode.Helpers
                 return null;
             }
 
-            public Step Add(int[] n)
+            public Step Add(double[] n)
             {
                 return Add(n, true);
             }
@@ -129,18 +129,25 @@ namespace MSBuild.XCode.Helpers
 
         public static ProgressTracker Instance = null;
 
-        public int Completion()
+        public string ProgressFormatStr { get; set; }
+
+        public ProgressTracker()
+        {
+            ProgressFormatStr = "{0}%";
+        }
+
+        public double Completion()
         {
             if (mRoot.IsLeaf)
-                return 100;
+                return 100.0;
 
             double percentage = mRoot.Completion(100.0);
-            return (int)percentage;
+            return percentage;
         }
 
         // n is an array of integers that added up equal 190
         // example: new int[] { 20, 20, 30, 30 }
-        public Step Add(int[] n)
+        public Step Add(double[] n)
         {
             Step step = mRoot.Add(n, false);
             if (step == null)
@@ -150,14 +157,14 @@ namespace MSBuild.XCode.Helpers
 
         public Step Add(int num)
         {
-            int total = 0;
-            int[] n = new int[num];
+            double total = 0.0;
+            double[] n = new double[num];
             for (int i = 0; i < num; ++i)
             {
-                n[i] = 100 / num;
+                n[i] = 100.0 / (double)num;
                 total += n[i];
             }
-            n[num - 1] += 100 - total;
+            n[num - 1] += 100.0 - total;
             return Add(n);
         }
 
@@ -174,12 +181,19 @@ namespace MSBuild.XCode.Helpers
         {
             if (mConsoleCursor == null)
             {
+                Loggy.RestoreConsoleCursor();
+
+                // First save the cursor position of the console
                 mConsoleCursor = new int[2];
                 mConsoleCursor[0] = Console.CursorLeft;
                 mConsoleCursor[1] = Console.CursorTop;
+
+                // Reserve a line in the log
+                string log_line = String.Format("{0}%", Completion().ToString("F", System.Globalization.CultureInfo.InvariantCulture));
+                Loggy.Info(log_line);
             }
             Console.SetCursorPosition(mConsoleCursor[0],mConsoleCursor[1]);
-            Console.WriteLine("{0, 3}%", Completion());
+            Console.WriteLine(ProgressFormatStr, Completion().ToString("F", System.Globalization.CultureInfo.InvariantCulture));
         }
     }
 }

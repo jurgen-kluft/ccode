@@ -72,8 +72,7 @@ namespace MSBuild.XCode
 
                 // Initialize PackageRepo (MySQL database & FileSystem storage)
                 mPackageRepo = new PackageRepo();
-                mPackageRepo.initialize(mDatabaseURL, mStorageURL);
-                Valid = true;
+                Valid = mPackageRepo.initialize(mDatabaseURL, mStorageURL);
             }
         }
 

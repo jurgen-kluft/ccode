@@ -55,6 +55,20 @@ namespace MSBuild.XCode.Helpers
         //secret sauce for unbuffered IO
         const FileOptions FileFlagNoBuffering = (FileOptions)0x20000000;
 
+        public AsyncUnbufferedCopy()
+        {
+            ProgressFormatStr = "{0}%";
+            _reportprogress = true;
+            _origRow = -1;
+            _origCol = -1;
+        }
+
+        public string ProgressFormatStr
+        {
+            get;
+            set;
+        }
+
         private void AsyncReadFile()
         {
             //open input file
@@ -143,13 +157,13 @@ namespace MSBuild.XCode.Helpers
                     _totalbyteswritten = _totalbyteswritten + CopyBufferSize;
                     Monitor.PulseAll(Locker1);
 
-                    if (_reportprogress /*&& !IsDebugEnabled*/)
+                    if (_reportprogress && (_origCol!=-1 && _origRow!=-1))
                     {
                         Console.SetCursorPosition(_origCol, _origRow);
                         if (progress < 101 - pctinc)
                         {
                             progress = progress + pctinc;
-                            Console.Write("{0}%", Math.Min(Math.Floor(progress), 100));
+                            Console.Write(ProgressFormatStr, Math.Min(Math.Floor(progress), 100));
                         }
                     }
                 }
@@ -211,7 +225,6 @@ namespace MSBuild.XCode.Helpers
             //if the overwrite flag is set to false check to see if the file is there.
             if (File.Exists(outputfile) && !overwrite)
             {
-                //Console.WriteLine("Destination File Exists!");
                 return 0;
             }
 
@@ -224,8 +237,7 @@ namespace MSBuild.XCode.Helpers
                 }
                 catch (Exception e)
                 {
-                    Console.WriteLine("Create Directory Failed.");
-                    Console.WriteLine(e.Message);
+                    Loggy.Error(String.Format("Error: Create Directory Failed!, " + e.Message));
                     throw;
                 }
             }
@@ -240,7 +252,15 @@ namespace MSBuild.XCode.Helpers
             else
                 _numchunks = (int)(_infilesize / (long)CopyBufferSize);
 
-            //Console.WriteLine("File Copy Started");
+            //leave a blank line for the progress indicator
+            if (_reportprogress)
+            {
+                Loggy.RestoreConsoleCursor();
+                //set fancy cursor position
+                _origRow = Console.CursorTop;
+                _origCol = Console.CursorLeft;
+                Loggy.Info(String.Format(ProgressFormatStr, 0));
+            }
 
             //create read thread and start it.
             var readfile = new Thread(AsyncReadFile) { Name = "ReadThread", IsBackground = true };
@@ -250,22 +270,9 @@ namespace MSBuild.XCode.Helpers
             var writefile = new Thread(AsyncWriteFile) { Name = "WriteThread", IsBackground = true };
             writefile.Start();
 
-            if (_reportprogress)
-            {
-                //set fancy cursor position
-                _origRow = Console.CursorTop;
-                _origCol = Console.CursorLeft;
-            }
-
             //wait for threads to finish
             readfile.Join();
             writefile.Join();
-
-            //leave a blank line for the progress indicator
-            if (_reportprogress)
-                Console.WriteLine();
-
-            //Console.WriteLine("File Copy Done");
 
             if (movefile && File.Exists(inputfile) && File.Exists(outputfile))
             {
@@ -275,13 +282,11 @@ namespace MSBuild.XCode.Helpers
                 }
                 catch (IOException ioex)
                 {
-                    Console.WriteLine("File in use or locked");
-                    Console.WriteLine(ioex.Message);
+                    Loggy.Error(String.Format("Error: File in use or locked!, " + ioex.Message));
                 }
                 catch (Exception ex)
                 {
-                    Console.WriteLine("File Failed to Delete");
-                    Console.WriteLine(ex.Message);
+                    Loggy.Error(String.Format("Error: File failed to delete!, " + ex.Message));
                 }
             }
             return 1;

@@ -94,7 +94,7 @@ namespace MSBuild.XCode
         {
             ProgressTracker progress = ProgressTracker.Instance;
 
-            List<int> progress_percentages = new List<int>();
+            List<double> progress_percentages = new List<double>();
             foreach (DependencyInstance d in Dependencies)
                 progress_percentages.Add(100);
             
@@ -123,28 +123,31 @@ namespace MSBuild.XCode
                 progress.ToConsole();
             }
 
-            progress_percentages.Clear();
-            for (int i = 0; i < mCompileQueue.Count; ++i)
-                progress_percentages.Add(500);
-            progress_step.Add(progress_percentages.ToArray());
-
-            // Breadth-First 
             int result = 0;
-            while (mCompileQueue.Count > 0 && result == 0)
+            if (mCompileQueue.Count > 0)
             {
-                DependencyTreeNode node = mCompileQueue.Dequeue();
-                node.Iteration = mCompileIteration;
-                
-                int added_to_queue = mCompileQueue.Count;
-                result = node.Compile(this);
-                added_to_queue = mCompileQueue.Count - added_to_queue;
-                
-                if (added_to_queue > 0)
+                progress_percentages.Clear();
+                for (int i = 0; i < mCompileQueue.Count; ++i)
+                    progress_percentages.Add(500);
+                progress_step.Add(progress_percentages.ToArray());
+
+                // Breadth-First 
+                while (mCompileQueue.Count > 0 && result == 0)
                 {
-                    progress_percentages.Clear();
-                    for (int i = 0; i < added_to_queue; ++i)
-                        progress_percentages.Add(500);
-                    progress_step.Add(progress_percentages.ToArray());
+                    DependencyTreeNode node = mCompileQueue.Dequeue();
+                    node.Iteration = mCompileIteration;
+
+                    int added_to_queue = mCompileQueue.Count;
+                    result = node.Compile(this);
+                    added_to_queue = mCompileQueue.Count - added_to_queue;
+
+                    if (added_to_queue > 0)
+                    {
+                        progress_percentages.Clear();
+                        for (int i = 0; i < added_to_queue; ++i)
+                            progress_percentages.Add(500);
+                        progress_step.Add(progress_percentages.ToArray());
+                    }
                 }
             }
 

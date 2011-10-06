@@ -5,6 +5,7 @@ using System.Net;
 using System.Net.Sockets;
 using System.Diagnostics;
 using System.Security.Cryptography;
+using MSBuild.XCode.Helpers;
 
 namespace xstorage_system
 {
@@ -127,6 +128,7 @@ namespace xstorage_system
                     }
                     else
                     {
+                        mFtp.ProgressFormatStr = "Uploading package to storage, progress: {0}%";
                         mFtp.Upload(sourceURL, destinationURL, false);
                     }
                 }
@@ -147,6 +149,7 @@ namespace xstorage_system
             string srcFilename = mBasePath + keyToFile(storage_key);
             string destFilename = destinationURL;
 
+            mFtp.ProgressFormatStr = "Downloading package from storage, progress: {0}%";
             return mFtp.Download(srcFilename, destFilename);
         }
     }
@@ -192,6 +195,9 @@ namespace Ftp
 		public Connection()
 		{
 		}
+
+        public string ProgressFormatStr { get; set; }
+
 		/// <summary>
 		/// 
 		/// </summary>
@@ -641,7 +647,7 @@ namespace Ftp
 
             if (this.resultCode != 150 && this.resultCode != 125)
             {
-                Debug.WriteLine("Exception: " + result.Substring(4), "Ftp.Connection");
+                Loggy.Error("Exception: " + result.Substring(4));
                 return false;
             }
 
@@ -655,7 +661,7 @@ namespace Ftp
             }
             catch (SystemException)
             {
-                Debug.WriteLine("Exception: failed to download file '" + remFileName + "' to '" + locFileName + "'", "Ftp.Connection");
+                Loggy.Error("Exception: failed to download file '" + remFileName + "' to '" + locFileName + "'");
                 output.Close();
                 cSocket.Close();
                 return false;
@@ -663,8 +669,11 @@ namespace Ftp
 
             DateTime timeout = DateTime.Now.AddSeconds(this.timeoutSeconds);
 
+            Loggy.RestoreConsoleCursor();
             int cl = Console.CursorLeft;
             int ct = Console.CursorTop;
+
+            Loggy.Info(String.Format(ProgressFormatStr, 0));
 
             while (timeout > DateTime.Now)
             {
@@ -677,7 +686,7 @@ namespace Ftp
                 if (totalBytes > 0)
                 {
                     Console.SetCursorPosition(cl, ct);
-                    Console.Write("{0}%", (transferedBytes * 100) / totalBytes);
+                    Console.Write(ProgressFormatStr, (transferedBytes * 100) / totalBytes);
                 }
             }
 
@@ -789,13 +798,14 @@ namespace Ftp
 
                         int cl = Console.CursorLeft;
                         int ct = Console.CursorTop;
+                        Loggy.Info(String.Format(ProgressFormatStr, 0));
 
                         Int64 totalBytes = input.Length;
                         Int64 transferedBytes = 0;
                         while ((bytes = input.Read(buffer, 0, buffer.Length)) > 0)
                         {
                             Console.SetCursorPosition(cl, ct);
-                            Console.Write("{0}%", (transferedBytes * 100) / totalBytes);
+                            Console.Write(ProgressFormatStr, (transferedBytes * 100) / totalBytes);
                             cSocket.Send(buffer, bytes, 0);
                             transferedBytes += bytes;
                         }

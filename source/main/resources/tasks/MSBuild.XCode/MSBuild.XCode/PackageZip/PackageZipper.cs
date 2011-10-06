@@ -382,7 +382,6 @@ namespace MSBuild.XCode
 
             if (failedEntries.Count > 0)
             {
-                Console.WriteLine();
                 foreach (ZipFileEntry e in failedEntries)
                 {
                     Loggy.Error(String.Format("Error: PackageZipper::ExtractFile, failed to correctly extract {0}!", e.FilenameInZip));
