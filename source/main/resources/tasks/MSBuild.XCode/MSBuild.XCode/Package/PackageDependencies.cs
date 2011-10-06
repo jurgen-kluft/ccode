@@ -91,14 +91,13 @@ namespace MSBuild.XCode
         public bool BuildForPlatform(string platform)
         {
             int result;
-            Console.Write("Processing dependencies for platform {0}: ", platform);
+            Loggy.Info(String.Format("Processing dependencies for platform {0}: ", platform));
             {
                 ProgressTracker.Instance = new ProgressTracker();
                 result = Compile(platform);
                 ProgressTracker.Instance.Next();
                 ProgressTracker.Instance.ToConsole();
             }
-            Console.WriteLine();
             return result == 0;
         }
 
@@ -113,9 +112,10 @@ namespace MSBuild.XCode
                     platformsStr += ", " + "'" + platform + "'";
             }
 
-            Console.Write("Processing dependencies for platforms {0}: ", platformsStr);
+            ProgressTracker.Instance = new ProgressTracker();
+            ProgressTracker.Instance.ProgressFormatStr = String.Format("Processing dependencies for platforms {0}: ", platformsStr) + "{0}%";
+            ProgressTracker.Instance.ToConsole();
             {
-                ProgressTracker.Instance = new ProgressTracker();
                 if (platforms.Count > 1)
                 {
                     ProgressTracker.Instance.Add(platforms.Count);
@@ -123,7 +123,6 @@ namespace MSBuild.XCode
                     {
                         if (Compile(platform) != 0)
                         {
-                            Console.WriteLine();
                             return false;
                         }
                         ProgressTracker.Instance.Next();
@@ -133,14 +132,12 @@ namespace MSBuild.XCode
                 {
                     if (Compile(platforms[0]) != 0)
                     {
-                        Console.WriteLine();
                         return false;
                     }
                     ProgressTracker.Instance.Next();
                     ProgressTracker.Instance.ToConsole();
                 }
             }
-            Console.WriteLine();
             return true;
         }
 

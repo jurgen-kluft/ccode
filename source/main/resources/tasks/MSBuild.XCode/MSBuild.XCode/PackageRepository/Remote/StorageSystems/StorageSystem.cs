@@ -9,7 +9,7 @@
             mStorage = null;
         }
 
-        public void connect(string connectionURL)
+        public bool connect(string connectionURL)
         {
             if (connectionURL.StartsWith("fs::"))
             {
@@ -21,6 +21,12 @@
                 mStorage = new StorageFtp();
                 mStorage.connect(connectionURL);
             }
+            else
+            {
+                return false;
+            }
+
+            return true;
         }
 
         public bool holds(string key)

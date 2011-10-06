@@ -77,8 +77,9 @@ namespace xstorage_system
                     }
                     else
                     {
-                        Console.Write("Uploading package to storage, progress: ");
-                        return CopyFileWithProgress(sourceURL, destinationURL);
+                        AsyncUnbufferedCopy xcopy = new AsyncUnbufferedCopy();
+                        xcopy.ProgressFormatStr = "Uploading package to storage, progress: {0}%";
+                        return CopyFileWithProgress(xcopy, sourceURL, destinationURL);
                     }
                 }
                 else
@@ -93,9 +94,8 @@ namespace xstorage_system
             return false;
         }
 
-        private static bool CopyFileWithProgress(string src, string dst)
+        private static bool CopyFileWithProgress(AsyncUnbufferedCopy xcopy, string src, string dst)
         {
-            AsyncUnbufferedCopy xcopy = new AsyncUnbufferedCopy();
             try
             {
                 xcopy.AsyncCopyFileUnbuffered(src, dst, true, false, false, 1 * 1024 * 1024, true);
@@ -115,8 +115,9 @@ namespace xstorage_system
         {
             string srcFilename = mBasePath + keyToFile(storage_key);
             string destFilename = destinationURL;
-            Console.Write("Downloading package from storage, progress: ");
-            return CopyFileWithProgress(srcFilename, destFilename);
+            AsyncUnbufferedCopy xcopy = new AsyncUnbufferedCopy();
+            xcopy.ProgressFormatStr = "Downloading package from storage, progress: {0}%";
+            return CopyFileWithProgress(xcopy, srcFilename, destFilename);
         }
     }
 }

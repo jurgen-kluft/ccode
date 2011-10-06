@@ -31,7 +31,7 @@ namespace MSBuild.XCode
         {
             ProgressTracker progress = ProgressTracker.Instance;
 
-            progress.Add(new int[] { 75, 20, 5 });
+            progress.Add(new double[] { 80, 15, 5 });
             if (dependencyTree.Update(this) == -1)
             {
                 progress.Next();

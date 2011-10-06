@@ -89,11 +89,13 @@ namespace MSBuild.XCode
 
         public static PackageSfvFile New(List<string> files)
         {
-            Console.Write("Building Package: ");
+            Loggy.RestoreConsoleCursor();
 
             int _origCol, _origRow;
             _origCol = Console.CursorLeft;
             _origRow = Console.CursorTop;
+
+            Loggy.Info("Building Package: 0%");
 
             float progress_m = files.Count;
             float progress_i = 1.0f;
@@ -102,11 +104,10 @@ namespace MSBuild.XCode
             {
                 float progress = progress_i * 100.0f / progress_m;
                 Console.SetCursorPosition(_origCol, _origRow);
-                Console.Write("{0}%", (int)System.Math.Min(progress, 100.0f));
+                Console.Write("Building Package: {0}%  ", (int)System.Math.Min(progress, 100.0f));
                 sfvFile.Add(src_filename);
                 progress_i++;
             }
-            Console.WriteLine();
             return sfvFile;
         }
 

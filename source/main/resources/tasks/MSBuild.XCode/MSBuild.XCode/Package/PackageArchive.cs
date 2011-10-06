@@ -225,26 +225,29 @@ namespace MSBuild.XCode
                 string zipPath = buildURL + package.LocalFilename.ToString();
                 using (PackageZipper zip = PackageZipper.Create(zipPath, string.Empty))
                 {
-                    Console.Write("Creating Package {0} for platform {1}: ", package.Name, package.Platform);
-
+                    Loggy.RestoreConsoleCursor();
+                    string progressFormatStr = String.Format("Creating Package {0} for platform {1}: ", package.Name, package.Platform) + "{0}%";
+                   
                     int cl, ct;
                     cl = Console.CursorLeft;
                     ct = Console.CursorTop;
                     int max = files.Count;
                     int cnt = 1;
+                    // Reserve a line in the log
+                    Loggy.Info(String.Format(progressFormatStr, (cnt * 100) / max));
+
                     foreach (KeyValuePair<string, string> p in files)
                     {
                         Console.SetCursorPosition(cl, ct);
-                        Console.Write("{0, 3}%", (cnt * 100) / max);
+                        Console.Write(progressFormatStr, (cnt * 100) / max);
                         string src_filepath = p.Key;
                         string zip_filepath = String.IsNullOrEmpty(p.Value) ? (Path.GetFileName(src_filepath)) : (p.Value.EndWith('\\') + Path.GetFileName(src_filepath));
                         zip.AddFile(src_filepath, zip_filepath);
                         ++cnt;
                     }
-                    Console.WriteLine();
 
                     zip.Close();
-                    Console.WriteLine("Done");
+                    Loggy.Info("Done");
                     File.SetLastWriteTime(zipPath, package.LocalSignature);
                     package.LocalURL = buildURL;
                     return true;

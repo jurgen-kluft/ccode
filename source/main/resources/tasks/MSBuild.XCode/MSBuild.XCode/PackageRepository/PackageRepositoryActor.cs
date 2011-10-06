@@ -71,7 +71,8 @@ namespace MSBuild.XCode
             ShareRepo = new PackageRepositoryShare(CacheRepoURL + ".share\\");
             LocalRepo = new PackageRepositoryLocal(RootURL);
             TargetRepo = new PackageRepositoryTarget(RootURL + "target\\");
-            return RemoteRepo.Valid;
+            
+            return RemoteRepo.Valid && CacheRepo.Valid && ShareRepo.Valid && LocalRepo.Valid && TargetRepo.Valid;
         }
 
         private bool CheckForUncommittedModifications()
@@ -332,7 +333,7 @@ namespace MSBuild.XCode
             // Update share to target
             ProgressTracker progress = ProgressTracker.Instance;
 
-            progress.Add(new int[] { 20, 10, 10, 10, 10, 30, 10 });
+            progress.Add(new double[] { 5, 5, 5, 5, 15, 60, 5 });
 
             TargetRepo.Query(package);
 
@@ -457,8 +458,8 @@ namespace MSBuild.XCode
 
         public bool Deploy(PackageState package)
         {
-            if (CheckForOutstandingModifications())
-                return false;
+            //if (CheckForOutstandingModifications())
+            //    return false;
 
             // First query the branch and change set
             if (!QueryBranchAndChangeset(package))

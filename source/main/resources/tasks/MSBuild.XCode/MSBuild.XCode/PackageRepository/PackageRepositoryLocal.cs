@@ -113,7 +113,7 @@ namespace MSBuild.XCode
                 AsyncUnbufferedCopy xcopy = new AsyncUnbufferedCopy();
                 try
                 {
-                    Console.Write("Copy package, progress: ");
+                    xcopy.ProgressFormatStr = "Copy package, progress: {0}%";
                     xcopy.AsyncCopyFileUnbuffered(src_path, to_filename, true, false, false, 1 * 1024 * 1024, true);
                 }
                 catch (Exception)

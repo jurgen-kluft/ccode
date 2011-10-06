@@ -31,7 +31,7 @@ namespace xpackage_repo
         /// - p4::10.0.0.105:1666|username:password,xcode:112233
         /// 
         /// </summary>
-        void initialize(string databaseURL, string storageURL);
+        bool initialize(string databaseURL, string storageURL);
 
         /// <summary>
         /// This method is used for uploading package 

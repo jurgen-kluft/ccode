@@ -11,13 +11,18 @@ namespace xpackage_repo
         private StorageSystem mStorageSystem;
         private PackageDatabase mDatabaseSystem;
 
-        public void initialize(string databaseURL, string storageURL)
+        public bool initialize(string databaseURL, string storageURL)
         {
             mStorageSystem = new StorageSystem();
-            mStorageSystem.connect(storageURL);
-
-            mDatabaseSystem = new PackageDatabase();
-            mDatabaseSystem.connect(databaseURL);
+            if (mStorageSystem.connect(storageURL))
+            {
+                mDatabaseSystem = new PackageDatabase();
+                return mDatabaseSystem.connect(databaseURL);
+            }
+            else
+            {
+                return false;
+            }
         }
 
         public bool upLoad(string Name, string Group, string Language, string Platform, string Branch, Int64 Version, string Datetime, string Changeset, List<KeyValuePair<Package, Int64>> dependencies, string localFilename)
