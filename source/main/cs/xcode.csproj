@@ -72,6 +72,7 @@
     <Compile Include=".NET Framework Version Detection\SafeNativeMethods.cs" />
     <Compile Include=".NET Framework Version Detection\SystemMetric.cs" />
     <Compile Include=".NET Framework Version Detection\WindowsFoundationLibrary.cs" />
+    <Compile Include="DirectoryInfoExt.cs" />
     <Compile Include="Main.cs">
       <SubType>Form</SubType>
     </Compile>

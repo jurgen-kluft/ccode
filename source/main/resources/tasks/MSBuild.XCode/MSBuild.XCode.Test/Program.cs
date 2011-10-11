@@ -14,32 +14,11 @@ namespace MSBuild.XCode.Test
         private static string XCodeRepoDir;
         private static string TemplateDir;
 
-        static void TestProgressTracker()
-        {
-            ProgressTracker pt = new ProgressTracker();
-            pt.Add(new double[] { 33, 33, 34 });
-
-            int i = 0;
-            ProgressTracker.Step step = null;
-            do
-            {
-                if (i==0 || i==4 || i==8)
-                    step = pt.Add(new double[] { 33, 33, 34 });
-
-                if (step != null && (i == 1 || i == 5 || i == 9))
-                {
-                    step.Add(new double[] { 33 });
-                }
-
-                ++i;
-                Console.WriteLine("Progress {0}: {1}%", i, pt.Completion().ToString("F", System.Globalization.CultureInfo.InvariantCulture));
-
-            } while (pt.Next() == 1);
-        }
-
         [STAThread]
         static void Main()
         {
+            Loggy.ToConsole = true;
+
             string name = "xunittest";
 
             // home (hp laptop)
@@ -52,8 +31,6 @@ namespace MSBuild.XCode.Test
             RootDir = @"k:\Dev.C++.Packages\" + name + "\\";
             XCodeRepoDir = @"k:\Dev.C++.Packages\PACKAGE_REPO\com\virtuos\xcode\publish\";
             TemplateDir = XCodeRepoDir + @"templates\";
-
-            Loggy.ToConsole = true;
 
             PackageInstance.TemplateDir = TemplateDir;
             if (!PackageInstance.Initialize(RemoteRepoDir, CacheRepoDir, RootDir))

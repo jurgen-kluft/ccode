@@ -1,10 +1,59 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Drawing;
+using System.Windows.Forms;
+using System.Threading;
+using System.ComponentModel;
 
 namespace MSBuild.XCode.Helpers
 {
-    public class ProgressTracker
+    public class ProgressTracker : IDisposable
     {
+        private static BackgroundWorker mBGWorker;
+        private static ProgressForm mProgressForm;
+        private static int mRefCount = 0;
+
+        private static void StartProgressForm()
+        {
+            if (mRefCount == 0)
+            {
+                mRefCount++;
+                object[] args = new object[3];
+                args[0] = null;
+                args[1] = new Point(Console.WindowLeft, Console.WindowTop);
+                mBGWorker = new BackgroundWorker();
+                mBGWorker.WorkerSupportsCancellation = true;
+                mBGWorker.WorkerReportsProgress = false;
+                mBGWorker.DoWork += new DoWorkEventHandler(mBGWorker_DoWork);
+                mBGWorker.RunWorkerCompleted += new RunWorkerCompletedEventHandler(mBGWorker_RunWorkerCompleted);
+                mBGWorker.RunWorkerAsync(args);
+            }
+        }
+
+        private static void StopProgressForm()
+        {
+            --mRefCount;
+            if (mRefCount == 0)
+            {
+                mBGWorker.CancelAsync();
+            }
+        }
+
+        private static void mBGWorker_DoWork(object sender, DoWorkEventArgs e)
+        {
+            object[] args = (object[])e.Argument;
+            Point pos = (Point)args[1];
+
+            mProgressForm = new ProgressForm();
+            Application.EnableVisualStyles();
+            Application.Run(mProgressForm);
+        }
+
+        private static void mBGWorker_RunWorkerCompleted(object sender, RunWorkerCompletedEventArgs e)
+        {
+            mProgressForm.Close();
+        }
+
         public class Step
         {
             private enum EState
@@ -79,21 +128,39 @@ namespace MSBuild.XCode.Helpers
                 return Add(n, true);
             }
 
-            public double Completion(double percentage)
+            public double Completion(double percentage, bool current)
             {
                 if (mState == EState.LEAF)
                 {
                     return 0.0;
                 }
 
-                double percentage_done = 0.0;
-                for (int i = 0; i < mStepsDone; ++i )
-                    percentage_done += mPercentages[i];
-                percentage_done *= mScalar;
-                percentage_done *= (percentage / 100.0);
+                if (current)
+                {
+                    if (Current.IsLeaf)
+                    {
+                        double percentage_done = 0.0;
+                        for (int i = 0; i < mStepsDone; ++i)
+                            percentage_done += mPercentages[i];
+                        percentage_done *= mScalar;
+                        return percentage_done;
+                    }
+                    else
+                    {
+                        return Current.Completion(100.0, current);
+                    }
+                }
+                else
+                {
+                    double percentage_done = 0.0;
+                    for (int i = 0; i < mStepsDone; ++i)
+                        percentage_done += mPercentages[i];
+                    percentage_done *= mScalar;
+                    percentage_done *= (percentage / 100.0);
 
-                double current_step_percentage = (percentage/100.0) * mPercentages[mStepsDone] * mScalar;
-                return percentage_done + Current.Completion(current_step_percentage);
+                    double current_step_percentage = (percentage / 100.0) * mPercentages[mStepsDone] * mScalar;
+                    return percentage_done + Current.Completion(current_step_percentage, current);
+                }
             }
 
             public void Next()
@@ -129,22 +196,51 @@ namespace MSBuild.XCode.Helpers
 
         public static ProgressTracker Instance = null;
 
-        public string ProgressFormatStr { get; set; }
+        private string ProgressFormatStr { get; set; }
 
         public ProgressTracker()
         {
-            ProgressFormatStr = "{0}%";
+            ProgressFormatStr = "[....]";
         }
 
-        public double Completion()
+        public void Init(string progressFormatStr)
+        {
+            //StartProgressForm();
+
+            ProgressFormatStr = progressFormatStr;
+
+            // First save the cursor position of the console
+            mConsoleCursor = new int[2];
+            mConsoleCursor[0] = Console.CursorLeft;
+            mConsoleCursor[1] = Console.CursorTop;
+
+            // Reserve a line in the log
+            Loggy.Info(ProgressFormatStr);
+        }
+
+        public void Dispose()
+        {
+            //StopProgressForm();
+        }
+
+        public double Total()
         {
             if (mRoot.IsLeaf)
                 return 100.0;
 
-            double percentage = mRoot.Completion(100.0);
+            double percentage = mRoot.Completion(100.0, false);
             return percentage;
         }
 
+        public double Current()
+        {
+            if (mRoot.IsLeaf)
+                return 100.0;
+
+            double percentage = mRoot.Completion(100.0, true);
+            return percentage;
+        }
+        
         // n is an array of integers that added up equal 190
         // example: new int[] { 20, 20, 30, 30 }
         public Step Add(double[] n)
@@ -174,26 +270,16 @@ namespace MSBuild.XCode.Helpers
                 return 0;
 
             mRoot.Next();
+
+            if (mProgressForm != null)
+            {
+                ProgressEventArgs total = new ProgressEventArgs((int)Total(), 100);
+                ProgressEventArgs current = new ProgressEventArgs((int)Current(), 100);
+                mProgressForm.UpdateProgress(total, current);
+            }
+            
             return 1;
         }
 
-        public void ToConsole()
-        {
-            if (mConsoleCursor == null)
-            {
-                Loggy.RestoreConsoleCursor();
-
-                // First save the cursor position of the console
-                mConsoleCursor = new int[2];
-                mConsoleCursor[0] = Console.CursorLeft;
-                mConsoleCursor[1] = Console.CursorTop;
-
-                // Reserve a line in the log
-                string log_line = String.Format("{0}%", Completion().ToString("F", System.Globalization.CultureInfo.InvariantCulture));
-                Loggy.Info(log_line);
-            }
-            Console.SetCursorPosition(mConsoleCursor[0],mConsoleCursor[1]);
-            Console.WriteLine(ProgressFormatStr, Completion().ToString("F", System.Globalization.CultureInfo.InvariantCulture));
-        }
     }
 }

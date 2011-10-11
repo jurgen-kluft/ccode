@@ -140,6 +140,7 @@ namespace MSBuild.XCode
                     DateTime now = DateTime.Now;
                     string destExtractDir = Path.GetPathRoot(RepoURL) + "temp\\" + String.Format("tmp.{0}.{1}.{2}.{3}.{4}.{5}\\", now.Year, now.Month, now.Day, now.Hour, now.Minute, now.Second);
                     Directory.CreateDirectory(destExtractDir);
+
                     zip.ExtractTo(destExtractDir);
                     zip.Close();
                     zip = null;
@@ -152,9 +153,14 @@ namespace MSBuild.XCode
                         shareURLDirInfo = new DirectoryInfo(shareURL);
                         shareURLDirInfo.Remove();
                     }
-
-                    Directory.CreateDirectory(shareURL);
-                    Directory.Delete(shareURL, false);
+                    else
+                    {
+                        // If the directory doesn't exist make sure
+                        // that the whole parent and up do.
+                        // Otherwise the 'Move Directory' also fails.
+                        Directory.CreateDirectory(shareURL);
+                        Directory.Delete(shareURL, false);
+                    }
 
                     Directory.Move(destExtractDir, shareURL);
 

@@ -120,7 +120,6 @@ namespace MSBuild.XCode
                     EnqueueForCompile(depNode);
                 }
                 progress.Next();
-                progress.ToConsole();
             }
 
             int result = 0;

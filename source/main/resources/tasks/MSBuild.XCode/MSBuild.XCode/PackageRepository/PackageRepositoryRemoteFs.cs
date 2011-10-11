@@ -10,11 +10,11 @@ namespace MSBuild.XCode
 {
     public class PackageRepositoryRemoteFs : IPackageRepository
     {
-        public PackageRepositoryRemoteFs(string repoURL, ELocation location)
+        public PackageRepositoryRemoteFs(string repoURL)
         {
-            RepoURL = repoURL.EndWith('\\');
+            RepoURL = repoURL.EndWith('\\').Replace("fs::", "");
             Layout = new LayoutDefault();
-            Location = location;
+            Location = ELocation.Remote;
             Valid = true;
         }
 
