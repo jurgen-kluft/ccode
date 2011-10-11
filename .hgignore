@@ -12,9 +12,19 @@ syntax: glob
 *.opensdf
 *.sdf
 *.tlog
+*.docstates
 
 ; target
 *target\
+
+; temporary
+*source\main\cs\obj\
+*source\main\resources\tasks\MSBuild.XCode\MSBuild.XCode\bin\
+*source\main\resources\tasks\MSBuild.XCode\MSBuild.XCode\obj\
+*source\main\resources\tasks\MSBuild.XCode\MSBuild.XCode.Test\bin\
+*source\main\resources\tasks\MSBuild.XCode\MSBuild.XCode.Test\obj\
+*source\main\resources\tasks\MSBuild.XCode\MSBuild.XCode.UnitTest\bin\
+*source\main\resources\tasks\MSBuild.XCode\MSBuild.XCode.UnitTest\obj\
 
 ; HG files
 *.orig
