@@ -128,7 +128,7 @@ namespace xstorage_system
                     }
                     else
                     {
-                        mFtp.ProgressFormatStr = "Uploading package to storage, progress: {0}%";
+                        mFtp.ProgressFormatStr = "Uploading package to storage, progress: [....]";
                         mFtp.Upload(sourceURL, destinationURL, false);
                     }
                 }
@@ -149,7 +149,7 @@ namespace xstorage_system
             string srcFilename = mBasePath + keyToFile(storage_key);
             string destFilename = destinationURL;
 
-            mFtp.ProgressFormatStr = "Downloading package from storage, progress: {0}%";
+            mFtp.ProgressFormatStr = "Downloading package from storage, progress: [....]";
             return mFtp.Download(srcFilename, destFilename);
         }
     }
@@ -669,25 +669,30 @@ namespace Ftp
 
             DateTime timeout = DateTime.Now.AddSeconds(this.timeoutSeconds);
 
-            Loggy.RestoreConsoleCursor();
             int cl = Console.CursorLeft;
             int ct = Console.CursorTop;
 
             Loggy.Info(String.Format(ProgressFormatStr, 0));
 
+            int steps = (int)(totalBytes / buffer.Length);
+            int step = 0;
+            ProgressTracker.Instance.Add(steps);
+
             while (timeout > DateTime.Now)
             {
                 this.bytes = cSocket.Receive(buffer, buffer.Length, 0);
-                output.Write(this.buffer, 0, this.bytes);
                 if (this.bytes <= 0)
                     break;
 
+                output.Write(this.buffer, 0, this.bytes);
                 transferedBytes += this.bytes;
-                if (totalBytes > 0)
-                {
-                    Console.SetCursorPosition(cl, ct);
-                    Console.Write(ProgressFormatStr, (transferedBytes * 100) / totalBytes);
-                }
+                ProgressTracker.Instance.Next();
+                step++;
+            }
+
+            for (int i = step; i < steps; ++i)
+            {
+                ProgressTracker.Instance.Next();
             }
 
             output.Close();
@@ -796,20 +801,26 @@ namespace Ftp
 
                         Debug.WriteLine("Uploading file '" + src_filepath + "' to '" + dst_filepath + "'", "Ftp.Connection");
 
-                        int cl = Console.CursorLeft;
-                        int ct = Console.CursorTop;
-                        Loggy.Info(String.Format(ProgressFormatStr, 0));
+                        Loggy.Info(ProgressFormatStr);
 
                         Int64 totalBytes = input.Length;
                         Int64 transferedBytes = 0;
+                        int steps = (int)((totalBytes + (buffer.Length-1)) / buffer.Length);
+                        int step = 0;
+                        ProgressTracker.Instance.Add(steps);
                         while ((bytes = input.Read(buffer, 0, buffer.Length)) > 0)
                         {
-                            Console.SetCursorPosition(cl, ct);
-                            Console.Write(ProgressFormatStr, (transferedBytes * 100) / totalBytes);
                             cSocket.Send(buffer, bytes, 0);
                             transferedBytes += bytes;
-                        }
 
+                            ProgressTracker.Instance.Next();
+                            ++step;
+                        }
+                        for (int i = step; i < steps; ++i)
+                        {
+                            ProgressTracker.Instance.Next();
+                        }
+                        
                         input.Close();
 
                         if (cSocket.Connected)

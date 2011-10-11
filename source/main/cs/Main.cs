@@ -47,7 +47,7 @@ namespace xcode
         {
             if (mFolderBrowser.ShowDialog() == DialogResult.OK)
             {
-                this.tbRemoteRepo.Text = mFolderBrowser.SelectedPath;
+                this.tbFS.Text = mFolderBrowser.SelectedPath;
             }
         }
 
@@ -69,7 +69,7 @@ namespace xcode
         {
             ClearLog();
 
-            bool remoteRepoExists = Directory.Exists(this.tbRemoteRepo.Text);
+            bool remoteRepoExists = Directory.Exists(this.tbFS.Text);
             bool cacheRepoExists = Directory.Exists(this.tbLocalRepo.Text);
 
             SysInfo sysInfo = new SysInfo();
@@ -99,21 +99,21 @@ namespace xcode
             }
             else
             {
-                AddToLog("MsBuild.exe located succesfully\n", Color.Green);
+                AddToLog("MsBuild.exe located successfully\n", Color.Green);
             }
 
             if (!remoteRepoExists)
             {
-                AddToLog("Remote package repository (cache) doesn't exist\n", Color.Red);
+                AddToLog("Remote package repository storage doesn't exist\n", Color.Red);
             }
             else
             {
-                AddToLog("Remote package repository present\n", Color.Green);
+                AddToLog("Remote package repository storage accessible\n", Color.Green);
             }
 
             if (!cacheRepoExists)
             {
-                AddToLog("Local package repository (cache) doesn't exist\n", Color.Red);
+                AddToLog("Local package repository storage doesn't exist\n", Color.Red);
             }
             else
             {
@@ -143,12 +143,12 @@ namespace xcode
 
             try
             {
-                AddToLog("Validating remote package repository at " + this.tbRemoteRepo.Text + "\n", Color.DarkGreen);
+                AddToLog("Validating remote package repository storage at " + this.tbFS.Text + "\n", Color.DarkGreen);
                 
             }
             catch (Exception e)
             {
-                AddToLog("Failed to validate remote package repository at " + this.tbRemoteRepo.Text + " (reason: " + e.Message + ")\n", Color.DarkRed);
+                AddToLog("Failed to validate remote package repository storage at " + this.tbFS.Text + " (reason: " + e.Message + ")\n", Color.DarkRed);
             }
 
             // Version 2
@@ -157,8 +157,8 @@ namespace xcode
                 tbLocalWorkDir.Text += "\\";
             if (!tbLocalRepo.Text.EndsWith("\\"))
                 tbLocalRepo.Text += "\\";
-            if (!tbRemoteRepo.Text.EndsWith("\\"))
-                tbRemoteRepo.Text += "\\";
+            if (!tbFS.Text.EndsWith("\\"))
+                tbFS.Text += "\\";
             if (!tbXCodeRepo.Text.EndsWith("\\"))
                 tbXCodeRepo.Text += "\\";
 
@@ -167,7 +167,8 @@ namespace xcode
 
             if (Directory.Exists(dst_path + sub_path))
             {
-                Directory.Delete(dst_path + sub_path);
+                DirectoryInfo di = new DirectoryInfo(dst_path + sub_path);
+                di.Remove();
             }
             Directory.CreateDirectory(dst_path + sub_path);
 
@@ -186,22 +187,57 @@ namespace xcode
                 // Error
             }
 
-            string src_path = tbLocalRepo.Text + @"com\virtuos\xcode\publish\";
+            AddToLog("Deleting all target folders from packages at " + this.tbLocalWorkDir.Text + "\n", Color.DarkGreen);
+            DeleteAllTargetFolders(tbLocalWorkDir.Text);
+
+            string src_path = tbLocalRepo.Text + "com\\virtuos\\xcode\\publish\\";
             dst_path = tbLocalWorkDir.Text;
             
             if (!Directory.Exists(dst_path))
                 Directory.CreateDirectory(dst_path);
 
+            string remoteRepoURL;
+
+            if (tbDB.Text.Contains("server="))
+            {
+                remoteRepoURL = "db::" + tbDB.Text + "|" + "storage::" + tbFS.Text;
+            }
+            else
+            {
+                remoteRepoURL = "fs::" + tbFS.Text;
+            }
+
+
             {
                 AddToLog("Copy file from file://" + src_path + "templates\\dev.targets.template" + " to file://" + dst_path + "dev.targets" + "\n", Color.Blue);
                 File.Copy(src_path + "templates\\dev.targets.template", dst_path + "dev.targets", true);
                 AddToLog("Copy file from file://" + src_path + "templates\\dev.props.template" + " to file://" + dst_path + "dev.props" + "\n", Color.Blue);
-                FileCopy(src_path + "templates\\dev.props.template", dst_path + "dev.props", tbLocalRepo.Text, tbRemoteRepo.Text, tbXCodeRepo.Text);
+                FileCopy(src_path + "templates\\dev.props.template", dst_path + "dev.props", tbLocalRepo.Text, remoteRepoURL, tbXCodeRepo.Text);
             }
 
             AddToLog("Done -----\n", Color.Black);
 
             // Copy 
+        }
+
+        private void DeleteAllTargetFolders(string workdir)
+        {
+            IEnumerable<string> dir_enumerator = Directory.EnumerateDirectories(workdir, "*", SearchOption.TopDirectoryOnly);
+            foreach (string dir in dir_enumerator)
+            {
+                try
+                {
+                    if (Directory.Exists(dir + "\\target"))
+                    {
+                        DirectoryInfo di = new DirectoryInfo(dir + "\\target");
+                        di.Remove();
+                    }
+                }
+                catch (Exception)
+                {
+
+                }
+            }
         }
 
         private bool FileCopy(string srcfile, string dstfile, string cacheRepoDir, string remoteRepoDir, string xcodeRepoDir)

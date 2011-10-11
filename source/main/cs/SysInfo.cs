@@ -85,7 +85,7 @@ namespace xcode
                     }
                 }
             }
-            catch (SystemException e)
+            catch (SystemException)
             {
                 MercurialInstalled = false;
             }

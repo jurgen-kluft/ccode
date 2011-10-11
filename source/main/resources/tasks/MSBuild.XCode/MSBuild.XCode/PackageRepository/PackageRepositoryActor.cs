@@ -66,13 +66,22 @@ namespace MSBuild.XCode
                 }
             }
 
-            RemoteRepo = new PackageRepositoryRemoteDb(RemoteRepoURL);
-            CacheRepo = new PackageRepositoryCache(CacheRepoURL, ELocation.Cache);
-            ShareRepo = new PackageRepositoryShare(CacheRepoURL + ".share\\");
-            LocalRepo = new PackageRepositoryLocal(RootURL);
-            TargetRepo = new PackageRepositoryTarget(RootURL + "target\\");
-            
-            return RemoteRepo.Valid && CacheRepo.Valid && ShareRepo.Valid && LocalRepo.Valid && TargetRepo.Valid;
+            if (RemoteRepoURL.Contains("db::"))
+                RemoteRepo = new PackageRepositoryRemoteDb(RemoteRepoURL);
+            else if (RemoteRepoURL.Contains("fs::"))
+                RemoteRepo = new PackageRepositoryRemoteFs(RemoteRepoURL);
+
+            if (RemoteRepo != null)
+            {
+                CacheRepo = new PackageRepositoryCache(CacheRepoURL, ELocation.Cache);
+                ShareRepo = new PackageRepositoryShare(CacheRepoURL + ".share\\");
+                LocalRepo = new PackageRepositoryLocal(RootURL);
+                TargetRepo = new PackageRepositoryTarget(RootURL + "target\\");
+
+                return RemoteRepo.Valid && CacheRepo.Valid && ShareRepo.Valid && LocalRepo.Valid && TargetRepo.Valid;
+            }
+
+            return false;
         }
 
         private bool CheckForUncommittedModifications()
@@ -339,7 +348,6 @@ namespace MSBuild.XCode
 
             // 1
             progress.Next();
-            progress.ToConsole();
 
             // Try to get the package from the Cache to Target
             if (!package.RemoteExists)
@@ -347,21 +355,18 @@ namespace MSBuild.XCode
 
             // 2
             progress.Next();
-            progress.ToConsole();
 
             if (!package.CacheExists)
                 CacheRepo.Query(package, versionRange);
 
             // 3
             progress.Next();
-            progress.ToConsole();
 
             if (package.CacheExists)
                 ShareRepo.Query(package);
 
             // 4
             progress.Next();
-            progress.ToConsole();
 
             int result = 0;
 
@@ -381,7 +386,6 @@ namespace MSBuild.XCode
 
             // 5
             progress.Next();
-            progress.ToConsole();
 
             if (package.CacheExists)
             {
@@ -406,7 +410,6 @@ namespace MSBuild.XCode
 
             // 6
             progress.Next();
-            progress.ToConsole();
 
             if (package.ShareExists)
             {
@@ -431,8 +434,6 @@ namespace MSBuild.XCode
 
             // 7
             progress.Next();
-            progress.ToConsole();
-
 
             return result;
         }

@@ -225,29 +225,30 @@ namespace MSBuild.XCode
                 string zipPath = buildURL + package.LocalFilename.ToString();
                 using (PackageZipper zip = PackageZipper.Create(zipPath, string.Empty))
                 {
-                    Loggy.RestoreConsoleCursor();
-                    string progressFormatStr = String.Format("Creating Package {0} for platform {1}: ", package.Name, package.Platform) + "{0}%";
-                   
-                    int cl, ct;
-                    cl = Console.CursorLeft;
-                    ct = Console.CursorTop;
                     int max = files.Count;
-                    int cnt = 1;
-                    // Reserve a line in the log
-                    Loggy.Info(String.Format(progressFormatStr, (cnt * 100) / max));
+                    int cnt = 0;
 
+                    ProgressTracker.Instance.Add(max);
+
+                    // Reserve a line in the log
+                    string progressStr = String.Format("Creating Package {0} for platform {1}: [....]", package.Name, package.Platform);
+                    Loggy.Info(progressStr);
                     foreach (KeyValuePair<string, string> p in files)
                     {
-                        Console.SetCursorPosition(cl, ct);
-                        Console.Write(progressFormatStr, (cnt * 100) / max);
                         string src_filepath = p.Key;
                         string zip_filepath = String.IsNullOrEmpty(p.Value) ? (Path.GetFileName(src_filepath)) : (p.Value.EndWith('\\') + Path.GetFileName(src_filepath));
                         zip.AddFile(src_filepath, zip_filepath);
+
+                        ProgressTracker.Instance.Next();
                         ++cnt;
                     }
 
+                    for (int i = cnt; i < max; ++i)
+                    {
+                        ProgressTracker.Instance.Next();
+                    }
+
                     zip.Close();
-                    Loggy.Info("Done");
                     File.SetLastWriteTime(zipPath, package.LocalSignature);
                     package.LocalURL = buildURL;
                     return true;

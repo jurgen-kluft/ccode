@@ -360,8 +360,12 @@ namespace MSBuild.XCode
             List<ZipFileEntry> failedEntries = new List<ZipFileEntry>();
 
             ProgressTracker progress = ProgressTracker.Instance;
-            if (progress == null)
+            bool localProgress = progress == null;
+            if (localProgress)
+            {
                 progress = new ProgressTracker();
+                progress.Init("Extracting Zip: [....]");
+            }
 
             ConsoleColor oldColor = Console.ForegroundColor;
 
@@ -376,9 +380,13 @@ namespace MSBuild.XCode
                 }
 
                 progress.Next();
-                progress.ToConsole();
             }
             Console.ForegroundColor = oldColor;
+
+            if (localProgress)
+            {
+                ProgressTracker.Instance = null;
+            }
 
             if (failedEntries.Count > 0)
             {

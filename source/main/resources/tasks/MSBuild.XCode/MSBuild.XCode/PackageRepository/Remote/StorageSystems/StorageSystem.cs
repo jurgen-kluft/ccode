@@ -11,7 +11,7 @@
 
         public bool connect(string connectionURL)
         {
-            if (connectionURL.StartsWith("fs::"))
+            if (connectionURL.StartsWith("storage::"))
             {
                 mStorage = new StorageFs();
                 mStorage.connect(connectionURL);

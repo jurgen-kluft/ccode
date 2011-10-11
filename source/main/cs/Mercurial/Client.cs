@@ -218,7 +218,7 @@ namespace Mercurial
                         return hgpath;
                     }
                 }
-                catch (System.Exception e)
+                catch (System.Exception)
                 {
                 }
             }

@@ -13,17 +13,6 @@ namespace MSBuild.XCode.Helpers
         public static TaskLoggingHelper TaskLogger { get; set; }
 
         private static Stack<ConsoleColor> mConsoleColorStack;
-        private static int mConsoleCursorLeft = -1;
-        private static int mConsoleCursorTop = -1;
-        private static int mConsoleCursorLastLineLeft = -1;
-
-        public static int LastLineCursorLeft
-        {
-            get
-            {
-                return mConsoleCursorLastLineLeft;
-            }
-        }
 
         static Loggy()
         {
@@ -44,39 +33,26 @@ namespace MSBuild.XCode.Helpers
             Console.ForegroundColor = c;
             mConsoleColorStack.Pop();
         }
-        public static void RestoreConsoleCursor()
-        {
-            if (mConsoleCursorLeft != -1 && mConsoleCursorTop != -1)
-                Console.SetCursorPosition(mConsoleCursorLeft, mConsoleCursorTop);
-        }
-        private static void SaveConsoleCursor()
-        {
-            mConsoleCursorLeft = Console.CursorLeft;
-            mConsoleCursorTop = Console.CursorTop;
-        }
 
-         public static void Info(string line)
+        public static void Info(string line)
         {
             if (ToConsole)
             {
                 PushConsoleColor(ConsoleColor.Green);
-                RestoreConsoleCursor();
 
                 for (int i = 0; i < Indent; ++i)
                     Console.Write(Indentor);
                 Console.WriteLine(line);
-                
+
                 PopConsoleColor();
-                SaveConsoleCursor();
             }
             else if (TaskLogger != null)
             {
-                RestoreConsoleCursor();
                 for (int i = 0; i < Indent; ++i)
                     line = Indentor + line;
                 TaskLogger.LogMessage(line);
-                SaveConsoleCursor();
             }
+            Console.Out.Flush();
         }
 
         public static void Warning(string line)
@@ -84,24 +60,21 @@ namespace MSBuild.XCode.Helpers
             if (ToConsole)
             {
                 PushConsoleColor(ConsoleColor.Yellow);
-                RestoreConsoleCursor();
 
                 for (int i = 0; i < Indent; ++i)
                     Console.Write(Indentor);
                 Console.WriteLine(line);
 
                 PopConsoleColor();
-                SaveConsoleCursor();
             }
             else if (TaskLogger != null)
             {
-                RestoreConsoleCursor();
                 for (int i = 0; i < Indent; ++i)
                     line = Indentor + line;
 
                 TaskLogger.LogWarning(line);
-                SaveConsoleCursor();
             }
+            Console.Out.Flush();
         }
 
         public static void Error(string line)
@@ -109,24 +82,21 @@ namespace MSBuild.XCode.Helpers
             if (ToConsole)
             {
                 PushConsoleColor(ConsoleColor.Red);
-                RestoreConsoleCursor();
 
                 for (int i = 0; i < Indent; ++i)
                     Console.Write(Indentor);
                 Console.WriteLine(line);
 
                 PopConsoleColor();
-                SaveConsoleCursor();
             }
             else if (TaskLogger != null)
             {
-                RestoreConsoleCursor();
                 for (int i = 0; i < Indent; ++i)
                     line = Indentor + line;
 
                 TaskLogger.LogError(line);
-                SaveConsoleCursor();
             }
+            Console.Out.Flush();
         }
     }
 }

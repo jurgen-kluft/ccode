@@ -41,7 +41,6 @@ namespace MSBuild.XCode
             }
 
             progress.Next();
-            progress.ToConsole();
 
             if (!Package.Load())
             {
@@ -51,7 +50,6 @@ namespace MSBuild.XCode
             }
 
             progress.Next();
-            progress.ToConsole();
 
             Package.Pom.OnlyKeepPlatformSpecifics(Platform);
 
@@ -77,7 +75,6 @@ namespace MSBuild.XCode
             }
 
             progress.Next();
-            progress.ToConsole();
 
             return 0;
         }

@@ -91,12 +91,14 @@ namespace MSBuild.XCode
         public bool BuildForPlatform(string platform)
         {
             int result;
-            Loggy.Info(String.Format("Processing dependencies for platform {0}: ", platform));
+            string progressLine = String.Format("Processing dependencies for platform {0}: [....]", platform);
             {
                 ProgressTracker.Instance = new ProgressTracker();
+                ProgressTracker.Instance.Init(progressLine);
+
                 result = Compile(platform);
+
                 ProgressTracker.Instance.Next();
-                ProgressTracker.Instance.ToConsole();
             }
             return result == 0;
         }
@@ -113,8 +115,7 @@ namespace MSBuild.XCode
             }
 
             ProgressTracker.Instance = new ProgressTracker();
-            ProgressTracker.Instance.ProgressFormatStr = String.Format("Processing dependencies for platforms {0}: ", platformsStr) + "{0}%";
-            ProgressTracker.Instance.ToConsole();
+            ProgressTracker.Instance.Init(String.Format("Processing dependencies for platforms {0}: [....]", platformsStr));
             {
                 if (platforms.Count > 1)
                 {
@@ -135,7 +136,6 @@ namespace MSBuild.XCode
                         return false;
                     }
                     ProgressTracker.Instance.Next();
-                    ProgressTracker.Instance.ToConsole();
                 }
             }
             return true;

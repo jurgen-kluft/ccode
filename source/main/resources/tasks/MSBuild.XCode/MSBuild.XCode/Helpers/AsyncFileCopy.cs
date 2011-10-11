@@ -57,7 +57,7 @@ namespace MSBuild.XCode.Helpers
 
         public AsyncUnbufferedCopy()
         {
-            ProgressFormatStr = "{0}%";
+            ProgressFormatStr = "[....]";
             _reportprogress = true;
             _origRow = -1;
             _origCol = -1;
@@ -80,6 +80,11 @@ namespace MSBuild.XCode.Helpers
             {
                 throw;
             }
+
+            int steps = (int)((_infilesize + (CopyBufferSize - 1)) / CopyBufferSize);
+            ProgressTracker.Instance.Add(steps);
+            int step = 0;
+
             //if we have data read it
             while (_totalbytesread < _infilesize)
             {
@@ -93,10 +98,16 @@ namespace MSBuild.XCode.Helpers
                     _bytesRead2 = _bytesRead1;
                     _totalbytesread = _totalbytesread + _bytesRead1;
                     Monitor.PulseAll(Locker1);
+                    ProgressTracker.Instance.Next();
+                    ++step;
                 }
                 catch (Exception)
                 {
                     _readfailed = true;
+                    for (int i = step; i < steps; ++i)
+                    {
+                        ProgressTracker.Instance.Next();
+                    }
                     throw;
                 }
                 finally
@@ -113,10 +124,13 @@ namespace MSBuild.XCode.Helpers
         {
             //open output file set length to prevent growth and file fragmentation and close it.
             //We do this to prevent file fragmentation and make the write as fast as possible.
+            string _outputfile_intermediate = _outputfile+".im!";
             try
             {
-                _outfile = new FileStream(_outputfile, FileMode.Create, FileAccess.Write, FileShare.None, 8,
-                                          FileOptions.WriteThrough);
+                if (File.Exists(_outputfile))
+                    File.Delete(_outputfile);
+
+                _outfile = new FileStream(_outputfile_intermediate, FileMode.Create, FileAccess.Write, FileShare.None, 8, FileOptions.WriteThrough);
 
                 //set file size to minimum of one buffer to cut down on fragmentation
                 _outfile.SetLength(_infilesize > CopyBufferSize ? _infilesize : CopyBufferSize);
@@ -132,7 +146,7 @@ namespace MSBuild.XCode.Helpers
             //open file for write unbuffered
             try
             {
-                _outfile = new FileStream(_outputfile, FileMode.Open, FileAccess.Write, FileShare.None, 8, FileOptions.WriteThrough | FileFlagNoBuffering);
+                _outfile = new FileStream(_outputfile_intermediate, FileMode.Open, FileAccess.Write, FileShare.None, 8, FileOptions.WriteThrough | FileFlagNoBuffering);
             }
             catch (Exception)
             {
@@ -159,11 +173,9 @@ namespace MSBuild.XCode.Helpers
 
                     if (_reportprogress && (_origCol!=-1 && _origRow!=-1))
                     {
-                        Console.SetCursorPosition(_origCol, _origRow);
                         if (progress < 101 - pctinc)
                         {
                             progress = progress + pctinc;
-                            Console.Write(ProgressFormatStr, Math.Min(Math.Floor(progress), 100));
                         }
                     }
                 }
@@ -183,11 +195,11 @@ namespace MSBuild.XCode.Helpers
 
             try
             {
-                _outfile = new FileStream(_outputfile, FileMode.Open, FileAccess.Write, FileShare.None, 8,
-                                          FileOptions.WriteThrough);
+                _outfile = new FileStream(_outputfile_intermediate, FileMode.Open, FileAccess.Write, FileShare.None, 8, FileOptions.WriteThrough);
                 _outfile.SetLength(_infilesize);
                 _outfile.Close();
                 _outfile.Dispose();
+                File.Move(_outputfile_intermediate, _outputfile);
             }
             catch (Exception)
             {
@@ -255,11 +267,7 @@ namespace MSBuild.XCode.Helpers
             //leave a blank line for the progress indicator
             if (_reportprogress)
             {
-                Loggy.RestoreConsoleCursor();
-                //set fancy cursor position
-                _origRow = Console.CursorTop;
-                _origCol = Console.CursorLeft;
-                Loggy.Info(String.Format(ProgressFormatStr, 0));
+                Loggy.Info(String.Format(ProgressFormatStr, "[....]"));
             }
 
             //create read thread and start it.

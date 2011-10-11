@@ -4,6 +4,7 @@ using System.Text;
 using System.Collections.Generic;
 using Microsoft.Build.Framework;
 using Microsoft.Build.Utilities;
+using System.Windows.Forms;
 using MSBuild.XCode.Helpers;
 
 namespace MSBuild.XCode
@@ -23,168 +24,185 @@ namespace MSBuild.XCode
         public string CacheRepoDir { get; set; }
         [Required]
         public string RemoteRepoDir { get; set; }
+        
+        private bool False()
+        {
+            return false;
+        }
+        private bool True()
+        {
+            return true;
+        }
 
         public override bool Execute()
         {
-            Loggy.TaskLogger = Log;
-
-            if (String.IsNullOrEmpty(Action))
-                Action = "dir";
-
-            Action = Action.ToLower();
-            if (String.IsNullOrEmpty(Language))
-                Language = "C++";
-
-            if (!String.IsNullOrEmpty(Platform))
+            try
             {
-                if (Platform.ToLower() == "all")
-                    Platform = "*";
-            }
-            else
-            {
-                Platform = "*";
-            }
+                Loggy.TaskLogger = Log;
 
-            RootDir = RootDir.EndWith('\\');
-            TemplateDir = TemplateDir.EndWith('\\');
+                if (String.IsNullOrEmpty(Action))
+                    Action = "dir";
 
-            if (!Directory.Exists(TemplateDir))
-            {
-                Loggy.Error(String.Format("Error: Action {0} failed in Package::Construct since template directory {1} doesn't exist", Action, TemplateDir));
-                return false;
-            }
+                Action = Action.ToLower();
+                if (String.IsNullOrEmpty(Language))
+                    Language = "C++";
 
-            PackageInstance.TemplateDir = TemplateDir;
-
-            if (Action.StartsWith("vs2010"))
-            {
-                if (!PackageInstance.Initialize(RemoteRepoDir, CacheRepoDir, RootDir))
-                    return false;
-
-                PackageInstance package = PackageInstance.LoadFromRoot(RootDir);
-                package.SetPlatform(Platform);
-
-                if (package.IsValid)
+                if (!String.IsNullOrEmpty(Platform))
                 {
-                    PackageDependencies dependencies = new PackageDependencies(package);
+                    if (Platform.ToLower() == "all")
+                        Platform = "*";
+                }
+                else
+                {
+                    Platform = "*";
+                }
 
-                    List<string> platforms = new List<string>(package.Pom.Platforms);
-                    if (Platform != "*")
-                    {
-                        platforms.Clear();
-                        platforms.Add(Platform);
-                    }
+                RootDir = RootDir.EndWith('\\');
+                TemplateDir = TemplateDir.EndWith('\\');
 
-                    if (dependencies.BuildForPlatforms(platforms))
+                if (!Directory.Exists(TemplateDir))
+                {
+                    Loggy.Error(String.Format("Error: Action {0} failed in Package::Construct since template directory {1} doesn't exist", Action, TemplateDir));
+                    return False();
+                }
+
+                PackageInstance.TemplateDir = TemplateDir;
+
+                if (Action.StartsWith("vs2010"))
+                {
+                    if (!PackageInstance.Initialize(RemoteRepoDir, CacheRepoDir, RootDir))
+                        return False();
+
+                    PackageInstance package = PackageInstance.LoadFromRoot(RootDir);
+                    package.SetPlatform(Platform);
+
+                    if (package.IsValid)
                     {
-                        if (dependencies.SaveInfoForPlatforms(platforms))
+                        PackageDependencies dependencies = new PackageDependencies(package);
+
+                        List<string> platforms = new List<string>(package.Pom.Platforms);
+                        if (Platform != "*")
                         {
-                            dependencies.PrintForPlatforms(platforms);
+                            platforms.Clear();
+                            platforms.Add(Platform);
+                        }
 
-                            // Generate the projects and solution
-                            package.GenerateProjects(dependencies, platforms);
-                            if (!package.GenerateSolution())
+                        if (dependencies.BuildForPlatforms(platforms))
+                        {
+                            if (dependencies.SaveInfoForPlatforms(platforms))
                             {
-                                Loggy.Error(String.Format("Error: Action {0} failed in Package::Construct due to failure in saving solution (.sln)", Action));
-                                return false;
+                                dependencies.PrintForPlatforms(platforms);
+
+                                // Generate the projects and solution
+                                package.GenerateProjects(dependencies, platforms);
+                                if (!package.GenerateSolution())
+                                {
+                                    Loggy.Error(String.Format("Error: Action {0} failed in Package::Construct due to failure in saving solution (.sln)", Action));
+                                    return False();
+                                }
+                            }
+                            else
+                            {
+                                Loggy.Error(String.Format("Error: Action {0} failed in Package::Construct due to failure in writing dependency information (dependencies.info)", Action));
+                                return False();
                             }
                         }
                         else
                         {
-                            Loggy.Error(String.Format("Error: Action {0} failed in Package::Construct due to failure in writing dependency information (dependencies.info)", Action));
-                            return false;
+                            Loggy.Error(String.Format("Error: Action {0} failed in Package::Construct due to failure in building dependencies", Action));
+                            return False();
                         }
                     }
                     else
                     {
-                        Loggy.Error(String.Format("Error: Action {0} failed in Package::Construct due to failure in building dependencies", Action));
-                        return false;
+                        Loggy.Error(String.Format("Error: Action {0} failed in Package::Construct due to failure in loading pom.xml", Action));
+                        return False();
                     }
                 }
-                else
+                else if (Action.StartsWith("dir"))
                 {
-                    Loggy.Error(String.Format("Error: Action {0} failed in Package::Construct due to failure in loading pom.xml", Action));
-                    return false;
-                }
-            }
-            else if (Action.StartsWith("dir"))
-            {
-                PackageInstance package = PackageInstance.LoadFromRoot(RootDir);
-                if (package.IsValid)
-                {
-                    package.Pom.DirectoryStructure.Create(RootDir);
-                }
-                else
-                {
-                    Loggy.Error(String.Format("Error: Action {0} failed in Package::Construct due to failure in loading pom.xml", Action));
-                    return false;
-                }
-            }
-            else if (Action.StartsWith("init"))
-            {
-                if (!String.IsNullOrEmpty(Name))
-                {
-                    string DstPath = RootDir + Name + "\\";
-                    if (!Directory.Exists(DstPath))
+                    PackageInstance package = PackageInstance.LoadFromRoot(RootDir);
+                    if (package.IsValid)
                     {
-                        Directory.CreateDirectory(DstPath);
-
-                        // pom.targets.template ==> pom.targets
-                        // pom.props.template ==> pom.props
-                        // pom.xml.template ==> pom.xml
-                        bool file_copy_result = false;
-                        if (FileCopy(TemplateDir + "pom.targets.template", DstPath + "pom.targets"))
+                        package.Pom.DirectoryStructure.Create(RootDir);
+                    }
+                    else
+                    {
+                        Loggy.Error(String.Format("Error: Action {0} failed in Package::Construct due to failure in loading pom.xml", Action));
+                        return False();
+                    }
+                }
+                else if (Action.StartsWith("init"))
+                {
+                    if (!String.IsNullOrEmpty(Name))
+                    {
+                        string DstPath = RootDir + Name + "\\";
+                        if (!Directory.Exists(DstPath))
                         {
-                            if (FileCopy(TemplateDir + "pom.props.template", DstPath + "pom.props"))
+                            Directory.CreateDirectory(DstPath);
+
+                            // pom.targets.template ==> pom.targets
+                            // pom.props.template ==> pom.props
+                            // pom.xml.template ==> pom.xml
+                            bool file_copy_result = false;
+                            if (FileCopy(TemplateDir + "pom.targets.template", DstPath + "pom.targets"))
                             {
-                                if (String.Compare(Language, "C++", true) == 0 || String.Compare(Language, "CPP", true) == 0)
+                                if (FileCopy(TemplateDir + "pom.props.template", DstPath + "pom.props"))
                                 {
-                                    if (FileCopy(TemplateDir + "pom.xml.template", DstPath + "pom.xml"))
+                                    if (String.Compare(Language, "C++", true) == 0 || String.Compare(Language, "CPP", true) == 0)
                                     {
-                                        Loggy.Info(String.Format("Generated pom.targets, pom.props and pom.xml files"));
-                                        file_copy_result = true;
+                                        if (FileCopy(TemplateDir + "pom.xml.template", DstPath + "pom.xml"))
+                                        {
+                                            Loggy.Info(String.Format("Generated pom.targets, pom.props and pom.xml files"));
+                                            file_copy_result = true;
+                                        }
                                     }
-                                }
-                                else
-                                {
-                                    if (FileCopy(TemplateDir + "pom.xml.cs.template", DstPath + "pom.xml"))
+                                    else
                                     {
-                                        Loggy.Info(String.Format("Generated pom.targets, pom.props and pom.xml files"));
-                                        file_copy_result = true;
+                                        if (FileCopy(TemplateDir + "pom.xml.cs.template", DstPath + "pom.xml"))
+                                        {
+                                            Loggy.Info(String.Format("Generated pom.targets, pom.props and pom.xml files"));
+                                            file_copy_result = true;
+                                        }
                                     }
                                 }
                             }
-                        }
-                        if (!file_copy_result)
-                        {
-                            Loggy.Error(String.Format("Error: Action {0} failed in Package::Construct to copy the template (pom.targets, pom.props and pom.xml) files", Action));
-                        }
+                            if (!file_copy_result)
+                            {
+                                Loggy.Error(String.Format("Error: Action {0} failed in Package::Construct to copy the template (pom.targets, pom.props and pom.xml) files", Action));
+                            }
 
-                        // Init the Mercurial repository, add the above files and commit
-                        Mercurial.Repository hg_repo = new Mercurial.Repository(DstPath);
-                        hg_repo.Init();
-                        hg_repo.Add(".");
-                        hg_repo.Commit("init (xcode)");
+                            // Init the Mercurial repository, add the above files and commit
+                            Mercurial.Repository hg_repo = new Mercurial.Repository(DstPath);
+                            hg_repo.Init();
+                            hg_repo.Add(".");
+                            hg_repo.Commit("init (xcode)");
+                        }
+                        else
+                        {
+                            Loggy.Error(String.Format("Error: Action {0} failed in Package::Construct since directory already exists", Action));
+                            return False();
+                        }
                     }
                     else
                     {
-                        Loggy.Error(String.Format("Error: Action {0} failed in Package::Construct since directory already exists", Action));
-                        return false;
+                        Loggy.Error(String.Format("Error: Action {0} failed in Package::Construct since 'Name' was not specified", Action));
+                        return False();
                     }
                 }
                 else
                 {
-                    Loggy.Error(String.Format("Error: Action {0} failed in Package::Construct since 'Name' was not specified", Action));
-                    return false;
+                    Loggy.Error(String.Format("Error: Action {0} is not recognized by Package::Construct (Available actions: Init, Dir, MsDev2010)", Action));
+                    return False();
                 }
-            }
-            else
-            {
-                Loggy.Error(String.Format("Error: Action {0} is not recognized by Package::Construct (Available actions: Init, Dir, MsDev2010)", Action));
-                return false;
-            }
 
-            return true;
+                return True();
+            }
+            catch (Exception e)
+            {
+                Loggy.Error("Exception: " + e.Message);
+                return False();
+            }
         }
 
         private bool FileCopy(string srcfile, string dstfile)
