@@ -11,7 +11,7 @@ namespace xstorage_system
 
         public void connect(string connectionURL)
         {
-            mBasePath = connectionURL.Replace("fs::", "");
+            mBasePath = connectionURL.Replace("storage::", "");
         }
 
         private string keyToFile(string storage_key)

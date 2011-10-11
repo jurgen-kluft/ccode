@@ -19,13 +19,13 @@ namespace MSBuild.XCode.Test
         {
             Loggy.ToConsole = true;
 
-            string name = "xunittest";
+            string name = "xthread";
 
             // home (hp laptop)
             //RemoteRepoDir = @"db::server=127.0.0.1;port=3306;database=xcode;uid=root;password=p1|fs::D:\PACKAGE_REPO_TEST\";
             
             // work
-            RemoteRepoDir = @"db::server=cnshasap2;port=3307;database=xcode_cpp;uid=developer;password=Fastercode189|fs::\\cnshasap2\Hg_Repo\PACKAGE_REPO\.storage\";
+            RemoteRepoDir = @"db::server=cnshasap2;port=3307;database=xcode_cpp;uid=developer;password=Fastercode189|storage::\\cnshasap2\Hg_Repo\PACKAGE_REPO\.storage\";
             
             CacheRepoDir = @"k:\Dev.C++.Packages\PACKAGE_REPO\";
             RootDir = @"k:\Dev.C++.Packages\" + name + "\\";
@@ -38,7 +38,7 @@ namespace MSBuild.XCode.Test
 
             if (Update("1.1.0.0"))
             {
-                string platform = "PS3";
+                string platform = "Win32";
                 Construct(name, platform);
                 Create(name, platform);
                 Install(name, platform);
