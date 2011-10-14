@@ -19,7 +19,7 @@ namespace MSBuild.XCode.Test
         {
             Loggy.ToConsole = true;
 
-            string name = "xmemory";
+            string name = "FMOD";
 
             // home (hp laptop)
             //RemoteRepoDir = @"db::server=127.0.0.1;port=3306;database=xcode;uid=root;password=p1|fs::D:\PACKAGE_REPO_TEST\";
@@ -38,7 +38,7 @@ namespace MSBuild.XCode.Test
 
             if (Update("1.1.0.0"))
             {
-                string platform = "WII";
+                string platform = "Win32";
                 Construct(name, platform);
                 Create(name, platform);
                 Install(name, platform);
