@@ -30,8 +30,8 @@ using System.Runtime.InteropServices;
 //
 // You can specify all the values or you can default the Revision and Build Numbers 
 // by using the '*' as shown below:
-[assembly: AssemblyVersion("1.1.0.0")]
-[assembly: AssemblyFileVersion("1.1.0.0")]
+[assembly: AssemblyVersion("1.1.0.2")]
+[assembly: AssemblyFileVersion("1.1.0.2")]
 
 // -----------------------------------------------------------------------------------
 // Feature List:
@@ -44,6 +44,10 @@ using System.Runtime.InteropServices;
 // Coming --> 1.1.1.0 (Oktober 2011)
 // - Full C# support
 //
+// -----------------------------------------------------------------------------------
+// 1.1.0.2 (14 Oktober 2011)
+// - Fixed a bug in PackageContent when mixing implicit and explicit platform items
+// - Fixed a bug in Storage where 'storage::' should be removed from string
 // -----------------------------------------------------------------------------------
 // 1.1.0.0 (23 September 2011)
 // - Deploying now uses a SQL database which in turn is used by the Package Browser

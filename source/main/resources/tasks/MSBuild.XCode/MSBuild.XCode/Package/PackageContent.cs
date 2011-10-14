@@ -62,26 +62,24 @@ namespace MSBuild.XCode
             foreach (string p in platforms)
             {
                 List<ContentItem> content;
-                if (!mContent.TryGetValue(p, out content))
+                if (mContent.TryGetValue(p, out content))
                 {
-                    if (!mContent.TryGetValue("*", out content))
-                        return false;
-                }
-                foreach (ContentItem item in content)
-                {
-                    string src = rootDir + item.Src;
-                    while (src.Contains("${Name}"))
-                        src = src.Replace("${Name}", name);
-                    while (src.Contains("${Platform}"))
-                        src = src.Replace("${Platform}", p);
-
-                    int m = outFiles.Count;
-                    Glob(src, item.Dst, outFiles);
-                    int n = outFiles.Count - m;
-
-                    if (n == 0 && item.Required)
+                    foreach (ContentItem item in content)
                     {
-                        Loggy.Error(String.Format("PackageContent::Collect, error; required file {0} does not exist", src));
+                        string src = rootDir + item.Src;
+                        while (src.Contains("${Name}"))
+                            src = src.Replace("${Name}", name);
+                        while (src.Contains("${Platform}"))
+                            src = src.Replace("${Platform}", p);
+
+                        int m = outFiles.Count;
+                        Glob(src, item.Dst, outFiles);
+                        int n = outFiles.Count - m;
+
+                        if (n == 0 && item.Required)
+                        {
+                            Loggy.Error(String.Format("PackageContent::Collect, error; required file {0} does not exist", src));
+                        }
                     }
                 }
             }

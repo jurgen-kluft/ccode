@@ -52,6 +52,7 @@ namespace MSBuild.XCode
             {
                 try
                 {
+                    hg_repo.Pull();
                     hg_repo.Update();
                     success = true;
                 }
