@@ -19,7 +19,7 @@ namespace MSBuild.XCode.Test
         {
             Loggy.ToConsole = true;
 
-            string name = "FMOD";
+            string name = "xbase";
 
             // home (hp laptop)
             //RemoteRepoDir = @"db::server=127.0.0.1;port=3306;database=xcode;uid=root;password=p1|fs::D:\PACKAGE_REPO_TEST\";
@@ -36,7 +36,7 @@ namespace MSBuild.XCode.Test
             if (!PackageInstance.Initialize(RemoteRepoDir, CacheRepoDir, RootDir))
                 return;
 
-            if (Update("1.1.0.0"))
+            if (Update("1.1.0.2"))
             {
                 string platform = "Win32";
                 Construct(name, platform);
