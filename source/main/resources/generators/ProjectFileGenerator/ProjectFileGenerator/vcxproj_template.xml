@@ -1,0 +1,85 @@
+<Template>
+  <!-- The blueprint -->
+  <Configuration>
+    <!-- StaticLibrary, DynamicLibrary, Application -->
+    <ConfigurationType>StaticLibrary</ConfigurationType>
+    <CharacterSet>NotSet</CharacterSet>
+    <WholeProgramOptimization>false</WholeProgramOptimization>
+    <UseDebugLibraries>true</UseDebugLibraries>
+  </Configuration>
+  <ImportGroup>
+    <Import Condition="exists('$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props')" Project="$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props" Label="LocalAppDataPlatform"></Import>
+  </ImportGroup>
+  <OutDir Condition="'$(Configuration)|$(Platform)'=='#(Configuration)|#(Platform)'">$(SolutionDir)\target\outdir\$(ProjectName)_$(Configuration)_$(PlatformName)\</OutDir>
+  <IntDir Condition="'$(Configuration)|$(Platform)'=='#(Configuration)|#(Platform)'">$(SolutionDir)\target\outdir\$(ProjectName)_$(Configuration)_$(PlatformName)\</IntDir>
+  <TargetName Condition="'$(Configuration)|$(Platform)'=='#(Configuration)|#(Platform)'">$(ProjectName)_$(Configuration)_$(PlatformName)_$(PlatformToolset)</TargetName>
+  <IgnoreImportLibrary Condition="'$(Configuration)|$(Platform)'=='#(Configuration)|#(Platform)'"></IgnoreImportLibrary>
+  <GenerateManifest Condition="'$(Configuration)|$(Platform)'=='#(Configuration)|#(Platform)'">false</GenerateManifest>
+  <LinkIncremental Condition="'$(Configuration)|$(Platform)'=='#(Configuration)|#(Platform)'">false</LinkIncremental>
+  <ClCompile>
+    <WarningLevel>Level3</WarningLevel>
+    <Optimization>Disabled</Optimization>
+    <PreprocessorDefinitions Concat="true">%(PreprocessorDefinitions)</PreprocessorDefinitions>
+    <PrecompiledHeader>NotUsing</PrecompiledHeader>
+    <AdditionalIncludeDirectories Concat="true">%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+    <ExceptionHandling>false</ExceptionHandling>
+    <FavorSizeOrSpeed>Size</FavorSizeOrSpeed>
+    <RuntimeTypeInfo>false</RuntimeTypeInfo>
+    <MinimalRebuild>true</MinimalRebuild>
+  </ClCompile>
+  <Link>
+    <GenerateDebugInformation>true</GenerateDebugInformation>
+    <AdditionalDependencies Concat="true" Seperator=" "></AdditionalDependencies>
+    <AdditionalLibraryDirectories Concat="true"></AdditionalLibraryDirectories>
+    <SubSystem></SubSystem>
+  </Link>
+  <ResourceCompile>
+  </ResourceCompile>
+  <Lib>
+    <OutputFile>$(OutDir)\$(TargetName)$(TargetExt)</OutputFile>
+    <AdditionalOptions Concat="true"></AdditionalOptions>
+  </Lib>
+  <!-- Win32 will inherit all properties -->
+  <Win32>
+    <ClCompile>
+      <PreprocessorDefinitions>WIN32</PreprocessorDefinitions>
+    </ClCompile>
+    <!-- Debug will inherit all properties -->
+    <Debug>
+      <ClCompile>
+        <PreprocessorDefinitions>Target_Dev_Debug_Win32;DEBUG</PreprocessorDefinitions>
+      </ClCompile>
+    </Debug>
+    <Release>
+      <ClCompile>
+        <Optimization>O2</Optimization>
+        <PreprocessorDefinitions>Target_Dev_Release_Win32;NDEBUG</PreprocessorDefinitions>
+      </ClCompile>
+    </Release>
+    <Profile>
+      <ClCompile>
+        <Optimization>O2</Optimization>
+        <PreprocessorDefinitions>NDEBUG;Target_Dev_Profile_Win32</PreprocessorDefinitions>
+      </ClCompile>
+    </Profile>
+    <Final>
+      <ClCompile>
+        <Optimization>O3</Optimization>
+        <PreprocessorDefinitions>NDEBUG;Target_Dev_Final_Win32</PreprocessorDefinitions>
+      </ClCompile>
+      <Link>
+        <GenerateDebugInformation>false</GenerateDebugInformation>
+      </Link>
+    </Final>
+  </Win32>
+  <NintendoDS>
+  </NintendoDS>
+  <NintendoWII>
+  </NintendoWII>
+  <Nintendo3DS>
+  </Nintendo3DS>
+  <SonyPSP>
+  </SonyPSP>
+  <SonyPS3>
+  </SonyPS3>
+</Template>
