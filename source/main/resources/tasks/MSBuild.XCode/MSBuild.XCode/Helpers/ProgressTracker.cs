@@ -192,7 +192,6 @@ namespace MSBuild.XCode.Helpers
         }
 
         private Step mRoot = new Step();
-        private int[] mConsoleCursor = null;
 
         public static ProgressTracker Instance = null;
 
@@ -208,11 +207,6 @@ namespace MSBuild.XCode.Helpers
             //StartProgressForm();
 
             ProgressFormatStr = progressFormatStr;
-
-            // First save the cursor position of the console
-            mConsoleCursor = new int[2];
-            mConsoleCursor[0] = Console.CursorLeft;
-            mConsoleCursor[1] = Console.CursorTop;
 
             // Reserve a line in the log
             Loggy.Info(ProgressFormatStr);
