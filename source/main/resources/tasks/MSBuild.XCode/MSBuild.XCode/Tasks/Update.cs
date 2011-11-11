@@ -58,7 +58,7 @@ namespace MSBuild.XCode
                 }
                 catch (System.Exception)
                 {
-                    success = false;
+                    success = true;
                     Loggy.Error(String.Format("Error: Updating xCode publish repository at {0} failed", dst_path + sub_path));
                 }
             }
