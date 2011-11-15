@@ -74,7 +74,11 @@ namespace MSBuild.XCode
                         return False();
 
                     PackageInstance package = PackageInstance.LoadFromRoot(RootDir);
-                    package.SetPlatform(Platform);
+                    if (!package.SetPlatform(Platform))
+                    {
+                        Loggy.Error(String.Format("Error: Platform(s) '{0}' is not supported for this package, are you sure you typed it correctly?", Platform));
+                        return False();
+                    }
 
                     if (package.IsValid)
                     {

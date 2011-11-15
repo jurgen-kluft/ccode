@@ -23,7 +23,7 @@ namespace MSBuild.XCode
         public string Scope { get { return mResource.Scope; } }
         public string Language { get { return mResource.Language; } }
         public string Location{ get { return mResource.Location; } }
-        public string DependsOn { get { return mResource.DependsOn; } }
+        public string[] DependsOn { get { return mResource.DependsOn.Split(new char[] { ';' }, StringSplitOptions.RemoveEmptyEntries); } }
 
         public bool IsCpp { get { return mResource.IsCpp; } }
         public bool IsCs { get { return mResource.IsCs; } }
@@ -62,6 +62,25 @@ namespace MSBuild.XCode
             Loggy.Info(String.Format("Project                    : {0}", Name));
             Loggy.Info(String.Format("Language                   : {0}", Language));
             Loggy.Info(String.Format("Location                   : {0}", Location));
+        }
+
+        public bool IsDependentOn(string package_name)
+        {
+            string[] dependencies = DependsOn;
+            foreach(string dep in dependencies)
+            {
+                string[] package_project = dep.Split(new char[] { ':' }, StringSplitOptions.RemoveEmptyEntries);
+                string dep_package_name = package_project[0];
+
+                if (String.Compare(dep_package_name, package_name, true) == 0)
+                    return true;
+            }
+            return false;
+        }
+
+        public bool HasPlatform(string platform)
+        {
+            return mResource.HasPlatform(platform);
         }
 
         private static bool ContainsPlatform(List<string> platforms, string platform)
