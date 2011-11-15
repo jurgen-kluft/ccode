@@ -30,8 +30,8 @@ using System.Runtime.InteropServices;
 //
 // You can specify all the values or you can default the Revision and Build Numbers 
 // by using the '*' as shown below:
-[assembly: AssemblyVersion("1.1.0.2")]
-[assembly: AssemblyFileVersion("1.1.0.2")]
+[assembly: AssemblyVersion("1.1.0.3")]
+[assembly: AssemblyFileVersion("1.1.0.3")]
 
 // -----------------------------------------------------------------------------------
 // Feature List:
@@ -41,11 +41,16 @@ using System.Runtime.InteropServices;
 // - Integration in Visual Studio (Compile, Install and Deploy)
 // 
 // -----------------------------------------------------------------------------------
-// Coming --> 1.1.1.0 (Oktober 2011)
+// Coming --> 1.1.1.0 (December 2011)
 // - Full C# support
 //
 // -----------------------------------------------------------------------------------
-// 1.1.0.2 (14 Oktober 2011)
+// 1.1.0.3 (15 November 2011)
+// - Fixed a bug in the dependency tree. Dependencies where not correctly filtered, now
+//   cross-referencing projects and their 'DependsOn' list with the platform.
+// - Added back support of defining more than 1 specific platform for Construct
+// -----------------------------------------------------------------------------------
+// 1.1.0.2 (14 October 2011)
 // - Fixed a bug in PackageContent when mixing implicit and explicit platform items
 // - Fixed a bug in Storage where 'storage::' should be removed from string
 // -----------------------------------------------------------------------------------

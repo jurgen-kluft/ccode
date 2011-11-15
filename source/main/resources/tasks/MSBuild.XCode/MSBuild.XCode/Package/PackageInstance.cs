@@ -12,7 +12,7 @@ namespace MSBuild.XCode
 
         public Group Group { get { return mResource.Group; } }
         public string Name { get { return mResource.Name; } }
-        public string Branch { get; set; }
+        public string Branch { get { return mPackage.Branch; } set { mPackage.Branch = value; } }
 
         public string Language
         {
@@ -46,6 +46,7 @@ namespace MSBuild.XCode
             : this(isRoot)
         {
             mResource = resource;
+            InitPackage();
         }
 
         internal PackageInstance(bool isRoot, PackageResource resource, PomInstance pom)
@@ -54,6 +55,7 @@ namespace MSBuild.XCode
             mResource = resource;
             mPom = pom;
             mPom.Package = this;
+            InitPackage();
         }
 
         public static PackageInstance From(bool isRoot, string name, string group, string branch, string platform)
@@ -62,6 +64,7 @@ namespace MSBuild.XCode
             PackageInstance instance = resource.CreateInstance(isRoot);
             instance.Branch = branch;
             instance.SetPlatform(platform);
+            instance.InitPackage();
             return instance;
         }
 
@@ -71,11 +74,16 @@ namespace MSBuild.XCode
             PackageInstance instance = resource.CreateInstance(true);
             instance.RootURL = dir;
 
-            foreach (string platform in resource.Platforms)
+            instance.InitPackage();
+            instance.Package.RootURL = dir;
+
+            if (resource.Platforms.Count > 0)
             {
-                instance.SetPlatform(platform);
-                instance.Package.RootURL = dir;
+                string platform = resource.Platforms[0];
+                instance.Package.Platform = platform;
+                instance.Package.RootVersion = instance.Pom.Versions.GetForPlatform(platform);
             }
+
             return instance;
         }
 
@@ -83,31 +91,40 @@ namespace MSBuild.XCode
         {
             PackageResource resource = PackageResource.LoadFromFile(dir);
             PackageInstance instance = resource.CreateInstance(false);
-            foreach (string platform in resource.Platforms)
+            instance.InitPackage();
+            instance.Package.TargetURL = dir;
+            
+            if (resource.Platforms.Count > 0)
             {
-                instance.SetPlatform(platform);
-                instance.Package.TargetURL = dir;
+                string platform = resource.Platforms[0];
+                instance.Package.Platform = platform;
+                instance.Package.RootVersion = instance.Pom.Versions.GetForPlatform(platform);
             }
             return instance;
         }
 
-        private void InitPackage(string platform)
+        private void InitPackage()
         {
             mPackage.Name = Name;
             mPackage.Group = Group.ToString();
             mPackage.Branch = Branch;
-            mPackage.Platform = platform;
+            if (String.IsNullOrEmpty(mPackage.Platform))
+                mPackage.Platform = "?";
             mPackage.Language = IsCpp ? "C++" : "C#";
         }
 
-        public bool SetPlatform(string platform)
+        public bool HasPlatform(string platform)
         {
             if (!ContainsPlatform(Pom.Platforms.ToArray(), platform))
                 return false;
-
-            InitPackage(platform);
-            mPackage.RootVersion = Pom.Versions.GetForPlatform(platform);
+            
             return true;
+        }
+
+        public void SetPlatform(string platform)
+        {
+            mPackage.Platform = platform;
+            mPackage.RootVersion = Pom.Versions.GetForPlatform(platform);
         }
 
         public bool Load()

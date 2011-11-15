@@ -74,22 +74,41 @@ namespace MSBuild.XCode
                         return False();
 
                     PackageInstance package = PackageInstance.LoadFromRoot(RootDir);
-                    if (!package.SetPlatform(Platform))
+
+                    List<string> platforms = new List<string>(package.Pom.Platforms);
+                    if (Platform != "*")
                     {
-                        Loggy.Error(String.Format("Error: Platform(s) '{0}' is not supported for this package, are you sure you typed it correctly?", Platform));
+                        platforms.Clear();
+                        string[] platforms_array = Platform.Split(new char[] { ',' }, StringSplitOptions.RemoveEmptyEntries);
+                        foreach (string p in platforms_array)
+                            platforms.Add(p);
+                    }
+                    else
+                    {
+                        // Retrieve the list from the POM which is the global list of platforms that the POM is using
+                        foreach(string p in package.Pom.Platforms)
+                            platforms.Add(p);
+                    }
+
+                    if (platforms.Count == 0)
+                    {
+                        Loggy.Error(String.Format("Error: No platforms, are you sure you typed the platforms correctly?"));
                         return False();
+                    }
+
+                    package.SetPlatform(platforms[0]);
+                    foreach (string p in platforms)
+                    {
+                        if (!package.HasPlatform(p))
+                        {
+                            Loggy.Error(String.Format("Error: Platform(s) '{0}' is not supported for this package, are you sure you typed it correctly?", p));
+                            return False();
+                        }
                     }
 
                     if (package.IsValid)
                     {
                         PackageDependencies dependencies = new PackageDependencies(package);
-
-                        List<string> platforms = new List<string>(package.Pom.Platforms);
-                        if (Platform != "*")
-                        {
-                            platforms.Clear();
-                            platforms.Add(Platform);
-                        }
 
                         if (dependencies.BuildForPlatforms(platforms))
                         {
