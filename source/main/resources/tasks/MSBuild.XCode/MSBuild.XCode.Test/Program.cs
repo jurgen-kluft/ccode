@@ -38,7 +38,7 @@ namespace MSBuild.XCode.Test
 
             if (Update("1.1.0.2"))
             {
-                string platform = "PS3";
+                string platform = "Win32,PS3";
                 Construct(name, platform);
                 Create(name, platform);
                 Install(name, platform);
