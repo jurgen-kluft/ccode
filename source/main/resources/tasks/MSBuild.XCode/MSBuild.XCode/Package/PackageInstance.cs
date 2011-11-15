@@ -100,10 +100,14 @@ namespace MSBuild.XCode
             mPackage.Language = IsCpp ? "C++" : "C#";
         }
 
-        public void SetPlatform(string platform)
+        public bool SetPlatform(string platform)
         {
+            if (!ContainsPlatform(Pom.Platforms.ToArray(), platform))
+                return false;
+
             InitPackage(platform);
             mPackage.RootVersion = Pom.Versions.GetForPlatform(platform);
+            return true;
         }
 
         public bool Load()
@@ -206,7 +210,7 @@ namespace MSBuild.XCode
                         projectMap.Add(key, rootProject);
 
                         // Store the root project DependsOn items and also schedule them for resolving them
-                        string[] projectDependencies = rootProject.DependsOn.Split(new char[] { ';' }, StringSplitOptions.RemoveEmptyEntries);
+                        string[] projectDependencies = rootProject.DependsOn;
                         for (int i = 0; i < projectDependencies.Length; ++i)
                         {
                             if (!projectDependencies[i].Contains(":"))
@@ -243,7 +247,7 @@ namespace MSBuild.XCode
                                 {
                                     projectMap.Add(projectKey, project);
 
-                                    string[] projectDependencies = project.DependsOn.Split(new char[] { ';' }, StringSplitOptions.RemoveEmptyEntries);
+                                    string[] projectDependencies = project.DependsOn;
                                     for (int i = 0; i < projectDependencies.Length; ++i)
                                     {
                                         if (!projectDependencies[i].Contains(":"))
@@ -406,7 +410,7 @@ namespace MSBuild.XCode
                 path = path + prj.Name + prj.Extension;
                 projectFilenames.Add(path);
 
-                string[] dependencies = prj.DependsOn.Split(new char[] { ';' }, StringSplitOptions.RemoveEmptyEntries);
+                string[] dependencies = prj.DependsOn;
                 if (dependencies.Length > 0)
                 {
                     for (int i = 0; i < dependencies.Length; ++i)

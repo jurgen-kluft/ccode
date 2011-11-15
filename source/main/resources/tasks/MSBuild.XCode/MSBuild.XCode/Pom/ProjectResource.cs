@@ -93,6 +93,12 @@ namespace MSBuild.XCode
             }
         }
 
+        public bool HasPlatform(string platform)
+        {
+            StringItems items;
+            return (mConfigs.TryGetValue(platform, out items));
+        }
+
         public string[] GetPlatforms()
         {
             string[] platforms = new string[mConfigs.Keys.Count];

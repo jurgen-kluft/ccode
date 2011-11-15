@@ -25,7 +25,32 @@ namespace MSBuild.XCode
         {
             mPackage = package;
             mPlatform = platform;
-            mDependencies = dependencies;
+            mDependencies = new List<DependencyInstance>();
+            
+            // Filter the dependencies:
+            //  We need to cross-reference the dependency list with all the projects specified
+            //  in the POM. Every project might have a different sub-set of platforms and this
+            //  determines the platforms that this dependency package is required for.
+            //
+            //  For example, package A might be a dependency for the first project in the POM
+            //  and in that project only 'Win32' is specified. It is obvious that package A only
+            //  needs to be synchronized for platform 'Win32'.
+            //  
+            foreach(DependencyInstance di in dependencies)
+            {
+                foreach (ProjectInstance pi in Package.Pom.Projects)
+                {
+                    // If this project does not define this platform and does not
+                    // specify this dependency package than we do not add it to
+                    // the dependency list for this dependency tree.
+                    if (pi.HasPlatform(platform) && pi.IsDependentOn(di.Name))
+                    {
+                        mDependencies.Add(di);
+                        break;
+                    }
+                }
+            }
+
             mRootNodes = new List<DependencyTreeNode>();
             mAllNodesMap = new Dictionary<string, DependencyTreeNode>();
             mCompileQueue = new Queue<DependencyTreeNode>();
