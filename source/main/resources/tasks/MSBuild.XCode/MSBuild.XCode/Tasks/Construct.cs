@@ -86,8 +86,6 @@ namespace MSBuild.XCode
                     else
                     {
                         // Retrieve the list from the POM which is the global list of platforms that the POM is using
-                        foreach(string p in package.Pom.Platforms)
-                            platforms.Add(p);
                     }
 
                     if (platforms.Count == 0)
@@ -118,7 +116,7 @@ namespace MSBuild.XCode
 
                                 // Generate the projects and solution
                                 package.GenerateProjects(dependencies, platforms);
-                                if (!package.GenerateSolution())
+                                if (!package.GenerateSolution(platforms))
                                 {
                                     Loggy.Error(String.Format("Error: Action {0} failed in Package::Construct due to failure in saving solution (.sln)", Action));
                                     return False();

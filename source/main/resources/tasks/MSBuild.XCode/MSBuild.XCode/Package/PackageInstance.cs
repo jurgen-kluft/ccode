@@ -411,7 +411,7 @@ namespace MSBuild.XCode
             }
         }
 
-        public bool GenerateSolution()
+        public bool GenerateSolution(List<string> platforms)
         {
             MsDev.ISolution solution = null;
             if (IsCpp)
@@ -422,23 +422,37 @@ namespace MSBuild.XCode
             List<string> projectFilenames = new List<string>();
             foreach (ProjectInstance prj in Pom.Projects)
             {
-                string path = prj.Location.Replace("/", "\\");
-                path = path.EndWith('\\');
-                path = path + prj.Name + prj.Extension;
-                projectFilenames.Add(path);
-
-                string[] dependencies = prj.DependsOn;
-                if (dependencies.Length > 0)
+                bool sln_should_include_project = false;
+                foreach (string platform in platforms)
                 {
-                    for (int i = 0; i < dependencies.Length; ++i)
+                    if (prj.HasPlatform(platform))
                     {
-                        string[] package_project = dependencies[i].Split(new char[] { ':' }, StringSplitOptions.RemoveEmptyEntries);
-                        if (package_project.Length == 0)
-                            dependencies[i] = package_project[0] + prj.Extension;
-                        else
-                            dependencies[i] = package_project[1] + prj.Extension;
+                        sln_should_include_project = true;
+                        break;
                     }
-                    solution.AddDependencies(prj.Name + prj.Extension, dependencies);
+                }
+                if (sln_should_include_project)
+                {
+                    string path = prj.Location.Replace("/", "\\");
+                    path = path.EndWith('\\');
+                    path = path + prj.Name + prj.Extension;
+
+                    // Add it to the list of projects that should be included in the solution
+                    projectFilenames.Add(path);
+
+                    string[] dependencies = prj.DependsOn;
+                    if (dependencies.Length > 0)
+                    {
+                        for (int i = 0; i < dependencies.Length; ++i)
+                        {
+                            string[] package_project = dependencies[i].Split(new char[] { ':' }, StringSplitOptions.RemoveEmptyEntries);
+                            if (package_project.Length == 0)
+                                dependencies[i] = package_project[0] + prj.Extension;
+                            else
+                                dependencies[i] = package_project[1] + prj.Extension;
+                        }
+                        solution.AddDependencies(prj.Name + prj.Extension, dependencies);
+                    }
                 }
             }
 

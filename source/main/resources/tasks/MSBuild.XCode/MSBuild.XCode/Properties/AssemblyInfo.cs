@@ -30,8 +30,8 @@ using System.Runtime.InteropServices;
 //
 // You can specify all the values or you can default the Revision and Build Numbers 
 // by using the '*' as shown below:
-[assembly: AssemblyVersion("1.1.0.3")]
-[assembly: AssemblyFileVersion("1.1.0.3")]
+[assembly: AssemblyVersion("1.1.0.4")]
+[assembly: AssemblyFileVersion("1.1.0.4")]
 
 // -----------------------------------------------------------------------------------
 // Feature List:
@@ -44,6 +44,9 @@ using System.Runtime.InteropServices;
 // Coming --> 1.1.1.0 (December 2011)
 // - Full C# support
 //
+// -----------------------------------------------------------------------------------
+// 1.1.0.4 (24 November 2011)
+// - Fixed a bug in using '*' for constructing all platforms
 // -----------------------------------------------------------------------------------
 // 1.1.0.3 (15 November 2011)
 // - Fixed a bug in the dependency tree. Dependencies where not correctly filtered, now
