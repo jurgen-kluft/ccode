@@ -9,6 +9,7 @@ namespace MSBuild.XCode.MsDev
     {
         string Extension { get; }
 
+		void SetProjectLanguage(string projectFile, string language);
         void AddDependencies(string projectFile, string[] dependencyProjectFiles);
 
         int Save(string _SolutionFile, List<string> _ProjectFiles);

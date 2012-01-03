@@ -208,12 +208,11 @@
     <Compile Include="Mercurial\XmlSerializationTypes\LogEntryTagNode.cs" />
     <Compile Include="Mercurial\XmlSerializationTypes\LogNode.cs" />
     <Compile Include="MsDev\BaseProject.cs" />
-    <Compile Include="MsDev\CsSolution.cs" />
     <Compile Include="MsDev\CppProject.cs" />
-    <Compile Include="MsDev\CppSolution.cs" />
     <Compile Include="MsDev\CsProject.cs" />
     <Compile Include="MsDev\IProject.cs" />
     <Compile Include="MsDev\ISolution.cs" />
+    <Compile Include="MsDev\MixedSolution.cs" />
     <Compile Include="PackageRepository\PackageRepositoryRemoteFs.cs" />
     <Compile Include="PackageRepository\PackageRepositoryRemoteDb.cs" />
     <Compile Include="PackageRepository\PackageRepositoryLayoutShare.cs" />
