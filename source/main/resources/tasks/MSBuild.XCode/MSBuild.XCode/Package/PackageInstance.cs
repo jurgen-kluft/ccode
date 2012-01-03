@@ -18,7 +18,8 @@ namespace MSBuild.XCode
         {
             get
             {
-                if (IsCpp) return "C++";
+				if (IsMixed)  return "Mixed";
+                else if (IsCpp) return "C++";
                 else if (IsCs) return "C#";
                 else return "C++";
             }
@@ -33,7 +34,8 @@ namespace MSBuild.XCode
         public PackageState Package { get { return mPackage; } }
         public List<DependencyResource> Dependencies { get { return Pom.Dependencies; } }
 
-        public bool IsCpp { get { return Pom.IsCpp; } }
+		public bool IsMixed { get { return Pom.IsCpp && Pom.IsCs; } }
+		public bool IsCpp { get { return Pom.IsCpp; } }
         public bool IsCs { get { return Pom.IsCs; } }
 
         private PackageInstance(bool isRoot)
@@ -110,7 +112,7 @@ namespace MSBuild.XCode
             mPackage.Branch = Branch;
             if (String.IsNullOrEmpty(mPackage.Platform))
                 mPackage.Platform = "?";
-            mPackage.Language = IsCpp ? "C++" : "C#";
+            mPackage.Language = Language;
         }
 
         public bool HasPlatform(string platform)
@@ -414,10 +416,7 @@ namespace MSBuild.XCode
         public bool GenerateSolution(List<string> platforms)
         {
             MsDev.ISolution solution = null;
-            if (IsCpp)
-                solution = new MsDev.CppSolution(MsDev.CppSolution.EVersion.VS2010);
-            else
-                solution = new MsDev.CsSolution(MsDev.CsSolution.EVersion.VS2010);
+			solution = new MsDev.MixedSolution(MsDev.MixedSolution.EVersion.VS2010);
 
             List<string> projectFilenames = new List<string>();
             foreach (ProjectInstance prj in Pom.Projects)
@@ -439,6 +438,7 @@ namespace MSBuild.XCode
 
                     // Add it to the list of projects that should be included in the solution
                     projectFilenames.Add(path);
+					solution.SetProjectLanguage(prj.Name + prj.Extension, prj.Language);
 
                     string[] dependencies = prj.DependsOn;
                     if (dependencies.Length > 0)
@@ -462,6 +462,5 @@ namespace MSBuild.XCode
 
             return true;
         }
-
     }
 }

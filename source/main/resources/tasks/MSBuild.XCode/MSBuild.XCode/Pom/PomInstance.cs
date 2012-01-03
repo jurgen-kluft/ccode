@@ -43,9 +43,9 @@ namespace MSBuild.XCode
         {
             get
             {
-                bool isCpp = true;
+                bool isCpp = false;
                 foreach (ProjectInstance prj in Projects)
-                    isCpp = isCpp && prj.IsCpp;
+                    isCpp = isCpp || prj.IsCpp;
                 return isCpp;
             }
         }
@@ -54,9 +54,9 @@ namespace MSBuild.XCode
         {
             get
             {
-                bool isCs = true;
+                bool isCs = false;
                 foreach (ProjectInstance prj in Projects)
-                    isCs = isCs && prj.IsCs;
+                    isCs = isCs || prj.IsCs;
                 return isCs;
             }
         }
