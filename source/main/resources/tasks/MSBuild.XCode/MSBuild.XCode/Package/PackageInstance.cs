@@ -25,6 +25,9 @@ namespace MSBuild.XCode
             }
         }
 
+        public string IDE { set; get; }
+        public string ToolSet { set; get; }
+
         public bool IsValid { get { return mResource.IsValid; } }
 
         public string RootURL { get; set; }
@@ -40,6 +43,8 @@ namespace MSBuild.XCode
 
         private PackageInstance(bool isRoot)
         {
+            IDE = "vs2012";
+            ToolSet = "v110";
             IsRootPackage = isRoot;
             mPackage = new PackageState();
         }

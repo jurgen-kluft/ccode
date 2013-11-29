@@ -9,11 +9,48 @@ namespace MSBuild.XCode
 {
     public class ProjectProperties
     {
+        public class ItemFile
+        {
+            public FileStream mFileStream = null;
+            public StreamWriter mWriter = null;
+
+
+            public void open(string propsFilePath)
+            {
+                // <?xml version="1.0" encoding="utf-8"?>
+                // <Project ToolsVersion="4.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+                //     mXmlDoc
+                // </Project>
+                //
+                string path = Path.GetDirectoryName(propsFilePath);
+                if (!Directory.Exists(path))
+                    Directory.CreateDirectory(path);
+
+                mFileStream = new FileStream(propsFilePath, FileMode.Create, FileAccess.Write);
+                mWriter = new StreamWriter(mFileStream);
+                {
+                    mWriter.WriteLine("<?xml version=\"1.0\" encoding=\"utf-8\"?>");
+                    mWriter.WriteLine("<Project ToolsVersion=\"4.0\" xmlns=\"http://schemas.microsoft.com/developer/msbuild/2003\">");
+                }
+            }
+
+            public void close()
+            {
+                {
+                    mWriter.WriteLine("</Project>");
+                    mWriter.Close();
+                }
+                mFileStream.Close();
+            }
+
+        }
+
         public class Item
         {
             private string mDependencyType;
             private string mPlatform;
             private List<string> mContent;
+
 
             public Item(string depType, string platform, List<string> content)
             {
@@ -34,32 +71,12 @@ namespace MSBuild.XCode
                 }
             }
 
-            public void write(string propsFilePath, string location)
+            public void write(StreamWriter writer, string propsFilePath, string location)
             {
-                // <?xml version="1.0" encoding="utf-8"?>
-                // <Project ToolsVersion="4.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
-                //     mXmlDoc
-                // </Project>
-                //
-                string path = Path.GetDirectoryName(propsFilePath);
-                if (!Directory.Exists(path))
-                    Directory.CreateDirectory(path);
-
-                using (FileStream stream = new FileStream(propsFilePath, FileMode.Create, FileAccess.Write))
+                foreach (string l in mContent)
                 {
-                    using (StreamWriter writer = new StreamWriter(stream))
-                    {
-                        writer.WriteLine("<?xml version=\"1.0\" encoding=\"utf-8\"?>");
-                        writer.WriteLine("<Project ToolsVersion=\"4.0\" xmlns=\"http://schemas.microsoft.com/developer/msbuild/2003\">");
-                        foreach (string l in mContent)
-                        {
-                            string ml = l.Replace("${Location}", location);
-                            writer.WriteLine("    {0}", ml);
-                        }
-                        writer.WriteLine("</Project>");
-                        writer.Close();
-                    }
-                    stream.Close();
+                    string ml = l.Replace("${Location}", location);
+                    writer.WriteLine("    {0}", ml);
                 }
             }
         }
@@ -107,6 +124,15 @@ namespace MSBuild.XCode
 
         public bool Write(string propsFilePath, string platform, string dependencyType, string location)
         {
+            ItemFile file = new ItemFile();
+            file.open(propsFilePath);
+
+            Item item0 = GetItemFor(platform, "Global");
+            if (item0 != null)
+            {
+                item0.write(propsFilePath, location);
+            }
+
             Item item = GetItemFor(platform, dependencyType);
             if (item != null)
             {
@@ -126,8 +152,13 @@ namespace MSBuild.XCode
             return true;
         }
 
-        public void SetDefault(string name)
+        public void SetDefault(string name, string IDE, string ToolSet)
         {
+            List<string> globalContent = new List<string>();
+            globalContent.Add("<PropertyGroup Label=\"${Name}_VS\">");
+            globalContent.Add("    <PlatformToolset>" + ToolSet + "</PlatformToolset>");
+            globalContent.Add("</PropertyGroup>");
+
             List<string> rootContent = new List<string>();
             rootContent.Add("<PropertyGroup Label=\"${Name}_TargetDirs\">");
             rootContent.Add("    <${Name}_RootDir>$(SolutionDir)</${Name}_RootDir>");
@@ -153,6 +184,8 @@ namespace MSBuild.XCode
             sourceContent.Add("</PropertyGroup>");
 
             Dictionary<string, Item> items = new Dictionary<string, Item>();
+            Item item0 = new Item("Global", "*", globalContent);
+            items.Add(item0.DependencyType.ToLower(), item0);
             Item item1 = new Item("Root", "*", rootContent);
             items.Add(item1.DependencyType.ToLower(), item1);
             Item item2 = new Item("Package", "*", packageContent);
