@@ -13,8 +13,10 @@ namespace MSBuild.XCode
     {
         public string Name { get; set; }
         [Required]
-        public string Action { get; set; }      ///< init, dir, vs2010
+        public string Action { get; set; }      ///< init, dir, vs2010/vs2012/vs2013
         public string Platform { get; set; }
+        public string IDE { get; set; }         ///< Eclipse, Visual Studio, XCODE
+        public string ToolSet { get; set; }     ///< GCC, Visual Studio (v90, v100, v110, v120)
         public string Language { get; set; }
         [Required]
         public string RootDir { get; set; }
@@ -57,6 +59,24 @@ namespace MSBuild.XCode
                     Platform = "*";
                 }
 
+                if (!String.IsNullOrEmpty(IDE))
+                {
+                    IDE = IDE.ToLower();
+                }
+                else
+                {
+                    IDE = "vs2012";   // default is Visual Studio 2012
+                }
+
+                if (!String.IsNullOrEmpty(ToolSet))
+                {
+                    ToolSet = ToolSet.ToLower();
+                }
+                else
+                {
+                    ToolSet = "v110";   // default is Visual Studio 2012
+                }
+
                 RootDir = RootDir.EndWith('\\');
                 TemplateDir = TemplateDir.EndWith('\\');
 
@@ -68,7 +88,7 @@ namespace MSBuild.XCode
 
                 PackageInstance.TemplateDir = TemplateDir;
 
-                if (Action.StartsWith("vs2010"))
+                if (Action.StartsWith("genprj"))
                 {
                     if (!PackageInstance.Initialize(RemoteRepoDir, CacheRepoDir, RootDir))
                         return False();
