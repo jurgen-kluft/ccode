@@ -14,18 +14,24 @@ namespace MSBuild.XCode.Test
         private static string XCodeRepoDir;
         private static string TemplateDir;
 
+        private static string Name;
+        private static string BaseDirCpp;
+        private static string BaseDirCs;
+
         [STAThread]
         static void Main()
         {
-            //MainCpp();
-            MainCs();
+            MainCpp();
+            //MainCs();
         }
 
         static void MainCs()
         {
             Loggy.ToConsole = true;
 
-            string name = "xprojectB";
+            Name = "xprojectB";
+            BaseDirCpp = "";
+            BaseDirCs = @"E:\Dev.Cs.Packages\";
 
             // home (hp laptop)
             //RemoteRepoDir = @"db::server=127.0.0.1;port=3306;database=xcode;uid=root;password=p1|fs::D:\PACKAGE_REPO_TEST\";
@@ -33,9 +39,9 @@ namespace MSBuild.XCode.Test
             // work
             RemoteRepoDir = @"db::server=cnshasap2;port=3307;database=xcode_cpp;uid=developer;password=Fastercode189|storage::\\cnshasap2\Hg_Repo\PACKAGE_REPO\.storage\";
             
-            CacheRepoDir = @"k:\Dev.Cs.Packages\PACKAGE_REPO\";
-            RootDir = @"k:\Dev.Cs.Packages\" + name + "\\";
-            XCodeRepoDir = @"k:\Dev.Cs.Packages\PACKAGE_REPO\com\virtuos\xcode\publish\";
+            CacheRepoDir = @"PACKAGE_REPO\";
+            RootDir = BaseDirCs + Name + "\\";
+            XCodeRepoDir = BaseDirCs + @"PACKAGE_REPO\com\virtuos\xcode\publish\";
             TemplateDir = XCodeRepoDir + @"templates\";
 
             PackageInstance.TemplateDir = TemplateDir;
@@ -45,10 +51,10 @@ namespace MSBuild.XCode.Test
             if (Update("1.1.0.4"))
             {
                 string platform = "x86";
-                Construct(name, platform, "Cs");
-                Create(name, platform, "Cs");
-                Install(name, platform, "Cs");
-                Deploy(name, platform, "Cs");
+                Construct(Name, platform, "Cs");
+                Create(Name, platform, "Cs");
+                Install(Name, platform, "Cs");
+                Deploy(Name, platform, "Cs");
             }
         }
 
@@ -57,30 +63,34 @@ namespace MSBuild.XCode.Test
         {
             Loggy.ToConsole = true;
 
-            string name = "xbase";
+            string name = "xunittest";
+            BaseDirCpp = @"E:\Dev.C++.Packages.Bitbucket\";
+            BaseDirCs = "";
 
             // home (hp laptop)
             //RemoteRepoDir = @"db::server=127.0.0.1;port=3306;database=xcode;uid=root;password=p1|fs::D:\PACKAGE_REPO_TEST\";
             
             // work
-            RemoteRepoDir = @"db::server=cnshasap2;port=3307;database=xcode_cpp;uid=developer;password=Fastercode189|storage::\\cnshasap2\Hg_Repo\PACKAGE_REPO\.storage\";
+            // RemoteRepoDir = @"db::server=cnshasap2;port=3307;database=xcode_cpp;uid=developer;password=Fastercode189|storage::\\cnshasap2\Hg_Repo\PACKAGE_REPO\.storage\";
+            RemoteRepoDir = @"fs::" + BaseDirCpp + @"REMOTE_PACKAGE_REPO\";
             
-            CacheRepoDir = @"k:\Dev.C++.Packages\PACKAGE_REPO\";
-            RootDir = @"k:\Dev.C++.Packages\" + name + "\\";
-            XCodeRepoDir = @"k:\Dev.C++.Packages\PACKAGE_REPO\com\virtuos\xcode\publish\";
+            CacheRepoDir = BaseDirCpp + @"PACKAGE_REPO\";
+            RootDir = BaseDirCpp + name + "\\";
+            XCodeRepoDir = BaseDirCpp + @"PACKAGE_REPO\com\virtuos\xcode\publish\";
             TemplateDir = XCodeRepoDir + @"templates\";
 
             PackageInstance.TemplateDir = TemplateDir;
             if (!PackageInstance.Initialize(RemoteRepoDir, CacheRepoDir, RootDir))
                 return;
 
-            if (Update("1.1.0.3"))
+            if (Update("1.1.0.4"))
             {
-                string platform = "*";
+                string platform = "x64";
                 Construct(name, platform, "C++");
                 Create(name, platform, "C++");
+                Sync(name, platform, "C++");
                 Install(name, platform, "C++");
-                Deploy(name, platform, "C++");
+                //Deploy(name, platform, "C++");
             }
         }
 
@@ -93,6 +103,19 @@ namespace MSBuild.XCode.Test
             return cmd.Execute();
         }
 
+        public static void Sync(string name, string platform, string language)
+        {
+            if (platform == "*")
+                platform = "Win32";
+
+            PackageSync cmd = new PackageSync();
+            cmd.RemoteRepoDir = RemoteRepoDir;
+            cmd.CacheRepoDir = CacheRepoDir;
+            cmd.RootDir = (language == "Cs" ? BaseDirCs : BaseDirCpp) + name + "\\";
+            cmd.Platform = platform;
+            cmd.Execute();
+        }
+
         public static void Create(string name, string platform, string language)
         {
             if (platform == "*")
@@ -101,7 +124,7 @@ namespace MSBuild.XCode.Test
             PackageCreate cmd = new PackageCreate();
             cmd.RemoteRepoDir = RemoteRepoDir;
             cmd.CacheRepoDir = CacheRepoDir;
-            cmd.RootDir = "k:\\Dev." + language + ".Packages\\" + name + "\\";
+            cmd.RootDir = (language == "Cs" ? BaseDirCs : BaseDirCpp) + name + "\\";
             cmd.Platform = platform;
             cmd.IncrementBuild = true;
             cmd.Execute();
@@ -115,7 +138,7 @@ namespace MSBuild.XCode.Test
             PackageInstall cmd = new PackageInstall();
             cmd.RemoteRepoDir = RemoteRepoDir;
             cmd.CacheRepoDir = CacheRepoDir;
-            cmd.RootDir = "k:\\Dev." + language + ".Packages\\" + name + "\\";
+            cmd.RootDir = (language == "Cs" ? BaseDirCs : BaseDirCpp) + name + "\\";
             cmd.Platform = platform;
             cmd.Execute();
         }
@@ -128,7 +151,7 @@ namespace MSBuild.XCode.Test
             PackageDeploy cmd = new PackageDeploy();
             cmd.RemoteRepoDir = RemoteRepoDir;
             cmd.CacheRepoDir = CacheRepoDir;
-            cmd.RootDir = "k:\\Dev." + language + ".Packages\\" + name + "\\";
+            cmd.RootDir = (language == "Cs" ? BaseDirCs : BaseDirCpp) + name + "\\";
             cmd.Platform = platform;
             cmd.Execute();
         }
@@ -137,7 +160,7 @@ namespace MSBuild.XCode.Test
         {
             PackageConstruct construct = new PackageConstruct();
             construct.Name = name;
-            construct.RootDir = "k:\\Dev." + language + ".Packages\\";
+            construct.RootDir = language == "Cs" ? BaseDirCs : BaseDirCpp;
             construct.CacheRepoDir = CacheRepoDir;
             construct.RemoteRepoDir = RemoteRepoDir;
             construct.TemplateDir = TemplateDir;
@@ -146,7 +169,7 @@ namespace MSBuild.XCode.Test
                 construct.Language = "C#";
             construct.RootDir = construct.RootDir + construct.Name + "\\";
             construct.Platform = platform;
-            construct.Action = "vs2010";
+            construct.Action = "genprj";
             construct.Execute();
         }
     }

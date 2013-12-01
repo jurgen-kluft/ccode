@@ -37,6 +37,7 @@ namespace xpackage_repo
     public class PackageVersion_pv : Package_pk
     {
         private string m_PackagePlatform;
+        private string m_PackageToolSet;
         private string m_PackageBranch;
         private Int64 m_PackageVersion;
 
@@ -47,6 +48,7 @@ namespace xpackage_repo
         public PackageVersion_pv()
         {
             m_PackagePlatform = "Win32";
+            m_PackageToolSet = "VS2012-v110";
             m_PackageBranch = "default";
             m_PackageVersion = 1000000;
 
@@ -93,6 +95,12 @@ namespace xpackage_repo
         {
             get { return m_PackagePlatform; }
             set { m_PackagePlatform = value; }
+        }
+
+        public string ToolSet
+        {
+            get { return m_PackageToolSet; }
+            set { m_PackageToolSet = value; }
         }
 
         public string Branch

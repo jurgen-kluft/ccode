@@ -25,7 +25,7 @@ namespace xpackage_repo
             }
         }
 
-        public bool upLoad(string Name, string Group, string Language, string Platform, string Branch, Int64 Version, string Datetime, string Changeset, List<KeyValuePair<Package, Int64>> dependencies, string localFilename)
+        public bool upLoad(string Name, string Group, string Language, string Platform, string ToolSet, string Branch, Int64 Version, string Datetime, string Changeset, List<KeyValuePair<Package, Int64>> dependencies, string localFilename)
         {
             string storage_key;
             if (mStorageSystem.submit(localFilename, out storage_key))
@@ -52,6 +52,7 @@ namespace xpackage_repo
                 pv.Group = Group;
                 pv.Language = Language;
                 pv.Platform = Platform;
+                pv.ToolSet = ToolSet;
                 pv.Branch = Branch;
                 pv.Version = Version;
                 pv.Datetime = Datetime;
@@ -67,6 +68,7 @@ namespace xpackage_repo
                     p.Language = d.Key.Language;
                     p.Version = d.Value;
                     p.Platform = Platform;
+                    p.ToolSet = ToolSet;
                     p.Branch = Branch;
                     p.Location = string.Empty;
                     p.Changeset = d.Key.Changeset;
@@ -87,7 +89,7 @@ namespace xpackage_repo
             return mStorageSystem.retrieve(storageKey, destinationPath);
         }
 
-        public bool find(string package_name, string package_group, string package_language, string platform, string branch, out Int64 version)
+        public bool find(string package_name, string package_group, string package_language, string platform, string toolset, string branch, out Int64 version)
         {
             PackageVersion_pv pv = new PackageVersion_pv();
             pv.Name = package_name;
@@ -95,6 +97,7 @@ namespace xpackage_repo
             pv.Language = package_language;
             pv.Branch = branch;
             pv.Platform = platform;
+            pv.ToolSet = toolset;
 
             Int64 lowestVersion = PackageVersion_pv.LowestVersion;
             Int64 highestVersion = PackageVersion_pv.HighestVersion;
@@ -111,7 +114,7 @@ namespace xpackage_repo
             }
         }
 
-        public bool find(string package_name, string package_group, string package_language, string platform, string branch, Int64 version, out Dictionary<string, object> vars)
+        public bool find(string package_name, string package_group, string package_language, string platform, string toolset, string branch, Int64 version, out Dictionary<string, object> vars)
         {
             PackageVersion_pv pv = new PackageVersion_pv();
             pv.Name = package_name;
@@ -119,6 +122,7 @@ namespace xpackage_repo
             pv.Language = package_language;
             pv.Branch = branch;
             pv.Platform = platform;
+            pv.ToolSet = toolset;
             pv.Version = version;
 
             if (mDatabaseSystem.retrieveVarsOf(pv, out vars))
@@ -132,7 +136,7 @@ namespace xpackage_repo
             }
         }
 
-        public bool find(string package_name, string package_group, string package_language, string platform, string branch, Int64 start_version, bool include_start, Int64 end_version, bool include_end, out Dictionary<string, object> vars)
+        public bool find(string package_name, string package_group, string package_language, string platform, string toolset, string branch, Int64 start_version, bool include_start, Int64 end_version, bool include_end, out Dictionary<string, object> vars)
         {
             PackageVersion_pv pv = new PackageVersion_pv();
             pv.Name = package_name;
@@ -140,6 +144,7 @@ namespace xpackage_repo
             pv.Language = package_language;
             pv.Branch = branch;
             pv.Platform = platform;
+            pv.ToolSet = toolset;
 
             Int64 bestVersion;
             if (mDatabaseSystem.findLatestVersion(pv, start_version, include_start, end_version, include_end, out bestVersion))

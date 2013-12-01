@@ -19,22 +19,26 @@ namespace MSBuild.XCode
         public string Group { get; set; }
         public string Branch { get; set; }
         public string Platform { get; set; }
+        public string ToolSet { get; set; }
         public string Language { get; set; }
         public string Changeset { get; set; }
 
         public Package()
         {
-            Changeset = "?";
+            Platform = "Win32";
+            ToolSet = "v110";
             Language = "C++";
+            Changeset = "?";
         }
 
-        public static Package From(string name, string group, string branch, string platform, string language, string changeset)
+        public static Package From(string name, string group, string branch, string platform, string toolset, string language, string changeset)
         {
             Package instance = new Package();
             instance.Name = name;
             instance.Group = group;
             instance.Branch = branch;
             instance.Platform = platform;
+            instance.ToolSet = toolset;
             instance.Language = language;
             instance.Changeset = changeset;
             return instance;
@@ -85,13 +89,14 @@ namespace MSBuild.XCode
             IncrementVersion = false;
         }
 
-        public static PackageState From(string name, string group, string branch, string platform)
+        public static PackageState From(string name, string group, string branch, string platform, string toolset)
         {
             PackageState instance = new PackageState();
             instance.Name = name;
             instance.Group = group;
             instance.Branch = branch;
             instance.Platform = platform;
+            instance.ToolSet = toolset;
             return instance;
         }
 

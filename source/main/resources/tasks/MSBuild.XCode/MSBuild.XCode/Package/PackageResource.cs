@@ -43,44 +43,44 @@ namespace MSBuild.XCode
             return pom;
         }
 
-        public static PackageResource From(string name, string group)
+        public static PackageResource From(string name, string group, PackageVars vars)
         {
             PackageResource resource = new PackageResource();
-            resource.mPom = PomResource.From(name, group);
+            resource.mPom = PomResource.From(name, group, vars);
             return resource;
         }
 
-        public static PackageResource From(string group, IPackageFilename filename)
+        public static PackageResource From(string group, IPackageFilename filename, PackageVars vars)
         {
             PackageResource resource = new PackageResource();
-            resource.mPom = PomResource.From(filename.Name, group);
+            resource.mPom = PomResource.From(filename.Name, group, vars);
             return resource;
         }
 
-        private static PackageResource From(IPackageFilename filename)
+        private static PackageResource From(IPackageFilename filename, PackageVars vars)
         {
-            return From(string.Empty, filename);
+            return From(string.Empty, filename, vars);
         }
 
-        public static PackageResource LoadFromFile(string url)
+        public static PackageResource LoadFromFile(string url, PackageVars vars)
         {
             PackageResource resource = new PackageResource();
 
             if (!String.IsNullOrEmpty(url) && File.Exists(url + "pom.xml"))
             {
-                resource.mPom = new PomResource();
+                resource.mPom = new PomResource(vars);
                 resource.mPom.LoadFile(url + "pom.xml");
             }
             else
             {
-                resource.mPom = new PomResource();
+                resource.mPom = new PomResource(vars);
             }
             return resource;
         }
 
-        public static PackageResource LoadFromPackage(string url, IPackageFilename filename)
+        public static PackageResource LoadFromPackage(string url, IPackageFilename filename, PackageVars vars)
         {
-            PackageResource resource = PackageResource.From(filename);
+            PackageResource resource = PackageResource.From(filename, vars);
             if (File.Exists(url + filename.ToString()))
             {
                 PackageZipper zip = PackageZipper.Open(url + filename.ToString(), FileAccess.Read);
@@ -98,7 +98,7 @@ namespace MSBuild.XCode
                                 string xml = reader.ReadToEnd();
                                 reader.Close();
                                 stream.Close();
-                                resource.mPom = new PomResource();
+                                resource.mPom = new PomResource(vars);
                                 resource.mPom.LoadXml(xml);
                                 return resource;
                             }
@@ -106,7 +106,7 @@ namespace MSBuild.XCode
                     }
                 }
             }
-            resource.mPom = new PomResource();
+            resource.mPom = new PomResource(vars);
             return resource;
         }
 

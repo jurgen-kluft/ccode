@@ -41,7 +41,7 @@ namespace MSBuild.XCode
         public bool Query(PackageState package)
         {
             // See if this package is in the target folder and valid
-            string packageURL = Layout.PackageRootDir(RepoURL, package.Group, package.Name, package.Platform);
+            string packageURL = Layout.PackageRootDir(RepoURL, package.Group, package.Name, package.Platform, package.ToolSet);
             if (Directory.Exists(packageURL))
             {
                 // A .t file needs to exist as well as a .props
@@ -97,7 +97,7 @@ namespace MSBuild.XCode
 
         public bool Link(PackageState package, out string filename)
         {
-            string package_d = Layout.PackageVersionDir(RepoURL, package.Group, package.Name, package.Platform, package.Branch, package.GetVersion(Location));
+            string package_d = Layout.PackageVersionDir(RepoURL, package.Group, package.Name, package.Platform, package.ToolSet, package.Branch, package.GetVersion(Location));
             string package_f = package.GetFilename(Location).ToString();
             if (File.Exists(package_d + package_f))
             {
@@ -116,7 +116,7 @@ namespace MSBuild.XCode
 
             if (package.HasURL(from.Location))
             {
-                string targetURL = Layout.PackageVersionDir(RepoURL, package.Group, package.Name, package.Platform, package.Branch, package.GetVersion(from.Location));
+                string targetURL = Layout.PackageVersionDir(RepoURL, package.Group, package.Name, package.Platform, package.ToolSet, package.Branch, package.GetVersion(from.Location));
                 if (!Directory.Exists(targetURL))
                     Directory.CreateDirectory(targetURL);
 

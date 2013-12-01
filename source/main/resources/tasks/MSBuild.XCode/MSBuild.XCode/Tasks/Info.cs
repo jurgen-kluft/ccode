@@ -33,7 +33,8 @@ namespace MSBuild.XCode
             Mercurial.Repository hg_repo = new Mercurial.Repository(RootDir);
             string branch = hg_repo.Branch();
 
-            PackageInstance package = PackageInstance.LoadFromRoot(RootDir);
+            PackageVars vars = new PackageVars();
+            PackageInstance package = PackageInstance.LoadFromRoot(RootDir, vars);
             if (package.IsValid)
             {
                 PackageDependencies dependencies = new PackageDependencies(package);

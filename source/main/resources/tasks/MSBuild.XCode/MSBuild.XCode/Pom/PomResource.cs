@@ -24,14 +24,14 @@ namespace MSBuild.XCode
 
         public bool IsValid { get { return !String.IsNullOrEmpty(Name); } }
 
-        public PomResource()
+        public PomResource(PackageVars vars)
         {
             Name = string.Empty;
             Group = new Group(string.Empty);
 
             DirectoryStructure = new PackageStructure();
             Content = new PackageContent();
-            Vars = new PackageVars();
+            Vars = vars;
             Dependencies = new List<DependencyResource>();
             ProjectProperties = new ProjectProperties();
             Projects = new List<ProjectResource>();
@@ -39,9 +39,9 @@ namespace MSBuild.XCode
             Versions = new Versions();
         }
 
-        public static PomResource From(string name, string group)
+        public static PomResource From(string name, string group, PackageVars vars)
         {
-            PomResource resource = new PomResource();
+            PomResource resource = new PomResource(vars);
             resource.Name = name;
             resource.Group = new Group(group);
             return resource;

@@ -15,18 +15,18 @@ namespace MSBuild.XCode
             public StreamWriter mWriter = null;
 
 
-            public void open(string propsFilePath)
+            public void open(string filepath)
             {
                 // <?xml version="1.0" encoding="utf-8"?>
                 // <Project ToolsVersion="4.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
                 //     mXmlDoc
                 // </Project>
                 //
-                string path = Path.GetDirectoryName(propsFilePath);
+                string path = Path.GetDirectoryName(filepath);
                 if (!Directory.Exists(path))
                     Directory.CreateDirectory(path);
 
-                mFileStream = new FileStream(propsFilePath, FileMode.Create, FileAccess.Write);
+                mFileStream = new FileStream(filepath, FileMode.Create, FileAccess.Write);
                 mWriter = new StreamWriter(mFileStream);
                 {
                     mWriter.WriteLine("<?xml version=\"1.0\" encoding=\"utf-8\"?>");
@@ -71,11 +71,11 @@ namespace MSBuild.XCode
                 }
             }
 
-            public void write(StreamWriter writer, string propsFilePath, string location)
+            public void write(StreamWriter writer, string key, string value)
             {
                 foreach (string l in mContent)
                 {
-                    string ml = l.Replace("${Location}", location);
+                    string ml = l.Replace(key, value);
                     writer.WriteLine("    {0}", ml);
                 }
             }
@@ -122,43 +122,34 @@ namespace MSBuild.XCode
             }
         }
 
-        public bool Write(string propsFilePath, string platform, string dependencyType, string location)
+        public struct Properties
         {
-            ItemFile file = new ItemFile();
-            file.open(propsFilePath);
-
-            Item item0 = GetItemFor(platform, "Global");
-            if (item0 != null)
-            {
-                item0.write(propsFilePath, location);
-            }
-
-            Item item = GetItemFor(platform, dependencyType);
-            if (item != null)
-            {
-                item.write(propsFilePath, location);
-                return true;
-            }
-            return false;
+            public string Filepath { get; set; }
+            public string Platform { get; set; }
+            public string IDE { get; set; }
+            public string ToolSet { get; set; }
+            public string DependencyType { get; set; }
+            public string Location { get; set; }
         }
 
-        public bool X_WriteAll(string propsFilePath, string[] platforms, string dependencyType, string location)
+        public bool Write(Properties props)
         {
-            foreach(string platform in platforms)
+            ItemFile file = new ItemFile();
+            file.open(props.Filepath);
+
+            Item item = GetItemFor(props.Platform, props.DependencyType);
+            if (item == null)
             {
-                if (Write(propsFilePath, platform, dependencyType, location) == false)
-                    return false;
+                file.close();
+                return false;
             }
+            item.write(file.mWriter, "${Location}", props.Location);
+            file.close();
             return true;
         }
 
-        public void SetDefault(string name, string IDE, string ToolSet)
+        public void SetDefault(string name)
         {
-            List<string> globalContent = new List<string>();
-            globalContent.Add("<PropertyGroup Label=\"${Name}_VS\">");
-            globalContent.Add("    <PlatformToolset>" + ToolSet + "</PlatformToolset>");
-            globalContent.Add("</PropertyGroup>");
-
             List<string> rootContent = new List<string>();
             rootContent.Add("<PropertyGroup Label=\"${Name}_TargetDirs\">");
             rootContent.Add("    <${Name}_RootDir>$(SolutionDir)</${Name}_RootDir>");
@@ -184,8 +175,6 @@ namespace MSBuild.XCode
             sourceContent.Add("</PropertyGroup>");
 
             Dictionary<string, Item> items = new Dictionary<string, Item>();
-            Item item0 = new Item("Global", "*", globalContent);
-            items.Add(item0.DependencyType.ToLower(), item0);
             Item item1 = new Item("Root", "*", rootContent);
             items.Add(item1.DependencyType.ToLower(), item1);
             Item item2 = new Item("Package", "*", packageContent);
@@ -199,6 +188,8 @@ namespace MSBuild.XCode
 
         public bool Read(XmlNode node)
         {
+            SetDefault(string.Empty);
+
             foreach (XmlNode child in node.ChildNodes)
             {
                 if (child.Name == "Properties")
@@ -216,7 +207,8 @@ namespace MSBuild.XCode
                         Item existingItem;
                         if (items.TryGetValue(dependencyType.ToLower(), out existingItem))
                         {
-                            // Already exists!
+                            items.Remove(dependencyType.ToLower());
+                            items.Add(dependencyType.ToLower(), item);
                         }
                         else
                         {
@@ -231,6 +223,7 @@ namespace MSBuild.XCode
                     }
                 }
             }
+
             return true;
         }
     }

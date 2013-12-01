@@ -22,15 +22,15 @@ namespace MSBuild.XCode
             return path;
         }
 
-        public string VersionToFilename(string package_name, string branch, string platform, ComparableVersion version)
+        public string VersionToFilename(string package_name, string branch, string platform, string toolset, ComparableVersion version)
         {
-            return VersionToFilenameWithoutExtension(package_name, branch, platform, version) + ".zip";
+            return VersionToFilenameWithoutExtension(package_name, branch, platform, toolset, version) + ".zip";
         }
-        
-        public string VersionToFilenameWithoutExtension(string package_name, string branch, string platform, ComparableVersion version)
+
+        public string VersionToFilenameWithoutExtension(string package_name, string branch, string platform, string toolset, ComparableVersion version)
         {
             string versionStr = (version == null) ? "1.0.0" : version.ToString();
-            return String.Format("{0}+{1}+{2}+{3}", package_name, versionStr, branch, platform);
+            return String.Format("{0}+{1}+{2}+{3}+{4}", package_name, versionStr, branch, platform, toolset);
         }
 
         public string FilenameToVersion(string filename)
@@ -39,7 +39,7 @@ namespace MSBuild.XCode
             return parts[1];
         }
 
-        public string PackageRootDir(string repoPath, string group, string package_name, string platform)
+        public string PackageRootDir(string repoPath, string group, string package_name, string platform, string toolset)
         {
             // Path = group[] \ group[] ... \ package_name \ version.cache
             string[] splitted_group = group.Split(new char[] { '.' }, StringSplitOptions.RemoveEmptyEntries);
@@ -55,7 +55,7 @@ namespace MSBuild.XCode
             return fullPath;
         }
 
-        public string PackageVersionDir(string repoPath, string group, string package_name, string platform, string branch, ComparableVersion version)
+        public string PackageVersionDir(string repoPath, string group, string package_name, string platform, string toolset, string branch, ComparableVersion version)
         {
             // Path = group[] \ group[] ... \ package_name \ version.cache
             string[] splitted_group = group.Split(new char[] { '.' }, StringSplitOptions.RemoveEmptyEntries);
