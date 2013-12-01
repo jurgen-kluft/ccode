@@ -19,6 +19,7 @@ namespace MSBuild.XCode
             DateTime = DateTime.Now;
             Branch = string.Empty;
             Platform = string.Empty;
+            ToolSet = string.Empty;
             Extension = string.Empty;
         }
 
@@ -27,6 +28,7 @@ namespace MSBuild.XCode
         public DateTime DateTime { get; set; }
         public string Branch { get; set; }
         public string Platform { get; set; }
+        public string ToolSet { get; set; }
         public string Extension { get; set; }
 
         public string FilenameWithoutExtension  { get { return Name; } }
@@ -85,10 +87,10 @@ namespace MSBuild.XCode
             // Query means that we have to supply the information from the database about
             // the last version.
             Int64 version;
-            if (mPackageRepo.find(package.Name, package.Group, package.Language, package.Platform, package.Branch, out version))
+            if (mPackageRepo.find(package.Name, package.Group, package.Language, package.Platform, package.ToolSet, package.Branch, out version))
             {
                 Dictionary<string, object> vars;
-                if (mPackageRepo.find(package.Name, package.Group, package.Language, package.Platform, package.Branch, version, out vars))
+                if (mPackageRepo.find(package.Name, package.Group, package.Language, package.Platform, package.ToolSet, package.Branch, version, out vars))
                 {
                     object storageKey;
                     if (vars.TryGetValue("Location", out storageKey))
@@ -103,6 +105,7 @@ namespace MSBuild.XCode
                             PackageFilename pf = new PackageFilename();
                             pf.Name = package.Name;
                             pf.Platform = package.Platform;
+                            pf.ToolSet = package.ToolSet;
                             pf.Branch = package.Branch;
                             pf.DateTime = (DateTime)dateTime;
                             pf.Version = new ComparableVersion(version);
@@ -125,13 +128,13 @@ namespace MSBuild.XCode
         public bool Query(PackageState package, VersionRange versionRange)
         {
             Int64 version;
-            if (mPackageRepo.find(package.Name, package.Group, package.Language, package.Platform, package.Branch, out version))
+            if (mPackageRepo.find(package.Name, package.Group, package.Language, package.Platform, package.ToolSet, package.Branch, out version))
             {
                 ComparableVersion cv = new ComparableVersion(version);
                 if (versionRange.IsInRange(cv))
                 {
                     Dictionary<string, object> vars;
-                    if (mPackageRepo.find(package.Name, package.Group, package.Language, package.Platform, package.Branch, version, out vars))
+                    if (mPackageRepo.find(package.Name, package.Group, package.Language, package.Platform, package.ToolSet, package.Branch, version, out vars))
                     {
                         object storageKey;
                         if (vars.TryGetValue("Location", out storageKey))
@@ -146,6 +149,7 @@ namespace MSBuild.XCode
                                 PackageFilename pf = new PackageFilename();
                                 pf.Name = package.Name;
                                 pf.Platform = package.Platform;
+                                pf.ToolSet = package.ToolSet;
                                 pf.Branch = package.Branch;
                                 pf.DateTime = (DateTime)dateTime;
                                 pf.Version = new ComparableVersion(version);
@@ -194,7 +198,7 @@ namespace MSBuild.XCode
                 List<KeyValuePair<Package, Int64>> dependencies;
                 if (PackageArchive.RetrieveDependencies(fromRepoDirectFilename, out dependencies))
                 {
-                    if (mPackageRepo.upLoad(package.Name, package.Group, package.Language, package.Platform, package.Branch, version, package.GetFilename(from.Location).DateTime.ToSql(), package.Changeset, dependencies, fromRepoDirectFilename))
+                    if (mPackageRepo.upLoad(package.Name, package.Group, package.Language, package.Platform, package.ToolSet, package.Branch, version, package.GetFilename(from.Location).DateTime.ToSql(), package.Changeset, dependencies, fromRepoDirectFilename))
                     {
                         package.RemoteVersion = new ComparableVersion(version);
                         return true;

@@ -174,23 +174,24 @@ namespace MSBuild.XCode
             Loggy.Indent -= 1;
         }
 
-        private bool SaveInfoForPlatform(string platform)
+        private bool SaveInfoForPlatform(string platform, string toolset)
         {
             PackageState p = mRootPackage.Package;
 
             string rootURL = p.RootURL;
-            string filepath = rootURL + "\\target\\" + p.Name + "\\build\\" + platform + "\\dependencies.info";
+            string filepath = rootURL + "\\target\\" + p.Name + "\\build\\" + platform + "-" + toolset + "\\dependencies.info";
             DependencyTree tree = GetDependencyTree(platform);
             return tree.SaveInfo(new xFilename(filepath));
         }
 
-        public bool SaveInfoForPlatforms(List<string> platforms)
+        public bool SaveInfoForPlatforms(List<string> platforms, PackageVars vars)
         {
             bool result = true;
             Loggy.Indent += 1;
             foreach (string platform in platforms)
             {
-                if (!SaveInfoForPlatform(platform))
+                string toolset = vars.GetToolSet(platform);
+                if (!SaveInfoForPlatform(platform, toolset))
                 {
                     result = false;
                     break;

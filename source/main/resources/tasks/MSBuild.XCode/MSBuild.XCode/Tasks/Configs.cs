@@ -29,7 +29,8 @@ namespace MSBuild.XCode
             PackageInstance.TemplateDir = TemplateDir;
             PackageInstance.Initialize(string.Empty, string.Empty, RootDir);
 
-            PackageInstance package = PackageInstance.LoadFromRoot(RootDir);
+            PackageVars vars = new PackageVars();
+            PackageInstance package = PackageInstance.LoadFromRoot(RootDir, vars);
             if (package.IsValid)
             {
                 // Get all platforms and configs, e.g: DevDebug|Win32;DevRelease|Win32;DevFinal|Win32

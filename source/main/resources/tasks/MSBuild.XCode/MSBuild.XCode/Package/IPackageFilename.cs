@@ -9,6 +9,7 @@ namespace MSBuild.XCode
         DateTime DateTime { get; set; }
         string Branch { get; set; }
         string Platform { get; set; }
+        string ToolSet { get; set; }
         string Extension { get; set; }
 
         string Filename { get; }
@@ -20,6 +21,7 @@ namespace MSBuild.XCode
         private string mName;
         private string mBranch;
         private string mPlatform;
+        private string mToolSet;
         private string mExtension;
 
         public PackageFilename()
@@ -29,6 +31,7 @@ namespace MSBuild.XCode
             DateTime = System.DateTime.Now;
             Branch = "default";
             Platform = "Win32";
+            ToolSet = "VS2012-v110";
             Extension = ".zip";
         }
 
@@ -39,6 +42,7 @@ namespace MSBuild.XCode
             DateTime = new DateTime(filename.DateTime.Ticks);
             Branch = filename.Branch;
             Platform = filename.Platform;
+            ToolSet = filename.ToolSet;
             Extension = filename.Extension;
         }
         public PackageFilename(string filename)
@@ -56,19 +60,21 @@ namespace MSBuild.XCode
             DateTime = dparts.Length>8 ? System.DateTime.Parse(String.Format("{0}-{1}-{2} {3}:{4}:{5}", dparts[3], dparts[4], dparts[5], dparts[6], dparts[7], dparts[8])) : System.DateTime.Now;
             Branch = parts.Length>2 ? parts[2] : "default";
             Platform = parts.Length>3 ? parts[3] : "Win32";
+            ToolSet = parts.Length > 4 ? parts[4] : "VS2012-v110";
             Extension = ".zip";
         }
-        public PackageFilename(string name, ComparableVersion version, string branch, string platform)
+        public PackageFilename(string name, ComparableVersion version, string branch, string platform, string toolset)
         {
             Name = name;
             Version = version;
             DateTime = System.DateTime.Now;
             Branch = branch;
             Platform = platform;
+            ToolSet = toolset;
             Extension = ".zip";
         }
-        public PackageFilename(string name, ComparableVersion version, DateTime dateTime, string branch, string platform)
-            : this(name, version, branch, platform)
+        public PackageFilename(string name, ComparableVersion version, DateTime dateTime, string branch, string platform, string toolset)
+            : this(name, version, branch, platform, toolset)
         {
             DateTime = dateTime;
         }
@@ -78,6 +84,7 @@ namespace MSBuild.XCode
         public DateTime DateTime { get; set; }
         public string Branch { get { return mBranch; } set { mBranch = value; } }
         public string Platform { get { return mPlatform; } set { mPlatform = value; } }
+        public string ToolSet { get { return mToolSet; } set { mToolSet = value; } }
         public string Extension { get { return mExtension; } set { mExtension = value; } }
 
         public string VersionAndDateTime
@@ -108,7 +115,7 @@ namespace MSBuild.XCode
         {
             get
             {
-                return String.Format("{0}+{1}+{2}+{3}", Name, VersionAndDateTime, Branch, Platform);
+                return String.Format("{0}+{1}+{2}+{3}+{4}", Name, VersionAndDateTime, Branch, Platform, ToolSet);
             }
         }
 

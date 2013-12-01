@@ -59,23 +59,8 @@ namespace MSBuild.XCode
                     Platform = "*";
                 }
 
-                if (!String.IsNullOrEmpty(IDE))
-                {
-                    IDE = IDE.ToLower();
-                }
-                else
-                {
-                    IDE = "vs2012";   // default is Visual Studio 2012
-                }
-
-                if (!String.IsNullOrEmpty(ToolSet))
-                {
-                    ToolSet = ToolSet.ToLower();
-                }
-                else
-                {
-                    ToolSet = "v110";   // default is Visual Studio 2012
-                }
+                IDE = !String.IsNullOrEmpty(IDE) ? IDE.ToLower() : "vs2012";
+                ToolSet = !String.IsNullOrEmpty(ToolSet) ? ToolSet.ToLower() : "v110";
 
                 RootDir = RootDir.EndWith('\\');
                 TemplateDir = TemplateDir.EndWith('\\');
@@ -93,7 +78,13 @@ namespace MSBuild.XCode
                     if (!PackageInstance.Initialize(RemoteRepoDir, CacheRepoDir, RootDir))
                         return False();
 
-                    PackageInstance package = PackageInstance.LoadFromRoot(RootDir);
+                    PackageVars vars = new PackageVars();
+                    vars.Add("Name", Name);
+                    vars.Add("Platform", Platform);
+                    vars.Add("IDE", IDE);
+                    vars.SetToolSet(Platform, ToolSet, true);
+
+                    PackageInstance package = PackageInstance.LoadFromRoot(RootDir, vars);
 
                     List<string> platforms = new List<string>(package.Pom.Platforms);
                     if (Platform != "*")
@@ -130,13 +121,13 @@ namespace MSBuild.XCode
 
                         if (dependencies.BuildForPlatforms(platforms))
                         {
-                            if (dependencies.SaveInfoForPlatforms(platforms))
+                            if (dependencies.SaveInfoForPlatforms(platforms, package.Vars))
                             {
                                 dependencies.PrintForPlatforms(platforms);
 
                                 // Generate the projects and solution
                                 package.GenerateProjects(dependencies, platforms);
-                                if (!package.GenerateSolution(platforms))
+                                if (!package.GenerateSolution(platforms, IDE))
                                 {
                                     Loggy.Error(String.Format("Error: Action {0} failed in Package::Construct due to failure in saving solution (.sln)", Action));
                                     return False();
@@ -162,7 +153,8 @@ namespace MSBuild.XCode
                 }
                 else if (Action.StartsWith("dir"))
                 {
-                    PackageInstance package = PackageInstance.LoadFromRoot(RootDir);
+                    PackageVars vars = new PackageVars();
+                    PackageInstance package = PackageInstance.LoadFromRoot(RootDir, vars);
                     if (package.IsValid)
                     {
                         package.Pom.DirectoryStructure.Create(RootDir);

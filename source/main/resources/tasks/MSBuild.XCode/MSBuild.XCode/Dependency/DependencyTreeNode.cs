@@ -23,7 +23,7 @@ namespace MSBuild.XCode
             Dependency = dep;
             Children = null;
 
-            Package = PackageInstance.From(false, Dependency.Name, Dependency.Group.ToString(), Dependency.Branch, Platform);
+            Package = PackageInstance.From(false, Dependency.Name, Dependency.Group.ToString(), Dependency.Branch, Platform, Package.Vars);
             Children = new Dictionary<string, DependencyTreeNode>();
         }
 

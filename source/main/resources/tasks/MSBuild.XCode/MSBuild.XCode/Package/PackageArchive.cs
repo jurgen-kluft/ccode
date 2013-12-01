@@ -103,17 +103,18 @@ namespace MSBuild.XCode
             }
         }
 
-        public static bool Create(PackageState package, PackageContent content, string rootURL)
+        public static bool Create(PackageState package, PackageContent content, PackageVars vars, string rootURL)
         {
             try
             {
                 ComparableVersion version = package.CreateVersion;
                 string branch = package.Branch;
                 string platform = package.Platform;
+                string toolset = package.ToolSet;
 
                 /// Delete the SFV file
                 string sfv_filename = package.Name + ".md5";
-                string buildURL = rootURL + "target\\" + package.Name + "\\build\\" + platform + "\\";
+                string buildURL = rootURL + "target\\" + package.Name + "\\build\\" + platform + "-" + package.ToolSet + "\\";
 
                 if (!Directory.Exists(buildURL))
                     Directory.CreateDirectory(buildURL);
@@ -139,7 +140,7 @@ namespace MSBuild.XCode
 
                 Dictionary<string, string> files;
 
-                if (!content.Collect(package.Name, platform, rootURL, out files))
+                if (!content.Collect(package.Name, platform, vars, rootURL, out files))
                 {
                     package.LocalFilename = new PackageFilename();
                     return false;
@@ -179,7 +180,7 @@ namespace MSBuild.XCode
                     if (PackageSfvFile.AreEqual(oldSfvFile, convertedNewSfvFile) && File.Exists(buildURL + old_package_filename))
                     {
                         // Actually we can just rename the current zip file
-                        package.LocalFilename = new PackageFilename(package.Name, version, branch, platform);
+                        package.LocalFilename = new PackageFilename(package.Name, version, branch, platform, toolset);
                         package.LocalFilename.DateTime = DateTime.Now;
                         package.LocalVersion = version;
                         package.LocalSignature = package.LocalFilename.DateTime;
@@ -211,7 +212,7 @@ namespace MSBuild.XCode
                     files.Add(buildURL + sfv_filename, "");
 
                 // Construct the full filename including name, version, date-time, branch and platform
-                package.LocalFilename = new PackageFilename(package.Name, version, branch, platform);
+                package.LocalFilename = new PackageFilename(package.Name, version, branch, platform, toolset);
                 package.LocalFilename.DateTime = DateTime.Now;
                 package.LocalVersion = version;
                 package.LocalSignature = package.LocalFilename.DateTime;

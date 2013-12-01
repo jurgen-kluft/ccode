@@ -12,6 +12,8 @@ namespace MSBuild.XCode.MsDev
 		public enum EVersion
 		{
 			VS2010,
+            VS2012,
+            VS2013
 		}
 
 		private string mRootDir = string.Empty;
@@ -27,6 +29,20 @@ namespace MSBuild.XCode.MsDev
 			m_Projects = new List<FileSystemInfo>();
 			m_Configs = new Dictionary<string, HashSet<string>>();
 		}
+        public MixedSolution(string version)
+        {
+            if (version.Contains("2010"))
+                mVersion = EVersion.VS2010;
+            else if (version.Contains("2012"))
+                mVersion = EVersion.VS2012;
+            else if (version.Contains("2013"))
+                mVersion = EVersion.VS2013;
+            else
+                mVersion = EVersion.VS2012;
+
+            m_Projects = new List<FileSystemInfo>();
+            m_Configs = new Dictionary<string, HashSet<string>>();
+        }
 
 		public string Extension { get { return ".sln"; } }
 
@@ -49,13 +65,25 @@ namespace MSBuild.XCode.MsDev
 			switch (mVersion)
 			{
 				default:
-				case EVersion.VS2010:
-					{
-						writer.WriteLine("Microsoft Visual Studio Solution File, Format Version 11.00");
-						writer.WriteLine("# Visual Studio 2010");
-					}
-					break;
-			}
+                case EVersion.VS2010:
+                    {
+                        writer.WriteLine("Microsoft Visual Studio Solution File, Format Version 11.00");
+                        writer.WriteLine("# Visual Studio 2010");
+                    }
+                    break;
+                case EVersion.VS2012:
+                    {
+                        writer.WriteLine("Microsoft Visual Studio Solution File, Format Version 12.00");
+                        writer.WriteLine("# Visual Studio 2012");
+                    }
+                    break;
+                case EVersion.VS2013:
+                    {
+                        writer.WriteLine("Microsoft Visual Studio Solution File, Format Version 13.00");
+                        writer.WriteLine("# Visual Studio 2013");
+                    }
+                    break;
+            }
 		}
 
 		private void WriteGlobalHeader(StreamWriter writer)
@@ -281,51 +309,13 @@ namespace MSBuild.XCode.MsDev
 
 		private Guid GetProjectGuid(FileSystemInfo file)
 		{
-			if (mVersion == EVersion.VS2010)
+            if (mVersion == EVersion.VS2010 || mVersion == EVersion.VS2012 || mVersion == EVersion.VS2013)
 			{
 				Guid guid;
 				if (m_ProjectGuids.TryGetValue(file.FullName, out guid))
 					return guid;
-				return Guid.NewGuid();
-			}
-			else
-			{
-				// From CppSolution.cs
-				//using (StreamReader reader = File.OpenText(file.FullName))
-				//{
-				//    string text = reader.ReadToEnd();
-				//    string pattern = "ProjectGUID=\"";
-				//    int start = text.IndexOf(pattern);
-				//    if (start > 0)
-				//    {
-				//        start += pattern.Length;
-				//        pattern = "\" ";
-				//        int end = text.IndexOf(pattern, start);
-				//        if (end > 0)
-				//        {
-				//            return new Guid(text.Substring(start + 1, end - start - 2));
-				//        }
-				//    }
-				//}
 
-				// From CsSolution.cs
-				//using (StreamReader reader = File.OpenText(file.FullName))
-				//{
-				//    string text = reader.ReadToEnd();
-				//    string pattern = "<ProjectGuid>";
-				//    int start = text.IndexOf(pattern);
-				//    if (start > 0)
-				//    {
-				//        start += pattern.Length;
-				//        pattern = "</ProjectGuid>";
-				//        int end = text.IndexOf(pattern);
-				//        if (end > 0)
-				//        {
-				//            string guidStr = text.Substring(start + 1, end - start - 2);
-				//            return new Guid(guidStr);
-				//        }
-				//    }
-				//}
+				return Guid.NewGuid();
 			}
 			return Guid.Empty;
 		}

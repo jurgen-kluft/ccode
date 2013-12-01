@@ -91,7 +91,7 @@ namespace MSBuild.XCode
             return false;
         }
 
-        public void ConstructFullMsDevProject(List<string> platforms)
+        public void ConstructFullMsDevProject(List<string> platforms, PackageVars vars)
         {
             if (mIsFinalProject)
                 return;
@@ -108,6 +108,7 @@ namespace MSBuild.XCode
                 }
 
                 mMsDevProject.RemoveAllBut(platform_configs);
+                mMsDevProject.ExpandVars(vars);
                 mIsFinalProject = true;
             }
             else if (IsCs)

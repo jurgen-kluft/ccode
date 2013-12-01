@@ -288,7 +288,7 @@ namespace MSBuild.XCode
             return new ComparableVersion(String.Format("{0}.{1}.{2}", major, minor, build));
         }
 
-        public bool Create(PackageState package, PackageContent content, ComparableVersion rootVersion)
+        public bool Create(PackageState package, PackageContent content, PackageVars vars, ComparableVersion rootVersion)
         {
             Environment.CurrentDirectory = RootURL;
 
@@ -311,13 +311,13 @@ namespace MSBuild.XCode
 
                 // Write a vcs.info file containing dependency package info, this will be included in the package
                 {
-                    string buildURL = String.Format("{0}target\\{1}\\build\\{2}\\", RootURL, package.Name, package.Platform);
+                    string buildURL = String.Format("{0}target\\{1}\\build\\{2}\\", RootURL, package.Name, String.Format("{0}-{1}", package.Platform, package.ToolSet));
                     if (!Directory.Exists(buildURL))
                         Directory.CreateDirectory(buildURL);
 
                     WriteVcsInformation(buildURL + "vcs.info");
 
-                    if (PackageArchive.Create(package, content, package.RootURL))
+                    if (PackageArchive.Create(package, content, vars, package.RootURL))
                     {
                         if (LocalRepo.Submit(package, null))
                         {

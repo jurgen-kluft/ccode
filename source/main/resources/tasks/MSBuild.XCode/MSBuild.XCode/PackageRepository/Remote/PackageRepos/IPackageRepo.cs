@@ -36,7 +36,7 @@ namespace xpackage_repo
         /// <summary>
         /// This method is used for uploading package 
         /// </summary>
-        bool upLoad(string Name, string Group, string Language, string Platform, string Branch, Int64 Version, string Datetime, string Changeset, List<KeyValuePair<Package, Int64>> dependencies, string localFilename);
+        bool upLoad(string Name, string Group, string Language, string Platform, string ToolSet, string Branch, Int64 Version, string Datetime, string Changeset, List<KeyValuePair<Package, Int64>> dependencies, string localFilename);
 
         /// <summary>
         /// This method is used to retrieve a package from the repository
@@ -51,8 +51,8 @@ namespace xpackage_repo
         /// </summary>
         /// <param name="destLocalPath"> The location you want to download in your local place</param>
         /// <returns>if the package is not exist , it will return false</returns>
-        bool find(string package_name, string package_group, string package_language, string platform, string branch, out Int64 version);
-        bool find(string package_name, string package_group, string package_language, string platform, string branch, Int64 version, out Dictionary<string, object> vars);
-        bool find(string package_name, string package_group, string package_language, string platform, string branch, Int64 start_version, bool include_start, Int64 end_version, bool include_end, out Dictionary<string, object> vars);
+        bool find(string package_name, string package_group, string package_language, string platform, string toolset, string branch, out Int64 version);
+        bool find(string package_name, string package_group, string package_language, string platform, string toolset, string branch, Int64 version, out Dictionary<string, object> vars);
+        bool find(string package_name, string package_group, string package_language, string platform, string toolset, string branch, Int64 start_version, bool include_start, Int64 end_version, bool include_end, out Dictionary<string, object> vars);
     }
 }

@@ -21,7 +21,7 @@ namespace MSBuild.XCode
             public string Platform { get; private set; }
             public bool Required { get; private set; }
 
-            public static ContentItem Read(XmlNode node, PackageVars vars)
+            public static ContentItem Read(XmlNode node)
             {
                 ContentItem item = new ContentItem();
 
@@ -31,11 +31,9 @@ namespace MSBuild.XCode
                 item.Src = Attribute.Get("Src", node, null);
                 if (item.Src != null)
                 {
-                    item.Src = vars.ReplaceVars(item.Src);
                     item.Dst = Attribute.Get("Dst", node, null);
                     if (item.Dst != null)
                     {
-                        item.Dst = vars.ReplaceVars(item.Dst);
                         return item;
                     }
                 }
@@ -51,13 +49,17 @@ namespace MSBuild.XCode
         }
 
 
-        public bool Collect(string name, string platform, string rootDir, out Dictionary<string, string> outFiles)
+        public bool Collect(string name, string platform, PackageVars vars, string rootDir, out Dictionary<string, string> outFiles)
         {
             outFiles = new Dictionary<string, string>();
 
             List<string> platforms = new List<string>();
             platforms.Add("*");
             platforms.Add(platform);
+
+            vars.Add("Name", name);
+            vars.Add("Platform", platform);
+            vars.Add("ToolSet", vars.GetToolSet(platform));
 
             foreach (string p in platforms)
             {
@@ -67,13 +69,12 @@ namespace MSBuild.XCode
                     foreach (ContentItem item in content)
                     {
                         string src = rootDir + item.Src;
-                        while (src.Contains("${Name}"))
-                            src = src.Replace("${Name}", name);
-                        while (src.Contains("${Platform}"))
-                            src = src.Replace("${Platform}", p);
+                        src = vars.ReplaceVars(src);
+                        string dst = item.Dst;
+                        dst = vars.ReplaceVars(dst);
 
                         int m = outFiles.Count;
-                        Glob(src, item.Dst, outFiles);
+                        Glob(src, dst, outFiles);
                         int n = outFiles.Count - m;
 
                         if (n == 0 && item.Required)
@@ -114,7 +115,7 @@ namespace MSBuild.XCode
                 {
                     foreach (XmlNode child in node.ChildNodes)
                     {
-                        ContentItem item = ContentItem.Read(child, vars);
+                        ContentItem item = ContentItem.Read(child);
                         if (item != null)
                         {
                             List<ContentItem> items;

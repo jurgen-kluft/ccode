@@ -25,9 +25,6 @@ namespace MSBuild.XCode
             }
         }
 
-        public string IDE { set; get; }
-        public string ToolSet { set; get; }
-
         public bool IsValid { get { return mResource.IsValid; } }
 
         public string RootURL { get; set; }
@@ -35,6 +32,7 @@ namespace MSBuild.XCode
 
         public PomInstance Pom { get { return mPom; } }
         public PackageState Package { get { return mPackage; } }
+        public PackageVars Vars { get; set; }
         public List<DependencyResource> Dependencies { get { return Pom.Dependencies; } }
 
 		public bool IsMixed { get { return Pom.IsCpp && Pom.IsCs; } }
@@ -43,10 +41,9 @@ namespace MSBuild.XCode
 
         private PackageInstance(bool isRoot)
         {
-            IDE = "vs2012";
-            ToolSet = "v110";
             IsRootPackage = isRoot;
             mPackage = new PackageState();
+            Vars = new PackageVars();
         }
 
         internal PackageInstance(bool isRoot, PackageResource resource)
@@ -65,19 +62,20 @@ namespace MSBuild.XCode
             InitPackage();
         }
 
-        public static PackageInstance From(bool isRoot, string name, string group, string branch, string platform)
+        public static PackageInstance From(bool isRoot, string name, string group, string branch, string platform, PackageVars vars)
         {
-            PackageResource resource = PackageResource.From(name, group);
+            PackageResource resource = PackageResource.From(name, group, vars);
             PackageInstance instance = resource.CreateInstance(isRoot);
             instance.Branch = branch;
             instance.SetPlatform(platform);
+
             instance.InitPackage();
             return instance;
         }
 
-        public static PackageInstance LoadFromRoot(string dir)
+        public static PackageInstance LoadFromRoot(string dir, PackageVars vars)
         {
-            PackageResource resource = PackageResource.LoadFromFile(dir);
+            PackageResource resource = PackageResource.LoadFromFile(dir, vars);
             PackageInstance instance = resource.CreateInstance(true);
             instance.RootURL = dir;
 
@@ -94,9 +92,9 @@ namespace MSBuild.XCode
             return instance;
         }
 
-        public static PackageInstance LoadFromTarget(string dir)
+        public static PackageInstance LoadFromTarget(string dir, PackageVars vars)
         {
-            PackageResource resource = PackageResource.LoadFromFile(dir);
+            PackageResource resource = PackageResource.LoadFromFile(dir, vars);
             PackageInstance instance = resource.CreateInstance(false);
             instance.InitPackage();
             instance.Package.TargetURL = dir;
@@ -139,7 +137,7 @@ namespace MSBuild.XCode
             // Load it from the best location (Root, Target or Cache)
             if (IsRootPackage)
             {
-                PackageResource resource = PackageResource.LoadFromFile(RootURL);
+                PackageResource resource = PackageResource.LoadFromFile(RootURL, Vars);
                 mPom = resource.CreatePomInstance(true);
                 mPom.Package = this;
                 mResource = resource;
@@ -152,7 +150,7 @@ namespace MSBuild.XCode
                 // is in the Share repository. The Target only contains the full filename .
                 if (mPackage.ShareExists)
                 {
-                    PackageResource resource = PackageResource.LoadFromFile(mPackage.ShareURL);
+                    PackageResource resource = PackageResource.LoadFromFile(mPackage.ShareURL, Vars);
                     mPom = resource.CreatePomInstance(false);
                     mPom.Package = this;
                     mResource = resource;
@@ -161,7 +159,7 @@ namespace MSBuild.XCode
             }
             else if (mPackage.CacheExists)
             {
-                PackageResource resource = PackageResource.LoadFromPackage(mPackage.CacheURL, mPackage.CacheFilename);
+                PackageResource resource = PackageResource.LoadFromPackage(mPackage.CacheURL, mPackage.CacheFilename, Vars);
                 mPom = resource.CreatePomInstance(false);
                 mPom.Package = this;
                 mResource = resource;
@@ -198,7 +196,12 @@ namespace MSBuild.XCode
                     string filename = path + pi.Name + "." + platform + ".props";
                     string type = isRoot ? "Root" : "Package";
                     string location = isRoot ? pi.Package.RootURL : pi.Package.ShareURL;
-                    pi.Pom.ProjectProperties.Write(filename, platform, type, location);
+                    ProjectProperties.Properties props = new ProjectProperties.Properties();
+                    props.Filepath = filename;
+                    props.Platform = platform;
+                    props.DependencyType = type;
+                    props.Location = location;
+                    pi.Pom.ProjectProperties.Write(props);
                 }
             }
 
@@ -206,7 +209,7 @@ namespace MSBuild.XCode
             // Every platform is considered to have its own package (zip -> pom.xml) containing the project settings for that platform.
             // For every platform we have to merge in only the conditional xml elements into the final project file.
             foreach (ProjectInstance rootProject in Pom.Projects)
-                rootProject.ConstructFullMsDevProject(platforms);
+                rootProject.ConstructFullMsDevProject(platforms, Vars);
 
             // First, build all the dictionaries:
             // Dictionary<PackageName,PackageInstance>
@@ -418,10 +421,10 @@ namespace MSBuild.XCode
             }
         }
 
-        public bool GenerateSolution(List<string> platforms)
+        public bool GenerateSolution(List<string> platforms, string IDE)
         {
             MsDev.ISolution solution = null;
-			solution = new MsDev.MixedSolution(MsDev.MixedSolution.EVersion.VS2010);
+			solution = new MsDev.MixedSolution(IDE);
 
             List<string> projectFilenames = new List<string>();
             foreach (ProjectInstance prj in Pom.Projects)

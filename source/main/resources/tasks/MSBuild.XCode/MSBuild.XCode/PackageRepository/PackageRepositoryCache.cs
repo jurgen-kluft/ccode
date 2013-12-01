@@ -37,7 +37,7 @@ namespace MSBuild.XCode
 
         public bool Link(PackageState package, out string filename)
         {
-            string package_d = Layout.PackageVersionDir(RepoURL, package.Group, package.Name, package.Platform, package.Branch, package.GetVersion(Location));
+            string package_d = Layout.PackageVersionDir(RepoURL, package.Group, package.Name, package.Platform, package.ToolSet, package.Branch, package.GetVersion(Location));
             string package_f = package.GetFilename(Location).ToString();
             if (File.Exists(package_d + package_f))
             {
@@ -50,7 +50,7 @@ namespace MSBuild.XCode
 
         public bool Submit(PackageState package, IPackageRepository from)
         {
-            string package_d = Layout.PackageVersionDir(RepoURL, package.Group, package.Name, package.Platform, package.Branch, package.GetVersion(from.Location));
+            string package_d = Layout.PackageVersionDir(RepoURL, package.Group, package.Name, package.Platform, package.ToolSet, package.Branch, package.GetVersion(from.Location));
             if (!Directory.Exists(package_d))
                 Directory.CreateDirectory(package_d);
 
@@ -89,12 +89,12 @@ namespace MSBuild.XCode
             return best;
         }
 
-        private PackageFilename[] RetrieveVersionsFor(string group, string package_name, string branch, string platform)
+        private PackageFilename[] RetrieveVersionsFor(string group, string package_name, string branch, string platform, string toolset)
         {
-            string root_dir = Layout.PackageRootDir(RepoURL, group, package_name, platform);
+            string root_dir = Layout.PackageRootDir(RepoURL, group, package_name, platform, toolset);
             if (Directory.Exists(root_dir))
             {
-                string[] filenames = Directory.GetFiles(root_dir + "version\\", String.Format("*+{0}+{1}.zip", branch, platform), SearchOption.AllDirectories);
+                string[] filenames = Directory.GetFiles(root_dir + "version\\", String.Format("*+{0}+{1}+{2}.zip", branch, platform, toolset), SearchOption.AllDirectories);
                 SortedDictionary<string, PackageFilename> sortedVersions = new SortedDictionary<string, PackageFilename>();
                 foreach (string file in filenames)
                 {
@@ -113,7 +113,7 @@ namespace MSBuild.XCode
 
         private bool FindBestVersion(PackageState package, VersionRange versionRange)
         {
-            PackageFilename[] versions = RetrieveVersionsFor(package.Group, package.Name, package.Branch, package.Platform);
+            PackageFilename[] versions = RetrieveVersionsFor(package.Group, package.Name, package.Branch, package.Platform, package.ToolSet);
             PackageFilename best = FindBest(versions, versionRange);
 
             if (best == null)
@@ -124,7 +124,7 @@ namespace MSBuild.XCode
             package.SetURL(Location, RepoURL);
 
             string package_f = best.Filename;
-            string package_d = Layout.PackageVersionDir(RepoURL, package.Group, package.Name, package.Platform, package.Branch, best.Version);
+            string package_d = Layout.PackageVersionDir(RepoURL, package.Group, package.Name, package.Platform, package.ToolSet, package.Branch, best.Version);
 
             package.SetSignature(Location, File.GetLastWriteTime(package_d + package_f));
             return true;
