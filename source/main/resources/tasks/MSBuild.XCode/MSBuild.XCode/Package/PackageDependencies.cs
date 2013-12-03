@@ -117,21 +117,10 @@ namespace MSBuild.XCode
             ProgressTracker.Instance = new ProgressTracker();
             ProgressTracker.Instance.Init(String.Format("Processing dependencies for platforms {0}: [....]", platformsStr));
             {
-                if (platforms.Count > 1)
+                ProgressTracker.Instance.Add(platforms.Count);
+                foreach (string platform in platforms)
                 {
-                    ProgressTracker.Instance.Add(platforms.Count);
-                    foreach (string platform in platforms)
-                    {
-                        if (Compile(platform) != 0)
-                        {
-                            return false;
-                        }
-                        ProgressTracker.Instance.Next();
-                    }
-                }
-                else if (platforms.Count == 1)
-                {
-                    if (Compile(platforms[0]) != 0)
+                    if (Compile(platform) != 0)
                     {
                         return false;
                     }

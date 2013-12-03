@@ -31,7 +31,7 @@ namespace MSBuild.XCode.Test
 
             Name = "xprojectB";
             BaseDirCpp = "";
-            BaseDirCs = @"E:\Dev.Cs.Packages\";
+            BaseDirCs = @"J:\Dev.Cs.Packages\";
 
             // home (hp laptop)
             //RemoteRepoDir = @"db::server=127.0.0.1;port=3306;database=xcode;uid=root;password=p1|fs::D:\PACKAGE_REPO_TEST\";
@@ -63,8 +63,8 @@ namespace MSBuild.XCode.Test
         {
             Loggy.ToConsole = true;
 
-            string name = "xunittest";
-            BaseDirCpp = @"E:\Dev.C++.Packages.Bitbucket\";
+            string name = "xbase";
+            BaseDirCpp = @"J:\Dev.C++.Packages.Bitbucket\";
             BaseDirCs = "";
 
             // home (hp laptop)
@@ -87,9 +87,9 @@ namespace MSBuild.XCode.Test
             {
                 string platform = "x64";
                 Construct(name, platform, "C++");
-                Create(name, platform, "C++");
-                Sync(name, platform, "C++");
-                Install(name, platform, "C++");
+                //Create(name, platform, "C++");
+                //Sync(name, platform, "C++");
+                //Install(name, platform, "C++");
                 //Deploy(name, platform, "C++");
             }
         }

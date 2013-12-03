@@ -37,11 +37,11 @@ namespace MSBuild.XCode
             // If pom.xml is not modified and all content of the previous package are identical
             // Lastly delete any old zip packages.
             string rootURL = RepoURL;
-            string buildURL = String.Format("{0}target\\{1}\\build\\{2}\\", rootURL, package.Name, package.Platform);
+            string buildURL = String.Format("{0}target\\{1}\\build\\{2}-{3}\\", rootURL, package.Name, package.Platform, package.ToolSet);
             if (!Directory.Exists(buildURL))
                 return false;
 
-            string[] package_filenames = Directory.GetFiles(buildURL, String.Format("*{0}+{1}.zip", package.Branch, package.Platform), SearchOption.TopDirectoryOnly);
+            string[] package_filenames = Directory.GetFiles(buildURL, String.Format("*{0}+{1}+{2}.zip", package.Branch, package.Platform, package.ToolSet), SearchOption.TopDirectoryOnly);
             if (package_filenames.Length > 0)
             {
                 // Find the one with the latest LastWriteTime
