@@ -1,0 +1,18 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<Project xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+  <!-- $Id: MSBuild.XCode.Targets 303 2010-11-29 15:49:46Z jurgen $ -->
+
+  <PropertyGroup>
+    <MSBuildXCodeTasksLib>MSBuild.XCode.dll</MSBuildXCodeTasksLib>
+  </PropertyGroup>
+
+  <UsingTask AssemblyFile="$(MSBuildXCodeTasksLib)" TaskName="MSBuild.XCode.PackageConfigs" />
+  <UsingTask AssemblyFile="$(MSBuildXCodeTasksLib)" TaskName="MSBuild.XCode.PackageConstruct" />
+  <UsingTask AssemblyFile="$(MSBuildXCodeTasksLib)" TaskName="MSBuild.XCode.PackageInfo" />
+  <UsingTask AssemblyFile="$(MSBuildXCodeTasksLib)" TaskName="MSBuild.XCode.PackageCreate" />
+  <UsingTask AssemblyFile="$(MSBuildXCodeTasksLib)" TaskName="MSBuild.XCode.PackageInstall" />
+  <UsingTask AssemblyFile="$(MSBuildXCodeTasksLib)" TaskName="MSBuild.XCode.PackageDeploy" />
+  <UsingTask AssemblyFile="$(MSBuildXCodeTasksLib)" TaskName="MSBuild.XCode.PackageSync" />
+  <UsingTask AssemblyFile="$(MSBuildXCodeTasksLib)" TaskName="MSBuild.XCode.PackageVerify" />
+
+</Project>
