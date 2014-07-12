@@ -32,8 +32,15 @@ namespace MSBuild.XCode.MsDev
             "None" 
         };
 
-        public CsProject()
+		public CsProject()
+		{
+			Version = EProjectVersion.VS2012;
+			mXmlDocMain = new XmlDocument();
+		}
+
+        public CsProject(EProjectVersion version)
         {
+			Version = version;
             mXmlDocMain = new XmlDocument();
         }
 
@@ -44,6 +51,7 @@ namespace MSBuild.XCode.MsDev
                 CopyTo(mXmlDocMain, null, node);
         }
 
+		public EProjectVersion Version { get; set; }
         public string Extension { get { return ".csproj"; } }
 
         public void RemovePlatform(string platform)
@@ -538,9 +546,9 @@ namespace MSBuild.XCode.MsDev
             return true;
         }
 
-        public bool Construct(IProject template)
+        public bool Construct(EProjectVersion version, IProject template)
         {
-            MsDev.CsProject finalProject = new MsDev.CsProject();
+            MsDev.CsProject finalProject = new MsDev.CsProject(version);
             finalProject.Xml = template.Xml;
             finalProject.Merge(this);
             mXmlDocMain = finalProject.Xml;
