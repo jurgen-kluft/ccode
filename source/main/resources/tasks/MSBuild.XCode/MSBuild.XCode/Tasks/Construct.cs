@@ -126,7 +126,8 @@ namespace MSBuild.XCode
                                 dependencies.PrintForPlatforms(platforms);
 
                                 // Generate the projects and solution
-                                package.GenerateProjects(dependencies, platforms);
+								MsDev.EProjectVersion version = MsDev.ProjectUtils.FromString(IDE);
+                                package.GenerateProjects(dependencies, platforms, version);
                                 if (!package.GenerateSolution(platforms, IDE))
                                 {
                                     Loggy.Error(String.Format("Error: Action {0} failed in Package::Construct due to failure in saving solution (.sln)", Action));

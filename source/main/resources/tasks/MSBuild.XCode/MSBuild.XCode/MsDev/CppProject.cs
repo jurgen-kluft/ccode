@@ -51,8 +51,15 @@ namespace MSBuild.XCode.MsDev
             "None" 
         };
 
-        public CppProject()
+		public CppProject()
+		{
+			Version = EProjectVersion.VS2012;
+			mXmlDocMain = new XmlDocument();
+		}
+
+		public CppProject(EProjectVersion version)
         {
+			Version = version;
             mXmlDocMain = new XmlDocument();
         }
 
@@ -63,6 +70,7 @@ namespace MSBuild.XCode.MsDev
                 CopyTo(mXmlDocMain, null, node);
         }
 
+		public EProjectVersion Version { get; set; }
         public string Extension { get { return ".vcxproj"; } }
 
         public void RemovePlatform(string platform)
@@ -438,8 +446,11 @@ namespace MSBuild.XCode.MsDev
                 {
                 }, false);
 
-            string tool_version_and_xmlns = "ToolsVersion=\"4.0\" xmlns=\"http://schemas.microsoft.com/developer/msbuild/2003\"";
-            string xml_version_and_encoding = "<?xml version=\"1.0\" encoding=\"utf-8\"?>";
+			string tool_version_and_xmlns = "ToolsVersion=\"4.0\" xmlns=\"http://schemas.microsoft.com/developer/msbuild/2003\"";
+			if (Version == EProjectVersion.VS2013)
+				tool_version_and_xmlns = "ToolsVersion=\"12.0\" xmlns=\"http://schemas.microsoft.com/developer/msbuild/2003\"";
+
+			string xml_version_and_encoding = "<?xml version=\"1.0\" encoding=\"utf-8\"?>";
 
             TextFile textFile = new TextFile();
             textFile.Open(filename);
@@ -464,9 +475,9 @@ namespace MSBuild.XCode.MsDev
             Merge(project, false, false, false);
         }
 
-        public bool Construct(IProject template)
+		public bool Construct(EProjectVersion version, IProject template)
         {
-            MsDev.CppProject finalProject = new MsDev.CppProject();
+			MsDev.CppProject finalProject = new MsDev.CppProject(version);
             finalProject.Xml = template.Xml;
             finalProject.Merge(this, true, true, true);
             mXmlDocMain = finalProject.Xml;

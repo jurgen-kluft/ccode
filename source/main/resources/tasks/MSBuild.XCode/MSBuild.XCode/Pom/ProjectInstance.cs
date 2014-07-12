@@ -91,14 +91,14 @@ namespace MSBuild.XCode
             return false;
         }
 
-        public void ConstructFullMsDevProject(List<string> platforms, PackageVars vars)
+        public void ConstructFullMsDevProject(MsDev.EProjectVersion version, List<string> platforms, PackageVars vars)
         {
             if (mIsFinalProject)
                 return;
 
             if (IsCpp)
             {
-                mMsDevProject.Construct(PackageInstance.CppTemplateProject);
+				mMsDevProject.Construct(version, PackageInstance.CppTemplateProject);
 
                 Dictionary<string, StringItems> platform_configs = new Dictionary<string, StringItems>();
                 foreach (KeyValuePair<string, StringItems> pair in Configs)
@@ -113,7 +113,7 @@ namespace MSBuild.XCode
             }
             else if (IsCs)
             {
-                mMsDevProject.Construct(PackageInstance.CsTemplateProject);
+				mMsDevProject.Construct(version, PackageInstance.CsTemplateProject);
                 mMsDevProject.RemoveAllBut(Configs);
                 mIsFinalProject = true;
             }
