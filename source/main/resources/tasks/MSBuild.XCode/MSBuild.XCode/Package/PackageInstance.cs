@@ -181,7 +181,7 @@ namespace MSBuild.XCode
             return false;
         }
 
-        public void GenerateProjects(PackageDependencies dependencies, List<string> platforms)
+        public void GenerateProjects(PackageDependencies dependencies, List<string> platforms, MsDev.EProjectVersion version)
         {
             // Generate the project .props file for every platform
             foreach (string platform in platforms)
@@ -209,7 +209,7 @@ namespace MSBuild.XCode
             // Every platform is considered to have its own package (zip -> pom.xml) containing the project settings for that platform.
             // For every platform we have to merge in only the conditional xml elements into the final project file.
             foreach (ProjectInstance rootProject in Pom.Projects)
-                rootProject.ConstructFullMsDevProject(platforms, Vars);
+                rootProject.ConstructFullMsDevProject(version, platforms, Vars);
 
             // First, build all the dictionaries:
             // Dictionary<PackageName,PackageInstance>
