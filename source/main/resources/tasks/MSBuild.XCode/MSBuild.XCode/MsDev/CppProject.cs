@@ -53,7 +53,7 @@ namespace MSBuild.XCode.MsDev
 
 		public CppProject()
 		{
-			Version = EProjectVersion.VS2012;
+			Version = ProjectUtils.DefaultVersion;
 			mXmlDocMain = new XmlDocument();
 		}
 
@@ -65,7 +65,8 @@ namespace MSBuild.XCode.MsDev
 
         public CppProject(XmlNodeList nodes)
         {
-            mXmlDocMain = new XmlDocument();
+			Version = ProjectUtils.DefaultVersion;
+			mXmlDocMain = new XmlDocument();
             foreach(XmlNode node in nodes)
                 CopyTo(mXmlDocMain, null, node);
         }

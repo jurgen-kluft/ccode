@@ -27,7 +27,7 @@ namespace MSBuild.XCode
             Environment.CurrentDirectory = RootDir;
 
             PackageInstance.TemplateDir = TemplateDir;
-            PackageInstance.Initialize(string.Empty, string.Empty, RootDir);
+            PackageInstance.Initialize("VS2012", string.Empty, string.Empty, RootDir);
 
             PackageVars vars = new PackageVars();
             PackageInstance package = PackageInstance.LoadFromRoot(RootDir, vars);

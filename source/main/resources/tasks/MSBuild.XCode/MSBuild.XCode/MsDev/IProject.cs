@@ -15,6 +15,8 @@ namespace MSBuild.XCode.MsDev
 
 	public static class ProjectUtils
 	{
+		public static EProjectVersion DefaultVersion = EProjectVersion.VS2010;
+
 		public static EProjectVersion FromString(string IDE)
 		{
 			if (string.Compare(IDE, "VS2010", true) == 0)
@@ -25,7 +27,7 @@ namespace MSBuild.XCode.MsDev
 				return EProjectVersion.VS2013;
 
 			//default
-			return EProjectVersion.VS2012;
+			return DefaultVersion;
 		}
 	}
 

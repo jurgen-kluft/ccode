@@ -38,15 +38,15 @@ namespace MSBuild.XCode
             if (!PackageInstance.IsInitialized)
             {
                 PackageInstance.TemplateDir = string.Empty;
-                PackageInstance.Initialize(RemoteRepoDir, CacheRepoDir, RootDir);
+                PackageInstance.Initialize(IDE, RemoteRepoDir, CacheRepoDir, RootDir);
             }
 
             PackageVars vars = new PackageVars();
             vars.Add("IDE", IDE);
-            vars.Add(Platform + "ToolSet", ToolSet);
+            vars.Add("Platform", Platform);
             vars.SetToolSet(Platform, ToolSet, true);
+
             PackageInstance package = PackageInstance.LoadFromRoot(RootDir, vars);
-            package.SetPlatform(Platform);
 
             if (package.IsValid)
             {

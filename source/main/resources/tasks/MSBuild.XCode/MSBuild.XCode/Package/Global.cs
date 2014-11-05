@@ -21,7 +21,7 @@ namespace MSBuild.XCode
             IsInitialized = false;
         }
 
-        public static bool Initialize(string RemoteRepoURL, string CacheRepoURL, string RootURL)
+        public static bool Initialize(string IDE, string RemoteRepoURL, string CacheRepoURL, string RootURL)
         {
             if (IsInitialized)
                 return true;
@@ -46,8 +46,10 @@ namespace MSBuild.XCode
 
             if (!String.IsNullOrEmpty(TemplateDir))
             {
+				MsDev.ProjectUtils.DefaultVersion = MsDev.ProjectUtils.FromString(IDE);
+
                 // For C++
-                CppTemplateProject = new MsDev.CppProject();
+				CppTemplateProject = new MsDev.CppProject(MsDev.ProjectUtils.DefaultVersion);
                 if (!CppTemplateProject.Load(TemplateDir + "main" + CppTemplateProject.Extension))
                 {
                     Loggy.Error(String.Format("Error: Initialization of Global failed in due to failure in loading {0}", TemplateDir + "main" + CppTemplateProject.Extension));
@@ -55,7 +57,7 @@ namespace MSBuild.XCode
                 }
 
                 // For C#
-                CsTemplateProject = new MsDev.CsProject();
+				CsTemplateProject = new MsDev.CsProject(MsDev.ProjectUtils.DefaultVersion);
                 if (!CsTemplateProject.Load(TemplateDir + "main" + CsTemplateProject.Extension))
                 {
                     Loggy.Error(String.Format("Error: Initialization of Global failed in due to failure in loading {0}", TemplateDir + "main" + CsTemplateProject.Extension));

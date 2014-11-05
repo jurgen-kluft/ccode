@@ -12,7 +12,9 @@ namespace MSBuild.XCode.Test
         private static string CacheRepoDir;
         private static string RootDir;
         private static string XCodeRepoDir;
-        private static string TemplateDir;
+		private static string TemplateDir;
+		private static string MsDev;
+		private static string MsDevToolSet;
 
         private static string Name;
         private static string BaseDirCpp;
@@ -32,6 +34,8 @@ namespace MSBuild.XCode.Test
             Name = "xprojectB";
             BaseDirCpp = "";
             BaseDirCs = @"J:\Dev.Cs.Packages\";
+			MsDev = "VS2013";
+			MsDevToolSet = "vs120";
 
             // home (hp laptop)
             //RemoteRepoDir = @"db::server=127.0.0.1;port=3306;database=xcode;uid=root;password=p1|fs::D:\PACKAGE_REPO_TEST\";
@@ -45,7 +49,7 @@ namespace MSBuild.XCode.Test
             TemplateDir = XCodeRepoDir + @"templates\";
 
             PackageInstance.TemplateDir = TemplateDir;
-            if (!PackageInstance.Initialize(RemoteRepoDir, CacheRepoDir, RootDir))
+			if (!PackageInstance.Initialize(MsDev, RemoteRepoDir, CacheRepoDir, RootDir))
                 return;
 
             if (Update("1.1.0.4"))
@@ -66,6 +70,8 @@ namespace MSBuild.XCode.Test
             string name = "xbase";
             BaseDirCpp = @"J:\Dev.C++.Packages.Bitbucket\";
             BaseDirCs = "";
+			MsDev = "VS2013";
+			MsDevToolSet = "vs120";
 
             // home (hp laptop)
             //RemoteRepoDir = @"db::server=127.0.0.1;port=3306;database=xcode;uid=root;password=p1|fs::D:\PACKAGE_REPO_TEST\";
@@ -80,7 +86,7 @@ namespace MSBuild.XCode.Test
             TemplateDir = XCodeRepoDir + @"templates\";
 
             PackageInstance.TemplateDir = TemplateDir;
-            if (!PackageInstance.Initialize(RemoteRepoDir, CacheRepoDir, RootDir))
+			if (!PackageInstance.Initialize(MsDev, RemoteRepoDir, CacheRepoDir, RootDir))
                 return;
 
             if (Update("1.1.0.4"))
@@ -140,6 +146,8 @@ namespace MSBuild.XCode.Test
             cmd.CacheRepoDir = CacheRepoDir;
             cmd.RootDir = (language == "Cs" ? BaseDirCs : BaseDirCpp) + name + "\\";
             cmd.Platform = platform;
+			cmd.IDE = MsDev;
+			cmd.ToolSet = MsDevToolSet;
             cmd.Execute();
         }
 
@@ -169,6 +177,8 @@ namespace MSBuild.XCode.Test
                 construct.Language = "C#";
             construct.RootDir = construct.RootDir + construct.Name + "\\";
             construct.Platform = platform;
+			construct.ToolSet = MsDevToolSet;
+			construct.IDE = MsDev;
             construct.Action = "genprj";
             construct.Execute();
         }

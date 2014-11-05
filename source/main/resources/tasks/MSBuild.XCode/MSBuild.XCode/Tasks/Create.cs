@@ -36,7 +36,7 @@ namespace MSBuild.XCode
             if (!PackageInstance.IsInitialized)
             {
                 PackageInstance.TemplateDir = string.Empty;
-                if (!PackageInstance.Initialize(RemoteRepoDir, CacheRepoDir, RootDir))
+                if (!PackageInstance.Initialize(IDE, RemoteRepoDir, CacheRepoDir, RootDir))
                 {
                     return false;
                 }
@@ -48,7 +48,6 @@ namespace MSBuild.XCode
             vars.Add("ToolSet", ToolSet);
 
             PackageInstance package = PackageInstance.LoadFromRoot(RootDir, vars);
-            package.SetPlatform(Platform);
 
             if (package.IsValid)
             {

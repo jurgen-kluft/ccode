@@ -67,7 +67,7 @@ namespace MSBuild.XCode
             PackageResource resource = PackageResource.From(name, group, vars);
             PackageInstance instance = resource.CreateInstance(isRoot);
             instance.Branch = branch;
-            instance.SetPlatform(platform);
+			instance.SetPlatform(platform, vars);
 
             instance.InitPackage();
             return instance;
@@ -82,10 +82,11 @@ namespace MSBuild.XCode
             instance.InitPackage();
             instance.Package.RootURL = dir;
 
-            if (resource.Platforms.Count > 0)
+			string platform = vars.Get("Platform");
+			if (!String.IsNullOrEmpty(platform))
             {
-                string platform = resource.Platforms[0];
                 instance.Package.Platform = platform;
+				instance.Package.ToolSet = vars.GetToolSet(platform);
                 instance.Package.RootVersion = instance.Pom.Versions.GetForPlatform(platform);
             }
 
@@ -103,7 +104,8 @@ namespace MSBuild.XCode
             {
                 string platform = resource.Platforms[0];
                 instance.Package.Platform = platform;
-                instance.Package.RootVersion = instance.Pom.Versions.GetForPlatform(platform);
+				instance.Package.ToolSet = vars.GetToolSet(platform);
+				instance.Package.RootVersion = instance.Pom.Versions.GetForPlatform(platform);
             }
             return instance;
         }
@@ -126,9 +128,10 @@ namespace MSBuild.XCode
             return true;
         }
 
-        public void SetPlatform(string platform)
+        private void SetPlatform(string platform, PackageVars vars)
         {
             mPackage.Platform = platform;
+			mPackage.ToolSet = vars.GetToolSet(platform);
             mPackage.RootVersion = Pom.Versions.GetForPlatform(platform);
         }
 

@@ -26,7 +26,7 @@ namespace MSBuild.XCode
             Environment.CurrentDirectory = RootDir;
 
             PackageInstance.TemplateDir = string.Empty;
-            PackageInstance.Initialize(RemoteRepoDir, CacheRepoDir, RootDir);
+            PackageInstance.Initialize("VS2012", RemoteRepoDir, CacheRepoDir, RootDir);
 
             // - Verify that there are no local changes 
             // - Verify that there are no outgoing changes

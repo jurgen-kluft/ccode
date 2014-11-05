@@ -26,11 +26,15 @@ namespace MSBuild.XCode
 
         private void Init()
         {
-            SetToolSet("Win32", "v100", false);
-            SetToolSet("Win32", "v110", true);
+			SetToolSet("*", "*", true);
 
-            SetToolSet("x64", "v100", false);
-            SetToolSet("x64", "v110", true);
+			SetToolSet("Win32", "v100", (MsDev.ProjectUtils.DefaultVersion == MsDev.EProjectVersion.VS2010));
+			SetToolSet("Win32", "v110", (MsDev.ProjectUtils.DefaultVersion == MsDev.EProjectVersion.VS2012));
+			SetToolSet("Win32", "v120", (MsDev.ProjectUtils.DefaultVersion == MsDev.EProjectVersion.VS2013));
+
+			SetToolSet("x64", "v100", (MsDev.ProjectUtils.DefaultVersion == MsDev.EProjectVersion.VS2010));
+			SetToolSet("x64", "v110", (MsDev.ProjectUtils.DefaultVersion == MsDev.EProjectVersion.VS2012));
+			SetToolSet("x64", "v120", (MsDev.ProjectUtils.DefaultVersion == MsDev.EProjectVersion.VS2013));
 
             SetToolSet("PS3", "GCC", false);
             SetToolSet("PS3", "SNC", true);
@@ -40,6 +44,16 @@ namespace MSBuild.XCode
 
             //@TODO: Add other platforms
         }
+
+		public string Get(string key)
+		{
+			string value;
+			if (mVars.TryGetValue(key, out value))
+			{
+				return value;
+			}
+			return string.Empty;
+		}
 
         public string ReplaceVars(string str)
         {
