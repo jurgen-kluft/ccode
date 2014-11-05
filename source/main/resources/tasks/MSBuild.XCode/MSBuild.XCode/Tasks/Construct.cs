@@ -75,7 +75,7 @@ namespace MSBuild.XCode
 
                 if (Action.StartsWith("genprj"))
                 {
-                    if (!PackageInstance.Initialize(RemoteRepoDir, CacheRepoDir, RootDir))
+					if (!PackageInstance.Initialize(IDE, RemoteRepoDir, CacheRepoDir, RootDir))
                         return False();
 
                     PackageVars vars = new PackageVars();
@@ -105,7 +105,6 @@ namespace MSBuild.XCode
                         return False();
                     }
 
-                    package.SetPlatform(platforms[0]);
                     foreach (string p in platforms)
                     {
                         if (!package.HasPlatform(p))

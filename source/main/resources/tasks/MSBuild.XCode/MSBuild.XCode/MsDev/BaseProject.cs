@@ -28,6 +28,10 @@ namespace MSBuild.XCode.MsDev
             {
                 mXmlDocMain = new XmlDocument();
                 mXmlDocMain.Load(filename);
+				
+				PackageVars vars = new PackageVars();
+				ExpandVars(vars);
+
                 return true;
             }
             return false;
@@ -42,7 +46,15 @@ namespace MSBuild.XCode.MsDev
                     {
                         foreach (XmlAttribute a in node.Attributes)
                         {
-                            a.Value = vars.ReplaceVars(a.Value);
+							if (a.Name == "ToolsVersion")
+							{
+								if (MsDev.ProjectUtils.DefaultVersion == EProjectVersion.VS2013)
+									a.Value = "12.0";
+							}
+							else
+							{
+								a.Value = vars.ReplaceVars(a.Value);
+							}
                         }
                     }
                     return true;

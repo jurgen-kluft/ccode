@@ -32,7 +32,7 @@ namespace MSBuild.XCode
             RootDir = RootDir.EndWith('\\');
 
             PackageInstance.TemplateDir = TemplateDir;
-            if (!PackageInstance.Initialize(RemoteRepoDir, CacheRepoDir, RootDir))
+            if (!PackageInstance.Initialize(IDE, RemoteRepoDir, CacheRepoDir, RootDir))
             {
                 Loggy.Error(String.Format("Error: Failed to initialize in Package::Sync"));
                 return false;
@@ -51,7 +51,6 @@ namespace MSBuild.XCode
             vars.SetToolSet(Platform, ToolSet, true);
 
             PackageInstance package = PackageInstance.LoadFromRoot(RootDir, vars);
-            package.SetPlatform(Platform);
 
             if (package.IsValid)
             {
