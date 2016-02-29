@@ -1,4 +1,0 @@
-<Project ToolsVersion="4.0" DefaultTargets="mvinfo" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
-  <Import Project="pom.props"/>
-  <Import Project="$(SCM_LOCAL_REPO_ROOT)\com\virtuos\xcode\super_pom.targets"/>
-</Project>
