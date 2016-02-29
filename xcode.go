@@ -2,6 +2,10 @@ package xcode
 
 import (
 	"fmt"
+	"github.com/jurgen-kluft/xcode/cli"
+	"github.com/jurgen-kluft/xcode/ide"
+	"github.com/jurgen-kluft/xcode/visual_studio"
+	"os"
 )
 
 type Config struct {
@@ -10,16 +14,6 @@ type Config struct {
 	includes  []string
 	libraries []string
 	linking   []string
-}
-
-var DefinesPerOS = map[string]string{
-	"windows": "TARGET_PC;WIN32",
-	"darwin":  "TARGET_OSX",
-}
-
-var DefinesPerARCH = map[string]string{
-	"x86": "TARGET_32BIT",
-	"x64": "TARGET_64BIT",
 }
 
 var DefaultConfigs = []Config{
@@ -37,46 +31,52 @@ type Version struct {
 	Patch uint32
 }
 
+// Package defines information of a C++ project
 type Package struct {
 	name     string
 	guid     string
 	author   string
 	version  Version
-	os       string // Windows, Darwin
-	arch     string // x86, x64, ARM
-	language string
+	language string   // C++, C#
+	targets  []string // Windows, Darwin
 	configs  []Config
 }
 
-type Dependency struct {
-	packageName string
-	version     Version
-}
-
-type IDE int
-
-const (
-	VISUALSTUDIO IDE = 0x80000000
-	VS2012       IDE = VISUALSTUDIO | 2012
-	VS2013       IDE = VISUALSTUDIO | 2013
-	VS2015       IDE = VISUALSTUDIO | 2015
-)
-
-type ProjectGenerator interface {
-	Generate(path string, pkg Package)
-}
-
-func NewGenerator(version IDE) (ProjectGenerator, error) {
-	if (version & VISUALSTUDIO) == VISUALSTUDIO {
-		return NewGeneratorForVisualStudio(version)
+func Generate(version ide.Type, pkg Package) error {
+	// Parse command-line
+	app := cli.NewApp()
+	app.Name = "xcode"
+	app.Usage = "xcode --IDE=VS2015 --TARGET=Win64"
+	app.Action = func(c *cli.Context) {
+		println("boom! I say!")
 	}
-	return nil, fmt.Errorf("Wrong visual studio version")
+
+	var ide string
+	var targets string
+	app.Flags = []cli.Flag{
+		cli.StringFlag{
+			Name:        "IDE",
+			Value:       "VS2015",
+			Usage:       "IDE to generate projects for",
+			Destination: &ide,
+		},
+		cli.StringFlag{
+			Name:        "TARGETS",
+			Value:       "Win64",
+			Usage:       "Targets to include (Win32, Win64, Darwin64)",
+			Destination: &targets,
+		},
+	}
+	app.Action = func(c *cli.Context) {
+		generateProjects(ide, targets, pkg)
+	}
+
+	app.Run(os.Args)
 }
 
-func StaticLibrary() {
-
-}
-
-func Unittest() {
-
+func generateProjects(IDE string, targets string, pkg Package) error {
+	if vs.IsVisualStudio(IDE) {
+		return vs.Generate(vs.GetVisualStudio(IDE), "", targets, pkg)
+	}
+	return fmt.Errorf("Wrong visual studio version")
 }
