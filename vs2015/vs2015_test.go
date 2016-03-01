@@ -61,21 +61,21 @@ func TestSimpleProject(t *testing.T) {
 
 	xunittestproject := denv.Project{Name: "xunittest"}
 	xunittestproject.GUID = uid.GetGUID(xunittestproject.Name)
-	xunittestproject.ProjectID = vs.CPPprojectID
+	xunittestproject.ProjectID = vs2015.CPPprojectID
 	xunittestproject.Platforms = platforms
 	xunittestproject.Configs = configs
 
 	xbaseproject := denv.Project{Name: "xbase"}
 	xbaseproject.Dependencies = []denv.Project{xunittestproject}
 	xbaseproject.GUID = uid.GetGUID(xbaseproject.Name)
-	xbaseproject.ProjectID = vs.CPPprojectID
+	xbaseproject.ProjectID = vs2015.CPPprojectID
 	xbaseproject.Platforms = platforms
 	xbaseproject.Configs = configs
 
 	xtestproject := denv.Project{Name: "xtest"}
 	xtestproject.Dependencies = []denv.Project{}
 	xtestproject.GUID = uid.GetGUID(xtestproject.Name)
-	xtestproject.ProjectID = vs.CPPprojectID
+	xtestproject.ProjectID = vs2015.CPPprojectID
 	xtestproject.Platforms = platforms
 	xtestproject.Configs = configs
 	xtestproject.Path = "d:\\Test.xcode\\xtest"
@@ -105,16 +105,16 @@ func TestSimpleProject(t *testing.T) {
 	for _, prj := range xtestsln.Projects {
 		prjwriter := &TestProjectWriter{}
 		prjwriter.Open(path.Join(prj.Path, prj.Name+".vcxproj"))
-		vs.GenerateVisualStudio2015Project(prj, variables, replacer, prjwriter)
+		vs2015.GenerateVisualStudio2015Project(prj, variables, replacer, prjwriter)
 		prjwriter.Close()
 
 		prjwriter.Open(path.Join(prj.Path, prj.Name+".vcxproj.filters"))
-		vs.GenerateVisualStudio2015ProjectFilters(prj, prjwriter)
+		vs2015.GenerateVisualStudio2015ProjectFilters(prj, prjwriter)
 		prjwriter.Close()
 	}
 
 	writer := &TestProjectWriter{}
 	writer.Open(path.Join(xtestproject.Path, "xtest.sln"))
-	vs.GenerateVisualStudio2015Solution(xtestsln, writer)
+	vs2015.GenerateVisualStudio2015Solution(xtestsln, writer)
 	writer.Close()
 }
