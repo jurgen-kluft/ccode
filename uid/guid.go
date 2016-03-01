@@ -1,4 +1,4 @@
-package xcode
+package uid
 
 import (
 	"crypto/sha256"

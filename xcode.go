@@ -3,9 +3,10 @@ package xcode
 import (
 	"fmt"
 	"github.com/jurgen-kluft/xcode/cli"
-	"github.com/jurgen-kluft/xcode/ide"
-	"github.com/jurgen-kluft/xcode/visual_studio"
+	"github.com/jurgen-kluft/xcode/denv"
+	"github.com/jurgen-kluft/xcode/vs"
 	"os"
+	"strings"
 )
 
 type Config struct {
@@ -24,25 +25,7 @@ var DefaultConfigs = []Config{
 	{name: "TestRelease", defines: "TARGET_TEST_RELEASE;NDEBUG;"},
 }
 
-// Version (based on semver)
-type Version struct {
-	Major uint32
-	Minor uint32
-	Patch uint32
-}
-
-// Package defines information of a C++ project
-type Package struct {
-	name     string
-	guid     string
-	author   string
-	version  Version
-	language string   // C++, C#
-	targets  []string // Windows, Darwin
-	configs  []Config
-}
-
-func Generate(version ide.Type, pkg Package) error {
+func Generate(project denv.Project) error {
 	// Parse command-line
 	app := cli.NewApp()
 	app.Name = "xcode"
@@ -51,14 +34,14 @@ func Generate(version ide.Type, pkg Package) error {
 		println("boom! I say!")
 	}
 
-	var ide string
+	var IDE string
 	var targets string
 	app.Flags = []cli.Flag{
 		cli.StringFlag{
 			Name:        "IDE",
 			Value:       "VS2015",
 			Usage:       "IDE to generate projects for",
-			Destination: &ide,
+			Destination: &IDE,
 		},
 		cli.StringFlag{
 			Name:        "TARGETS",
@@ -68,15 +51,19 @@ func Generate(version ide.Type, pkg Package) error {
 		},
 	}
 	app.Action = func(c *cli.Context) {
-		generateProjects(ide, targets, pkg)
+		generateProjects(IDE, targets, project)
 	}
 
-	app.Run(os.Args)
+	return app.Run(os.Args)
 }
 
-func generateProjects(IDE string, targets string, pkg Package) error {
+func ListToArray(list string, sep string) []string {
+	return strings.Split(list, sep)
+}
+
+func generateProjects(IDE string, targets string, project denv.Project) error {
 	if vs.IsVisualStudio(IDE) {
-		return vs.Generate(vs.GetVisualStudio(IDE), "", targets, pkg)
+		return vs.Generate(vs.GetVisualStudio(IDE), "", ListToArray(targets, ","), project)
 	}
 	return fmt.Errorf("Wrong visual studio version")
 }
