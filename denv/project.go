@@ -1,6 +1,8 @@
 package denv
 
 import (
+	"fmt"
+	"os"
 	"path"
 
 	"github.com/jurgen-kluft/xcode/glob"
@@ -37,13 +39,6 @@ func GetDefaultPlatforms() []string {
 	return []string{"Win32", "x64"}
 }
 
-var DefaultConfigs = []string{
-	"DevDebugStatic",
-	"DevReleaseStatic",
-	"TestDebugStatic",
-	"TestReleaseStatic",
-}
-
 var DefaultDefines = []string{
 	"TARGET_DEV_DEBUG;_DEBUG;",
 	"TARGET_DEV_RELEASE;NDEBUG;",
@@ -56,9 +51,20 @@ var SupportedPlatforms = []string{
 	"x64",
 }
 
+// $(Configuration)_$(Platform)
 var DefaultConfigs = []Config{
-	{Name: "DevDebugStatic", IncludeDirs: []string{"source\\main\\include\\"}, LibraryDirs: []string{"target\\${CONFIG}_${PLATFORM}_${TOOLSET}"}, LinkWith: []string{"${NAME}_${CONFIG}_${PLATFORM}_${TOOLSET}.${FILE_EXTENSION_LIB}"}},
+	{Name: "DevDebugStatic", IncludeDirs: []string{"source\\main\\include"}, LibraryDirs: []string{"target\\$(Configuration)_$(Platform)_$(ToolSet)"}, LinkWith: []string{"$(Name)_$(Configuration)_$(Platform)_$(ToolSet).lib"}},
+	{Name: "DevReleaseStatic", IncludeDirs: []string{"source\\main\\include"}, LibraryDirs: []string{"target\\$(Configuration)_$(Platform)_$(ToolSet)"}, LinkWith: []string{"$(Name)_$(Configuration)_$(Platform)_$(ToolSet).lib"}},
+	{Name: "TestDebugStatic", IncludeDirs: []string{"source\\main\\include"}, LibraryDirs: []string{"target\\$(Configuration)_$(Platform)_$(ToolSet)"}, LinkWith: []string{"$(Name)_$(Configuration)_$(Platform)_$(ToolSet).lib"}},
+	{Name: "TestReleaseStatic", IncludeDirs: []string{"source\\main\\include"}, LibraryDirs: []string{"target\\$(Configuration)_$(Platform)_$(ToolSet)"}, LinkWith: []string{"$(Name)_$(Configuration)_$(Platform)_$(ToolSet).lib"}},
 }
+
+//var DefaultConfigs = []string{
+//	"DevDebugStatic",
+//	"DevReleaseStatic",
+//	"TestDebugStatic",
+//	"TestReleaseStatic",
+//}
 
 func GetDefaultConfigs() map[string]Config {
 	configs := make(map[string]Config)
@@ -73,10 +79,14 @@ func GetDefaultConfigs() map[string]Config {
 //              SetupDefaultCppProject("xbase", "github.com\\jurgen-kluft")
 //
 func SetupDefaultCppProject(name string, url string) *Project {
+	gopath := os.Getenv("GOPATH")
+
 	project := &Project{Name: name}
 	project.GUID = uid.GetGUID(project.Name)
-	project.Path = path.Join("${GOPATH}\\src\\", url, project.Name)
+	project.Path = path.Join(gopath, "src", url, project.Name)
 	project.Language = "C++"
+
+	fmt.Println(project.Path)
 
 	project.SrcFiles = &Files{GlobPaths: []string{"source\\main\\^cpp\\**\\*.cpp"}}
 	project.SrcFiles.GlobFiles(project.Path)

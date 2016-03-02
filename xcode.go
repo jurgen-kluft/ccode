@@ -43,7 +43,7 @@ func Generate(project *denv.Project) error {
 
 func generateProjects(IDE string, targets string, project *denv.Project) error {
 	if vs.IsVisualStudio(IDE) {
-		return vs.Generate(vs.GetVisualStudio(IDE), "", util.SepListToArray(targets, ","), project)
+		return vs.Generate(vs.GetVisualStudio(IDE), "", util.Seperate(targets, ","), project)
 	}
 	return fmt.Errorf("Unknown IDE")
 }

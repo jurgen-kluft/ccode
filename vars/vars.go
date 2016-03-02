@@ -7,8 +7,10 @@ import (
 
 // Replacer is providing functionality to replace a variable in a large body of text
 type Replacer interface {
-	Replace(variable string, replacement string, body string) string // Replaces occurences of @variable with @replace and thus will remove the variable from @body
-	Insert(variable string, insertment string, body string) string   //Inserts @variable at places where @variable occurs without removing the variable in @body
+	ReplaceInLine(variable string, replacement string, body string) string // Replaces occurences of @variable with @replace and thus will remove the variable from @body
+	ReplaceInLines(variable string, replacement string, lines []string)    // Replaces occurences of @variable with @replace and thus will remove the variable from @body
+	InsertInLine(variable string, insertment string, line string) string   //Inserts @variable at places where @variable occurs without removing the variable in @body
+	InsertInLines(variable string, insertment string, lines []string)      //Inserts @variable at places where @variable occurs without removing the variable in @body
 }
 
 type basicReplacer struct {
@@ -19,7 +21,7 @@ func NewReplacer() Replacer {
 	return &basicReplacer{}
 }
 
-func (v *basicReplacer) Replace(variable string, replacement string, body string) string {
+func (v *basicReplacer) ReplaceInLine(variable string, replacement string, body string) string {
 	for true {
 		n := strings.Count(body, variable)
 		if n > 0 {
@@ -31,7 +33,13 @@ func (v *basicReplacer) Replace(variable string, replacement string, body string
 	return body
 }
 
-func (v *basicReplacer) Insert(variable string, insertment string, body string) string {
+func (v *basicReplacer) ReplaceInLines(variable string, replacement string, lines []string) {
+	for i, line := range lines {
+		lines[i] = v.ReplaceInLine(variable, replacement, line)
+	}
+}
+
+func (v *basicReplacer) InsertInLine(variable string, insertment string, body string) string {
 	for true {
 		n := strings.Count(body, variable)
 		if n > 0 {
@@ -47,12 +55,18 @@ func (v *basicReplacer) Insert(variable string, insertment string, body string) 
 	}
 	return body
 }
+func (v *basicReplacer) InsertInLines(variable string, replacement string, lines []string) {
+	for i, line := range lines {
+		lines[i] = v.InsertInLine(variable, replacement, line)
+	}
+}
 
 // Variables is a container for variables (key, value)
 type Variables interface {
 	AddVar(key string, value string)
 	GetVar(key string) (string, error)
-	Replace(replacer Replacer, body string) string
+	ReplaceInLine(replacer Replacer, line string) string
+	ReplaceInLines(replacer Replacer, lines []string)
 }
 
 type basicVariables struct {
@@ -81,9 +95,15 @@ func (v *basicVariables) GetVar(key string) (string, error) {
 	return "", fmt.Errorf("Variables doesn't contain var with key %s", key)
 }
 
-func (v *basicVariables) Replace(replacer Replacer, body string) string {
+func (v *basicVariables) ReplaceInLine(replacer Replacer, line string) string {
 	for k, v := range v.vars {
-		body = replacer.Replace(k, v, body)
+		line = replacer.ReplaceInLine(k, v, line)
 	}
-	return body
+	return line
+}
+
+func (v *basicVariables) ReplaceInLines(replacer Replacer, lines []string) {
+	for i, line := range lines {
+		lines[i] = v.ReplaceInLine(replacer, line)
+	}
 }

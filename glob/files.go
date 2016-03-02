@@ -1,7 +1,6 @@
 package glob
 
 import (
-	"fmt"
 	"os"
 	"path/filepath"
 	"strings"
@@ -10,7 +9,6 @@ import (
 func GlobMatching(filepath string, globs []string) (bool, int) {
 	for i, g := range globs {
 		g = strings.Replace(g, "^", "", 1)
-		fmt.Println(g)
 		if match, err := PathMatch(g, filepath); match == true && err == nil {
 			return match, i
 		} else if err != nil {
@@ -26,7 +24,7 @@ func GlobFiles(dirpath string, globs []string) (filepaths []string, err error) {
 			path = path[len(dirpath)+1:]
 			match, index := GlobMatching(path, globs)
 			if index >= 0 && match {
-				fmt.Println(path)
+				//fmt.Println(path)
 				filepaths = append(filepaths, path)
 			}
 		}
