@@ -2,37 +2,21 @@ package xcode
 
 import (
 	"fmt"
+	"os"
+
 	"github.com/jurgen-kluft/xcode/cli"
 	"github.com/jurgen-kluft/xcode/denv"
+	"github.com/jurgen-kluft/xcode/util"
 	"github.com/jurgen-kluft/xcode/vs"
-	"os"
-	"strings"
 )
 
-type Config struct {
-	name      string // Debug, Release
-	defines   string //
-	includes  []string
-	libraries []string
-	linking   []string
-}
-
-var DefaultConfigs = []Config{
-	{name: "DevDebug", defines: "TARGET_DEV_DEBUG;_DEBUG;", libraries: []string{""}, linking: []string{""}},
-	{name: "DevRelease", defines: "TARGET_DEV_RELEASE;NDEBUG;"},
-	{name: "DevFinal", defines: "TARGET_DEV_FINAL;NDEBUG;"},
-	{name: "TestDebug", defines: "TARGET_TEST_DEBUG;_DEBUG;"},
-	{name: "TestRelease", defines: "TARGET_TEST_RELEASE;NDEBUG;"},
-}
-
-func Generate(project denv.Project) error {
+// Generate is the main function that requires 'arguments' to then generate
+// workspace and project files for a specified IDE.
+func Generate(project *denv.Project) error {
 	// Parse command-line
 	app := cli.NewApp()
 	app.Name = "xcode"
 	app.Usage = "xcode --IDE=VS2015 --TARGET=Win64"
-	app.Action = func(c *cli.Context) {
-		println("boom! I say!")
-	}
 
 	var IDE string
 	var targets string
@@ -57,13 +41,9 @@ func Generate(project denv.Project) error {
 	return app.Run(os.Args)
 }
 
-func ListToArray(list string, sep string) []string {
-	return strings.Split(list, sep)
-}
-
-func generateProjects(IDE string, targets string, project denv.Project) error {
+func generateProjects(IDE string, targets string, project *denv.Project) error {
 	if vs.IsVisualStudio(IDE) {
-		return vs.Generate(vs.GetVisualStudio(IDE), "", ListToArray(targets, ","), project)
+		return vs.Generate(vs.GetVisualStudio(IDE), "", util.SepListToArray(targets, ","), project)
 	}
-	return fmt.Errorf("Wrong visual studio version")
+	return fmt.Errorf("Unknown IDE")
 }

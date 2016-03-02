@@ -20,6 +20,6 @@ func GetVisualStudio(ide string) denv.IDE {
 	return -1
 }
 
-func Generate(ide denv.IDE, path string, targets []string, project denv.Project) error {
+func Generate(ide denv.IDE, path string, targets []string, project *denv.Project) error {
 	return nil
 }
