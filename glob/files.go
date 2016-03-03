@@ -3,28 +3,21 @@ package glob
 import (
 	"os"
 	"path/filepath"
-	"strings"
 )
 
-func GlobMatching(filepath string, globs []string) (bool, int) {
-	for i, g := range globs {
-		g = strings.Replace(g, "^", "", 1)
-		if match, err := PathMatch(g, filepath); match == true && err == nil {
-			return match, i
-		} else if err != nil {
-			return false, -1
-		}
+func GlobMatching(filepath string, g string) bool {
+	if match, err := PathMatch(g, filepath); match == true && err == nil {
+		return match
 	}
-	return false, 0
+	return false
 }
 
-func GlobFiles(dirpath string, globs []string) (filepaths []string, err error) {
+func GlobFiles(dirpath string, glob string) (filepaths []string, err error) {
 	err = filepath.Walk(dirpath, func(path string, fi os.FileInfo, err error) error {
-		if fi.IsDir() == false {
-			path = path[len(dirpath)+1:]
-			match, index := GlobMatching(path, globs)
-			if index >= 0 && match {
-				//fmt.Println(path)
+		if err == nil && fi.IsDir() == false {
+			path = path[len(dirpath):]
+			match := GlobMatching(path, glob)
+			if match {
 				filepaths = append(filepaths, path)
 			}
 		}

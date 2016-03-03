@@ -1,6 +1,7 @@
 package vars
 
 import (
+	"errors"
 	"fmt"
 	"strings"
 )
@@ -40,18 +41,20 @@ func (v *basicReplacer) ReplaceInLines(variable string, replacement string, line
 }
 
 func (v *basicReplacer) InsertInLine(variable string, insertment string, body string) string {
-	for true {
-		n := strings.Count(body, variable)
-		if n > 0 {
-			pos := strings.Index(body, variable)
-			if pos == 0 {
-				body = insertment + body[pos:]
-			} else if pos > 0 {
-				body = body[0:pos] + insertment + body[pos:]
-			}
+	piv := -1
+	pos := strings.Index(body, variable)
+	for pos > piv {
+		if pos == 0 {
+			body = insertment + body
+		} else if pos > 0 {
+			body = body[0:pos] + insertment + body[pos:]
 		} else {
 			break
 		}
+		pos += len(insertment)
+		pos += len(variable)
+		piv = pos
+		pos = strings.Index(body, variable)
 	}
 	return body
 }
@@ -63,10 +66,14 @@ func (v *basicReplacer) InsertInLines(variable string, replacement string, lines
 
 // Variables is a container for variables (key, value)
 type Variables interface {
+	HasVar(key string) bool
+	SetVar(key string, value string) error
 	AddVar(key string, value string)
 	GetVar(key string) (string, error)
+	DelVar(key string) error
 	ReplaceInLine(replacer Replacer, line string) string
 	ReplaceInLines(replacer Replacer, lines []string)
+	Print()
 }
 
 type basicVariables struct {
@@ -78,21 +85,49 @@ func NewVars() Variables {
 	return &basicVariables{vars: make(map[string]string)}
 }
 
-func (v *basicVariables) AddVar(key string, value string) {
+func correctVarKey(key string) string {
 	if strings.HasPrefix(key, "${") == false {
 		key = fmt.Sprintf("${%s}", key)
 	}
+	return key
+}
+
+func (v *basicVariables) HasVar(key string) bool {
+	key = correctVarKey(key)
+	_, ok := v.vars[key]
+	return ok
+}
+
+func (v *basicVariables) SetVar(key string, value string) error {
+	key = correctVarKey(key)
+	_, ok := v.vars[key]
+	if ok {
+		v.vars[key] = value
+		return nil
+	}
+	return errors.New("key doesn't exist in var map")
+}
+
+func (v *basicVariables) AddVar(key string, value string) {
+	key = correctVarKey(key)
 	v.vars[key] = value
 }
 
 func (v *basicVariables) GetVar(key string) (string, error) {
-	if strings.HasPrefix(key, "${") == false {
-		key = fmt.Sprintf("${%s}", key)
-	}
+	key = correctVarKey(key)
 	if value, ok := v.vars[key]; ok {
 		return value, nil
 	}
 	return "", fmt.Errorf("Variables doesn't contain var with key %s", key)
+}
+
+func (v *basicVariables) DelVar(key string) error {
+	key = correctVarKey(key)
+	if _, ok := v.vars[key]; ok {
+		delete(v.vars, key)
+		return nil
+	}
+	return errors.New("key doesn't exist in var map")
 }
 
 func (v *basicVariables) ReplaceInLine(replacer Replacer, line string) string {
@@ -105,5 +140,11 @@ func (v *basicVariables) ReplaceInLine(replacer Replacer, line string) string {
 func (v *basicVariables) ReplaceInLines(replacer Replacer, lines []string) {
 	for i, line := range lines {
 		lines[i] = v.ReplaceInLine(replacer, line)
+	}
+}
+
+func (v *basicVariables) Print() {
+	for k, v := range v.vars {
+		fmt.Printf("Var: %s = %s\n", k, v)
 	}
 }

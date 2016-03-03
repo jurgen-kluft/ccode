@@ -26,10 +26,15 @@ func (writer *ProjectTextWriter) Close() (err error) {
 	return err
 }
 
+const (
+	cTabChar     = "\t"
+	cNewLineChar = "\n"
+)
+
 func (writer *ProjectTextWriter) WriteLn(line string) (err error) {
 	offset := 0
 	for offset < len(line) && line[offset] == '+' {
-		_, err = writer.fhnd.WriteString("\t")
+		_, err = writer.fhnd.WriteString(cTabChar)
 		if err != nil {
 			return err
 		}
@@ -40,7 +45,7 @@ func (writer *ProjectTextWriter) WriteLn(line string) (err error) {
 		if err != nil {
 			return err
 		}
-		_, err = writer.fhnd.WriteString("\n")
+		_, err = writer.fhnd.WriteString(cNewLineChar)
 	}
 	return err
 }
