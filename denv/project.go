@@ -10,15 +10,6 @@ import (
 	"github.com/jurgen-kluft/xcode/vars"
 )
 
-// Config represents a project build configuration, like 'Debug' or 'Release'
-type Config struct {
-	Name         string
-	IncludeDirs  []string
-	LibraryDirs  []string
-	LibraryFiles []string
-	LibraryFile  string
-}
-
 // Files helps to collect source and header files as well as virtual files as they
 // can be presented in an IDE
 type Files struct {
@@ -50,7 +41,7 @@ type Project struct {
 	Platforms    []string
 	HdrFiles     *Files
 	SrcFiles     *Files
-	Configs      map[string]*Config
+	Configs      ConfigSet
 	Dependencies []*Project
 }
 
@@ -66,20 +57,7 @@ func (prj *Project) HasPlatform(platformname string) bool {
 
 // HasConfig returns true if the project has that configuration
 func (prj *Project) HasConfig(configname string) bool {
-	for _, config := range prj.Configs {
-		if configname == config.Name {
-			return true
-		}
-	}
-	return false
-}
-
-// DefaultDefines are defines for
-var DefaultDefines = []string{
-	"TARGET_DEV_DEBUG;_DEBUG;",
-	"TARGET_DEV_RELEASE;NDEBUG;",
-	"TARGET_TEST_DEBUG;_DEBUG;",
-	"TARGET_TEST_RELEASE;NDEBUG;",
+	return prj.Configs.HasConfig(configname)
 }
 
 // SupportedPlatforms returns a list of platforms that are supported by xcode
@@ -88,56 +66,12 @@ var SupportedPlatforms = []string{
 	"x64",
 }
 
-// DefaultConfigs $(Configuration)_$(Platform)
-var DefaultConfigs = []Config{
-	{Name: "DevDebugStatic", IncludeDirs: []string{"source\\main\\include"}, LibraryDirs: []string{"target\\$(Configuration)_$(Platform)_$(ToolSet)"}, LibraryFiles: []string{}, LibraryFile: "${Name}_$(Configuration)_$(Platform)_$(ToolSet).lib"},
-	{Name: "DevReleaseStatic", IncludeDirs: []string{"source\\main\\include"}, LibraryDirs: []string{"target\\$(Configuration)_$(Platform)_$(ToolSet)"}, LibraryFiles: []string{}, LibraryFile: "${Name}_$(Configuration)_$(Platform)_$(ToolSet).lib"},
-	{Name: "TestDebugStatic", IncludeDirs: []string{"source\\main\\include"}, LibraryDirs: []string{"target\\$(Configuration)_$(Platform)_$(ToolSet)"}, LibraryFiles: []string{}, LibraryFile: "${Name}_$(Configuration)_$(Platform)_$(ToolSet).lib"},
-	{Name: "TestReleaseStatic", IncludeDirs: []string{"source\\main\\include"}, LibraryDirs: []string{"target\\$(Configuration)_$(Platform)_$(ToolSet)"}, LibraryFiles: []string{}, LibraryFile: "${Name}_$(Configuration)_$(Platform)_$(ToolSet).lib"},
-}
-
-// CopyStringArray makes a copy of an array of strings
-func CopyStringArray(strarray []string) []string {
-	newstrarray := make([]string, len(strarray))
-	for i, str := range strarray {
-		newstrarray[i] = str
-	}
-	return newstrarray
-}
-
-// CopyConfig makes a deep copy of a Config
-func CopyConfig(config Config) *Config {
-	newconfig := &Config{Name: config.Name, IncludeDirs: []string{}, LibraryDirs: []string{}, LibraryFiles: []string{}, LibraryFile: ""}
-	newconfig.IncludeDirs = CopyStringArray(config.IncludeDirs)
-	newconfig.LibraryDirs = CopyStringArray(config.LibraryDirs)
-	newconfig.LibraryFiles = CopyStringArray(config.LibraryFiles)
-	newconfig.LibraryFile = config.LibraryFile
-	return newconfig
-}
-
-// ReplaceVars replaces variables that are present in members of the Config
-func (c *Config) ReplaceVars(v vars.Variables, r vars.Replacer) {
-	c.LibraryFile = v.ReplaceInLine(r, c.LibraryFile)
-	v.ReplaceInLines(r, c.IncludeDirs)
-	v.ReplaceInLines(r, c.LibraryDirs)
-	v.ReplaceInLines(r, c.LibraryFiles)
-}
-
 // ReplaceVars replaces any variable that exists in members of Project
 func (prj *Project) ReplaceVars(v vars.Variables, r vars.Replacer) {
 	v.AddVar("${Name}", prj.Name)
 	for _, config := range prj.Configs {
 		config.ReplaceVars(v, r)
 	}
-}
-
-// GetDefaultConfigs returns a map of default configs
-func GetDefaultConfigs() map[string]*Config {
-	configs := make(map[string]*Config)
-	for _, config := range DefaultConfigs {
-		configs[config.Name] = CopyConfig(config)
-	}
-	return configs
 }
 
 // SetupDefaultCppProject returns a default C++ project

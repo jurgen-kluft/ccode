@@ -6,7 +6,6 @@ import (
 
 	"github.com/jurgen-kluft/xcode/denv"
 	"github.com/jurgen-kluft/xcode/uid"
-	"github.com/jurgen-kluft/xcode/util"
 	"github.com/jurgen-kluft/xcode/vars"
 
 	"path"
@@ -43,14 +42,19 @@ func GetVisualStudio(ide string) denv.IDE {
 //   - xhash:DEBUG_INFO[Platform][Config]
 //   - xhash:TOOL_SET[Platform]
 //
-func addProjectVariables(p *denv.Project, v vars.Variables) {
+func addProjectVariables(p *denv.Project, isdep bool, v vars.Variables) {
 	v.AddVar(p.Name+":GUID", p.GUID)
 	v.AddVar(p.Name+":ROOT_DIR", p.Path)
+
 	for _, platform := range p.Platforms {
 		for _, config := range p.Configs {
-			v.AddVar(fmt.Sprintf("%s:INCLUDE_DIRS[%s][%s]", p.Name, platform, config.Name), util.Join(config.IncludeDirs, ";"))
-			v.AddVar(fmt.Sprintf("%s:LIBRARY_DIRS[%s][%s]", p.Name, platform, config.Name), util.Join(config.LibraryDirs, ";"))
-			v.AddVar(fmt.Sprintf("%s:LIBRARY_FILES[%s][%s]", p.Name, platform, config.Name), util.Join(config.LibraryFiles, ";"))
+			path := ""
+			if isdep {
+				path = p.Path
+			}
+			v.AddVar(fmt.Sprintf("%s:INCLUDE_DIRS[%s][%s]", p.Name, platform, config.Name), string(config.IncludeDirs.Prefix(path, ";", denv.PathPrefixer)))
+			v.AddVar(fmt.Sprintf("%s:LIBRARY_DIRS[%s][%s]", p.Name, platform, config.Name), string(config.LibraryDirs.Prefix(path, ";", denv.PathPrefixer)))
+			v.AddVar(fmt.Sprintf("%s:LIBRARY_FILES[%s][%s]", p.Name, platform, config.Name), string(config.LibraryFiles.Prefix(path, ";", denv.PathPrefixer)))
 		}
 	}
 
@@ -138,7 +142,9 @@ func generateVisualStudio2015Project(prj *denv.Project, vars vars.Variables, rep
 
 	projects := []*denv.Project{}
 	projects = append(projects, prj)
-	projects = append(projects, prj.Dependencies...)
+	for _, dep := range prj.Dependencies {
+		projects = append(projects, dep)
+	}
 
 	writer.WriteLn(`+<ImportGroup Label="TargetDirs"/>`)
 	writer.WriteLn(`+<Import Project="$(VCTargetsPath)\Microsoft.Cpp.Default.props"/>`)
@@ -205,8 +211,8 @@ func generateVisualStudio2015Project(prj *denv.Project, vars vars.Variables, rep
 			compileandlink := []string{}
 			compileandlink = append(compileandlink, `+<ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='${CONFIG}|${PLATFORM}'">`)
 			compileandlink = append(compileandlink, `++<ClCompile>`)
-			compileandlink = append(compileandlink, `+++<PreprocessorDefinitions>${DEFINES}%(PreprocessorDefinitions)</PreprocessorDefinitions>`)
-			compileandlink = append(compileandlink, `+++<AdditionalIncludeDirectories>${INCLUDE_DIRS}%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>`)
+			compileandlink = append(compileandlink, `+++<PreprocessorDefinitions>${DEFINES};%(PreprocessorDefinitions)</PreprocessorDefinitions>`)
+			compileandlink = append(compileandlink, `+++<AdditionalIncludeDirectories>${INCLUDE_DIRS};%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>`)
 			compileandlink = append(compileandlink, `+++<WarningLevel>Level3</WarningLevel>`)
 			compileandlink = append(compileandlink, `+++<Optimization>${OPTIMIZATION}</Optimization>`)
 			compileandlink = append(compileandlink, `+++<PrecompiledHeader>NotUsing</PrecompiledHeader>`)
@@ -214,7 +220,7 @@ func generateVisualStudio2015Project(prj *denv.Project, vars vars.Variables, rep
 			compileandlink = append(compileandlink, `++</ClCompile>`)
 			compileandlink = append(compileandlink, `++<Link>`)
 			compileandlink = append(compileandlink, `+++<GenerateDebugInformation>${DEBUG_INFO}</GenerateDebugInformation>`)
-			compileandlink = append(compileandlink, `+++<AdditionalDependencies>${LIBRARY_FILES}%(AdditionalDependencies)</AdditionalDependencies>`)
+			compileandlink = append(compileandlink, `+++<AdditionalDependencies>${LIBRARY_FILES};%(AdditionalDependencies)</AdditionalDependencies>`)
 			compileandlink = append(compileandlink, `+++<AdditionalLibraryDirectories>${LIBRARY_DIRS}</AdditionalLibraryDirectories>`)
 			compileandlink = append(compileandlink, `++</Link>`)
 			compileandlink = append(compileandlink, `++<Lib>`)
@@ -234,15 +240,17 @@ func generateVisualStudio2015Project(prj *denv.Project, vars vars.Variables, rep
 			configitems := []string{"DEFINES", "INCLUDE_DIRS", "LIBRARY_DIRS", "LIBRARY_FILES"}
 			for _, configitem := range configitems {
 				varkeystr := fmt.Sprintf("${%s}", configitem)
+				varvalues := []string{}
 				for _, project := range projects {
 					varkey := fmt.Sprintf("%s:%s[%s][%s]", project.Name, configitem, platform, config.Name)
 					varvalue, err := vars.GetVar(varkey)
 					if err == nil {
-						replacer.InsertInLines(varkeystr, varvalue, compileandlink)
+						varvalues = append(varvalues, varvalue)
 					} else {
 						fmt.Println("ERROR: could not find variable " + varkey)
 					}
 				}
+				replacer.InsertInLines(varkeystr, strings.Join(varvalues, ";"), compileandlink)
 				replacer.ReplaceInLines(varkeystr, "", compileandlink)
 			}
 
@@ -404,11 +412,11 @@ func GenerateVisualStudio2015Solution(p *denv.Project) {
 	replacer := vars.NewReplacer()
 
 	// Main project
-	addProjectVariables(p, variables)
+	addProjectVariables(p, false, variables)
 
 	// And dependency projects
 	for _, prj := range p.Dependencies {
-		addProjectVariables(prj, variables)
+		addProjectVariables(prj, true, variables)
 	}
 	variables.Print()
 

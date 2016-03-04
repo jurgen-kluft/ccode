@@ -8,10 +8,10 @@ import (
 
 // Replacer is providing functionality to replace a variable in a large body of text
 type Replacer interface {
-	ReplaceInLine(variable string, replacement string, body string) string // Replaces occurences of @variable with @replace and thus will remove the variable from @body
-	ReplaceInLines(variable string, replacement string, lines []string)    // Replaces occurences of @variable with @replace and thus will remove the variable from @body
-	InsertInLine(variable string, insertment string, line string) string   //Inserts @variable at places where @variable occurs without removing the variable in @body
-	InsertInLines(variable string, insertment string, lines []string)      //Inserts @variable at places where @variable occurs without removing the variable in @body
+	ReplaceInLine(variable string, replacement string, line string) string // Replaces occurences of @variable with @replace and thus will remove the variable from @line
+	ReplaceInLines(variable string, replacement string, lines []string)    // Replaces occurences of @variable with @replace and thus will remove the variable from @lines
+	InsertInLine(variable string, insertment string, line string) string   //Inserts @variable at places where @variable occurs without removing the variable in @line
+	InsertInLines(variable string, insertment string, lines []string)      //Inserts @variable at places where @variable occurs without removing the variable in @lines
 }
 
 type basicReplacer struct {
@@ -22,16 +22,16 @@ func NewReplacer() Replacer {
 	return &basicReplacer{}
 }
 
-func (v *basicReplacer) ReplaceInLine(variable string, replacement string, body string) string {
+func (v *basicReplacer) ReplaceInLine(variable string, replacement string, line string) string {
 	for true {
-		n := strings.Count(body, variable)
+		n := strings.Count(line, variable)
 		if n > 0 {
-			body = strings.Replace(body, variable, replacement, n)
+			line = strings.Replace(line, variable, replacement, n)
 		} else {
 			break
 		}
 	}
-	return body
+	return line
 }
 
 func (v *basicReplacer) ReplaceInLines(variable string, replacement string, lines []string) {
@@ -40,23 +40,23 @@ func (v *basicReplacer) ReplaceInLines(variable string, replacement string, line
 	}
 }
 
-func (v *basicReplacer) InsertInLine(variable string, insertment string, body string) string {
+func (v *basicReplacer) InsertInLine(variable string, insertment string, line string) string {
 	piv := -1
-	pos := strings.Index(body, variable)
+	pos := strings.Index(line, variable)
 	for pos > piv {
 		if pos == 0 {
-			body = insertment + body
+			line = insertment + line
 		} else if pos > 0 {
-			body = body[0:pos] + insertment + body[pos:]
+			line = line[0:pos] + insertment + line[pos:]
 		} else {
 			break
 		}
 		pos += len(insertment)
 		pos += len(variable)
 		piv = pos
-		pos = strings.Index(body, variable)
+		pos = strings.Index(line, variable)
 	}
-	return body
+	return line
 }
 func (v *basicReplacer) InsertInLines(variable string, replacement string, lines []string) {
 	for i, line := range lines {
