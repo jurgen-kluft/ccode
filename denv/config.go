@@ -1,14 +1,17 @@
 package denv
 
-import "github.com/jurgen-kluft/xcode/vars"
+import (
+	"github.com/jurgen-kluft/xcode/items"
+	"github.com/jurgen-kluft/xcode/vars"
+)
 
 // Config represents a project build configuration, like 'Debug' or 'Release'
 type Config struct {
 	Name         string
-	Defines      ItemsList
-	IncludeDirs  ItemsList
-	LibraryDirs  ItemsList
-	LibraryFiles ItemsList
+	Defines      items.List
+	IncludeDirs  items.List
+	LibraryDirs  items.List
+	LibraryFiles items.List
 	LibraryFile  string
 }
 
@@ -27,10 +30,38 @@ func (set ConfigSet) HasConfig(configname string) bool {
 
 // DefaultConfigs $(Configuration)_$(Platform)
 var DefaultConfigs = []Config{
-	{Name: "DevDebugStatic", Defines: DevDebugDefines, IncludeDirs: "source\\main\\include", LibraryDirs: "target\\$(Configuration)_$(Platform)_$(ToolSet)", LibraryFiles: "", LibraryFile: "${Name}_$(Configuration)_$(Platform)_$(ToolSet).lib"},
-	{Name: "DevReleaseStatic", Defines: DevReleaseDefines, IncludeDirs: "source\\main\\include", LibraryDirs: "target\\$(Configuration)_$(Platform)_$(ToolSet)", LibraryFiles: "", LibraryFile: "${Name}_$(Configuration)_$(Platform)_$(ToolSet).lib"},
-	{Name: "TestDebugStatic", Defines: TestDebugDefines, IncludeDirs: "source\\main\\include", LibraryDirs: "target\\$(Configuration)_$(Platform)_$(ToolSet)", LibraryFiles: "", LibraryFile: "${Name}_$(Configuration)_$(Platform)_$(ToolSet).lib"},
-	{Name: "TestReleaseStatic", Defines: TestReleaseDefines, IncludeDirs: "source\\main\\include", LibraryDirs: "target\\$(Configuration)_$(Platform)_$(ToolSet)", LibraryFiles: "", LibraryFile: "${Name}_$(Configuration)_$(Platform)_$(ToolSet).lib"},
+	{
+		Name:         "DevDebugStatic",
+		Defines:      DevDebugDefines,
+		IncludeDirs:  items.NewList(Fixpath("source\\main\\include"), ";"),
+		LibraryDirs:  items.NewList(Fixpath("target\\$(Configuration)_$(Platform)_$(ToolSet)"), ";"),
+		LibraryFiles: items.NewList("", ";"),
+		LibraryFile:  "${Name}_$(Configuration)_$(Platform)_$(ToolSet).lib",
+	},
+	{
+		Name:         "DevReleaseStatic",
+		Defines:      DevReleaseDefines,
+		IncludeDirs:  items.NewList(Fixpath("source\\main\\include"), ";"),
+		LibraryDirs:  items.NewList(Fixpath("target\\$(Configuration)_$(Platform)_$(ToolSet)"), ";"),
+		LibraryFiles: items.NewList("", ";"),
+		LibraryFile:  "${Name}_$(Configuration)_$(Platform)_$(ToolSet).lib",
+	},
+	{
+		Name:         "TestDebugStatic",
+		Defines:      TestDebugDefines,
+		IncludeDirs:  items.NewList(Fixpath("source\\main\\include"), ";"),
+		LibraryDirs:  items.NewList(Fixpath("target\\$(Configuration)_$(Platform)_$(ToolSet)"), ";"),
+		LibraryFiles: items.NewList("", ";"),
+		LibraryFile:  "${Name}_$(Configuration)_$(Platform)_$(ToolSet).lib",
+	},
+	{
+		Name:         "TestReleaseStatic",
+		Defines:      TestReleaseDefines,
+		IncludeDirs:  items.NewList(Fixpath("source\\main\\include"), ";"),
+		LibraryDirs:  items.NewList(Fixpath("target\\$(Configuration)_$(Platform)_$(ToolSet)"), ";"),
+		LibraryFiles: items.NewList("", ";"),
+		LibraryFile:  "${Name}_$(Configuration)_$(Platform)_$(ToolSet).lib",
+	},
 }
 
 // CopyStringArray makes a copy of an array of strings
@@ -44,7 +75,7 @@ func CopyStringArray(strarray []string) []string {
 
 // CopyConfig makes a deep copy of a Config
 func CopyConfig(config Config) *Config {
-	newconfig := &Config{Name: config.Name, IncludeDirs: "", LibraryDirs: "", LibraryFiles: "", LibraryFile: ""}
+	newconfig := &Config{Name: config.Name, Defines: config.Defines, IncludeDirs: items.NewList("", ";"), LibraryDirs: items.NewList("", ";"), LibraryFiles: items.NewList("", ";"), LibraryFile: ""}
 	newconfig.IncludeDirs = config.IncludeDirs
 	newconfig.LibraryDirs = config.LibraryDirs
 	newconfig.LibraryFiles = config.LibraryFiles
@@ -54,9 +85,10 @@ func CopyConfig(config Config) *Config {
 
 // ReplaceVars replaces variables that are present in members of the Config
 func (c *Config) ReplaceVars(v vars.Variables, r vars.Replacer) {
-	c.IncludeDirs = ItemsList(v.ReplaceInLine(r, string(c.IncludeDirs)))
-	c.LibraryDirs = ItemsList(v.ReplaceInLine(r, string(c.LibraryDirs)))
-	c.LibraryFiles = ItemsList(v.ReplaceInLine(r, string(c.LibraryFiles)))
+	v.ReplaceInLines(r, c.Defines.Items)
+	v.ReplaceInLines(r, c.IncludeDirs.Items)
+	v.ReplaceInLines(r, c.LibraryDirs.Items)
+	v.ReplaceInLines(r, c.LibraryFiles.Items)
 	c.LibraryFile = v.ReplaceInLine(r, c.LibraryFile)
 }
 

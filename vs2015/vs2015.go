@@ -2,13 +2,14 @@ package vs2015
 
 import (
 	"fmt"
+	"os"
 	"strings"
 
 	"github.com/jurgen-kluft/xcode/denv"
+	"github.com/jurgen-kluft/xcode/items"
 	"github.com/jurgen-kluft/xcode/uid"
 	"github.com/jurgen-kluft/xcode/vars"
 
-	"path"
 	"path/filepath"
 )
 
@@ -48,13 +49,21 @@ func addProjectVariables(p *denv.Project, isdep bool, v vars.Variables) {
 
 	for _, platform := range p.Platforms {
 		for _, config := range p.Configs {
-			path := ""
-			if isdep {
-				path = p.Path
-			}
-			v.AddVar(fmt.Sprintf("%s:INCLUDE_DIRS[%s][%s]", p.Name, platform, config.Name), string(config.IncludeDirs.Prefix(path, ";", denv.PathPrefixer)))
-			v.AddVar(fmt.Sprintf("%s:LIBRARY_DIRS[%s][%s]", p.Name, platform, config.Name), string(config.LibraryDirs.Prefix(path, ";", denv.PathPrefixer)))
-			v.AddVar(fmt.Sprintf("%s:LIBRARY_FILES[%s][%s]", p.Name, platform, config.Name), string(config.LibraryFiles.Prefix(path, ";", denv.PathPrefixer)))
+			path := p.Path
+
+			includes := config.IncludeDirs.Prefix(path, items.PathPrefixer)
+			includes = includes.Add("%(AdditionalIncludeDirectories)")
+			v.AddVar(fmt.Sprintf("%s:INCLUDE_DIRS[%s][%s]", p.Name, platform, config.Name), includes.String())
+
+			libdirs := config.LibraryDirs.Prefix(path, items.PathPrefixer)
+			libdirs = libdirs.Add("%(AdditionalLibraryDirectories)")
+			v.AddVar(fmt.Sprintf("%s:LIBRARY_DIRS[%s][%s]", p.Name, platform, config.Name), libdirs.String())
+
+			libfiles := config.LibraryFiles.Add("%(AdditionalLibraryFiles)")
+			v.AddVar(fmt.Sprintf("%s:LIBRARY_FILES[%s][%s]", p.Name, platform, config.Name), libfiles.String())
+
+			defines := config.Defines.Add("%(PreprocessorDefinitions)")
+			v.AddVar(fmt.Sprintf("%s:DEFINES[%s][%s]", p.Name, platform, config.Name), defines.String())
 		}
 	}
 
@@ -85,19 +94,17 @@ func addProjectVariables(p *denv.Project, isdep bool, v vars.Variables) {
 
 // SetProjectPath will set correct paths for the dependencies
 func setupProjectPaths(p *denv.Project) {
-	if filepath.IsAbs(p.Path) == false {
-		fmt.Println("is not abs?: " + p.Path)
-		p.Path = ""
-	}
+	p.Path = ""
 	for _, d := range p.Dependencies {
-		d.Path = path.Join("vendor", d.Path)
+		d.Path = strings.Replace(d.Path, "\\", "/", -1)
+		d.Path = filepath.Join("vendor", d.Path)
 	}
 }
 
 // CPPprojectID is a GUID that is defining a C++ project in Visual Studio
 var CPPprojectID = "8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942"
 
-// GenerateVisualStudio2015Project generates a Visual Studio 2015 project (.vcxproj) file
+// generateVisualStudio2015Project generates a Visual Studio 2015 project (.vcxproj) file
 func generateVisualStudio2015Project(prj *denv.Project, vars vars.Variables, replacer vars.Replacer, writer denv.ProjectWriter) {
 
 	writer.WriteLn(`<?xml version="1.0" encoding="utf-8"?>`)
@@ -163,7 +170,7 @@ func generateVisualStudio2015Project(prj *denv.Project, vars vars.Variables, rep
 			if err == nil {
 				replacer.ReplaceInLines("${USE_DEBUG_LIBS}", usedebuglibs, configuration)
 			} else {
-				fmt.Println("ERROR: could not find variable " + varkey)
+				//fmt.Println("ERROR: could not find variable " + varkey)
 			}
 
 			replacer.ReplaceInLines("${PLATFORM}", platform, configuration)
@@ -188,9 +195,9 @@ func generateVisualStudio2015Project(prj *denv.Project, vars vars.Variables, rep
 		platformprops := []string{}
 		platformprops = append(platformprops, `+<PropertyGroup Condition="'$(Platform)'=='${PLATFORM}'">`)
 		platformprops = append(platformprops, `++<LinkIncremental>true</LinkIncremental>`)
-		platformprops = append(platformprops, `++<OutDir>$(SolutionDir)target\$(ProjectName)_$(Config)_$(Platform)_$(ToolSet)\</OutDir>`)
-		platformprops = append(platformprops, `++<IntDir>$(SolutionDir)target\$(ProjectName)_$(Config)_$(Platform)\</IntDir>`)
-		platformprops = append(platformprops, `++<TargetName>$(ProjectName)_$(Config)_$(Platform)_$(ToolSet)</TargetName>`)
+		platformprops = append(platformprops, `++<OutDir>$(SolutionDir)target\$(Config)_$(Platform)_$(ToolSet)\</OutDir>`)
+		platformprops = append(platformprops, `++<IntDir>$(SolutionDir)target\$(Config)_$(Platform)_$(ToolSet)\</IntDir>`)
+		platformprops = append(platformprops, `++<TargetName>$(Config)_$(Platform)_$(ToolSet)</TargetName>`)
 		platformprops = append(platformprops, `++<ExtensionsToDeleteOnClean>*.obj%3b*.d%3b*.map%3b*.lst%3b*.pch%3b$(TargetPath)</ExtensionsToDeleteOnClean>`)
 		platformprops = append(platformprops, `++<GenerateManifest>false</GenerateManifest>`)
 		platformprops = append(platformprops, `+</PropertyGroup>`)
@@ -211,8 +218,8 @@ func generateVisualStudio2015Project(prj *denv.Project, vars vars.Variables, rep
 			compileandlink := []string{}
 			compileandlink = append(compileandlink, `+<ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='${CONFIG}|${PLATFORM}'">`)
 			compileandlink = append(compileandlink, `++<ClCompile>`)
-			compileandlink = append(compileandlink, `+++<PreprocessorDefinitions>${DEFINES};%(PreprocessorDefinitions)</PreprocessorDefinitions>`)
-			compileandlink = append(compileandlink, `+++<AdditionalIncludeDirectories>${INCLUDE_DIRS};%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>`)
+			compileandlink = append(compileandlink, `+++<PreprocessorDefinitions>${DEFINES}</PreprocessorDefinitions>`)
+			compileandlink = append(compileandlink, `+++<AdditionalIncludeDirectories>${INCLUDE_DIRS}</AdditionalIncludeDirectories>`)
 			compileandlink = append(compileandlink, `+++<WarningLevel>Level3</WarningLevel>`)
 			compileandlink = append(compileandlink, `+++<Optimization>${OPTIMIZATION}</Optimization>`)
 			compileandlink = append(compileandlink, `+++<PrecompiledHeader>NotUsing</PrecompiledHeader>`)
@@ -240,17 +247,18 @@ func generateVisualStudio2015Project(prj *denv.Project, vars vars.Variables, rep
 			configitems := []string{"DEFINES", "INCLUDE_DIRS", "LIBRARY_DIRS", "LIBRARY_FILES"}
 			for _, configitem := range configitems {
 				varkeystr := fmt.Sprintf("${%s}", configitem)
-				varvalues := []string{}
+				varlist := items.NewList("", ";")
 				for _, project := range projects {
 					varkey := fmt.Sprintf("%s:%s[%s][%s]", project.Name, configitem, platform, config.Name)
-					varvalue, err := vars.GetVar(varkey)
+					varitem, err := vars.GetVar(varkey)
 					if err == nil {
-						varvalues = append(varvalues, varvalue)
+						varlist = varlist.Add(varitem)
 					} else {
-						fmt.Println("ERROR: could not find variable " + varkey)
+						//fmt.Println("ERROR: could not find variable " + varkey)
 					}
 				}
-				replacer.InsertInLines(varkeystr, strings.Join(varvalues, ";"), compileandlink)
+				varset := items.ListToSet(varlist)
+				replacer.InsertInLines(varkeystr, varset.String(), compileandlink)
 				replacer.ReplaceInLines(varkeystr, "", compileandlink)
 			}
 
@@ -300,52 +308,38 @@ func generateVisualStudio2015Project(prj *denv.Project, vars vars.Variables, rep
 	writer.WriteLn(`</Project>`)
 }
 
-// GenerateVisualStudio2015ProjectFilters generates a Visual Studio 2015 project filters (.vcxproj.filters) file
+func generateFilters(prjguid string, files []string) (items map[string]string, filters map[string]string) {
+	filters = make(map[string]string)
+	items = make(map[string]string)
+	for _, hdrfile := range files {
+		dirpath := filepath.Dir(hdrfile)
+		guid := uid.GetGUID(dirpath)
+		filters[dirpath] = guid
+		items[hdrfile] = dirpath
+
+		// We need to add every 'depth' of the path
+		for true {
+			//fmt.Printf("dir:\"%s\" --> \"%s\" | ", dirpath, filepath.Dir(dirpath))
+			dirpath = filepath.Dir(dirpath)
+			if dirpath == "." || dirpath == "/" {
+				break
+			}
+			// Generate a specific GUID for this entry
+			guid = uid.GetGUID(prjguid + dirpath)
+			filters[dirpath] = guid
+		}
+		//fmt.Println("")
+	}
+	return
+}
+
+// generateVisualStudio2015ProjectFilters generates a Visual Studio 2015 project filters (.vcxproj.filters) file
 func generateVisualStudio2015ProjectFilters(prj *denv.Project, writer denv.ProjectWriter) {
 	writer.WriteLn(`<?xml version="1.0" encoding="utf-8"?>`)
 	writer.WriteLn(`<Project ToolsVersion="4.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">`)
 
-	includefilters := make(map[string]string)
-	includes := make(map[string]string)
-	for _, hdrfile := range prj.HdrFiles.Files {
-		dirpath := filepath.Dir(hdrfile)
-		guid := uid.GetGUID(dirpath)
-		includefilters[dirpath] = guid
-		includes[hdrfile] = dirpath
-
-		// We need to add every 'depth' of the path
-		for true {
-			//fmt.Printf("dir:\"%s\" --> \"%s\" | ", dirpath, filepath.Dir(dirpath))
-			dirpath = filepath.Dir(dirpath)
-			if dirpath == "." {
-				break
-			}
-			guid = uid.GetGUID(dirpath)
-			includefilters[dirpath] = guid
-		}
-		//fmt.Println("")
-	}
-
-	cppfilters := make(map[string]string)
-	cpp := make(map[string]string)
-	for _, srcfile := range prj.SrcFiles.Files {
-		dirpath := filepath.Dir(srcfile)
-		guid := uid.GetGUID(dirpath)
-		cppfilters[dirpath] = guid
-		cpp[srcfile] = dirpath
-
-		// We need to add every 'depth' of the path
-		for true {
-			//fmt.Printf("dir:\"%s\" --> \"%s\" | ", dirpath, filepath.Dir(dirpath))
-			dirpath = filepath.Dir(dirpath)
-			if dirpath == "." {
-				break
-			}
-			guid = uid.GetGUID(dirpath)
-			cppfilters[dirpath] = guid
-		}
-		//fmt.Println("")
-	}
+	includes, includefilters := generateFilters(prj.Name+prj.GUID, prj.HdrFiles.Files)
+	cpp, cppfilters := generateFilters(prj.Name+prj.GUID, prj.SrcFiles.Files)
 
 	writer.WriteLn("+<ItemGroup>")
 	for k, v := range includefilters {
@@ -385,9 +379,14 @@ func generateVisualStudio2015ProjectFilters(prj *denv.Project, writer denv.Proje
 func GenerateVisualStudio2015Solution(p *denv.Project) {
 
 	setupProjectPaths(p)
+	cwd, _ := os.Getwd()
 
 	writer := &denv.ProjectTextWriter{}
-	writer.Open(path.Join(p.Path, p.Name+".sln"))
+	slnfilepath := filepath.Join(cwd, p.Path, p.Name+".sln")
+	if writer.Open(slnfilepath) != nil {
+		fmt.Printf("Error opening file '%s'", slnfilepath)
+		return
+	}
 
 	writer.WriteLn("Microsoft Visual Studio Solution File, Format Version 12.00")
 	writer.WriteLn("# Visual Studio 14")
@@ -413,10 +412,12 @@ func GenerateVisualStudio2015Solution(p *denv.Project) {
 
 	// Main project
 	addProjectVariables(p, false, variables)
+	p.ReplaceVars(variables, replacer)
 
 	// And dependency projects
 	for _, prj := range p.Dependencies {
 		addProjectVariables(prj, true, variables)
+		prj.ReplaceVars(variables, replacer)
 	}
 	variables.Print()
 
@@ -430,20 +431,20 @@ func GenerateVisualStudio2015Solution(p *denv.Project) {
 	for _, prj := range projects {
 		// Generate the project file
 		prjwriter := &denv.ProjectTextWriter{}
-		prjwriter.Open(path.Join(prj.Path, prj.Name+".vcxproj"))
+		prjwriter.Open(filepath.Join(cwd, prj.Path, prj.Name+".vcxproj"))
 		generateVisualStudio2015Project(prj, variables, replacer, prjwriter)
 		prjwriter.Close()
 
 		// Generate the project filters file
 		prjwriter = &denv.ProjectTextWriter{}
-		prjwriter.Open(path.Join(prj.Path, prj.Name+".vcxproj.filters"))
+		prjwriter.Open(filepath.Join(cwd, prj.Path, prj.Name+".vcxproj.filters"))
 		generateVisualStudio2015ProjectFilters(prj, prjwriter)
 		prjwriter.Close()
 	}
 
 	for _, prj := range projects {
-		projectbeginfmt := "Project(\"{%s}\") = \"%s\", \"%s\\%s.vcxproj\", \"{%s}\""
-		projectbegin := fmt.Sprintf(projectbeginfmt, CPPprojectID, prj.Name, prj.Path, prj.Name, prj.GUID)
+		projectbeginfmt := "Project(\"{%s}\") = \"%s\", \"%s\", \"{%s}\""
+		projectbegin := fmt.Sprintf(projectbeginfmt, CPPprojectID, prj.Name, denv.Fixpath(filepath.Join(prj.Path, prj.Name+".vcxproj")), prj.GUID)
 		writer.WriteLn(projectbegin)
 		if len(prj.Dependencies) > 0 {
 			projectsessionbegin := "+ProjectSection(ProjectDependencies) = postProject"

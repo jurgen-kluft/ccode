@@ -1,6 +1,7 @@
 package denv
 
 import (
+	"fmt"
 	"os"
 	"strings"
 )
@@ -15,8 +16,9 @@ type ProjectTextWriter struct {
 }
 
 func (writer *ProjectTextWriter) Open(filepath string) (err error) {
-	writer.fhnd, err = os.OpenFile(filepath, os.O_CREATE|os.O_TRUNC, 0)
+	writer.fhnd, err = os.OpenFile(filepath, os.O_CREATE|os.O_TRUNC|os.O_WRONLY, 0666)
 	if err != nil {
+		fmt.Printf("Error opening file: '%s' with error ''%s'\n", filepath, err.Error())
 		return err
 	}
 	return nil
@@ -27,7 +29,7 @@ func (writer *ProjectTextWriter) Close() (err error) {
 }
 
 const (
-	cTabChar     = "\t"
+	cTabChar     = "   "
 	cNewLineChar = "\n"
 )
 
@@ -36,6 +38,7 @@ func (writer *ProjectTextWriter) WriteLn(line string) (err error) {
 	for offset < len(line) && line[offset] == '+' {
 		_, err = writer.fhnd.WriteString(cTabChar)
 		if err != nil {
+			fmt.Printf("Error writing to file with error '%s'", err.Error())
 			return err
 		}
 		offset++
@@ -43,6 +46,7 @@ func (writer *ProjectTextWriter) WriteLn(line string) (err error) {
 	if offset < len(line) {
 		_, err = writer.fhnd.WriteString(line[offset:])
 		if err != nil {
+			fmt.Printf("Error writing to file with error '%s'", err.Error())
 			return err
 		}
 		_, err = writer.fhnd.WriteString(cNewLineChar)
@@ -55,7 +59,7 @@ func (writer *ProjectTextWriter) WriteLns(lines []string) (err error) {
 		line = strings.Trim(line, " ")
 		// Skip empty lines
 		if len(line) > 0 {
-			writer.WriteLn(line)
+			err = writer.WriteLn(line)
 		}
 	}
 	return err

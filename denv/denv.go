@@ -1,5 +1,10 @@
 package denv
 
+import (
+	"os"
+	"strings"
+)
+
 // IDE is an enumeration for all possible IDE's that are supported
 type IDE int
 
@@ -10,3 +15,9 @@ const (
 	VS2015       IDE = VISUALSTUDIO | 2015
 	CODELITE     IDE = 0x70000000
 )
+
+// Fixpath will fix forward/backward slashes to match the current OS
+func Fixpath(path string) string {
+	path = strings.Replace(path, "\\", string(os.PathSeparator), -1)
+	return path
+}

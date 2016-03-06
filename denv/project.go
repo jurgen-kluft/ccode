@@ -2,7 +2,7 @@ package denv
 
 import (
 	"fmt"
-	"path"
+	"path/filepath"
 	"strings"
 
 	"github.com/jurgen-kluft/xcode/glob"
@@ -24,10 +24,10 @@ type ProjectType int
 const (
 	// StaticLibrary is a library that can statically be linked with
 	StaticLibrary ProjectType = iota // .lib, .a
-	// DynamicLibrary is a library that can be dynamically linked with, like a .DLL
-	DynamicLibrary ProjectType = iota // .dll
+	// SharedLibrary is a library that can be dynamically linked with, like a .DLL
+	SharedLibrary ProjectType = iota // .dll
 	// Executable is an application that can be run
-	Executable ProjectType = iota // .exe
+	Executable ProjectType = iota // .exe, .app
 )
 
 // Project is a structure that holds all the information that defines a project in an IDE
@@ -72,6 +72,7 @@ func (prj *Project) ReplaceVars(v vars.Variables, r vars.Replacer) {
 	for _, config := range prj.Configs {
 		config.ReplaceVars(v, r)
 	}
+	v.DelVar("${Name}")
 }
 
 // SetupDefaultCppProject returns a default C++ project
@@ -79,16 +80,18 @@ func (prj *Project) ReplaceVars(v vars.Variables, r vars.Replacer) {
 //              SetupDefaultCppProject("xbase", "github.com\\jurgen-kluft")
 //
 func SetupDefaultCppProject(name string, url string) *Project {
+	url = Fixpath(url)
+
 	project := &Project{Name: name}
 	project.GUID = uid.GetGUID(project.Name)
-	project.Path = path.Join(url, project.Name)
+	project.Path = filepath.Join(url, project.Name)
 	project.Language = "C++"
 	project.Type = StaticLibrary
 
 	fmt.Println(project.Path)
 
-	project.SrcFiles = &Files{GlobPaths: []string{"source\\main\\^**\\*.cpp"}, VirtualPaths: []string{}, Files: []string{}}
-	project.HdrFiles = &Files{GlobPaths: []string{"source\\main\\include\\^**\\*.h"}}
+	project.SrcFiles = &Files{GlobPaths: []string{Fixpath("source\\main\\^**\\*.cpp")}, VirtualPaths: []string{}, Files: []string{}}
+	project.HdrFiles = &Files{GlobPaths: []string{Fixpath("source\\main\\include\\^**\\*.h")}}
 
 	project.Platforms = SupportedPlatforms
 	project.Configs = GetDefaultConfigs()
@@ -102,8 +105,11 @@ func (f *Files) GlobFiles(dirpath string) {
 	// Glob all the on-disk files
 	for _, g := range f.GlobPaths {
 		pp := strings.Split(g, "^")
-		ppath := path.Join(dirpath, pp[0])
+		ppath := filepath.Join(dirpath, pp[0])
 		f.Files, _ = glob.GlobFiles(ppath, pp[1])
+		for i, file := range f.Files {
+			f.Files[i] = filepath.Join(pp[0], file)
+		}
 	}
 
 	// Generate the virtual files

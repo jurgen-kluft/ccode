@@ -26,3 +26,11 @@
 *.exe
 *.out
 *.app
+
+# Visual Studio
+*.vcxproj
+*.vcxproj.filters
+*.sln
+
+# Directories
+.idea
