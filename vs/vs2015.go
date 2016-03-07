@@ -1,4 +1,4 @@
-package vs2015
+package vs
 
 import (
 	"fmt"
@@ -12,24 +12,6 @@ import (
 
 	"path/filepath"
 )
-
-// IsVisualStudio returns true if @ide is matching a Visual Studio identifier
-func IsVisualStudio(ide string) bool {
-	vs := GetVisualStudio(ide)
-	return vs != -1
-}
-
-// GetVisualStudio returns the IDE type from a given string
-func GetVisualStudio(ide string) denv.IDE {
-	if ide == "VS2015" {
-		return denv.VS2015
-	} else if ide == "VS2013" {
-		return denv.VS2013
-	} else if ide == "VS2012" {
-		return denv.VS2012
-	}
-	return -1
-}
 
 // AddProjectVariables adds variables from the Project information
 //   Example for 'xhash' project with 'xbase' as a dependency:
@@ -45,12 +27,15 @@ func GetVisualStudio(ide string) denv.IDE {
 //
 func addProjectVariables(p *denv.Project, isdep bool, v vars.Variables) {
 	v.AddVar(p.Name+":GUID", p.GUID)
-	v.AddVar(p.Name+":ROOT_DIR", p.Path)
+	v.AddVar(p.Name+":ROOT_DIR", p.PackagePath)
+
+	path, _ := filepath.Rel(p.ProjectPath, p.PackagePath)
+
+	v.AddVar(p.Name+":OUTDIR", filepath.Join(path, "target", p.Name, "bin", "$(Configuration)_$(Platform)_$(PlatformToolset)"))
+	v.AddVar(p.Name+":INTDIR", filepath.Join(path, "target", p.Name, "obj", "$(Configuration)_$(Platform)_$(PlatformToolset)"))
 
 	for _, platform := range p.Platforms {
 		for _, config := range p.Configs {
-			path := p.Path
-
 			includes := config.IncludeDirs.Prefix(path, items.PathPrefixer)
 			includes = includes.Add("%(AdditionalIncludeDirectories)")
 			v.AddVar(fmt.Sprintf("%s:INCLUDE_DIRS[%s][%s]", p.Name, platform, config.Name), includes.String())
@@ -92,12 +77,16 @@ func addProjectVariables(p *denv.Project, isdep bool, v vars.Variables) {
 	}
 }
 
-// SetProjectPath will set correct paths for the dependencies
+// setupProjectPaths will set correct paths for the main and dependency packages
+// Note: This currently assumes that the dependency packages are in the vendor
+//       folder relative to the main package.
+// All project and workspace files will be written in the root of the main package
 func setupProjectPaths(p *denv.Project) {
-	p.Path = ""
+	p.PackagePath, _ = os.Getwd()
+	p.ProjectPath, _ = os.Getwd()
 	for _, d := range p.Dependencies {
-		d.Path = strings.Replace(d.Path, "\\", "/", -1)
-		d.Path = filepath.Join("vendor", d.Path)
+		d.PackagePath = filepath.Join(p.PackagePath, "vendor", d.PackageURL, d.Name)
+		d.ProjectPath = p.ProjectPath
 	}
 }
 
@@ -195,8 +184,8 @@ func generateVisualStudio2015Project(prj *denv.Project, vars vars.Variables, rep
 		platformprops := []string{}
 		platformprops = append(platformprops, `+<PropertyGroup Condition="'$(Platform)'=='${PLATFORM}'">`)
 		platformprops = append(platformprops, `++<LinkIncremental>true</LinkIncremental>`)
-		platformprops = append(platformprops, `++<OutDir>$(SolutionDir)target\$(Config)_$(Platform)_$(ToolSet)\</OutDir>`)
-		platformprops = append(platformprops, `++<IntDir>$(SolutionDir)target\$(Config)_$(Platform)_$(ToolSet)\</IntDir>`)
+		platformprops = append(platformprops, `++<OutDir>${OutDir}</OutDir>`)
+		platformprops = append(platformprops, `++<IntDir>${IntDir}</IntDir>`)
 		platformprops = append(platformprops, `++<TargetName>$(Config)_$(Platform)_$(ToolSet)</TargetName>`)
 		platformprops = append(platformprops, `++<ExtensionsToDeleteOnClean>*.obj%3b*.d%3b*.map%3b*.lst%3b*.pch%3b$(TargetPath)</ExtensionsToDeleteOnClean>`)
 		platformprops = append(platformprops, `++<GenerateManifest>false</GenerateManifest>`)
@@ -379,10 +368,9 @@ func generateVisualStudio2015ProjectFilters(prj *denv.Project, writer denv.Proje
 func GenerateVisualStudio2015Solution(p *denv.Project) {
 
 	setupProjectPaths(p)
-	cwd, _ := os.Getwd()
 
 	writer := &denv.ProjectTextWriter{}
-	slnfilepath := filepath.Join(cwd, p.Path, p.Name+".sln")
+	slnfilepath := filepath.Join(p.ProjectPath, p.Name+".sln")
 	if writer.Open(slnfilepath) != nil {
 		fmt.Printf("Error opening file '%s'", slnfilepath)
 		return
@@ -423,28 +411,28 @@ func GenerateVisualStudio2015Solution(p *denv.Project) {
 
 	// Glob all the source and header files for every project
 	for _, prj := range projects {
-		prj.SrcFiles.GlobFiles(prj.Path)
-		prj.HdrFiles.GlobFiles(prj.Path)
+		prj.SrcFiles.GlobFiles(prj.PackagePath)
+		prj.HdrFiles.GlobFiles(prj.PackagePath)
 	}
 
 	// Generate all the projects
 	for _, prj := range projects {
 		// Generate the project file
 		prjwriter := &denv.ProjectTextWriter{}
-		prjwriter.Open(filepath.Join(cwd, prj.Path, prj.Name+".vcxproj"))
+		prjwriter.Open(filepath.Join(prj.ProjectPath, prj.Name+".vcxproj"))
 		generateVisualStudio2015Project(prj, variables, replacer, prjwriter)
 		prjwriter.Close()
 
 		// Generate the project filters file
 		prjwriter = &denv.ProjectTextWriter{}
-		prjwriter.Open(filepath.Join(cwd, prj.Path, prj.Name+".vcxproj.filters"))
+		prjwriter.Open(filepath.Join(prj.ProjectPath, prj.Name+".vcxproj.filters"))
 		generateVisualStudio2015ProjectFilters(prj, prjwriter)
 		prjwriter.Close()
 	}
 
 	for _, prj := range projects {
 		projectbeginfmt := "Project(\"{%s}\") = \"%s\", \"%s\", \"{%s}\""
-		projectbegin := fmt.Sprintf(projectbeginfmt, CPPprojectID, prj.Name, denv.Fixpath(filepath.Join(prj.Path, prj.Name+".vcxproj")), prj.GUID)
+		projectbegin := fmt.Sprintf(projectbeginfmt, CPPprojectID, prj.Name, denv.Path(filepath.Join(prj.ProjectPath, prj.Name+".vcxproj")), prj.GUID)
 		writer.WriteLn(projectbegin)
 		if len(prj.Dependencies) > 0 {
 			projectsessionbegin := "+ProjectSection(ProjectDependencies) = postProject"

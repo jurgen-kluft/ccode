@@ -1,8 +1,8 @@
-package vs2015_test
+package vs_test
 
 import (
 	"github.com/jurgen-kluft/xcode/denv"
-	"github.com/jurgen-kluft/xcode/vs2015"
+	"github.com/jurgen-kluft/xcode/vs"
 	"os"
 	"testing"
 )
@@ -10,15 +10,17 @@ import (
 // (projectname string, sourcefiles []string, headerfiles []string, platforms []string, configs []string, depprojectnames []string, vars vars.Variables, replacer vars.Replacer, writer ProjectWriter) {
 func TestSimpleProject(t *testing.T) {
 
-	//xunittestproject := denv.SetupDefaultCppProject("xunittest", "github.com\\jurgen-kluft")
+	//xunittestproject := denv.SetupDefaultCppProject("xunittest", "github.com/jurgen-kluft")
 	xbaseproject := denv.SetupDefaultCppProject("xbase", "github.com/jurgen-kluft")
 	//xbaseproject.Dependencies = append(xbaseproject.Dependencies, xunittestproject)
 
-	xtestproject := denv.SetupDefaultCppProject("xtest", "/Users/Jurgen/golang/src/github.com/jurgen-kluft")
+	xtestproject := denv.SetupDefaultCppProject("xtest", "github.com/jurgen-kluft")
 	//xtestproject.Dependencies = append(xtestproject.Dependencies, xunittestproject)
 	xtestproject.Dependencies = append(xtestproject.Dependencies, xbaseproject)
 
-	os.Chdir(xtestproject.Path)
+	// Since we are running the test at the wrong location we need to change
+	// the current work directory to the actual package directory
+	os.Chdir("/Users/Jurgen/golang/src/github.com/jurgen-kluft/xtest")
 
-	vs2015.GenerateVisualStudio2015Solution(xtestproject)
+	vs.GenerateVisualStudio2015Solution(xtestproject)
 }

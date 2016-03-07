@@ -1,7 +1,6 @@
 package denv
 
 import (
-	"fmt"
 	"path/filepath"
 	"strings"
 
@@ -32,11 +31,13 @@ const (
 
 // Project is a structure that holds all the information that defines a project in an IDE
 type Project struct {
+	ProjectPath  string
+	PackagePath  string
+	PackageURL   string
 	Name         string
 	Type         ProjectType
 	Author       string
 	GUID         string
-	Path         string
 	Language     string
 	Platforms    []string
 	HdrFiles     *Files
@@ -79,19 +80,15 @@ func (prj *Project) ReplaceVars(v vars.Variables, r vars.Replacer) {
 // Example:
 //              SetupDefaultCppProject("xbase", "github.com\\jurgen-kluft")
 //
-func SetupDefaultCppProject(name string, url string) *Project {
-	url = Fixpath(url)
-
+func SetupDefaultCppProject(name string, URL string) *Project {
 	project := &Project{Name: name}
 	project.GUID = uid.GetGUID(project.Name)
-	project.Path = filepath.Join(url, project.Name)
+	project.PackageURL = URL
 	project.Language = "C++"
 	project.Type = StaticLibrary
 
-	fmt.Println(project.Path)
-
-	project.SrcFiles = &Files{GlobPaths: []string{Fixpath("source\\main\\^**\\*.cpp")}, VirtualPaths: []string{}, Files: []string{}}
-	project.HdrFiles = &Files{GlobPaths: []string{Fixpath("source\\main\\include\\^**\\*.h")}}
+	project.SrcFiles = &Files{GlobPaths: []string{Path("source\\main\\^**\\*.cpp")}, VirtualPaths: []string{}, Files: []string{}}
+	project.HdrFiles = &Files{GlobPaths: []string{Path("source\\main\\include\\^**\\*.h")}}
 
 	project.Platforms = SupportedPlatforms
 	project.Configs = GetDefaultConfigs()

@@ -6,7 +6,7 @@ import (
 
 	"github.com/jurgen-kluft/xcode/cli"
 	"github.com/jurgen-kluft/xcode/denv"
-	"github.com/jurgen-kluft/xcode/util"
+	"github.com/jurgen-kluft/xcode/items"
 	"github.com/jurgen-kluft/xcode/vs"
 )
 
@@ -43,7 +43,7 @@ func Generate(project *denv.Project) error {
 
 func generateProjects(IDE string, targets string, project *denv.Project) error {
 	if vs.IsVisualStudio(IDE) {
-		return vs.Generate(vs.GetVisualStudio(IDE), "", util.Seperate(targets, ","), project)
+		return vs.Generate(vs.GetVisualStudio(IDE), "", items.NewList(targets, ",").Items, project)
 	}
 	return fmt.Errorf("Unknown IDE")
 }

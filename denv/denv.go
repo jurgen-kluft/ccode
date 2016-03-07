@@ -17,7 +17,7 @@ const (
 )
 
 // Fixpath will fix forward/backward slashes to match the current OS
-func Fixpath(path string) string {
+func Path(path string) string {
 	path = strings.Replace(path, "\\", string(os.PathSeparator), -1)
 	return path
 }

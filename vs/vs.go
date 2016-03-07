@@ -4,14 +4,16 @@ import (
 	"errors"
 
 	"github.com/jurgen-kluft/xcode/denv"
-	"github.com/jurgen-kluft/xcode/vs2015"
 )
 
+// IsVisualStudio returns true if the incoming string @ide is equal to any of
+// the Visual Studio formats that xcode supports.
 func IsVisualStudio(ide string) bool {
 	vs := GetVisualStudio(ide)
 	return vs != -1
 }
 
+// GetVisualStudio returns a value for type IDE deduced from the incoming string @ide
 func GetVisualStudio(ide string) denv.IDE {
 	if ide == "VS2015" {
 		return denv.VS2015
@@ -23,10 +25,11 @@ func GetVisualStudio(ide string) denv.IDE {
 	return -1
 }
 
+// Generate will generate the Solution and Project files for the incoming project
 func Generate(ide denv.IDE, path string, targets []string, project *denv.Project) error {
 	switch ide {
-	case VS2015:
-		vs2015.GenerateVisualStudio2015Solution(project)
+	case denv.VS2015:
+		GenerateVisualStudio2015Solution(project)
 		return nil
 	}
 	return errors.New("IDE is not supported")
