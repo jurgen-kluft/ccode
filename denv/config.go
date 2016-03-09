@@ -34,33 +34,33 @@ var DefaultConfigs = []Config{
 		Name:         "DevDebugStatic",
 		Defines:      DevDebugDefines,
 		IncludeDirs:  items.NewList(Path("source\\main\\include"), ";"),
-		LibraryDirs:  items.NewList(Path("target\\$(Configuration)_$(Platform)_$(ToolSet)"), ";"),
+		LibraryDirs:  items.NewList(Path("target\\${Name}\\bin\\$(PackageSignature)"), ";"),
 		LibraryFiles: items.NewList("", ";"),
-		LibraryFile:  "${Name}_$(Configuration)_$(Platform)_$(ToolSet).lib",
+		LibraryFile:  "${Name}_$(PackageSignature).lib",
 	},
 	{
 		Name:         "DevReleaseStatic",
 		Defines:      DevReleaseDefines,
 		IncludeDirs:  items.NewList(Path("source\\main\\include"), ";"),
-		LibraryDirs:  items.NewList(Path("target\\$(Configuration)_$(Platform)_$(ToolSet)"), ";"),
+		LibraryDirs:  items.NewList(Path("target\\${Name}\\bin\\$(PackageSignature)"), ";"),
 		LibraryFiles: items.NewList("", ";"),
-		LibraryFile:  "${Name}_$(Configuration)_$(Platform)_$(ToolSet).lib",
+		LibraryFile:  "${Name}_$(PackageSignature).lib",
 	},
 	{
 		Name:         "TestDebugStatic",
 		Defines:      TestDebugDefines,
 		IncludeDirs:  items.NewList(Path("source\\main\\include"), ";"),
-		LibraryDirs:  items.NewList(Path("target\\$(Configuration)_$(Platform)_$(ToolSet)"), ";"),
+		LibraryDirs:  items.NewList(Path("target\\${Name}\\bin\\$(PackageSignature)"), ";"),
 		LibraryFiles: items.NewList("", ";"),
-		LibraryFile:  "${Name}_$(Configuration)_$(Platform)_$(ToolSet).lib",
+		LibraryFile:  "${Name}_$(PackageSignature).lib",
 	},
 	{
 		Name:         "TestReleaseStatic",
 		Defines:      TestReleaseDefines,
 		IncludeDirs:  items.NewList(Path("source\\main\\include"), ";"),
-		LibraryDirs:  items.NewList(Path("target\\$(Configuration)_$(Platform)_$(ToolSet)"), ";"),
+		LibraryDirs:  items.NewList(Path("target\\${Name}\\bin\\$(PackageSignature)"), ";"),
 		LibraryFiles: items.NewList("", ";"),
-		LibraryFile:  "${Name}_$(Configuration)_$(Platform)_$(ToolSet).lib",
+		LibraryFile:  "${Name}_$(PackageSignature).lib",
 	},
 }
 
@@ -76,9 +76,9 @@ func CopyStringArray(strarray []string) []string {
 // CopyConfig makes a deep copy of a Config
 func CopyConfig(config Config) *Config {
 	newconfig := &Config{Name: config.Name, Defines: config.Defines, IncludeDirs: items.NewList("", ";"), LibraryDirs: items.NewList("", ";"), LibraryFiles: items.NewList("", ";"), LibraryFile: ""}
-	newconfig.IncludeDirs = config.IncludeDirs
-	newconfig.LibraryDirs = config.LibraryDirs
-	newconfig.LibraryFiles = config.LibraryFiles
+	newconfig.IncludeDirs = items.CopyList(config.IncludeDirs)
+	newconfig.LibraryDirs = items.CopyList(config.LibraryDirs)
+	newconfig.LibraryFiles = items.CopyList(config.LibraryFiles)
 	newconfig.LibraryFile = config.LibraryFile
 	return newconfig
 }

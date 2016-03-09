@@ -41,6 +41,13 @@ func (v *basicReplacer) ReplaceInLines(variable string, replacement string, line
 }
 
 func (v *basicReplacer) InsertInLine(variable string, insertment string, line string) string {
+	insertment = strings.Trim(insertment, " ")
+	if len(insertment) == 0 {
+		return line
+	}
+	if strings.HasSuffix(insertment, ";") == false {
+		insertment = insertment + ";"
+	}
 	piv := -1
 	pos := strings.Index(line, variable)
 	for pos > piv {

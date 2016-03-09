@@ -16,6 +16,13 @@ func NewList(list, delimiter string) List {
 	return newlist.Add(list)
 }
 
+// CopyList makes a copy of the incoming list and returns it
+func CopyList(list List) List {
+	items := make([]string, len(list.Items))
+	copy(items, list.Items)
+	return List{Items: items, Delimiter: list.Delimiter}
+}
+
 func (l List) String() string {
 	if len(l.Items) == 0 {
 		return ""

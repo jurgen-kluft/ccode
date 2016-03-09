@@ -25,7 +25,10 @@ import (
 //   - xhash:DEBUG_INFO[Platform][Config]
 //   - xhash:TOOL_SET[Platform]
 //
-func addProjectVariables(p *denv.Project, isdep bool, v vars.Variables) {
+func addProjectVariables(p *denv.Project, isdep bool, v vars.Variables, r vars.Replacer) {
+
+	p.ReplaceVars(v, r)
+
 	v.AddVar(p.Name+":GUID", p.GUID)
 	v.AddVar(p.Name+":ROOT_DIR", p.PackagePath)
 
@@ -37,18 +40,11 @@ func addProjectVariables(p *denv.Project, isdep bool, v vars.Variables) {
 	for _, platform := range p.Platforms {
 		for _, config := range p.Configs {
 			includes := config.IncludeDirs.Prefix(path, items.PathPrefixer)
-			includes = includes.Add("%(AdditionalIncludeDirectories)")
 			v.AddVar(fmt.Sprintf("%s:INCLUDE_DIRS[%s][%s]", p.Name, platform, config.Name), includes.String())
-
 			libdirs := config.LibraryDirs.Prefix(path, items.PathPrefixer)
-			libdirs = libdirs.Add("%(AdditionalLibraryDirectories)")
 			v.AddVar(fmt.Sprintf("%s:LIBRARY_DIRS[%s][%s]", p.Name, platform, config.Name), libdirs.String())
-
-			libfiles := config.LibraryFiles.Add("%(AdditionalLibraryFiles)")
-			v.AddVar(fmt.Sprintf("%s:LIBRARY_FILES[%s][%s]", p.Name, platform, config.Name), libfiles.String())
-
-			defines := config.Defines.Add("%(PreprocessorDefinitions)")
-			v.AddVar(fmt.Sprintf("%s:DEFINES[%s][%s]", p.Name, platform, config.Name), defines.String())
+			v.AddVar(fmt.Sprintf("%s:LIBRARY_FILES[%s][%s]", p.Name, platform, config.Name), config.LibraryFiles.String())
+			v.AddVar(fmt.Sprintf("%s:DEFINES[%s][%s]", p.Name, platform, config.Name), config.Defines.String())
 		}
 	}
 
@@ -216,7 +212,7 @@ func generateVisualStudio2015Project(prj *denv.Project, vars vars.Variables, rep
 			compileandlink = append(compileandlink, `++</ClCompile>`)
 			compileandlink = append(compileandlink, `++<Link>`)
 			compileandlink = append(compileandlink, `+++<GenerateDebugInformation>${DEBUG_INFO}</GenerateDebugInformation>`)
-			compileandlink = append(compileandlink, `+++<AdditionalDependencies>${LIBRARY_FILES};%(AdditionalDependencies)</AdditionalDependencies>`)
+			compileandlink = append(compileandlink, `+++<AdditionalDependencies>${LIBRARY_FILES}</AdditionalDependencies>`)
 			compileandlink = append(compileandlink, `+++<AdditionalLibraryDirectories>${LIBRARY_DIRS}</AdditionalLibraryDirectories>`)
 			compileandlink = append(compileandlink, `++</Link>`)
 			compileandlink = append(compileandlink, `++<Lib>`)
@@ -233,8 +229,14 @@ func generateVisualStudio2015Project(prj *denv.Project, vars vars.Variables, rep
 			}
 			replacer.InsertInLines("${LIBRARY_FILES}", strings.Join(libraries, ";"), compileandlink)
 
-			configitems := []string{"DEFINES", "INCLUDE_DIRS", "LIBRARY_DIRS", "LIBRARY_FILES"}
-			for _, configitem := range configitems {
+			configitems := map[string]string{
+				"DEFINES":       "%(PreprocessorDefinitions)",
+				"INCLUDE_DIRS":  "%(AdditionalIncludeDirectories)",
+				"LIBRARY_DIRS":  "%(AdditionalLibraryDirectories)",
+				"LIBRARY_FILES": "%(AdditionalLibraryFiles)",
+			}
+
+			for configitem, defaults := range configitems {
 				varkeystr := fmt.Sprintf("${%s}", configitem)
 				varlist := items.NewList("", ";")
 				for _, project := range projects {
@@ -247,6 +249,7 @@ func generateVisualStudio2015Project(prj *denv.Project, vars vars.Variables, rep
 					}
 				}
 				varset := items.ListToSet(varlist)
+				varset = varset.Add(defaults)
 				replacer.InsertInLines(varkeystr, varset.String(), compileandlink)
 				replacer.ReplaceInLines(varkeystr, "", compileandlink)
 			}
@@ -362,6 +365,17 @@ func generateVisualStudio2015ProjectFilters(prj *denv.Project, writer denv.Proje
 	writer.WriteLn("</Project>")
 }
 
+type strStack []string
+
+func (s strStack) Empty() bool    { return len(s) == 0 }
+func (s strStack) Peek() string   { return s[len(s)-1] }
+func (s *strStack) Push(i string) { (*s) = append((*s), i) }
+func (s *strStack) Pop() string {
+	d := (*s)[len(*s)-1]
+	(*s) = (*s)[:len(*s)-1]
+	return d
+}
+
 // GenerateVisualStudio2015Solution generates a Visual Studio 2015 solution (.sln) file
 // for the current project. It also generates the project file for the current projects
 // as well as the project files for the dependencies.
@@ -390,24 +404,40 @@ func GenerateVisualStudio2015Solution(p *denv.Project) {
 	//          EndProject
 	//
 
-	projects := []*denv.Project{p}
-	for _, dep := range p.Dependencies {
-		projects = append(projects, dep)
-	}
-
 	variables := vars.NewVars()
 	replacer := vars.NewReplacer()
 
 	// Main project
-	addProjectVariables(p, false, variables)
-	p.ReplaceVars(variables, replacer)
+	addProjectVariables(p, false, variables, replacer)
 
-	// And dependency projects
-	for _, prj := range p.Dependencies {
-		addProjectVariables(prj, true, variables)
-		prj.ReplaceVars(variables, replacer)
+	// And dependency projects (dependency tree)
+	depmap := map[string]*denv.Project{}
+	depmap[p.Name] = p
+	depstack := &strStack{p.Name}
+	for depstack.Empty() == false {
+		prjname := depstack.Pop()
+		prj := depmap[prjname]
+		for _, dep := range prj.Dependencies {
+			if _, ok := depmap[dep.Name]; !ok {
+				depstack.Push(dep.Name)
+				depmap[dep.Name] = dep
+			}
+		}
+	}
+	dependencies := []*denv.Project{}
+	for _, dep := range depmap {
+		dependencies = append(dependencies, dep)
+	}
+
+	for _, prj := range dependencies {
+		addProjectVariables(prj, true, variables, replacer)
 	}
 	variables.Print()
+
+	projects := []*denv.Project{p}
+	for _, dep := range dependencies {
+		projects = append(projects, dep)
+	}
 
 	// Glob all the source and header files for every project
 	for _, prj := range projects {
