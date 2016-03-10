@@ -29,7 +29,7 @@ func (writer *ProjectTextWriter) Close() (err error) {
 }
 
 const (
-	cTabChar     = "   "
+	cTabChar     = "\t"
 	cNewLineChar = "\n"
 )
 

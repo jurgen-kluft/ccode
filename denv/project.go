@@ -22,11 +22,11 @@ type ProjectType int
 
 const (
 	// StaticLibrary is a library that can statically be linked with
-	StaticLibrary ProjectType = iota // .lib, .a
+	StaticLibrary ProjectType = 1 // .lib, .a
 	// SharedLibrary is a library that can be dynamically linked with, like a .DLL
-	SharedLibrary ProjectType = iota // .dll
+	SharedLibrary ProjectType = 2 // .dll
 	// Executable is an application that can be run
-	Executable ProjectType = iota // .exe, .app
+	Executable ProjectType = 3 // .exe, .app
 )
 
 // Project is a structure that holds all the information that defines a project in an IDE
@@ -76,16 +76,56 @@ func (prj *Project) ReplaceVars(v vars.Variables, r vars.Replacer) {
 	v.DelVar("${Name}")
 }
 
-// SetupDefaultCppProject returns a default C++ project
+// SetupDefaultCppLibProject returns a default C++ project
 // Example:
-//              SetupDefaultCppProject("xbase", "github.com\\jurgen-kluft")
+//              SetupDefaultCppLibProject("xbase", "github.com\\jurgen-kluft")
 //
-func SetupDefaultCppProject(name string, URL string) *Project {
+func SetupDefaultCppLibProject(name string, URL string) *Project {
 	project := &Project{Name: name}
 	project.GUID = uid.GetGUID(project.Name)
 	project.PackageURL = URL
 	project.Language = "C++"
 	project.Type = StaticLibrary
+
+	project.SrcFiles = &Files{GlobPaths: []string{Path("source\\main\\^**\\*.cpp")}, VirtualPaths: []string{}, Files: []string{}}
+	project.HdrFiles = &Files{GlobPaths: []string{Path("source\\main\\include\\^**\\*.h")}}
+
+	project.Platforms = SupportedPlatforms
+	project.Configs = GetDefaultConfigs()
+	project.Dependencies = []*Project{}
+	return project
+}
+
+// SetupDefaultCppTestProject returns a default C++ project
+// Example:
+//              SetupDefaultCppTestProject("xbase", "github.com\\jurgen-kluft")
+//
+func SetupDefaultCppTestProject(name string, URL string) *Project {
+	project := &Project{Name: name}
+	project.GUID = uid.GetGUID(project.Name)
+	project.PackageURL = URL
+	project.Language = "C++"
+	project.Type = Executable
+
+	project.SrcFiles = &Files{GlobPaths: []string{Path("source\\test\\^**\\*.cpp")}, VirtualPaths: []string{}, Files: []string{}}
+	project.HdrFiles = &Files{GlobPaths: []string{Path("source\\main\\include\\^**\\*.h"), Path("source\\test\\include\\^**\\*.h")}}
+
+	project.Platforms = SupportedPlatforms
+	project.Configs = GetDefaultConfigs()
+	project.Dependencies = []*Project{}
+	return project
+}
+
+// SetupDefaultCppAppProject returns a default C++ project
+// Example:
+//              SetupDefaultCppAppProject("xbase", "github.com\\jurgen-kluft")
+//
+func SetupDefaultCppAppProject(name string, URL string) *Project {
+	project := &Project{Name: name}
+	project.GUID = uid.GetGUID(project.Name)
+	project.PackageURL = URL
+	project.Language = "C++"
+	project.Type = Executable
 
 	project.SrcFiles = &Files{GlobPaths: []string{Path("source\\main\\^**\\*.cpp")}, VirtualPaths: []string{}, Files: []string{}}
 	project.HdrFiles = &Files{GlobPaths: []string{Path("source\\main\\include\\^**\\*.h")}}

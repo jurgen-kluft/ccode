@@ -11,12 +11,13 @@ import (
 // (projectname string, sourcefiles []string, headerfiles []string, platforms []string, configs []string, depprojectnames []string, vars vars.Variables, replacer vars.Replacer, writer ProjectWriter) {
 func TestSimpleProject(t *testing.T) {
 
-	xunittestproject := denv.SetupDefaultCppProject("xunittest", "github.com/jurgen-kluft")
+	xunittestproject := denv.SetupDefaultCppLibProject("xunittest", "github.com/jurgen-kluft")
 
-	xbaseproject := denv.SetupDefaultCppProject("xbase", "github.com/jurgen-kluft")
+	xbaseproject := denv.SetupDefaultCppLibProject("xbase", "github.com/jurgen-kluft")
 	xbaseproject.Dependencies = append(xbaseproject.Dependencies, xunittestproject)
 
-	xtestproject := denv.SetupDefaultCppProject("xtest", "github.com/jurgen-kluft")
+	xtestproject := denv.SetupDefaultCppLibProject("xtest", "github.com/jurgen-kluft")
+	xtestproject.Type = denv.Executable
 	xtestproject.Dependencies = append(xtestproject.Dependencies, xunittestproject)
 	xtestproject.Dependencies = append(xtestproject.Dependencies, xbaseproject)
 

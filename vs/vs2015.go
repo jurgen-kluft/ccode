@@ -34,14 +34,24 @@ func addProjectVariables(p *denv.Project, isdep bool, v vars.Variables, r vars.R
 
 	path, _ := filepath.Rel(p.ProjectPath, p.PackagePath)
 
-	v.AddVar(p.Name+":OUTDIR", filepath.Join(path, "target", p.Name, "bin", "$(Configuration)_$(Platform)_$(PlatformToolset)"))
-	v.AddVar(p.Name+":INTDIR", filepath.Join(path, "target", p.Name, "obj", "$(Configuration)_$(Platform)_$(PlatformToolset)"))
+	v.AddVar(p.Name+":OUTDIR", filepath.Join(path, "target", p.Name, "bin", "$(Configuration)_$(Platform)_$(PlatformToolset)")+"\\")
+	v.AddVar(p.Name+":INTDIR", filepath.Join(path, "target", p.Name, "obj", "$(Configuration)_$(Platform)_$(PlatformToolset)")+"\\")
+
+	switch p.Type {
+	case denv.StaticLibrary:
+		v.AddVar(p.Name+":TYPE", "StaticLibrary")
+	case denv.SharedLibrary:
+		v.AddVar(p.Name+":TYPE", "SharedLibrary")
+	case denv.Executable:
+		v.AddVar(p.Name+":TYPE", "Application")
+	}
 
 	for _, platform := range p.Platforms {
 		for _, config := range p.Configs {
 			includes := config.IncludeDirs.Prefix(path, items.PathPrefixer)
-			v.AddVar(fmt.Sprintf("%s:INCLUDE_DIRS[%s][%s]", p.Name, platform, config.Name), includes.String())
 			libdirs := config.LibraryDirs.Prefix(path, items.PathPrefixer)
+
+			v.AddVar(fmt.Sprintf("%s:INCLUDE_DIRS[%s][%s]", p.Name, platform, config.Name), includes.String())
 			v.AddVar(fmt.Sprintf("%s:LIBRARY_DIRS[%s][%s]", p.Name, platform, config.Name), libdirs.String())
 			v.AddVar(fmt.Sprintf("%s:LIBRARY_FILES[%s][%s]", p.Name, platform, config.Name), config.LibraryFiles.String())
 			v.AddVar(fmt.Sprintf("%s:DEFINES[%s][%s]", p.Name, platform, config.Name), config.Defines.String())
@@ -125,6 +135,7 @@ func generateVisualStudio2015Project(prj *denv.Project, vars vars.Variables, rep
 	globals := []string{}
 	globals = append(globals, `+<PropertyGroup Label="Globals">`)
 	globals = append(globals, `++<ProjectGuid>${${Name}:GUID}</ProjectGuid>`)
+	globals = append(globals, `++<PackageType>${${Name}:TYPE}</PackageType>`)
 	globals = append(globals, `++<PackageSignature>$(Configuration)_$(Platform)_$(PlatformToolset)</PackageSignature>`)
 	globals = append(globals, `+</PropertyGroup>`)
 
@@ -145,7 +156,7 @@ func generateVisualStudio2015Project(prj *denv.Project, vars vars.Variables, rep
 		for _, config := range prj.Configs {
 			configuration := []string{}
 			configuration = append(configuration, `+<PropertyGroup Condition="'$(Configuration)|$(Platform)'=='${CONFIG}|${PLATFORM}'" Label="Configuration">`)
-			configuration = append(configuration, `++<ConfigurationType>StaticLibrary</ConfigurationType>`)
+			configuration = append(configuration, `++<ConfigurationType>$(PackageType)</ConfigurationType>`)
 			configuration = append(configuration, `++<UseDebugLibraries>${USE_DEBUG_LIBS}</UseDebugLibraries>`)
 			configuration = append(configuration, `++<CLRSupport>false</CLRSupport>`)
 			configuration = append(configuration, `++<CharacterSet>NotSet</CharacterSet>`)
@@ -180,13 +191,26 @@ func generateVisualStudio2015Project(prj *denv.Project, vars vars.Variables, rep
 		platformprops := []string{}
 		platformprops = append(platformprops, `+<PropertyGroup Condition="'$(Platform)'=='${PLATFORM}'">`)
 		platformprops = append(platformprops, `++<LinkIncremental>true</LinkIncremental>`)
-		platformprops = append(platformprops, `++<OutDir>${OutDir}</OutDir>`)
-		platformprops = append(platformprops, `++<IntDir>${IntDir}</IntDir>`)
-		platformprops = append(platformprops, `++<TargetName>$(Config)_$(Platform)_$(ToolSet)</TargetName>`)
+		platformprops = append(platformprops, `++<OutDir>${OUTDIR}</OutDir>`)
+		platformprops = append(platformprops, `++<IntDir>${INTDIR}</IntDir>`)
+		platformprops = append(platformprops, `<TargetName>${Name}_$(PackageSignature)</TargetName>`)
 		platformprops = append(platformprops, `++<ExtensionsToDeleteOnClean>*.obj%3b*.d%3b*.map%3b*.lst%3b*.pch%3b$(TargetPath)</ExtensionsToDeleteOnClean>`)
 		platformprops = append(platformprops, `++<GenerateManifest>false</GenerateManifest>`)
 		platformprops = append(platformprops, `+</PropertyGroup>`)
+		replacer.ReplaceInLines("${Name}", prj.Name, platformprops)
 		replacer.ReplaceInLines("${PLATFORM}", platform, platformprops)
+
+		configitems := map[string]string{
+			"INTDIR": "",
+			"OUTDIR": "",
+		}
+		for configitem := range configitems {
+			varkeystr := fmt.Sprintf("${%s}", configitem)
+			varkey := fmt.Sprintf("%s:%s", prj.Name, configitem)
+			varitem, _ := vars.GetVar(varkey)
+			replacer.ReplaceInLines(varkeystr, varitem, platformprops)
+		}
+
 		writer.WriteLns(platformprops)
 	}
 
@@ -264,6 +288,7 @@ func generateVisualStudio2015Project(prj *denv.Project, vars vars.Variables, rep
 				replacer.ReplaceInLines("${DEBUG_INFO}", debuginfo, compileandlink)
 			}
 
+			replacer.ReplaceInLines("${Name}", prj.Name, compileandlink)
 			replacer.ReplaceInLines("${PLATFORM}", platform, compileandlink)
 			replacer.ReplaceInLines("${CONFIG}", config.Name, compileandlink)
 			vars.ReplaceInLines(replacer, compileandlink)
@@ -271,17 +296,23 @@ func generateVisualStudio2015Project(prj *denv.Project, vars vars.Variables, rep
 		}
 	}
 
-	writer.WriteLn("+<ItemGroup>")
-	for _, srcfile := range prj.SrcFiles.Files {
-		clcompile := "++<ClCompile Include=\"${FILE}\"/>"
-		clcompile = replacer.ReplaceInLine("${FILE}", srcfile, clcompile)
-		writer.WriteLn(clcompile)
+	relpath, _ := filepath.Rel(prj.ProjectPath, prj.PackagePath)
+
+	if len(prj.SrcFiles.Files) > 0 {
+		writer.WriteLn("+<ItemGroup>")
+		for _, srcfile := range prj.SrcFiles.Files {
+			srcfile = filepath.Join(relpath, srcfile)
+			clcompile := "++<ClCompile Include=\"${FILE}\"/>"
+			clcompile = replacer.ReplaceInLine("${FILE}", srcfile, clcompile)
+			writer.WriteLn(clcompile)
+		}
+		writer.WriteLn("+</ItemGroup>")
 	}
-	writer.WriteLn("+</ItemGroup>")
 
 	if len(prj.HdrFiles.Files) > 0 {
 		writer.WriteLn("+<ItemGroup>")
 		for _, hdrfile := range prj.HdrFiles.Files {
+			hdrfile = filepath.Join(relpath, hdrfile)
 			clinclude := "++<ClInclude Include=\"${FILE}\"/>"
 			clinclude = replacer.ReplaceInLine("${FILE}", hdrfile, clinclude)
 			writer.WriteLn(clinclude)
@@ -346,18 +377,22 @@ func generateVisualStudio2015ProjectFilters(prj *denv.Project, writer denv.Proje
 	}
 	writer.WriteLn("+</ItemGroup>")
 
+	relpath, _ := filepath.Rel(prj.ProjectPath, prj.PackagePath)
+
 	writer.WriteLn("+<ItemGroup>")
-	for k, v := range includes {
-		writer.WriteLn(fmt.Sprintf("++<ClInclude Include=\"%s\">", k))
-		writer.WriteLn(fmt.Sprintf("+++<Filter>%s</Filter>", v))
+	for hdrfile, vhdrfile := range includes {
+		hdrfile = filepath.Join(relpath, hdrfile)
+		writer.WriteLn(fmt.Sprintf("++<ClInclude Include=\"%s\">", hdrfile))
+		writer.WriteLn(fmt.Sprintf("+++<Filter>%s</Filter>", vhdrfile))
 		writer.WriteLn("++</ClInclude>")
 	}
 	writer.WriteLn("+</ItemGroup>")
 
 	writer.WriteLn("+<ItemGroup>")
-	for k, v := range cpp {
-		writer.WriteLn(fmt.Sprintf("++<ClCompile Include=\"%s\">", k))
-		writer.WriteLn(fmt.Sprintf("+++<Filter>%s</Filter>", v))
+	for srcfile, vsrcfile := range cpp {
+		srcfile = filepath.Join(relpath, srcfile)
+		writer.WriteLn(fmt.Sprintf("++<ClCompile Include=\"%s\">", srcfile))
+		writer.WriteLn(fmt.Sprintf("+++<Filter>%s</Filter>", vsrcfile))
 		writer.WriteLn("++</ClCompile>")
 	}
 	writer.WriteLn("+</ItemGroup>")
@@ -511,8 +546,8 @@ func GenerateVisualStudio2015Solution(p *denv.Project) {
 		for _, config := range project.Configs {
 			for _, platform := range project.Platforms {
 				configplatform := fmt.Sprintf("%s|%s", config.Name, platform)
-				activecfg := fmt.Sprintf("++{%s}.%s.ActiveCfg = %s", project.GUID, configplatform, configplatform)
-				buildcfg := fmt.Sprintf("++{%s}.%s.Buid.0 = %s", project.GUID, configplatform, configplatform)
+				activecfg := fmt.Sprintf("++{%s}.%s|%s.ActiveCfg = %s|%s", project.GUID, config.Name, configplatform, config.Name, configplatform)
+				buildcfg := fmt.Sprintf("++{%s}.%s|%s.Buid.0 = %s|%s", project.GUID, config.Name, configplatform, config.Name, configplatform)
 				writer.WriteLn(activecfg)
 				writer.WriteLn(buildcfg)
 			}
