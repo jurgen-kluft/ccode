@@ -43,12 +43,18 @@ func (p *Package) AddProject(name string, prj *Project) {
 
 // GetMainLib returns the project that is registered as the main library
 func (p *Package) GetMainLib() *Project {
-	mainlib := p.Projects["mainlib"]
-	return mainlib
+	prj := p.Projects["mainlib"]
+	return prj
+}
+
+// GetUnittest returns the project that is registered as the unittest
+func (p *Package) GetUnittest() *Project {
+	prj := p.Projects["unittest"]
+	return prj
 }
 
 // GetMainApp returns the project that is registered as the main application
 func (p *Package) GetMainApp() *Project {
-	mainlib := p.Projects["mainapp"]
-	return mainlib
+	prj := p.Projects["mainapp"]
+	return prj
 }

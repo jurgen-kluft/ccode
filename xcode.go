@@ -35,7 +35,10 @@ func Generate(pkg *denv.Package) error {
 		},
 	}
 	app.Action = func(c *cli.Context) {
-		generateProjects(IDE, targets, pkg)
+		err := generateProjects(IDE, targets, pkg)
+		if err != nil {
+			fmt.Println(err.Error())
+		}
 	}
 
 	return app.Run(os.Args)
