@@ -87,12 +87,12 @@ func addProjectVariables(p *denv.Project, isdep bool, v vars.Variables, r vars.R
 // Note: This currently assumes that the dependency packages are in the vendor
 //       folder relative to the main package.
 // All project and workspace files will be written in the root of the main package
-func setupProjectPaths(p *denv.Project) {
-	p.PackagePath, _ = os.Getwd()
-	p.ProjectPath, _ = os.Getwd()
-	for _, d := range p.Dependencies {
-		d.PackagePath = filepath.Join(p.PackagePath, "vendor", d.PackageURL)
-		d.ProjectPath = p.ProjectPath
+func setupProjectPaths(prj *denv.Project, deps []*denv.Project) {
+	prj.PackagePath, _ = os.Getwd()
+	prj.ProjectPath, _ = os.Getwd()
+	for _, dep := range deps {
+		dep.PackagePath = filepath.Join(prj.PackagePath, "vendor", dep.PackageURL)
+		dep.ProjectPath = prj.ProjectPath
 	}
 }
 
@@ -416,8 +416,6 @@ func (s *strStack) Pop() string {
 // as well as the project files for the dependencies.
 func GenerateVisualStudio2015Solution(p *denv.Project) {
 
-	setupProjectPaths(p)
-
 	writer := &denv.ProjectTextWriter{}
 	slnfilepath := filepath.Join(p.ProjectPath, p.Name+".sln")
 	if writer.Open(slnfilepath) != nil {
@@ -464,6 +462,8 @@ func GenerateVisualStudio2015Solution(p *denv.Project) {
 		dependencies = append(dependencies, dep)
 	}
 
+	setupProjectPaths(p, dependencies)
+
 	for _, prj := range dependencies {
 		addProjectVariables(prj, true, variables, replacer)
 	}
@@ -499,10 +499,10 @@ func GenerateVisualStudio2015Solution(p *denv.Project) {
 		projectbeginfmt := "Project(\"{%s}\") = \"%s\", \"%s\", \"{%s}\""
 		projectbegin := fmt.Sprintf(projectbeginfmt, CPPprojectID, prj.Name, denv.Path(filepath.Join(prj.ProjectPath, prj.Name+".vcxproj")), prj.GUID)
 		writer.WriteLn(projectbegin)
-		if len(dependencies) > 0 {
+		if len(prj.Dependencies) > 0 {
 			projectsessionbegin := "+ProjectSection(ProjectDependencies) = postProject"
 			writer.WriteLn(projectsessionbegin)
-			for _, dep := range dependencies {
+			for _, dep := range prj.Dependencies {
 				projectdep := fmt.Sprintf("++{%s} = {%s}", dep.GUID, dep.GUID)
 				writer.WriteLn(projectdep)
 			}
