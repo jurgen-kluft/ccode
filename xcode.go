@@ -12,7 +12,7 @@ import (
 
 // Generate is the main function that requires 'arguments' to then generate
 // workspace and project files for a specified IDE.
-func Generate(project *denv.Project) error {
+func Generate(pkg *denv.Package) error {
 	// Parse command-line
 	app := cli.NewApp()
 	app.Name = "xcode"
@@ -35,13 +35,15 @@ func Generate(project *denv.Project) error {
 		},
 	}
 	app.Action = func(c *cli.Context) {
-		generateProjects(IDE, targets, project)
+		generateProjects(IDE, targets, pkg)
 	}
 
 	return app.Run(os.Args)
 }
 
-func generateProjects(IDE string, targets string, project *denv.Project) error {
+func generateProjects(IDE string, targets string, pkg *denv.Package) error {
+	mainprj := pkg.GetMainApp()
+
 	if vs.IsVisualStudio(IDE) {
 		return vs.Generate(vs.GetVisualStudio(IDE), "", items.NewList(targets, ",").Items, project)
 	}
