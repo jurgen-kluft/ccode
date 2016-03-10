@@ -21,6 +21,11 @@ func (p *Package) AddPackage(pkg *Package) {
 	p.Packages[pkg.Name] = pkg
 }
 
+// AddMainApp adds a project to this package as 'mainapp' the main application
+func (p *Package) AddMainApp(prj *Project) {
+	p.Projects["mainapp"] = prj
+}
+
 // AddMainLib adds a project to this package as 'mainlib' the main library
 func (p *Package) AddMainLib(prj *Project) {
 	p.Projects["mainlib"] = prj
@@ -39,5 +44,11 @@ func (p *Package) AddProject(name string, prj *Project) {
 // GetMainLib returns the project that is registered as the main library
 func (p *Package) GetMainLib() *Project {
 	mainlib := p.Projects["mainlib"]
+	return mainlib
+}
+
+// GetMainApp returns the project that is registered as the main application
+func (p *Package) GetMainApp() *Project {
+	mainlib := p.Projects["mainapp"]
 	return mainlib
 }

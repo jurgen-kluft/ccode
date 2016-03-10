@@ -91,7 +91,7 @@ func setupProjectPaths(p *denv.Project) {
 	p.PackagePath, _ = os.Getwd()
 	p.ProjectPath, _ = os.Getwd()
 	for _, d := range p.Dependencies {
-		d.PackagePath = filepath.Join(p.PackagePath, "vendor", d.PackageURL, d.Name)
+		d.PackagePath = filepath.Join(p.PackagePath, "vendor", d.PackageURL)
 		d.ProjectPath = p.ProjectPath
 	}
 }
