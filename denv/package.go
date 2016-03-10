@@ -13,7 +13,7 @@ type Package struct {
 
 // NewPackage creates a new empty package
 func NewPackage(name string) *Package {
-	return &Package{Name: name, Packages: make(map[string]*Package)}
+	return &Package{Name: name, Packages: make(map[string]*Package), Projects: make(map[string]*Project)}
 }
 
 // AddPackage adds a package to this package
