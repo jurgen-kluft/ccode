@@ -499,10 +499,10 @@ func GenerateVisualStudio2015Solution(p *denv.Project) {
 		projectbeginfmt := "Project(\"{%s}\") = \"%s\", \"%s\", \"{%s}\""
 		projectbegin := fmt.Sprintf(projectbeginfmt, CPPprojectID, prj.Name, denv.Path(filepath.Join(prj.ProjectPath, prj.Name+".vcxproj")), prj.GUID)
 		writer.WriteLn(projectbegin)
-		if len(prj.Dependencies) > 0 {
+		if len(dependencies) > 0 {
 			projectsessionbegin := "+ProjectSection(ProjectDependencies) = postProject"
 			writer.WriteLn(projectsessionbegin)
-			for _, dep := range prj.Dependencies {
+			for _, dep := range dependencies {
 				projectdep := fmt.Sprintf("++{%s} = {%s}", dep.GUID, dep.GUID)
 				writer.WriteLn(projectdep)
 			}
