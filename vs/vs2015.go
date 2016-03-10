@@ -437,12 +437,6 @@ func GenerateVisualStudio2015Solution(p *denv.Project) {
 	//          EndProject
 	//
 
-	variables := vars.NewVars()
-	replacer := vars.NewReplacer()
-
-	// Main project
-	addProjectVariables(p, false, variables, replacer)
-
 	// And dependency projects (dependency tree)
 	depmap := map[string]*denv.Project{}
 	depmap[p.Name] = p
@@ -464,6 +458,11 @@ func GenerateVisualStudio2015Solution(p *denv.Project) {
 
 	setupProjectPaths(p, dependencies)
 
+	variables := vars.NewVars()
+	replacer := vars.NewReplacer()
+
+	// Main project
+	addProjectVariables(p, false, variables, replacer)
 	for _, prj := range dependencies {
 		addProjectVariables(prj, true, variables, replacer)
 	}
