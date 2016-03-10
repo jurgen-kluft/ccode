@@ -43,9 +43,12 @@ func Generate(pkg *denv.Package) error {
 
 func generateProjects(IDE string, targets string, pkg *denv.Package) error {
 	mainprj := pkg.GetMainApp()
+	if mainprj == nil {
+		return fmt.Errorf("This package has no main app")
+	}
 
 	if vs.IsVisualStudio(IDE) {
-		return vs.Generate(vs.GetVisualStudio(IDE), "", items.NewList(targets, ",").Items, project)
+		return vs.Generate(vs.GetVisualStudio(IDE), "", items.NewList(targets, ",").Items, mainprj)
 	}
 	return fmt.Errorf("Unknown IDE")
 }
