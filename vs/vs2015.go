@@ -90,9 +90,11 @@ func addProjectVariables(p *denv.Project, isdep bool, v vars.Variables, r vars.R
 func setupProjectPaths(prj *denv.Project, deps []*denv.Project) {
 	prj.PackagePath, _ = os.Getwd()
 	prj.ProjectPath, _ = os.Getwd()
+	fmt.Println("PACKAGE:" + prj.Name + " -  packagePath=" + prj.PackagePath + ", projectpath=" + prj.ProjectPath)
 	for _, dep := range deps {
 		dep.PackagePath = filepath.Join(prj.PackagePath, "vendor", dep.PackageURL)
 		dep.ProjectPath = prj.ProjectPath
+		fmt.Println("DEPENDENCY:" + dep.Name + " -  packagePath=" + dep.PackagePath + ", projectpath=" + dep.ProjectPath)
 	}
 }
 
@@ -451,6 +453,8 @@ func GenerateVisualStudio2015Solution(p *denv.Project) {
 			}
 		}
 	}
+	delete(depmap, p.Name)
+
 	dependencies := []*denv.Project{}
 	for _, dep := range depmap {
 		dependencies = append(dependencies, dep)
@@ -475,6 +479,7 @@ func GenerateVisualStudio2015Solution(p *denv.Project) {
 
 	// Glob all the source and header files for every project
 	for _, prj := range projects {
+		fmt.Println("GLOBBING: " + prj.Name + " : " + prj.PackagePath)
 		prj.SrcFiles.GlobFiles(prj.PackagePath)
 		prj.HdrFiles.GlobFiles(prj.PackagePath)
 	}
