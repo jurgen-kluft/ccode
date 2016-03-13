@@ -39,42 +39,49 @@ type Project struct {
 	Author       string
 	GUID         string
 	Language     string
-	Platforms    []string
+	Platforms    PlatformSet
 	HdrFiles     *Files
 	SrcFiles     *Files
-	Configs      ConfigSet
 	Dependencies []*Project
 }
 
 // HasPlatform returns true if the project is configured for that platform
 func (prj *Project) HasPlatform(platformname string) bool {
+	return prj.Platforms.HasPlatform(platformname)
+}
+
+// HasConfig will return true if platform @platformname has a configuration with name @configname
+func (prj *Project) HasConfig(platformname, configname string) bool {
 	for _, platform := range prj.Platforms {
-		if platformname == platform {
-			return true
+		if platform.Name == platformname {
+			if platform.HasConfig(configname) == false {
+				return false
+			}
 		}
 	}
-	return false
+	return true
 }
 
-// HasConfig returns true if the project has that configuration
-func (prj *Project) HasConfig(configname string) bool {
-	return prj.Configs.HasConfig(configname)
-}
-
-// SupportedPlatforms returns a list of platforms that are supported by xcode
-var SupportedPlatforms = []string{
-	"Win32",
-	"x64",
+// GetConfig will return the configuration of platform @platformname with name @configname
+func (prj *Project) GetConfig(platformname, configname string) (*Config, bool) {
+	for _, platform := range prj.Platforms {
+		if platform.Name == platformname {
+			return platform.GetConfig(configname)
+		}
+	}
+	return nil, false
 }
 
 // ReplaceVars replaces any variable that exists in members of Project
 func (prj *Project) ReplaceVars(v vars.Variables, r vars.Replacer) {
 	v.AddVar("${Name}", prj.Name)
-	for _, config := range prj.Configs {
-		config.ReplaceVars(v, r)
-	}
+	prj.Platforms.ReplaceVars(v, r)
 	v.DelVar("${Name}")
 }
+
+var defaultMainSourcePath = Path("source\\main\\^**\\*.cpp")
+var defaultMainIncludePath = Path("source\\main\\include\\^**\\*.h")
+var defaultTestIncludePath = Path("source\\test\\include\\^**\\*.h")
 
 // SetupDefaultCppLibProject returns a default C++ project
 // Example:
@@ -87,11 +94,10 @@ func SetupDefaultCppLibProject(name string, URL string) *Project {
 	project.Language = "C++"
 	project.Type = StaticLibrary
 
-	project.SrcFiles = &Files{GlobPaths: []string{Path("source\\main\\^**\\*.cpp")}, VirtualPaths: []string{}, Files: []string{}}
-	project.HdrFiles = &Files{GlobPaths: []string{Path("source\\main\\include\\^**\\*.h")}}
+	project.SrcFiles = &Files{GlobPaths: []string{defaultMainSourcePath}, VirtualPaths: []string{}, Files: []string{}}
+	project.HdrFiles = &Files{GlobPaths: []string{defaultMainIncludePath}}
 
-	project.Platforms = SupportedPlatforms
-	project.Configs = GetDefaultConfigs()
+	project.Platforms = GetDefaultPlatforms()
 	project.Dependencies = []*Project{}
 	return project
 }
@@ -107,11 +113,10 @@ func SetupDefaultCppTestProject(name string, URL string) *Project {
 	project.Language = "C++"
 	project.Type = Executable
 
-	project.SrcFiles = &Files{GlobPaths: []string{Path("source\\test\\^**\\*.cpp")}, VirtualPaths: []string{}, Files: []string{}}
-	project.HdrFiles = &Files{GlobPaths: []string{Path("source\\main\\include\\^**\\*.h"), Path("source\\test\\include\\^**\\*.h")}}
+	project.SrcFiles = &Files{GlobPaths: []string{defaultMainSourcePath}, VirtualPaths: []string{}, Files: []string{}}
+	project.HdrFiles = &Files{GlobPaths: []string{defaultMainIncludePath, defaultTestIncludePath}}
 
-	project.Platforms = SupportedPlatforms
-	project.Configs = GetDefaultConfigs()
+	project.Platforms = GetDefaultPlatforms()
 	project.Dependencies = []*Project{}
 	return project
 }
@@ -127,11 +132,10 @@ func SetupDefaultCppAppProject(name string, URL string) *Project {
 	project.Language = "C++"
 	project.Type = Executable
 
-	project.SrcFiles = &Files{GlobPaths: []string{Path("source\\main\\^**\\*.cpp")}, VirtualPaths: []string{}, Files: []string{}}
-	project.HdrFiles = &Files{GlobPaths: []string{Path("source\\main\\include\\^**\\*.h")}}
+	project.SrcFiles = &Files{GlobPaths: []string{defaultMainSourcePath}, VirtualPaths: []string{}, Files: []string{}}
+	project.HdrFiles = &Files{GlobPaths: []string{defaultMainIncludePath}}
 
-	project.Platforms = SupportedPlatforms
-	project.Configs = GetDefaultConfigs()
+	project.Platforms = GetDefaultPlatforms()
 	project.Dependencies = []*Project{}
 	return project
 }

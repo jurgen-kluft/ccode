@@ -23,8 +23,8 @@ func TestSimpleProject(t *testing.T) {
 
 	// Since we are running the test at the wrong location we need to change
 	// the current work directory to the actual package directory
-	//os.Chdir("/Users/Jurgen/golang/src/github.com/jurgen-kluft/xtest")
-	os.Chdir(denv.Path("D:/Dev.Go/src/github.com/jurgen-kluft/xtest"))
+	os.Chdir("/Users/Jurgen/golang/src/github.com/jurgen-kluft/xtest")
+	//os.Chdir(denv.Path("D:/Dev.Go/src/github.com/jurgen-kluft/xtest"))
 
 	vs.GenerateVisualStudio2015Solution(xtestproject)
 }

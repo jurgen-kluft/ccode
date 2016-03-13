@@ -15,8 +15,43 @@ type Config struct {
 	LibraryFile  string
 }
 
+func defaultPlatformConfig(name string) *Config {
+	defines := getDefines(name)
+	return &Config{Name: name,
+		Defines:      defines,
+		IncludeDirs:  items.NewList(Path("source\\main\\include"), ";"),
+		LibraryDirs:  items.NewList(Path("target\\${Name}\\bin\\$(PackageSignature)"), ";"),
+		LibraryFiles: items.NewList("", ";"),
+		LibraryFile:  "${Name}_$(PackageSignature).lib",
+	}
+}
+
+const (
+	DevDebugStatic   = "DevDebugStatic"
+	DevReleaseStatic = "DevReleaseStatic"
+)
+
 // ConfigSet type for mapping a config-name to a config-object
 type ConfigSet map[string]*Config
+
+// NewConfigSet returns a new ConfigSet
+func NewConfigSet() ConfigSet {
+	return ConfigSet{}
+}
+
+// CopyConfigSet returns a copy of @set
+func CopyConfigSet(set ConfigSet) ConfigSet {
+	newset := ConfigSet{}
+	for name, config := range set {
+		newset[name] = CopyConfig(config)
+	}
+	return newset
+}
+
+// Copy returns a copy of @set
+func (set ConfigSet) Copy() ConfigSet {
+	return CopyConfigSet(set)
+}
 
 // HasConfig returns true if the project has that configuration
 func (set ConfigSet) HasConfig(configname string) bool {
@@ -28,54 +63,15 @@ func (set ConfigSet) HasConfig(configname string) bool {
 	return false
 }
 
-// DefaultConfigs $(Configuration)_$(Platform)
-var DefaultConfigs = []Config{
-	{
-		Name:         "DevDebugStatic",
-		Defines:      DevDebugDefines,
-		IncludeDirs:  items.NewList(Path("source\\main\\include"), ";"),
-		LibraryDirs:  items.NewList(Path("target\\${Name}\\bin\\$(PackageSignature)"), ";"),
-		LibraryFiles: items.NewList("", ";"),
-		LibraryFile:  "${Name}_$(PackageSignature).lib",
-	},
-	{
-		Name:         "DevReleaseStatic",
-		Defines:      DevReleaseDefines,
-		IncludeDirs:  items.NewList(Path("source\\main\\include"), ";"),
-		LibraryDirs:  items.NewList(Path("target\\${Name}\\bin\\$(PackageSignature)"), ";"),
-		LibraryFiles: items.NewList("", ";"),
-		LibraryFile:  "${Name}_$(PackageSignature).lib",
-	},
-	{
-		Name:         "TestDebugStatic",
-		Defines:      TestDebugDefines,
-		IncludeDirs:  items.NewList(Path("source\\main\\include"), ";"),
-		LibraryDirs:  items.NewList(Path("target\\${Name}\\bin\\$(PackageSignature)"), ";"),
-		LibraryFiles: items.NewList("", ";"),
-		LibraryFile:  "${Name}_$(PackageSignature).lib",
-	},
-	{
-		Name:         "TestReleaseStatic",
-		Defines:      TestReleaseDefines,
-		IncludeDirs:  items.NewList(Path("source\\main\\include"), ";"),
-		LibraryDirs:  items.NewList(Path("target\\${Name}\\bin\\$(PackageSignature)"), ";"),
-		LibraryFiles: items.NewList("", ";"),
-		LibraryFile:  "${Name}_$(PackageSignature).lib",
-	},
-}
-
-// CopyStringArray makes a copy of an array of strings
-func CopyStringArray(strarray []string) []string {
-	newstrarray := make([]string, len(strarray))
-	for i, str := range strarray {
-		newstrarray[i] = str
-	}
-	return newstrarray
+// Copy returns a copy of @c
+func (c *Config) Copy() *Config {
+	return CopyConfig(c)
 }
 
 // CopyConfig makes a deep copy of a Config
-func CopyConfig(config Config) *Config {
+func CopyConfig(config *Config) *Config {
 	newconfig := &Config{Name: config.Name, Defines: config.Defines, IncludeDirs: items.NewList("", ";"), LibraryDirs: items.NewList("", ";"), LibraryFiles: items.NewList("", ";"), LibraryFile: ""}
+	newconfig.Defines = items.CopyList(config.Defines)
 	newconfig.IncludeDirs = items.CopyList(config.IncludeDirs)
 	newconfig.LibraryDirs = items.CopyList(config.LibraryDirs)
 	newconfig.LibraryFiles = items.CopyList(config.LibraryFiles)
@@ -90,13 +86,4 @@ func (c *Config) ReplaceVars(v vars.Variables, r vars.Replacer) {
 	v.ReplaceInLines(r, c.LibraryDirs.Items)
 	v.ReplaceInLines(r, c.LibraryFiles.Items)
 	c.LibraryFile = v.ReplaceInLine(r, c.LibraryFile)
-}
-
-// GetDefaultConfigs returns a map of default configs
-func GetDefaultConfigs() map[string]*Config {
-	configs := make(map[string]*Config)
-	for _, config := range DefaultConfigs {
-		configs[config.Name] = CopyConfig(config)
-	}
-	return configs
 }

@@ -30,6 +30,11 @@ func (l List) String() string {
 	return strings.Join(l.Items, l.Delimiter)
 }
 
+// Copy returns a copy of @l
+func (l List) Copy() List {
+	return CopyList(l)
+}
+
 // Add adds an item to the list
 func (l List) Add(add string) List {
 	add = strings.Trim(add, " ;")
@@ -45,6 +50,12 @@ func (l List) Add(add string) List {
 		}
 	}
 	return List{Items: currentitems, Delimiter: l.Delimiter}
+}
+
+// Merge will combine
+func (l List) Merge(list List) List {
+	items := l.String()
+	return list.Add(items)
 }
 
 // Prefix will add a @prefix to every item in the @List
