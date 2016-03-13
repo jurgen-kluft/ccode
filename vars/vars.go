@@ -3,6 +3,7 @@ package vars
 import (
 	"errors"
 	"fmt"
+	"sort"
 	"strings"
 )
 
@@ -151,7 +152,13 @@ func (v *basicVariables) ReplaceInLines(replacer Replacer, lines []string) {
 }
 
 func (v *basicVariables) Print() {
-	for k, v := range v.vars {
-		fmt.Printf("Var: %s = %s\n", k, v)
+	sortedkeys := []string{}
+	for k := range v.vars {
+		sortedkeys = append(sortedkeys, k)
+	}
+	sort.Strings(sortedkeys)
+	for _, key := range sortedkeys {
+		value := v.vars[key]
+		fmt.Printf("Var: %s = %s\n", key, value)
 	}
 }

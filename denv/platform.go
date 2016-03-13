@@ -90,6 +90,7 @@ func (pset PlatformSet) Copy() PlatformSet {
 		platform := &Platform{Name: pn}
 		platform.Defines = p.Defines.Copy()
 		platform.Configs = p.Configs.Copy()
+		set[platform.Name] = platform
 	}
 	return set
 }
