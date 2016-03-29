@@ -1,36 +1,32 @@
-# Compiled Object files
-*.slo
-*.lo
-*.o
-*.obj
+#ignore all files
+*.*
+vendor/
 
-# Precompiled Headers
-*.gch
-*.pch
+#except the following files
+!*.cpp
+!*.hpp
+!*.c
+!*.h
+!*.inl
 
-# Compiled Dynamic libraries
-*.so
-*.dylib
-*.dll
+!*.sln
+!*.vcproj
+!*.vcxproj
 
-# Fortran module files
-*.mod
+!*.pl
 
-# Compiled Static libraries
-*.lai
-*.la
-*.a
-*.lib
+!*.cs
+!*.csproj
+!*.resx
 
-# Executables
-*.exe
-*.out
-*.app
+!*.hlsl
+!*.fragment
 
-# Visual Studio
-*.vcxproj
-*.vcxproj.filters
-*.sln
+!*.mold
+!*.sc
+!*.diagram
 
-# Directories
-.idea
+!*.ini
+!*.bat
+
+#except the following folders
