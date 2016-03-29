@@ -20,6 +20,7 @@ func Generate(pkg *denv.Package) error {
 
 	var IDE string
 	var targets string
+
 	app.Flags = []cli.Flag{
 		cli.StringFlag{
 			Name:        "IDE",
@@ -45,13 +46,16 @@ func Generate(pkg *denv.Package) error {
 }
 
 func generateProjects(IDE string, targets string, pkg *denv.Package) error {
-	mainprj := pkg.GetMainApp()
-	if mainprj == nil {
-		return fmt.Errorf("This package has no main app")
+	main := pkg.GetMainApp()
+	if main == nil {
+		main = pkg.GetMainLib()
+		if main == nil {
+			return fmt.Errorf("This package has no main app and no main lib")
+		}
 	}
 
 	if vs.IsVisualStudio(IDE) {
-		return vs.Generate(vs.GetVisualStudio(IDE), "", items.NewList(targets, ",").Items, mainprj)
+		return vs.Generate(vs.GetVisualStudio(IDE), "", items.NewList(targets, ",").Items, main)
 	}
 	return fmt.Errorf("Unknown IDE")
 }
