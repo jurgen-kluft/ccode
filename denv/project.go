@@ -80,6 +80,7 @@ func (prj *Project) ReplaceVars(v vars.Variables, r vars.Replacer) {
 }
 
 var defaultMainSourcePath = Path("source\\main\\^**\\*.cpp")
+var defaultTestSourcePath = Path("source\\test\\^**\\*.cpp")
 var defaultMainIncludePath = Path("source\\main\\include\\^**\\*.h")
 var defaultTestIncludePath = Path("source\\test\\include\\^**\\*.h")
 
@@ -113,7 +114,7 @@ func SetupDefaultCppTestProject(name string, URL string) *Project {
 	project.Language = "C++"
 	project.Type = Executable
 
-	project.SrcFiles = &Files{GlobPaths: []string{defaultMainSourcePath}, VirtualPaths: []string{}, Files: []string{}}
+	project.SrcFiles = &Files{GlobPaths: []string{defaultTestSourcePath}, VirtualPaths: []string{}, Files: []string{}}
 	project.HdrFiles = &Files{GlobPaths: []string{defaultMainIncludePath, defaultTestIncludePath}}
 
 	project.Platforms = GetDefaultPlatforms()
