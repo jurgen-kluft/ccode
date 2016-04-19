@@ -46,16 +46,15 @@ func Generate(pkg *denv.Package) error {
 }
 
 func generateProjects(IDE string, targets string, pkg *denv.Package) error {
-	main := pkg.GetMainApp()
-	if main == nil {
-		main = pkg.GetMainLib()
-		if main == nil {
-			return fmt.Errorf("This package has no main app and no main lib")
-		}
+	prj := pkg.GetMainApp()
+	if prj == nil {
+		prj = pkg.GetUnittest()
 	}
-
+	if prj == nil {
+		return fmt.Errorf("This package has no main app or main test")
+	}
 	if vs.IsVisualStudio(IDE) {
-		return vs.Generate(vs.GetVisualStudio(IDE), "", items.NewList(targets, ",").Items, main)
+		return vs.Generate(vs.GetVisualStudio(IDE), "", items.NewList(targets, ",").Items, prj)
 	}
 	return fmt.Errorf("Unknown IDE")
 }

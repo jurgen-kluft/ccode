@@ -19,6 +19,8 @@ vendor/
 !*.csproj
 !*.resx
 
+!*.go
+
 !*.hlsl
 !*.fragment
 
