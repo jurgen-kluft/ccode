@@ -468,16 +468,16 @@ func GenerateVisualStudio2015Solution(p *denv.Project) {
 	replacer := vars.NewReplacer()
 
 	// Main project
-	addProjectVariables(p, false, variables, replacer)
-	for _, prj := range dependencies {
-		addProjectVariables(prj, true, variables, replacer)
-	}
-	variables.Print()
-
 	projects := []*denv.Project{p}
 	for _, dep := range dependencies {
 		projects = append(projects, dep)
 	}
+	for _, prj := range projects {
+		isdep := prj.PackageURL != p.PackageURL
+		addProjectVariables(prj, isdep, variables, replacer)
+	}
+
+	variables.Print()
 
 	// Glob all the source and header files for every project
 	for _, prj := range projects {
