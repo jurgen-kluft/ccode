@@ -240,6 +240,7 @@ func generateVisualStudio2015Project(prj *denv.Project, vars vars.Variables, rep
 			compileandlink = append(compileandlink, `+++<GenerateDebugInformation>${DEBUG_INFO}</GenerateDebugInformation>`)
 			compileandlink = append(compileandlink, `+++<AdditionalDependencies>${LIBRARY_FILES}</AdditionalDependencies>`)
 			compileandlink = append(compileandlink, `+++<AdditionalLibraryDirectories>${LIBRARY_DIRS}</AdditionalLibraryDirectories>`)
+			compileandlink = append(compileandlink, `+++<SubSystem>Console</SubSystem>`)
 			compileandlink = append(compileandlink, `++</Link>`)
 			compileandlink = append(compileandlink, `++<Lib>`)
 			compileandlink = append(compileandlink, `+++<OutputFile>$(OutDir)\$(TargetName)$(TargetExt)</OutputFile>`)
