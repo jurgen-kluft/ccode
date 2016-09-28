@@ -29,6 +29,11 @@ const (
 	Executable ProjectType = 3 // .exe, .app
 )
 
+const (
+	// CppLanguageToken is the language token for C++
+	CppLanguageToken string = "C++"
+)
+
 // Project is a structure that holds all the information that defines a project in an IDE
 type Project struct {
 	ProjectPath  string
@@ -92,7 +97,7 @@ func SetupDefaultCppLibProject(name string, URL string) *Project {
 	project := &Project{Name: name}
 	project.GUID = uid.GetGUID(project.Name)
 	project.PackageURL = URL
-	project.Language = "C++"
+	project.Language = CppLanguageToken
 	project.Type = StaticLibrary
 
 	project.SrcFiles = &Files{GlobPaths: []string{defaultMainSourcePath}, VirtualPaths: []string{}, Files: []string{}}
@@ -111,7 +116,7 @@ func SetupDefaultCppTestProject(name string, URL string) *Project {
 	project := &Project{Name: name}
 	project.GUID = uid.GetGUID(project.Name)
 	project.PackageURL = URL
-	project.Language = "C++"
+	project.Language = CppLanguageToken
 	project.Type = Executable
 
 	project.SrcFiles = &Files{GlobPaths: []string{defaultTestSourcePath}, VirtualPaths: []string{}, Files: []string{}}
@@ -130,7 +135,7 @@ func SetupDefaultCppAppProject(name string, URL string) *Project {
 	project := &Project{Name: name}
 	project.GUID = uid.GetGUID(project.Name)
 	project.PackageURL = URL
-	project.Language = "C++"
+	project.Language = CppLanguageToken
 	project.Type = Executable
 
 	project.SrcFiles = &Files{GlobPaths: []string{defaultMainSourcePath}, VirtualPaths: []string{}, Files: []string{}}

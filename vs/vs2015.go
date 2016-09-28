@@ -92,7 +92,8 @@ func setupProjectPaths(prj *denv.Project, deps []*denv.Project) {
 	prj.ProjectPath, _ = os.Getwd()
 	fmt.Println("PACKAGE:" + prj.Name + " -  packagePath=" + prj.PackagePath + ", projectpath=" + prj.ProjectPath)
 	for _, dep := range deps {
-		dep.PackagePath = filepath.Join(prj.PackagePath, "vendor", denv.Path(dep.PackageURL))
+		//dep.PackagePath = filepath.Join(prj.PackagePath, "vendor", denv.Path(dep.PackageURL))
+		dep.PackagePath = filepath.Join(prj.PackagePath, "..\\", dep.Name)
 		dep.ProjectPath = prj.ProjectPath
 		fmt.Println("DEPENDENCY:" + dep.Name + " -  packagePath=" + dep.PackagePath + ", projectpath=" + dep.ProjectPath)
 	}
