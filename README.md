@@ -4,7 +4,7 @@ This is a project generator that uses Go and its package management (glide) to w
 The structure of packages are defined in Go and files can be generated for Visual Studio, .sln, .vcxproj and .filters.
 Any C++ external dependency like Boost, DirectX or whatnot should be wrapped in a package (github or other git server).
 
-This allows you to write packages (C++ libraries) and use them in another package by defining a dependency on them. Using the package management solution (Glide) you can 'get' these packages and then by running 'go run $name.go' you can generate projects files (currently only Visual Studio 2015). The goal is to support other IDE's and/or build-systems.
+This allows you to write packages (C++ libraries) and use them in another package by defining a dependency on them. Using the go package management solution you can 'get' these packages and then by running 'go run $name.go' you can generate projects files (currently only Visual Studio 2015). The goal is to support other IDE's and/or build-systems.
 
 Currently the design is still in flux but the goal is to keep creating and maintaining packages to a minimum. These are the steps to make a new package:
 
