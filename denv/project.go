@@ -101,7 +101,7 @@ func SetupDefaultCppLibProject(name string, URL string) *Project {
 	project.Type = StaticLibrary
 
 	project.SrcFiles = &Files{GlobPaths: []string{defaultMainSourcePath}, VirtualPaths: []string{}, Files: []string{}}
-	project.HdrFiles = &Files{GlobPaths: []string{defaultMainIncludePath}}
+	project.HdrFiles = &Files{GlobPaths: []string{defaultMainIncludePath}, VirtualPaths: []string{}, Files: []string{}}
 
 	project.Platforms = GetDefaultPlatforms()
 	project.Dependencies = []*Project{}
@@ -120,10 +120,12 @@ func SetupDefaultCppTestProject(name string, URL string) *Project {
 	project.Type = Executable
 
 	project.SrcFiles = &Files{GlobPaths: []string{defaultTestSourcePath}, VirtualPaths: []string{}, Files: []string{}}
-	project.HdrFiles = &Files{GlobPaths: []string{defaultMainIncludePath, defaultTestIncludePath}}
+	project.HdrFiles = &Files{GlobPaths: []string{defaultMainIncludePath, defaultTestIncludePath}, VirtualPaths: []string{}, Files: []string{}}
 
 	project.Platforms = GetDefaultPlatforms()
 	project.Dependencies = []*Project{}
+
+	project.Platforms.AddIncludeDir(Path("source\\test\\include"))
 	return project
 }
 
@@ -139,7 +141,7 @@ func SetupDefaultCppAppProject(name string, URL string) *Project {
 	project.Type = Executable
 
 	project.SrcFiles = &Files{GlobPaths: []string{defaultMainSourcePath}, VirtualPaths: []string{}, Files: []string{}}
-	project.HdrFiles = &Files{GlobPaths: []string{defaultMainIncludePath}}
+	project.HdrFiles = &Files{GlobPaths: []string{defaultMainIncludePath}, VirtualPaths: []string{}, Files: []string{}}
 
 	project.Platforms = GetDefaultPlatforms()
 	project.Dependencies = []*Project{}

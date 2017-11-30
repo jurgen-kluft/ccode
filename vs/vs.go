@@ -15,7 +15,9 @@ func IsVisualStudio(ide string) bool {
 
 // GetVisualStudio returns a value for type IDE deduced from the incoming string @ide
 func GetVisualStudio(ide string) denv.IDE {
-	if ide == "VS2015" {
+	if ide == "VS2017" {
+		return denv.VS2017
+	} else if ide == "VS2015" {
 		return denv.VS2015
 	} else if ide == "VS2013" {
 		return denv.VS2013

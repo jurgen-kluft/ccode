@@ -107,3 +107,11 @@ func GetDefaultPlatforms() PlatformSet {
 	}
 	return pset
 }
+
+func (pset PlatformSet) AddIncludeDir(includeDir string) {
+	for _, platform := range pset {
+		for _, config := range platform.Configs {
+			config.IncludeDirs = config.IncludeDirs.Add(includeDir)
+		}
+	}
+}
