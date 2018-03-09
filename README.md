@@ -1,14 +1,16 @@
 # XCODE - Project Generator
 
-This is a project generator that uses Go and its package management (glide) to work with C++ or C# packages.
+This is a project generator that uses Go and its package management to work with C++ or C# packages.
 The structure of packages are defined in Go and files can be generated for Visual Studio, .sln, .vcxproj and .filters.
 Any C++ external dependency like Boost, DirectX or whatnot should be wrapped in a package (github or other git server).
 
 This allows you to write packages (C++ libraries) and use them in another package by defining a dependency on them. Using the go package management solution you can 'get' these packages and then by running 'go run $name.go' you can generate projects files . The goal is to support these IDE's and/or build-systems:
-* Visual Studio 2015 (supported)
-* Meson (www.mesonbuild.com) (not started)
+* Visual Studio 2015/2017 (supported)
+* Tundra (https://github.com/deplinenoise/tundra) (not started)
 
-Currently the design is still in flux but the goal is to keep creating and maintaining packages to a minimum. These are the steps to make a new package:
+Currently the design is quite set and the goal is to keep creating and maintaining packages to a minimum. 
+
+These are the steps to make a new package:
 
 1. Create a new Github repository like 'mylibrary'
 2. In the root create a mylibrary.go file
@@ -48,11 +50,11 @@ func GetPackage() *denv.Package {
 	mainpkg.AddPackage(unittestpkg)
 
 	// 'mylibrary' library
-	mainlib := denv.SetupDefaultCppLibProject("mylibrary", "github.com\\githubusername\\mylibrary")
+	mainlib := denv.SetupDefaultCppLibProject("mylibrary", "github.com/githubusername/mylibrary")
 	mainlib.Dependencies = append(mainlib.Dependencies, unittestpkg.GetMainLib())
 
 	// 'mylibrary' unittest project
-	maintest := denv.SetupDefaultCppTestProject("mylibrary_test", "github.com\\githubusername\\mylibrary")
+	maintest := denv.SetupDefaultCppTestProject("mylibrary_test", "github.com/githubusername/mylibrary")
 
 	mainpkg.AddMainLib(mainlib)
 	mainpkg.AddUnittest(maintest)
