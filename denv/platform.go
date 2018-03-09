@@ -115,3 +115,11 @@ func (pset PlatformSet) AddIncludeDir(includeDir string) {
 		}
 	}
 }
+
+func (pset PlatformSet) AddDefine(define string) {
+	for _, platform := range pset {
+		for _, config := range platform.Configs {
+			config.Defines = config.Defines.Add(define)
+		}
+	}
+}

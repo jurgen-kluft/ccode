@@ -17,6 +17,30 @@ type Files struct {
 	Files        []string
 }
 
+func (f *Files) AddGlobPath(dirpath string) {
+	f.GlobPaths = append(f.GlobPaths, dirpath)
+}
+
+// GlobFiles will collect files that can be found in @dirpath that matches
+// any of the Files.GlobPaths into Files.Files
+func (f *Files) GlobFiles(dirpath string) {
+	// Glob all the on-disk files
+	for _, g := range f.GlobPaths {
+		pp := strings.Split(g, "^")
+		ppath := filepath.Join(dirpath, pp[0])
+
+		globbedfiles, _ := glob.GlobFiles(ppath, pp[1])
+		for _, file := range globbedfiles {
+			globbedfile := filepath.Join(pp[0], file)
+			f.Files = append(f.Files, globbedfile)
+		}
+	}
+
+	// Generate the virtual files
+
+}
+
+
 // ProjectType defines the type of project, like 'StaticLibrary'
 type ProjectType int
 
@@ -84,10 +108,10 @@ func (prj *Project) ReplaceVars(v vars.Variables, r vars.Replacer) {
 	v.DelVar("${Name}")
 }
 
-var defaultMainSourcePath = Path("source\\main\\^**\\*.cpp")
-var defaultTestSourcePath = Path("source\\test\\^**\\*.cpp")
-var defaultMainIncludePath = Path("source\\main\\include\\^**\\*.h")
-var defaultTestIncludePath = Path("source\\test\\include\\^**\\*.h")
+var defaultMainSourcePaths = []string{Path("source\\main\\^**\\*.cpp"), Path("source\\main\\^**\\*.c")}
+var defaultTestSourcePaths = []string{Path("source\\test\\^**\\*.cpp")}
+var defaultMainIncludePaths = []string{Path("source\\main\\include\\^**\\*.h"), Path("source\\main\\include\\^**\\*.hpp"), Path("source\\main\\include\\^**\\*.inl")}
+var defaultTestIncludePaths = []string{Path("source\\test\\include\\^**\\*.h"), Path("source\\main\\include\\^**\\*.h")}
 
 // SetupDefaultCppLibProject returns a default C++ project
 // Example:
@@ -100,8 +124,8 @@ func SetupDefaultCppLibProject(name string, URL string) *Project {
 	project.Language = CppLanguageToken
 	project.Type = StaticLibrary
 
-	project.SrcFiles = &Files{GlobPaths: []string{defaultMainSourcePath}, VirtualPaths: []string{}, Files: []string{}}
-	project.HdrFiles = &Files{GlobPaths: []string{defaultMainIncludePath}, VirtualPaths: []string{}, Files: []string{}}
+	project.SrcFiles = &Files{GlobPaths: defaultMainSourcePaths, VirtualPaths: []string{}, Files: []string{}}
+	project.HdrFiles = &Files{GlobPaths: defaultMainIncludePaths, VirtualPaths: []string{}, Files: []string{}}
 
 	project.Platforms = GetDefaultPlatforms()
 	project.Dependencies = []*Project{}
@@ -119,8 +143,8 @@ func SetupDefaultCppTestProject(name string, URL string) *Project {
 	project.Language = CppLanguageToken
 	project.Type = Executable
 
-	project.SrcFiles = &Files{GlobPaths: []string{defaultTestSourcePath}, VirtualPaths: []string{}, Files: []string{}}
-	project.HdrFiles = &Files{GlobPaths: []string{defaultMainIncludePath, defaultTestIncludePath}, VirtualPaths: []string{}, Files: []string{}}
+	project.SrcFiles = &Files{GlobPaths: defaultTestSourcePaths, VirtualPaths: []string{}, Files: []string{}}
+	project.HdrFiles = &Files{GlobPaths: defaultTestIncludePaths, VirtualPaths: []string{}, Files: []string{}}
 
 	project.Platforms = GetDefaultPlatforms()
 	project.Dependencies = []*Project{}
@@ -140,27 +164,11 @@ func SetupDefaultCppAppProject(name string, URL string) *Project {
 	project.Language = CppLanguageToken
 	project.Type = Executable
 
-	project.SrcFiles = &Files{GlobPaths: []string{defaultMainSourcePath}, VirtualPaths: []string{}, Files: []string{}}
-	project.HdrFiles = &Files{GlobPaths: []string{defaultMainIncludePath}, VirtualPaths: []string{}, Files: []string{}}
+	project.SrcFiles = &Files{GlobPaths: defaultMainSourcePaths, VirtualPaths: []string{}, Files: []string{}}
+	project.HdrFiles = &Files{GlobPaths: defaultMainIncludePaths, VirtualPaths: []string{}, Files: []string{}}
 
 	project.Platforms = GetDefaultPlatforms()
 	project.Dependencies = []*Project{}
 	return project
 }
 
-// GlobFiles will collect files that can be found in @dirpath that matches
-// any of the Files.GlobPaths into Files.Files
-func (f *Files) GlobFiles(dirpath string) {
-	// Glob all the on-disk files
-	for _, g := range f.GlobPaths {
-		pp := strings.Split(g, "^")
-		ppath := filepath.Join(dirpath, pp[0])
-		f.Files, _ = glob.GlobFiles(ppath, pp[1])
-		for i, file := range f.Files {
-			f.Files[i] = filepath.Join(pp[0], file)
-		}
-	}
-
-	// Generate the virtual files
-
-}
