@@ -40,7 +40,6 @@ func (f *Files) GlobFiles(dirpath string) {
 
 }
 
-
 // ProjectType defines the type of project, like 'StaticLibrary'
 type ProjectType int
 
@@ -58,6 +57,11 @@ const (
 	CppLanguageToken string = "C++"
 )
 
+type CustomFiles struct {
+	Type  string // e.g. "ResourceCompile"
+	Files *Files
+}
+
 // Project is a structure that holds all the information that defines a project in an IDE
 type Project struct {
 	ProjectPath  string
@@ -71,6 +75,7 @@ type Project struct {
 	Platforms    PlatformSet
 	HdrFiles     *Files
 	SrcFiles     *Files
+	CustomFiles  []*CustomFiles
 	Dependencies []*Project
 }
 
@@ -171,4 +176,3 @@ func SetupDefaultCppAppProject(name string, URL string) *Project {
 	project.Dependencies = []*Project{}
 	return project
 }
-

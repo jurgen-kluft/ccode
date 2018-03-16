@@ -195,7 +195,7 @@ func generateVisualStudio2015Project(prj *denv.Project, vars vars.Variables, rep
 		platformprops = append(platformprops, `+<PropertyGroup Condition="'$(Platform)'=='${PLATFORM}'">`)
 		platformprops = append(platformprops, `++<LinkIncremental>true</LinkIncremental>`)
 		platformprops = append(platformprops, `++<OutDir>${OUTDIR}</OutDir>`)
-		platformprops = append(platformprops, `++<IntDir>${INTDIR}%(RelativeDir)\</IntDir>`)
+		platformprops = append(platformprops, `++<IntDir>${INTDIR}</IntDir>`)
 		platformprops = append(platformprops, `<TargetName>${Name}_$(PackageSignature)</TargetName>`)
 		platformprops = append(platformprops, `++<ExtensionsToDeleteOnClean>*.obj%3b*.d%3b*.map%3b*.lst%3b*.pch%3b$(TargetPath)</ExtensionsToDeleteOnClean>`)
 		platformprops = append(platformprops, `++<GenerateManifest>false</GenerateManifest>`)
@@ -236,7 +236,7 @@ func generateVisualStudio2015Project(prj *denv.Project, vars vars.Variables, rep
 			compileandlink = append(compileandlink, `+++<Optimization>${OPTIMIZATION}</Optimization>`)
 			compileandlink = append(compileandlink, `+++<PrecompiledHeader>NotUsing</PrecompiledHeader>`)
 			compileandlink = append(compileandlink, `+++<ExceptionHandling>false</ExceptionHandling>`)
-			compileandlink = append(compileandlink, `+++<ObjectFileName>$(IntDir)%(RelativeDir)\</ObjectFileName>`)
+			compileandlink = append(compileandlink, `+++<ObjectFileName>$(IntDir)%(RelativeDir)</ObjectFileName>`)
 			compileandlink = append(compileandlink, `++</ClCompile>`)
 			compileandlink = append(compileandlink, `++<Link>`)
 			compileandlink = append(compileandlink, `+++<GenerateDebugInformation>${DEBUG_INFO}</GenerateDebugInformation>`)
@@ -326,6 +326,30 @@ func generateVisualStudio2015Project(prj *denv.Project, vars vars.Variables, rep
 		}
 		writer.WriteLn("+</ItemGroup>")
 	}
+
+	Vars:
+	${NXSB_FILETYPE}
+	${NXSB_CMD}
+	${NXSB_MSG}
+	${NXSB_OUTPUTS}
+	${NXSB_EXCLUDE}
+	${NXSB_ISDEPLOYMENTCONTENT}
+	${NXSB_ADDITIONALINPUTS}
+	${NXSB_DOLINKOBJECTS}
+	${NXSB_TREATOUTPUTASCONTENT}
+
+	"++<CustomBuild Include=\"${FILE}\">"
+	"+++<FileType>${NXSB_FILETYPE }</FileType>"
+	"+++<Command>${NXSB_CMD}</Command>"
+	"+++<Message>${NXSB_MSG}</Message>"
+	"+++<Outputs>${NXSB_OUTPUTS}</Outputs>"
+	"+++<ExcludedFromBuild>${NXSB_EXCLUDE}</ExcludedFromBuild>"
+	"+++<DeploymentContent>${NXSB_ISDEPLOYMENTCONTENT}</DeploymentContent>"
+	"+++<AdditionalInputs>${NXSB_ADDITIONALINPUTS}</AdditionalInputs>"
+	"+++<LinkObjects>${NXSB_DOLINKOBJECTS}</LinkObjects>"
+	"+++<TreatOutputAsContent>${NXSB_TREATOUTPUTASCONTENT}</TreatOutputAsContent>"
+	"++</CustomBuild>"
+
 
 	//writer.WriteLn("+<ItemGroup>")
 	//writer.WriteLn("++<None Include=\"\"/>")
