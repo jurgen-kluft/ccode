@@ -13,6 +13,7 @@ type Config struct {
 	LibraryDirs  items.List
 	LibraryFiles items.List
 	LibraryFile  string
+	Vars         vars.Variables
 }
 
 func defaultPlatformConfig(name string) *Config {
@@ -23,6 +24,7 @@ func defaultPlatformConfig(name string) *Config {
 		LibraryDirs:  items.NewList(Path("target\\${Name}\\bin\\$(PackageSignature)"), ";"),
 		LibraryFiles: items.NewList("", ";"),
 		LibraryFile:  "${Name}_$(PackageSignature).lib",
+		Vars:         vars.NewVars(),
 	}
 }
 
@@ -76,6 +78,7 @@ func CopyConfig(config *Config) *Config {
 	newconfig.LibraryDirs = items.CopyList(config.LibraryDirs)
 	newconfig.LibraryFiles = items.CopyList(config.LibraryFiles)
 	newconfig.LibraryFile = config.LibraryFile
+	newconfig.Vars = config.Vars.Copy()
 	return newconfig
 }
 

@@ -1,6 +1,7 @@
 package denv
 
 import (
+	"fmt"
 	"path/filepath"
 	"strings"
 
@@ -77,6 +78,7 @@ type Project struct {
 	SrcFiles     *Files
 	CustomFiles  []*CustomFiles
 	Dependencies []*Project
+	Vars         vars.Variables
 }
 
 // HasPlatform returns true if the project is configured for that platform
@@ -104,6 +106,31 @@ func (prj *Project) GetConfig(platformname, configname string) (*Config, bool) {
 		}
 	}
 	return nil, false
+}
+
+// AddVar adds a variable to this project
+func (prj *Project) AddVar(name, value string) {
+	prj.Vars.AddVar(name, value)
+}
+
+// MergeVars merges  any variable that exists in objects of Project
+func (prj *Project) MergeVars(v vars.Variables) {
+
+	// Merge in the project level variables
+	prjmerger := func(key, value string, vv vars.Variables) {
+		vv.AddVar(prj.Name+":"+key, value)
+	}
+	vars.MergeVars(v, prj.Vars, prjmerger)
+
+	// Merge in the project\platform\config variables
+	for _, platform := range prj.Platforms {
+		for _, config := range platform.Configs {
+			pcmerger := func(key, value string, vv vars.Variables) {
+				vv.AddVar(fmt.Sprintf("%s:%s[%s][%s]", prj.Name, key, platform.Name, config.Name), value)
+			}
+			vars.MergeVars(v, config.Vars, pcmerger)
+		}
+	}
 }
 
 // ReplaceVars replaces any variable that exists in members of Project
@@ -134,6 +161,7 @@ func SetupDefaultCppLibProject(name string, URL string) *Project {
 
 	project.Platforms = GetDefaultPlatforms()
 	project.Dependencies = []*Project{}
+	project.Vars = vars.NewVars()
 	return project
 }
 
@@ -153,6 +181,7 @@ func SetupDefaultCppTestProject(name string, URL string) *Project {
 
 	project.Platforms = GetDefaultPlatforms()
 	project.Dependencies = []*Project{}
+	project.Vars = vars.NewVars()
 
 	project.Platforms.AddIncludeDir(Path("source\\test\\include"))
 	return project
@@ -174,5 +203,7 @@ func SetupDefaultCppAppProject(name string, URL string) *Project {
 
 	project.Platforms = GetDefaultPlatforms()
 	project.Dependencies = []*Project{}
+	project.Vars = vars.NewVars()
+
 	return project
 }

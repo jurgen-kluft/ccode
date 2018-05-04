@@ -27,6 +27,7 @@ import (
 //
 func addProjectVariables(p *denv.Project, isdep bool, v vars.Variables, r vars.Replacer) {
 
+	p.MergeVars(v)
 	p.ReplaceVars(v, r)
 
 	v.AddVar(p.Name+":GUID", p.GUID)
@@ -103,7 +104,7 @@ func setupProjectPaths(prj *denv.Project, deps []*denv.Project) {
 var CPPprojectID = "8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942"
 
 // generateVisualStudio2015Project generates a Visual Studio 2015 project (.vcxproj) file
-func generateVisualStudio2015Project(prj *denv.Project, vars vars.Variables, replacer vars.Replacer, writer denv.ProjectWriter) {
+func generateVisualStudio2015Project(prj *denv.Project, v vars.Variables, replacer vars.Replacer, writer denv.ProjectWriter) {
 
 	writer.WriteLn(`<?xml version="1.0" encoding="utf-8"?>`)
 	writer.WriteLn(`<Project DefaultTargets="Build" ToolsVersion="14.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">`)
@@ -131,7 +132,7 @@ func generateVisualStudio2015Project(prj *denv.Project, vars vars.Variables, rep
 		toolsets = append(toolsets, `+</PropertyGroup>`)
 
 		replacer.ReplaceInLines("${PLATFORM}", platform.Name, toolsets)
-		vars.ReplaceInLines(replacer, toolsets)
+		v.ReplaceInLines(replacer, toolsets)
 		writer.WriteLns(toolsets)
 	}
 
@@ -143,7 +144,7 @@ func generateVisualStudio2015Project(prj *denv.Project, vars vars.Variables, rep
 	globals = append(globals, `+</PropertyGroup>`)
 
 	replacer.ReplaceInLines("${Name}", prj.Name, globals)
-	vars.ReplaceInLines(replacer, globals)
+	v.ReplaceInLines(replacer, globals)
 	writer.WriteLns(globals)
 
 	projects := []*denv.Project{}
@@ -165,7 +166,7 @@ func generateVisualStudio2015Project(prj *denv.Project, vars vars.Variables, rep
 			configuration = append(configuration, `++<CharacterSet>NotSet</CharacterSet>`)
 			configuration = append(configuration, `+</PropertyGroup>`)
 			varkey := fmt.Sprintf("%s:USE_DEBUG_LIBS[%s][%s]", prj.Name, platform.Name, config.Name)
-			usedebuglibs, err := vars.GetVar(varkey)
+			usedebuglibs, err := v.GetVar(varkey)
 			if err == nil {
 				replacer.ReplaceInLines("${USE_DEBUG_LIBS}", usedebuglibs, configuration)
 			} else {
@@ -174,7 +175,7 @@ func generateVisualStudio2015Project(prj *denv.Project, vars vars.Variables, rep
 
 			replacer.ReplaceInLines("${PLATFORM}", platform.Name, configuration)
 			replacer.ReplaceInLines("${CONFIG}", config.Name, configuration)
-			vars.ReplaceInLines(replacer, configuration)
+			v.ReplaceInLines(replacer, configuration)
 			writer.WriteLns(configuration)
 		}
 	}
@@ -210,7 +211,7 @@ func generateVisualStudio2015Project(prj *denv.Project, vars vars.Variables, rep
 		for configitem := range configitems {
 			varkeystr := fmt.Sprintf("${%s}", configitem)
 			varkey := fmt.Sprintf("%s:%s", prj.Name, configitem)
-			varitem, _ := vars.GetVar(varkey)
+			varitem, _ := v.GetVar(varkey)
 			replacer.ReplaceInLines(varkeystr, varitem, platformprops)
 		}
 
@@ -221,7 +222,7 @@ func generateVisualStudio2015Project(prj *denv.Project, vars vars.Variables, rep
 	for _, project := range projects {
 		includedir := "${${Name}:IncludeDir}"
 		includedir = replacer.ReplaceInLine("${Name}", project.Name, includedir)
-		includedir = vars.ReplaceInLine(replacer, includedir)
+		includedir = v.ReplaceInLine(replacer, includedir)
 		includedirs = append(includedirs, includedir)
 	}
 
@@ -235,8 +236,9 @@ func generateVisualStudio2015Project(prj *denv.Project, vars vars.Variables, rep
 			compileandlink = append(compileandlink, `+++<WarningLevel>Level3</WarningLevel>`)
 			compileandlink = append(compileandlink, `+++<Optimization>${OPTIMIZATION}</Optimization>`)
 			compileandlink = append(compileandlink, `+++<PrecompiledHeader>NotUsing</PrecompiledHeader>`)
-			compileandlink = append(compileandlink, `+++<ExceptionHandling>false</ExceptionHandling>`)
+			compileandlink = append(compileandlink, `+++<ExceptionHandling>${EXCEPTIONS}</ExceptionHandling>`)
 			compileandlink = append(compileandlink, `+++<ObjectFileName>$(IntDir)%(RelativeDir)</ObjectFileName>`)
+			compileandlink = append(compileandlink, `+++<CompileAs>${COMPILE_AS}</CompileAs>`)
 			compileandlink = append(compileandlink, `++</ClCompile>`)
 			compileandlink = append(compileandlink, `++<Link>`)
 			compileandlink = append(compileandlink, `+++<GenerateDebugInformation>${DEBUG_INFO}</GenerateDebugInformation>`)
@@ -272,7 +274,7 @@ func generateVisualStudio2015Project(prj *denv.Project, vars vars.Variables, rep
 				varlist := items.NewList("", ";")
 				for _, project := range projects {
 					varkey := fmt.Sprintf("%s:%s[%s][%s]", project.Name, configitem, platform.Name, config.Name)
-					varitem, err := vars.GetVar(varkey)
+					varitem, err := v.GetVar(varkey)
 					if err == nil {
 						varlist = varlist.Add(varitem)
 					} else {
@@ -285,20 +287,20 @@ func generateVisualStudio2015Project(prj *denv.Project, vars vars.Variables, rep
 				replacer.ReplaceInLines(varkeystr, "", compileandlink)
 			}
 
-			optimization, err := vars.GetVar(fmt.Sprintf("%s:OPTIMIZATION[%s][%s]", prj.Name, platform.Name, config.Name))
-			if err == nil {
-				replacer.ReplaceInLines("${OPTIMIZATION}", optimization, compileandlink)
+			compileandlinkReplacer := func(key string, value string) {
+				key = vars.MakeVarKey(key)
+				replacer.ReplaceInLines(key, value, compileandlink)
 			}
 
-			debuginfo, err := vars.GetVar(fmt.Sprintf("%s:DEBUG_INFO[%s][%s]", prj.Name, platform.Name, config.Name))
-			if err == nil {
-				replacer.ReplaceInLines("${DEBUG_INFO}", debuginfo, compileandlink)
-			}
+			fullReplaceVar("OPTIMIZATION", prj.Name, platform.Name, config.Name, v, compileandlinkReplacer)
+			fullReplaceVar("EXCEPTIONS", prj.Name, platform.Name, config.Name, v, compileandlinkReplacer)
+			fullReplaceVarWithDefault("COMPILE_AS", "Default", prj.Name, platform.Name, config.Name, v, compileandlinkReplacer)
+			fullReplaceVar("DEBUG_INFO", prj.Name, platform.Name, config.Name, v, compileandlinkReplacer)
 
 			replacer.ReplaceInLines("${Name}", prj.Name, compileandlink)
 			replacer.ReplaceInLines("${PLATFORM}", platform.Name, compileandlink)
 			replacer.ReplaceInLines("${CONFIG}", config.Name, compileandlink)
-			vars.ReplaceInLines(replacer, compileandlink)
+			v.ReplaceInLines(replacer, compileandlink)
 			writer.WriteLns(compileandlink)
 		}
 	}
@@ -327,30 +329,6 @@ func generateVisualStudio2015Project(prj *denv.Project, vars vars.Variables, rep
 		writer.WriteLn("+</ItemGroup>")
 	}
 
-	Vars:
-	${NXSB_FILETYPE}
-	${NXSB_CMD}
-	${NXSB_MSG}
-	${NXSB_OUTPUTS}
-	${NXSB_EXCLUDE}
-	${NXSB_ISDEPLOYMENTCONTENT}
-	${NXSB_ADDITIONALINPUTS}
-	${NXSB_DOLINKOBJECTS}
-	${NXSB_TREATOUTPUTASCONTENT}
-
-	"++<CustomBuild Include=\"${FILE}\">"
-	"+++<FileType>${NXSB_FILETYPE }</FileType>"
-	"+++<Command>${NXSB_CMD}</Command>"
-	"+++<Message>${NXSB_MSG}</Message>"
-	"+++<Outputs>${NXSB_OUTPUTS}</Outputs>"
-	"+++<ExcludedFromBuild>${NXSB_EXCLUDE}</ExcludedFromBuild>"
-	"+++<DeploymentContent>${NXSB_ISDEPLOYMENTCONTENT}</DeploymentContent>"
-	"+++<AdditionalInputs>${NXSB_ADDITIONALINPUTS}</AdditionalInputs>"
-	"+++<LinkObjects>${NXSB_DOLINKOBJECTS}</LinkObjects>"
-	"+++<TreatOutputAsContent>${NXSB_TREATOUTPUTASCONTENT}</TreatOutputAsContent>"
-	"++</CustomBuild>"
-
-
 	//writer.WriteLn("+<ItemGroup>")
 	//writer.WriteLn("++<None Include=\"\"/>")
 	//writer.WriteLn("+</ItemGroup>")
@@ -360,6 +338,27 @@ func generateVisualStudio2015Project(prj *denv.Project, vars vars.Variables, rep
 	writer.WriteLn(`+<ImportGroup Label="ExtensionTargets"/>`)
 
 	writer.WriteLn(`</Project>`)
+}
+
+func fullReplaceVar(varname string, prjname string, platform string, config string, v vars.Variables, replacer func(name, value string)) bool {
+	value, err := v.GetVar(fmt.Sprintf("%s:%s[%s][%s]", prjname, varname, platform, config))
+	if err == nil {
+		replacer(varname, value)
+	} else {
+		value, err = v.GetVar(fmt.Sprintf("%s:%s", prjname, varname))
+		if err == nil {
+			replacer(varname, value)
+		} else {
+			return false
+		}
+	}
+	return true
+}
+
+func fullReplaceVarWithDefault(varname string, vardefaultvalue string, prjname string, platform string, config string, v vars.Variables, replacer func(name, value string)) {
+	if !fullReplaceVar(varname, prjname, platform, config, v, replacer) {
+		replacer(varname, vardefaultvalue)
+	}
 }
 
 func generateFilters(prjguid string, files []string) (items map[string]string, filters map[string]string) {

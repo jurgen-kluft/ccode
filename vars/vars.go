@@ -72,6 +72,9 @@ func (v *basicReplacer) InsertInLines(variable string, replacement string, lines
 	}
 }
 
+type VariablesMerge func(key string, value string, vars Variables)
+type VariablesIter func(key string, value string)
+
 // Variables is a container for variables (key, value)
 type Variables interface {
 	HasVar(key string) bool
@@ -79,8 +82,11 @@ type Variables interface {
 	AddVar(key string, value string)
 	GetVar(key string) (string, error)
 	DelVar(key string) error
+	Iterate(iter VariablesIter)
 	ReplaceInLine(replacer Replacer, line string) string
 	ReplaceInLines(replacer Replacer, lines []string)
+
+	Copy() Variables
 	Print()
 }
 
@@ -93,21 +99,27 @@ func NewVars() Variables {
 	return &basicVariables{vars: make(map[string]string)}
 }
 
-func correctVarKey(key string) string {
+func MakeVarKey(key string) string {
 	if strings.HasPrefix(key, "${") == false {
 		key = fmt.Sprintf("${%s}", key)
 	}
 	return key
 }
+func UnmakeVarKey(key string) string {
+	if strings.HasPrefix(key, "${") {
+		key = strings.Trim(key, "${}")
+	}
+	return key
+}
 
 func (v *basicVariables) HasVar(key string) bool {
-	key = correctVarKey(key)
+	key = MakeVarKey(key)
 	_, ok := v.vars[key]
 	return ok
 }
 
 func (v *basicVariables) SetVar(key string, value string) error {
-	key = correctVarKey(key)
+	key = MakeVarKey(key)
 	_, ok := v.vars[key]
 	if ok {
 		v.vars[key] = value
@@ -117,12 +129,12 @@ func (v *basicVariables) SetVar(key string, value string) error {
 }
 
 func (v *basicVariables) AddVar(key string, value string) {
-	key = correctVarKey(key)
+	key = MakeVarKey(key)
 	v.vars[key] = value
 }
 
 func (v *basicVariables) GetVar(key string) (string, error) {
-	key = correctVarKey(key)
+	key = MakeVarKey(key)
 	if value, ok := v.vars[key]; ok {
 		return value, nil
 	}
@@ -130,7 +142,7 @@ func (v *basicVariables) GetVar(key string) (string, error) {
 }
 
 func (v *basicVariables) DelVar(key string) error {
-	key = correctVarKey(key)
+	key = MakeVarKey(key)
 	if _, ok := v.vars[key]; ok {
 		delete(v.vars, key)
 		return nil
@@ -161,4 +173,26 @@ func (v *basicVariables) Print() {
 		value := v.vars[key]
 		fmt.Printf("Var: %s = %s\n", key, value)
 	}
+}
+
+func (v *basicVariables) Iterate(iter VariablesIter) {
+	for k, v := range v.vars {
+		uk := UnmakeVarKey(k)
+		iter(uk, v)
+	}
+}
+
+func (v *basicVariables) Copy() Variables {
+	newvars := NewVars()
+	for k, v := range v.vars {
+		newvars.AddVar(k, v)
+	}
+	return newvars
+}
+
+func MergeVars(master Variables, other Variables, merger VariablesMerge) {
+	iter := func(key, value string) {
+		merger(key, value, master)
+	}
+	other.Iterate(iter)
 }

@@ -123,3 +123,11 @@ func (pset PlatformSet) AddDefine(define string) {
 		}
 	}
 }
+
+func (pset PlatformSet) AddVar(varname, varvalue string) {
+	for _, platform := range pset {
+		for _, config := range platform.Configs {
+			config.Vars.AddVar(varname, varvalue)
+		}
+	}
+}
