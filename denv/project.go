@@ -162,6 +162,10 @@ func SetupDefaultCppLibProject(name string, URL string) *Project {
 	project.Platforms = GetDefaultPlatforms()
 	project.Dependencies = []*Project{}
 	project.Vars = vars.NewVars()
+
+	project.AddVar("EXCEPTIONS", "false")	
+	project.AddVar("COMPILE_AS", "CompileAsCpp")
+	
 	return project
 }
 
@@ -182,6 +186,9 @@ func SetupDefaultCppTestProject(name string, URL string) *Project {
 	project.Platforms = GetDefaultPlatforms()
 	project.Dependencies = []*Project{}
 	project.Vars = vars.NewVars()
+
+	project.AddVar("EXCEPTIONS", "Sync")	
+	project.AddVar("COMPILE_AS", "CompileAsCpp")
 
 	project.Platforms.AddIncludeDir(Path("source\\test\\include"))
 	return project
@@ -204,6 +211,9 @@ func SetupDefaultCppAppProject(name string, URL string) *Project {
 	project.Platforms = GetDefaultPlatforms()
 	project.Dependencies = []*Project{}
 	project.Vars = vars.NewVars()
+
+	project.AddVar("EXCEPTIONS", "false")	
+	project.AddVar("COMPILE_AS", "CompileAsCpp")
 
 	return project
 }
