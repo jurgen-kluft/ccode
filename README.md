@@ -6,7 +6,7 @@ Any C++ external dependency like Boost, DirectX or whatnot should be wrapped in 
 
 This allows you to write packages (C++ libraries) and use them in another package by defining a dependency on them. Using the go package management solution you can 'get' these packages and then by running 'go run $name.go' you can generate projects files . The goal is to support these IDE's and/or build-systems:
 * Visual Studio 2015/2017 (supported)
-* Tundra (https://github.com/deplinenoise/tundra) (not started)
+* Tundra (https://github.com/deplinenoise/tundra) (basic support)
 
 Currently the design is quite set and the goal is to keep creating and maintaining packages to a minimum. 
 
