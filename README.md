@@ -12,9 +12,13 @@ Currently the design is quite set and the goal is to keep creating and maintaini
 
 These are the steps to make a new package:
 
-1. Create a new Github repository like 'mylibrary'
-2. In the root create a mylibrary.go file
-3. In the root create a folder called 'package' with a file in it called 'package.go'
+1. Create a new Github repository like ``mylibrary``
+2. In the root create a ``mylibrary.go`` file
+3. In the root create a folder called ``package`` with a file in it called ``package.go``
+4. Once you have specified everything in package.go:
+   * In the root 'go get' (this will get all your specified dependencies in GO_PATH)
+   * To generate the VS solution and projects just run: ``go run mylibrary.go``  
+   * To generate the Tundra build file run: ``go run mylibrary.go --IDE=Tundra``
 
 Example:
 The content of the ```mylibrary.go``` file:
