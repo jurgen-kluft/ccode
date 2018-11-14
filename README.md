@@ -1,4 +1,4 @@
-# XCODE - Project Generator
+# XCODE - Package Manager + Project Generator
 
 This is a project generator that uses Go and its package management to work with C++ or C# packages.
 The structure of packages are defined in Go and files can be generated for Visual Studio, .sln, .vcxproj and .filters.
