@@ -67,7 +67,7 @@ func (pset PlatformSet) ReplaceVars(v vars.Variables, r vars.Replacer) {
 var defaultPlatforms = PlatformSet{
 	PlatformWin32: &Platform{
 		Name:    PlatformWin32,
-		Defines: items.NewList("PLATFORM_PC;TARGET_PC;PLATFORM_32BIT", ";"),
+		Defines: items.NewList("PLATFORM_PC;TARGET_PC;PLATFORM_32BIT", ";", ""),
 		Configs: ConfigSet{
 			DevDebugStatic:   defaultPlatformConfig(DevDebugStatic),
 			DevReleaseStatic: defaultPlatformConfig(DevReleaseStatic),
@@ -75,7 +75,7 @@ var defaultPlatforms = PlatformSet{
 	},
 	PlatformWin64: &Platform{
 		Name:    PlatformWin64,
-		Defines: items.NewList("PLATFORM_PC;TARGET_PC;PLATFORM_64BIT", ";"),
+		Defines: items.NewList("PLATFORM_PC;TARGET_PC;PLATFORM_64BIT", ";", ""),
 		Configs: ConfigSet{
 			DevDebugStatic:   defaultPlatformConfig(DevDebugStatic),
 			DevReleaseStatic: defaultPlatformConfig(DevReleaseStatic),

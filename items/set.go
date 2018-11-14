@@ -8,13 +8,22 @@ import (
 type Set struct {
 	Items     []string
 	Delimiter string
+	Quote     string
 }
 
 func (s Set) String() string {
 	if len(s.Items) == 0 {
 		return ""
 	}
-	return strings.Join(s.Items, s.Delimiter)
+	str := ""
+	for i, item := range s.Items {
+		if i == 0 {
+			str = s.Quote + item + s.Quote
+		} else {
+			str = str + s.Delimiter + s.Quote + item + s.Quote
+		}
+	}
+	return str
 }
 
 func addUnique(items []string, itemtoadd string) []string {
@@ -41,15 +50,15 @@ func (s Set) Join(set Set) {
 // Add adds an item to the Set only if it doesn't exist in the Set
 func (s Set) Add(item string) Set {
 	items := addUnique(s.Items, item)
-	return Set{Items: items, Delimiter: s.Delimiter}
+	return Set{Items: items, Delimiter: s.Delimiter, Quote: s.Quote}
 }
 
 // SetToList converts a Set to a List
 func SetToList(set Set) List {
 	if len(set.Items) == 0 {
-		return List{Items: []string{}, Delimiter: set.Delimiter}
+		return List{Items: []string{}, Delimiter: set.Delimiter, Quote: set.Quote}
 	}
 	listitems := []string{}
 	copy(listitems, set.Items)
-	return List{Items: listitems, Delimiter: set.Delimiter}
+	return List{Items: listitems, Delimiter: set.Delimiter, Quote: set.Quote}
 }

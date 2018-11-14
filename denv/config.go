@@ -20,9 +20,9 @@ func defaultPlatformConfig(name string) *Config {
 	defines := getDefines(name)
 	return &Config{Name: name,
 		Defines:      defines,
-		IncludeDirs:  items.NewList(Path("source\\main\\include"), ";"),
-		LibraryDirs:  items.NewList(Path("target\\${Name}\\bin\\$(PackageSignature)"), ";"),
-		LibraryFiles: items.NewList("", ";"),
+		IncludeDirs:  items.NewList(Path("source\\main\\include"), ";", ""),
+		LibraryDirs:  items.NewList(Path("target\\${Name}\\bin\\$(PackageSignature)"), ";", ""),
+		LibraryFiles: items.NewList("", ";", ""),
 		LibraryFile:  "${Name}_$(PackageSignature).lib",
 		Vars:         vars.NewVars(),
 	}
@@ -72,7 +72,7 @@ func (c *Config) Copy() *Config {
 
 // CopyConfig makes a deep copy of a Config
 func CopyConfig(config *Config) *Config {
-	newconfig := &Config{Name: config.Name, Defines: config.Defines, IncludeDirs: items.NewList("", ";"), LibraryDirs: items.NewList("", ";"), LibraryFiles: items.NewList("", ";"), LibraryFile: ""}
+	newconfig := &Config{Name: config.Name, Defines: config.Defines, IncludeDirs: items.NewList("", ";", ""), LibraryDirs: items.NewList("", ";", ""), LibraryFiles: items.NewList("", ";", ""), LibraryFile: ""}
 	newconfig.Defines = items.CopyList(config.Defines)
 	newconfig.IncludeDirs = items.CopyList(config.IncludeDirs)
 	newconfig.LibraryDirs = items.CopyList(config.LibraryDirs)

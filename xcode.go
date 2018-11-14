@@ -7,6 +7,7 @@ import (
 	"github.com/jurgen-kluft/xcode/cli"
 	"github.com/jurgen-kluft/xcode/denv"
 	"github.com/jurgen-kluft/xcode/items"
+	"github.com/jurgen-kluft/xcode/tundra"
 	"github.com/jurgen-kluft/xcode/vs"
 )
 
@@ -46,15 +47,10 @@ func Generate(pkg *denv.Package) error {
 }
 
 func generateProjects(IDE string, targets string, pkg *denv.Package) error {
-	prj := pkg.GetMainApp()
-	if prj == nil {
-		prj = pkg.GetUnittest()
-	}
-	if prj == nil {
-		return fmt.Errorf("This package has no main app or main test")
-	}
-	if vs.IsVisualStudio(IDE) {
-		return vs.Generate(vs.GetVisualStudio(IDE), "", items.NewList(targets, ",").Items, prj)
+	if vs.IsVisualStudio(IDE, targets) {
+		return vs.GenerateVisualStudioSolutionAndProjects(vs.GetVisualStudio(IDE), "", items.NewList(targets, ",", "").Items, pkg)
+	} else if tundra.IsTundra(IDE, targets) {
+		return tundra.GenerateTundraBuildFile(pkg)
 	}
 	return fmt.Errorf("Unknown IDE")
 }

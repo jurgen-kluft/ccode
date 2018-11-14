@@ -12,7 +12,7 @@ var defaultDefines = map[string]string{
 func getDefines(config string) items.List {
 	defines, ok := defaultDefines[config]
 	if !ok {
-		items.NewList("", ";")
+		items.NewList("", ";", "")
 	}
-	return items.NewList(defines, ";")
+	return items.NewList(defines, ";", "")
 }

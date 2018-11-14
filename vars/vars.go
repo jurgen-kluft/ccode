@@ -9,10 +9,10 @@ import (
 
 // Replacer is providing functionality to replace a variable in a large body of text
 type Replacer interface {
-	ReplaceInLine(variable string, replacement string, line string) string // Replaces occurences of @variable with @replace and thus will remove the variable from @line
-	ReplaceInLines(variable string, replacement string, lines []string)    // Replaces occurences of @variable with @replace and thus will remove the variable from @lines
-	InsertInLine(variable string, insertment string, line string) string   //Inserts @variable at places where @variable occurs without removing the variable in @line
-	InsertInLines(variable string, insertment string, lines []string)      //Inserts @variable at places where @variable occurs without removing the variable in @lines
+	ReplaceInLine(variable string, replacement string, line string) string                        // Replaces occurences of @variable with @replace and thus will remove the variable from @line
+	ReplaceInLines(variable string, replacement string, lines []string)                           // Replaces occurences of @variable with @replace and thus will remove the variable from @lines
+	InsertInLine(variable string, insertment string, insertmentSuffix string, line string) string //Inserts @variable at places where @variable occurs without removing the variable in @line
+	InsertInLines(variable string, insertment string, insertmentSuffix string, lines []string)    //Inserts @variable at places where @variable occurs without removing the variable in @lines
 }
 
 type basicReplacer struct {
@@ -41,13 +41,13 @@ func (v *basicReplacer) ReplaceInLines(variable string, replacement string, line
 	}
 }
 
-func (v *basicReplacer) InsertInLine(variable string, insertment string, line string) string {
+func (v *basicReplacer) InsertInLine(variable string, insertment string, insertmentSuffix string, line string) string {
 	insertment = strings.Trim(insertment, " ")
 	if len(insertment) == 0 {
 		return line
 	}
-	if strings.HasSuffix(insertment, ";") == false {
-		insertment = insertment + ";"
+	if strings.HasSuffix(insertment, insertmentSuffix) == false {
+		insertment = insertment + insertmentSuffix
 	}
 	piv := -1
 	pos := strings.Index(line, variable)
@@ -66,9 +66,9 @@ func (v *basicReplacer) InsertInLine(variable string, insertment string, line st
 	}
 	return line
 }
-func (v *basicReplacer) InsertInLines(variable string, replacement string, lines []string) {
+func (v *basicReplacer) InsertInLines(variable string, replacement string, replacementSuffix string, lines []string) {
 	for i, line := range lines {
-		lines[i] = v.InsertInLine(variable, replacement, line)
+		lines[i] = v.InsertInLine(variable, replacement, replacementSuffix, line)
 	}
 }
 

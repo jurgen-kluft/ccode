@@ -74,6 +74,7 @@ type Project struct {
 	GUID         string
 	Language     string
 	Platforms    PlatformSet
+	SrcPath      string
 	HdrFiles     *Files
 	SrcFiles     *Files
 	CustomFiles  []*CustomFiles
@@ -156,6 +157,7 @@ func SetupDefaultCppLibProject(name string, URL string) *Project {
 	project.Language = CppLanguageToken
 	project.Type = StaticLibrary
 
+	project.SrcPath = Path("source\\main\\cpp")
 	project.SrcFiles = &Files{GlobPaths: defaultMainSourcePaths, VirtualPaths: []string{}, Files: []string{}}
 	project.HdrFiles = &Files{GlobPaths: defaultMainIncludePaths, VirtualPaths: []string{}, Files: []string{}}
 
@@ -163,9 +165,9 @@ func SetupDefaultCppLibProject(name string, URL string) *Project {
 	project.Dependencies = []*Project{}
 	project.Vars = vars.NewVars()
 
-	project.AddVar("EXCEPTIONS", "false")	
+	project.AddVar("EXCEPTIONS", "false")
 	project.AddVar("COMPILE_AS", "CompileAsCpp")
-	
+
 	return project
 }
 
@@ -180,6 +182,7 @@ func SetupDefaultCppTestProject(name string, URL string) *Project {
 	project.Language = CppLanguageToken
 	project.Type = Executable
 
+	project.SrcPath = Path("source\\test\\cpp")
 	project.SrcFiles = &Files{GlobPaths: defaultTestSourcePaths, VirtualPaths: []string{}, Files: []string{}}
 	project.HdrFiles = &Files{GlobPaths: defaultTestIncludePaths, VirtualPaths: []string{}, Files: []string{}}
 
@@ -187,7 +190,7 @@ func SetupDefaultCppTestProject(name string, URL string) *Project {
 	project.Dependencies = []*Project{}
 	project.Vars = vars.NewVars()
 
-	project.AddVar("EXCEPTIONS", "Sync")	
+	project.AddVar("EXCEPTIONS", "Sync")
 	project.AddVar("COMPILE_AS", "CompileAsCpp")
 
 	project.Platforms.AddIncludeDir(Path("source\\test\\include"))
@@ -205,6 +208,7 @@ func SetupDefaultCppAppProject(name string, URL string) *Project {
 	project.Language = CppLanguageToken
 	project.Type = Executable
 
+	project.SrcPath = Path("source\\main\\cpp")
 	project.SrcFiles = &Files{GlobPaths: defaultMainSourcePaths, VirtualPaths: []string{}, Files: []string{}}
 	project.HdrFiles = &Files{GlobPaths: defaultMainIncludePaths, VirtualPaths: []string{}, Files: []string{}}
 
@@ -212,7 +216,7 @@ func SetupDefaultCppAppProject(name string, URL string) *Project {
 	project.Dependencies = []*Project{}
 	project.Vars = vars.NewVars()
 
-	project.AddVar("EXCEPTIONS", "false")	
+	project.AddVar("EXCEPTIONS", "false")
 	project.AddVar("COMPILE_AS", "CompileAsCpp")
 
 	return project

@@ -260,7 +260,7 @@ func generateVisualStudio2015Project(prj *denv.Project, v vars.Variables, replac
 					}
 				}
 			}
-			replacer.InsertInLines("${LIBRARY_FILES}", strings.Join(libraries, ";"), compileandlink)
+			replacer.InsertInLines("${LIBRARY_FILES}", strings.Join(libraries, ";"), ";", compileandlink)
 
 			configitems := map[string]string{
 				"DEFINES":       "%(PreprocessorDefinitions)",
@@ -271,7 +271,7 @@ func generateVisualStudio2015Project(prj *denv.Project, v vars.Variables, replac
 
 			for configitem, defaults := range configitems {
 				varkeystr := fmt.Sprintf("${%s}", configitem)
-				varlist := items.NewList("", ";")
+				varlist := items.NewList("", ";", "")
 				for _, project := range projects {
 					varkey := fmt.Sprintf("%s:%s[%s][%s]", project.Name, configitem, platform.Name, config.Name)
 					varitem, err := v.GetVar(varkey)
@@ -283,7 +283,7 @@ func generateVisualStudio2015Project(prj *denv.Project, v vars.Variables, replac
 				}
 				varset := items.ListToSet(varlist)
 				varset = varset.Add(defaults)
-				replacer.InsertInLines(varkeystr, varset.String(), compileandlink)
+				replacer.InsertInLines(varkeystr, varset.String(), ";", compileandlink)
 				replacer.ReplaceInLines(varkeystr, "", compileandlink)
 			}
 
