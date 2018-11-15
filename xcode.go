@@ -3,6 +3,7 @@ package xcode
 import (
 	"fmt"
 	"os"
+	"runtime"
 
 	"github.com/jurgen-kluft/xcode/cli"
 	"github.com/jurgen-kluft/xcode/denv"
@@ -11,46 +12,55 @@ import (
 	"github.com/jurgen-kluft/xcode/vs"
 )
 
-// Generate is the main function that requires 'arguments' to then generate
-// workspace and project files for a specified IDE.
-func Generate(pkg *denv.Package) error {
+// Init will initialize xcode before anything else is run
+func Init() error {
 	// Parse command-line
 	app := cli.NewApp()
 	app.Name = "xcode"
-	app.Usage = "xcode --IDE=VS2015 --TARGET=Win64"
+	app.Usage = "xcode --DEV=VS2017 --OS=Windows --ARCH=amd64"
 
-	var IDE string
-	var targets string
+	var DEV string
+	OS := runtime.GOOS
+	ARCH := runtime.GOARCH
 
 	app.Flags = []cli.Flag{
 		cli.StringFlag{
-			Name:        "IDE",
-			Value:       "VS2015",
-			Usage:       "IDE to generate projects for",
-			Destination: &IDE,
+			Name:        "DEV",
+			Value:       "VS2017",
+			Usage:       "The build system to generate projects for",
+			Destination: &DEV,
 		},
 		cli.StringFlag{
-			Name:        "TARGETS",
-			Value:       "Win64",
-			Usage:       "Targets to include (Win32, Win64, Darwin64)",
-			Destination: &targets,
+			Name:        "OS",
+			Usage:       "OS to include (windows, darwin)",
+			Destination: &OS,
+		},
+		cli.StringFlag{
+			Name:        "ARCH",
+			Usage:       "Architecture to include (386, amd64)",
+			Destination: &ARCH,
 		},
 	}
 	app.Action = func(c *cli.Context) {
-		err := generateProjects(IDE, targets, pkg)
-		if err != nil {
-			fmt.Println(err.Error())
+		if OS == "" {
+			OS = runtime.GOOS
 		}
+		if ARCH == "" {
+			ARCH = runtime.GOARCH
+		}
+		fmt.Printf("xcode (DEV:%s, OS:%s, ARCH:%s)\n", DEV, OS, ARCH)
+		denv.Init(DEV, OS, ARCH)
 	}
-
 	return app.Run(os.Args)
 }
 
-func generateProjects(IDE string, targets string, pkg *denv.Package) error {
-	if vs.IsVisualStudio(IDE, targets) {
-		return vs.GenerateVisualStudioSolutionAndProjects(vs.GetVisualStudio(IDE), "", items.NewList(targets, ",", "").Items, pkg)
-	} else if tundra.IsTundra(IDE, targets) {
+// Generate is the main function that requires 'arguments' to then generate
+// workspace and project files for a specified IDE.
+func Generate(pkg *denv.Package) error {
+	if vs.IsVisualStudio(denv.XCodeDEV, denv.XCodeOS, denv.XCodeARCH) {
+		return vs.GenerateVisualStudioSolutionAndProjects(vs.GetVisualStudio(denv.XCodeDEV), "", items.NewList(denv.XCodeOS, ",", "").Items, pkg)
+	} else if tundra.IsTundra(denv.XCodeDEV, denv.XCodeOS, denv.XCodeARCH) {
 		return tundra.GenerateTundraBuildFile(pkg)
 	}
-	return fmt.Errorf("Unknown IDE")
+	return fmt.Errorf("Unknown DEV '%s'", denv.XCodeDEV)
 }

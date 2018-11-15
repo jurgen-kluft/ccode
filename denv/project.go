@@ -141,16 +141,24 @@ func (prj *Project) ReplaceVars(v vars.Variables, r vars.Replacer) {
 	v.DelVar("${Name}")
 }
 
-var defaultMainSourcePaths = []string{Path("source\\main\\^**\\*.cpp"), Path("source\\main\\^**\\*.c")}
-var defaultTestSourcePaths = []string{Path("source\\test\\^**\\*.cpp")}
-var defaultMainIncludePaths = []string{Path("source\\main\\include\\^**\\*.h"), Path("source\\main\\include\\^**\\*.hpp"), Path("source\\main\\include\\^**\\*.inl")}
-var defaultTestIncludePaths = []string{Path("source\\test\\include\\^**\\*.h"), Path("source\\main\\include\\^**\\*.h")}
+var defaultMainSourcePaths []string
+var defaultTestSourcePaths []string
+var defaultMainIncludePaths []string
+var defaultTestIncludePaths []string
+
+func initDefaultPaths() {
+	defaultMainSourcePaths = []string{Path("source\\main\\^**\\*.cpp"), Path("source\\main\\^**\\*.c")}
+	defaultTestSourcePaths = []string{Path("source\\test\\^**\\*.cpp")}
+	defaultMainIncludePaths = []string{Path("source\\main\\include\\^**\\*.h"), Path("source\\main\\include\\^**\\*.hpp"), Path("source\\main\\include\\^**\\*.inl")}
+	defaultTestIncludePaths = []string{Path("source\\test\\include\\^**\\*.h"), Path("source\\main\\include\\^**\\*.h")}
+}
 
 // SetupDefaultCppLibProject returns a default C++ project
 // Example:
 //              SetupDefaultCppLibProject("xbase", "github.com\\jurgen-kluft")
 //
 func SetupDefaultCppLibProject(name string, URL string) *Project {
+	initDefaultPaths()
 	project := &Project{Name: name}
 	project.GUID = uid.GetGUID(project.Name)
 	project.PackageURL = URL
@@ -176,6 +184,7 @@ func SetupDefaultCppLibProject(name string, URL string) *Project {
 //              SetupDefaultCppTestProject("xbase", "github.com\\jurgen-kluft")
 //
 func SetupDefaultCppTestProject(name string, URL string) *Project {
+	initDefaultPaths()
 	project := &Project{Name: name}
 	project.GUID = uid.GetGUID(project.Name)
 	project.PackageURL = URL
@@ -202,6 +211,7 @@ func SetupDefaultCppTestProject(name string, URL string) *Project {
 //              SetupDefaultCppAppProject("xbase", "github.com\\jurgen-kluft")
 //
 func SetupDefaultCppAppProject(name string, URL string) *Project {
+	initDefaultPaths()
 	project := &Project{Name: name}
 	project.GUID = uid.GetGUID(project.Name)
 	project.PackageURL = URL

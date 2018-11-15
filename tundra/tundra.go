@@ -45,7 +45,7 @@ func addProjectVariables(p *denv.Project, isdep bool, v vars.Variables, r vars.R
 	p.ReplaceVars(v, r)
 
 	v.AddVar(p.Name+":GUID", p.GUID)
-	v.AddVar(p.Name+":ROOT_DIR", p.PackagePath)
+	v.AddVar(p.Name+":ROOT_DIR", denv.Path(p.PackagePath))
 
 	path, _ := filepath.Rel(p.ProjectPath, p.PackagePath)
 
@@ -59,14 +59,15 @@ func addProjectVariables(p *denv.Project, isdep bool, v vars.Variables, r vars.R
 	}
 
 	if isdep {
-		v.AddVar(fmt.Sprintf("%s:SOURCE_DIR", p.Name), "..\\"+p.Name+"\\"+p.SrcPath)
+		v.AddVar(fmt.Sprintf("%s:SOURCE_DIR", p.Name), denv.Path("..\\"+p.Name+"\\"+p.SrcPath))
 	} else {
-		v.AddVar(fmt.Sprintf("%s:SOURCE_DIR", p.Name), p.SrcPath)
+		v.AddVar(fmt.Sprintf("%s:SOURCE_DIR", p.Name), denv.Path(p.SrcPath))
 	}
 
 	for _, platform := range p.Platforms {
 		for _, config := range platform.Configs {
 			includes := config.IncludeDirs.Prefix(path, items.PathPrefixer)
+			includes = includes.Prefix(path, denv.PathFixer)
 			includes.Delimiter = ","
 			includes.Quote = `"`
 			v.AddVar(fmt.Sprintf("%s:INCLUDE_DIRS", p.Name), includes.String())
@@ -115,7 +116,7 @@ func GenerateTundraBuildFile(pkg *denv.Package) error {
 	}
 
 	writer := &denv.ProjectTextWriter{}
-	slnfilepath := filepath.Join(mainprj.ProjectPath, mainprj.Name+".lua")
+	slnfilepath := filepath.Join(mainprj.ProjectPath, "tundra.lua")
 	if writer.Open(slnfilepath) != nil {
 		fmt.Printf("Error opening file '%s'", slnfilepath)
 		return fmt.Errorf("Error opening file '%s'", slnfilepath)
@@ -159,7 +160,7 @@ func GenerateTundraBuildFile(pkg *denv.Package) error {
 
 	variables.Print()
 
-	writer.WriteLn(`local GlobExtension = require("tundra.syntax.glob"`)
+	writer.WriteLn(`local GlobExtension = require("tundra.syntax.glob")`)
 	writer.WriteLn(``)
 	writer.WriteLn(`Build {`)
 	writer.WriteLn(`+ReplaceEnv = {`)
@@ -167,14 +168,11 @@ func GenerateTundraBuildFile(pkg *denv.Package) error {
 	writer.WriteLn(`+},`)
 	writer.WriteLn(`+Env = {`)
 	writer.WriteLn(`++CPPDEFS = {`)
-	writer.WriteLn(`+++{ "TARGET_DEV_DEBUG", "TARGET_PC", "PLATFORM_64BIT"; Config = "win64-*-dev-debug-*" },`)
-	writer.WriteLn(`+++{ "TARGET_DEV_DEBUG", "TARGET_MAC", "PLATFORM_64BIT"; Config = "macosx-*-dev-debug-*" },`)
-	writer.WriteLn(`+++{ "TARGET_DEV_RELEASE", "TARGET_PC", "PLATFORM_64BIT"; Config = "win64-*-dev-release-*" },`)
-	writer.WriteLn(`+++{ "TARGET_DEV_RELEASE", "TARGET_MAC", "PLATFORM_64BIT"; Config = "macosx-*-dev-release-*" },`)
-	writer.WriteLn(`+++{ "TARGET_TEST_DEBUG", "TARGET_PC", "PLATFORM_64BIT"; Config = "win64-*-test-debug-*" },`)
-	writer.WriteLn(`+++{ "TARGET_TEST_DEBUG", "TARGET_MAC", "PLATFORM_64BIT"; Config = "macosx-*-test-debug-*" },`)
-	writer.WriteLn(`+++{ "TARGET_TEST_RELEASE", "TARGET_PC", "PLATFORM_64BIT"; Config = "win64-*-test-release-*" },`)
-	writer.WriteLn(`+++{ "TARGET_TEST_RELEASE", "TARGET_MAC", "PLATFORM_64BIT"; Config = "macosx-*-test-release-*" },`)
+	writer.WriteLn(`+++{ "TARGET_PC", "PLATFORM_64BIT"; Config = "win64-*-*-*" },`)
+	writer.WriteLn(`+++{ "TARGET_MAC", "PLATFORM_64BIT"; Config = "macosx-*-*-*" },`)
+	writer.WriteLn(`+++{ "TARGET_DEV_DEBUG"; Config = "*-*-debug-*" },`)
+	writer.WriteLn(`+++{ "TARGET_DEV_RELEASE"; Config = "*-*-release-*" },`)
+	writer.WriteLn(`+++{ "TARGET_TEST"; Config = "*-*-*-test" },`)
 	writer.WriteLn(`++},`)
 	writer.WriteLn(`+},`)
 	writer.WriteLn(`+Units = function ()`)
@@ -184,9 +182,9 @@ func GenerateTundraBuildFile(pkg *denv.Package) error {
 	writer.WriteLn(`++++Dir = dir,`)
 	writer.WriteLn(`++++Extensions = { ".c", ".cpp", ".s", ".asm" },`)
 	writer.WriteLn(`++++Filters = {`)
-	writer.WriteLn(`+++++{ Pattern = "_win32"; Config = "win64-*-*-*-*" },`)
-	writer.WriteLn(`+++++{ Pattern = "_mac"; Config = "macosx-*-*-*-*" },`)
-	writer.WriteLn(`+++++{ Pattern = "_test"; Config = "*-*-test-*-*" },`)
+	writer.WriteLn(`+++++{ Pattern = "_win32"; Config = "win64-*-*" },`)
+	writer.WriteLn(`+++++{ Pattern = "_mac"; Config = "macosx-*-*" },`)
+	writer.WriteLn(`+++++{ Pattern = "_test"; Config = "*-*-*-test" },`)
 	writer.WriteLn(`++++}`)
 	writer.WriteLn(`+++}`)
 	writer.WriteLn(`++end`)
@@ -221,7 +219,12 @@ func GenerateTundraBuildFile(pkg *denv.Package) error {
 		dependency := []string{}
 		dependency = append(dependency, `++local ${Name}_library = ${${Name}:TYPE} {`)
 		dependency = append(dependency, `+++Name = "${Name}",`)
-		dependency = append(dependency, `+++Config = "*-*-*-*-static",`)
+		if strings.HasSuffix(dep.Name, "test") {
+			dependency = append(dependency, `+++Config = "*-*-*-test",`)
+		} else {
+			dependency = append(dependency, `+++Config = "*-*-*-*",`)
+		}
+
 		dependency = append(dependency, `+++Sources = { SourceGlob("${SOURCE_DIR}") },`)
 		dependency = append(dependency, `+++Includes = { ${INCLUDE_DIRS} },`)
 		dependency = append(dependency, `++}`)
@@ -259,7 +262,11 @@ func GenerateTundraBuildFile(pkg *denv.Package) error {
 	program := []string{}
 	program = append(program, `++local ${Main} = ${${Name}:TYPE} {`)
 	program = append(program, `+++Name = "${Name}",`)
-	program = append(program, `+++Config = "*-*-*-*-static",`)
+	if strings.HasSuffix(mainprj.Name, "test") {
+		program = append(program, `+++Config = "*-*-*-test",`)
+	} else {
+		program = append(program, `+++Config = "*-*-*-*",`)
+	}
 	program = append(program, `+++Sources = { SourceGlob("${SOURCE_DIR}") },`)
 	program = append(program, `+++Includes = { ${INCLUDE_DIRS} },`)
 	program = append(program, `+++Depends = { ${DEPENDS} },`)
@@ -357,8 +364,7 @@ func GenerateTundraBuildFile(pkg *denv.Package) error {
 	writer.WriteLn(`++},`)
 	writer.WriteLn(`+},`)
 	writer.WriteLn(``)
-	writer.WriteLn(`+Variants = { "debug", "release" },`)
-	writer.WriteLn(`+SubVariants = { "static" },`)
+	writer.WriteLn(`+SubVariants = { "dev", "test" },`)
 	writer.WriteLn(`}`)
 
 	writer.Close()
@@ -367,6 +373,6 @@ func GenerateTundraBuildFile(pkg *denv.Package) error {
 }
 
 // IsTundra checks if IDE is requesting a Tundra build file
-func IsTundra(IDE string, targets string) bool {
-	return strings.ToLower(IDE) == "tundra"
+func IsTundra(DEV string, OS string, ARCH string) bool {
+	return strings.ToLower(DEV) == "tundra"
 }
