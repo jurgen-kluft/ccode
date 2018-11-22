@@ -18,7 +18,7 @@ These are the steps to make a new package:
 4. Once you have specified everything in package.go:
    * In the root 'go get' (this will get all your specified dependencies in GO_PATH)
    * To generate the VS solution and projects just run: ``go run mylibrary.go``  
-   * To generate the Tundra build file run: ``go run mylibrary.go --IDE=Tundra``
+   * To generate the Tundra build file run: ``go run mylibrary.go --DEV=Tundra``
 
 Example:
 The content of the ```mylibrary.go``` file:
@@ -31,6 +31,7 @@ import (
 )
 
 func main() {
+	xcode.Init()
 	xcode.Generate(mylibrary.GetPackage())
 }
 ```
