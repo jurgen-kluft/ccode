@@ -19,14 +19,13 @@ func Init() error {
 	app.Name = "xcode"
 	app.Usage = "xcode --DEV=VS2017 --OS=Windows --ARCH=amd64"
 
-	var DEV string
+	DEV := ""
 	OS := runtime.GOOS
 	ARCH := runtime.GOARCH
 
 	app.Flags = []cli.Flag{
 		cli.StringFlag{
 			Name:        "DEV",
-			Value:       "VS2017",
 			Usage:       "The build system to generate projects for",
 			Destination: &DEV,
 		},
@@ -47,6 +46,13 @@ func Init() error {
 		}
 		if ARCH == "" {
 			ARCH = runtime.GOARCH
+		}
+		if DEV == "" {
+			if OS == "darwin" {
+				DEV = "TUNDRA"
+			} else {
+				DEV = "VS2017"
+			}
 		}
 		fmt.Printf("xcode (DEV:%s, OS:%s, ARCH:%s)\n", DEV, OS, ARCH)
 		denv.Init(DEV, OS, ARCH)

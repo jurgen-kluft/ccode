@@ -168,11 +168,17 @@ func GenerateTundraBuildFile(pkg *denv.Package) error {
 	writer.WriteLn(`+},`)
 	writer.WriteLn(`+Env = {`)
 	writer.WriteLn(`++CPPDEFS = {`)
-	writer.WriteLn(`+++{ "TARGET_PC", "PLATFORM_64BIT"; Config = "win64-*-*-*" },`)
-	writer.WriteLn(`+++{ "TARGET_MAC", "PLATFORM_64BIT"; Config = "macosx-*-*-*" },`)
-	writer.WriteLn(`+++{ "TARGET_DEV_DEBUG"; Config = "*-*-debug-*" },`)
-	writer.WriteLn(`+++{ "TARGET_DEV_RELEASE"; Config = "*-*-release-*" },`)
-	writer.WriteLn(`+++{ "TARGET_TEST"; Config = "*-*-*-test" },`)
+
+	writer.WriteLn(`+++{ "TARGET_PC_DEV_DEBUG", "TARGET_PC", "PLATFORM_64BIT"; Config = "win64-*-debug-dev" },`)
+	writer.WriteLn(`+++{ "TARGET_PC_DEV_RELEASE", "TARGET_PC", "PLATFORM_64BIT"; Config = "win64-*-release-dev" },`)
+	writer.WriteLn(`+++{ "TARGET_PC_TEST_DEBUG", "TARGET_PC", "PLATFORM_64BIT"; Config = "win64-*-debug-test" },`)
+	writer.WriteLn(`+++{ "TARGET_PC_TEST_RELEASE", "TARGET_PC", "PLATFORM_64BIT"; Config = "win64-*-release-test" },`)
+
+	writer.WriteLn(`+++{ "TARGET_MAC_DEV_DEBUG", "TARGET_MAC", "PLATFORM_64BIT"; Config = "macosx-*-debug-dev" },`)
+	writer.WriteLn(`+++{ "TARGET_MAC_DEV_RELEASE", "TARGET_MAC", "PLATFORM_64BIT"; Config = "macosx-*-release-dev" },`)
+	writer.WriteLn(`+++{ "TARGET_MAC_TEST_DEBUG", "TARGET_MAC", "PLATFORM_64BIT"; Config = "macosx-*-debug-test" },`)
+	writer.WriteLn(`+++{ "TARGET_MAC_TEST_RELEASE", "TARGET_MAC", "PLATFORM_64BIT"; Config = "macosx-*-release-test" },`)
+
 	writer.WriteLn(`++},`)
 	writer.WriteLn(`+},`)
 	writer.WriteLn(`+Units = function ()`)
