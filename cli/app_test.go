@@ -324,7 +324,7 @@ func TestApp_ParseSliceFlags(t *testing.T) {
 	}
 	app.Commands = []Command{command}
 
-	app.Run([]string{"", "cmd", "my-arg", "-p", "22", "-p", "80", "-ip", "8.8.8.8", "-ip", "8.8.4.4"})
+	app.Run([]string{"", "cmd", "my-arg", "-p", "22", "-p", "80", "-ip", "8.8.8.8", "-ip", "8.8.4.4", "-option", "test"})
 
 	IntsEquals := func(a, b []int) bool {
 		if len(a) != len(b) {
@@ -351,6 +351,8 @@ func TestApp_ParseSliceFlags(t *testing.T) {
 	}
 	var expectedIntSlice = []int{22, 80}
 	var expectedStringSlice = []string{"8.8.8.8", "8.8.4.4"}
+	var expectedOption = "test"
+	var expectedFirstArg = "my-arg"
 
 	if !IntsEquals(parsedIntSlice, expectedIntSlice) {
 		t.Errorf("%v does not match %v", parsedIntSlice, expectedIntSlice)
@@ -358,6 +360,14 @@ func TestApp_ParseSliceFlags(t *testing.T) {
 
 	if !StrsEquals(parsedStringSlice, expectedStringSlice) {
 		t.Errorf("%v does not match %v", parsedStringSlice, expectedStringSlice)
+	}
+
+	if !(parsedOption == expectedOption) {
+		t.Errorf("%v does not match %v", parsedOption, expectedOption)
+	}
+
+	if !(firstArg == expectedFirstArg) {
+		t.Errorf("%v does not match %v", firstArg, expectedFirstArg)
 	}
 }
 
