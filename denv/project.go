@@ -24,7 +24,8 @@ func (f *Files) AddGlobPath(dirpath string) {
 
 // GlobFiles will collect files that can be found in @dirpath that matches
 // any of the Files.GlobPaths into Files.Files
-func (f *Files) GlobFiles(dirpath string) {
+// Also it will ignore files that contain certain incoming patterns
+func (f *Files) GlobFiles(dirpath string, file_patterns_to_ignore []string) {
 	// Glob all the on-disk files
 	for _, g := range f.GlobPaths {
 		pp := strings.Split(g, "^")
@@ -33,12 +34,17 @@ func (f *Files) GlobFiles(dirpath string) {
 		globbedfiles, _ := glob.GlobFiles(ppath, pp[1])
 		for _, file := range globbedfiles {
 			globbedfile := filepath.Join(pp[0], file)
-			f.Files = append(f.Files, globbedfile)
+			ignored := 0
+			for _, ignore := range file_patterns_to_ignore {
+				if strings.Contains(globbedfile, ignore) {
+					ignored++
+				}
+			}
+			if ignored == 0 {
+				f.Files = append(f.Files, globbedfile)
+			}
 		}
 	}
-
-	// Generate the virtual files
-
 }
 
 // ProjectType defines the type of project, like 'StaticLibrary'
@@ -73,7 +79,7 @@ type Project struct {
 	Author       string
 	GUID         string
 	Language     string
-	Platforms    PlatformSet
+	Platform     *Platform
 	SrcPath      string
 	HdrFiles     *Files
 	SrcFiles     *Files
@@ -84,16 +90,14 @@ type Project struct {
 
 // HasPlatform returns true if the project is configured for that platform
 func (prj *Project) HasPlatform(platformname string) bool {
-	return prj.Platforms.HasPlatform(platformname)
+	return prj.Platform.Name == platformname
 }
 
 // HasConfig will return true if platform @platformname has a configuration with name @configname
 func (prj *Project) HasConfig(platformname, configname string) bool {
-	for _, platform := range prj.Platforms {
-		if platform.Name == platformname {
-			if platform.HasConfig(configname) == false {
-				return false
-			}
+	if prj.Platform.Name == platformname {
+		if prj.Platform.HasConfig(configname) == false {
+			return false
 		}
 	}
 	return true
@@ -101,12 +105,15 @@ func (prj *Project) HasConfig(platformname, configname string) bool {
 
 // GetConfig will return the configuration of platform @platformname with name @configname
 func (prj *Project) GetConfig(platformname, configname string) (*Config, bool) {
-	for _, platform := range prj.Platforms {
-		if platform.Name == platformname {
-			return platform.GetConfig(configname)
-		}
+	if prj.Platform.Name == platformname {
+		return prj.Platform.GetConfig(configname)
 	}
 	return nil, false
+}
+
+// AddDefine adds a define
+func (prj *Project) AddDefine(define string) {
+	prj.Platform.AddDefine(define)
 }
 
 // AddVar adds a variable to this project
@@ -124,20 +131,18 @@ func (prj *Project) MergeVars(v vars.Variables) {
 	vars.MergeVars(v, prj.Vars, prjmerger)
 
 	// Merge in the project\platform\config variables
-	for _, platform := range prj.Platforms {
-		for _, config := range platform.Configs {
-			pcmerger := func(key, value string, vv vars.Variables) {
-				vv.AddVar(fmt.Sprintf("%s:%s[%s][%s]", prj.Name, key, platform.Name, config.Name), value)
-			}
-			vars.MergeVars(v, config.Vars, pcmerger)
+	for _, config := range prj.Platform.Configs {
+		pcmerger := func(key, value string, vv vars.Variables) {
+			vv.AddVar(fmt.Sprintf("%s:%s[%s][%s]", prj.Name, key, prj.Platform.Name, config.Name), value)
 		}
+		vars.MergeVars(v, config.Vars, pcmerger)
 	}
 }
 
 // ReplaceVars replaces any variable that exists in members of Project
 func (prj *Project) ReplaceVars(v vars.Variables, r vars.Replacer) {
 	v.AddVar("${Name}", prj.Name)
-	prj.Platforms.ReplaceVars(v, r)
+	prj.Platform.ReplaceVars(v, r)
 	v.DelVar("${Name}")
 }
 
@@ -169,7 +174,7 @@ func SetupDefaultCppLibProject(name string, URL string) *Project {
 	project.SrcFiles = &Files{GlobPaths: defaultMainSourcePaths, VirtualPaths: []string{}, Files: []string{}}
 	project.HdrFiles = &Files{GlobPaths: defaultMainIncludePaths, VirtualPaths: []string{}, Files: []string{}}
 
-	project.Platforms = GetDefaultPlatforms()
+	project.Platform = GetDefaultPlatform()
 	project.Dependencies = []*Project{}
 	project.Vars = vars.NewVars()
 
@@ -195,14 +200,14 @@ func SetupDefaultCppTestProject(name string, URL string) *Project {
 	project.SrcFiles = &Files{GlobPaths: defaultTestSourcePaths, VirtualPaths: []string{}, Files: []string{}}
 	project.HdrFiles = &Files{GlobPaths: defaultTestIncludePaths, VirtualPaths: []string{}, Files: []string{}}
 
-	project.Platforms = GetDefaultPlatforms()
+	project.Platform = GetDefaultPlatform()
 	project.Dependencies = []*Project{}
 	project.Vars = vars.NewVars()
 
 	project.AddVar("EXCEPTIONS", "Sync")
 	project.AddVar("COMPILE_AS", "CompileAsCpp")
 
-	project.Platforms.AddIncludeDir(Path("source\\test\\include"))
+	project.Platform.AddIncludeDir(Path("source\\test\\include"))
 	return project
 }
 
@@ -222,7 +227,7 @@ func SetupDefaultCppAppProject(name string, URL string) *Project {
 	project.SrcFiles = &Files{GlobPaths: defaultMainSourcePaths, VirtualPaths: []string{}, Files: []string{}}
 	project.HdrFiles = &Files{GlobPaths: defaultMainIncludePaths, VirtualPaths: []string{}, Files: []string{}}
 
-	project.Platforms = GetDefaultPlatforms()
+	project.Platform = GetDefaultPlatform()
 	project.Dependencies = []*Project{}
 	project.Vars = vars.NewVars()
 

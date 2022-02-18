@@ -64,7 +64,8 @@ func addProjectVariables(p *denv.Project, isdep bool, v vars.Variables, r vars.R
 		v.AddVar(fmt.Sprintf("%s:SOURCE_DIR", p.Name), denv.Path(p.SrcPath))
 	}
 
-	for _, platform := range p.Platforms {
+	var platform = p.Platform
+	{
 		for _, config := range platform.Configs {
 			includes := config.IncludeDirs.Prefix(path, items.PathPrefixer)
 			includes = includes.Prefix(path, denv.PathFixer)
