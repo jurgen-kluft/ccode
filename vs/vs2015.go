@@ -47,16 +47,15 @@ func addProjectVariables(p *denv.Project, isdep bool, v vars.Variables, r vars.R
 		v.AddVar(p.Name+":TYPE", "Application")
 	}
 
-	for _, platform := range p.Platforms {
-		for _, config := range platform.Configs {
-			includes := config.IncludeDirs.Prefix(path, items.PathPrefixer)
-			libdirs := config.LibraryDirs.Prefix(path, items.PathPrefixer)
+	var platform = p.Platform
+	for _, config := range platform.Configs {
+		includes := config.IncludeDirs.Prefix(path, items.PathPrefixer)
+		libdirs := config.LibraryDirs.Prefix(path, items.PathPrefixer)
 
-			v.AddVar(fmt.Sprintf("%s:INCLUDE_DIRS[%s][%s]", p.Name, platform.Name, config.Name), includes.String())
-			v.AddVar(fmt.Sprintf("%s:LIBRARY_DIRS[%s][%s]", p.Name, platform.Name, config.Name), libdirs.String())
-			v.AddVar(fmt.Sprintf("%s:LIBRARY_FILES[%s][%s]", p.Name, platform.Name, config.Name), config.LibraryFiles.String())
-			v.AddVar(fmt.Sprintf("%s:DEFINES[%s][%s]", p.Name, platform.Name, config.Name), config.Defines.String())
-		}
+		v.AddVar(fmt.Sprintf("%s:INCLUDE_DIRS[%s][%s]", p.Name, platform.Name, config.Name), includes.String())
+		v.AddVar(fmt.Sprintf("%s:LIBRARY_DIRS[%s][%s]", p.Name, platform.Name, config.Name), libdirs.String())
+		v.AddVar(fmt.Sprintf("%s:LIBRARY_FILES[%s][%s]", p.Name, platform.Name, config.Name), config.LibraryFiles.String())
+		v.AddVar(fmt.Sprintf("%s:DEFINES[%s][%s]", p.Name, platform.Name, config.Name), config.Defines.String())
 	}
 
 	configitems := []string{"OPTIMIZATION", "DEBUG_INFO", "USE_DEBUG_LIBS"}
@@ -71,17 +70,13 @@ func addProjectVariables(p *denv.Project, isdep bool, v vars.Variables, r vars.R
 	}
 
 	for i, configitem := range configitems {
-		for _, platform := range p.Platforms {
-			for _, config := range platform.Configs {
-				value := getdefault(config.Name, i)
-				v.AddVar(fmt.Sprintf("%s:%s[%s][%s]", p.Name, configitem, platform.Name, config.Name), value)
-			}
+		for _, config := range platform.Configs {
+			value := getdefault(config.Name, i)
+			v.AddVar(fmt.Sprintf("%s:%s[%s][%s]", p.Name, configitem, platform.Name, config.Name), value)
 		}
 	}
 
-	for _, platform := range p.Platforms {
-		v.AddVar(fmt.Sprintf("TOOLSET[%s]", platform.Name), "v140")
-	}
+	v.AddVar(fmt.Sprintf("TOOLSET[%s]", platform.Name), "v141")
 }
 
 // setupProjectPaths will set correct paths for the main and dependency packages
@@ -105,27 +100,26 @@ var CPPprojectID = "8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942"
 
 // generateVisualStudio2015Project generates a Visual Studio 2015 project (.vcxproj) file
 func generateVisualStudio2015Project(prj *denv.Project, v vars.Variables, replacer vars.Replacer, writer denv.ProjectWriter) {
+	var platform = prj.Platform
 
 	writer.WriteLn(`<?xml version="1.0" encoding="utf-8"?>`)
 	writer.WriteLn(`<Project DefaultTargets="Build" ToolsVersion="14.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">`)
 
 	writer.WriteLn(`+<ItemGroup Label="ProjectConfigurations">`)
-	for _, platform := range prj.Platforms {
-		for _, config := range platform.Configs {
-			projconfig := []string{}
-			projconfig = append(projconfig, `+<ProjectConfiguration Include="${CONFIG}|${PLATFORM}">`)
-			projconfig = append(projconfig, `++<Configuration>${CONFIG}</Configuration>`)
-			projconfig = append(projconfig, `++<Platform>${PLATFORM}</Platform>`)
-			projconfig = append(projconfig, `+</ProjectConfiguration>`)
+	for _, config := range platform.Configs {
+		projconfig := []string{}
+		projconfig = append(projconfig, `+<ProjectConfiguration Include="${CONFIG}|${PLATFORM}">`)
+		projconfig = append(projconfig, `++<Configuration>${CONFIG}</Configuration>`)
+		projconfig = append(projconfig, `++<Platform>${PLATFORM}</Platform>`)
+		projconfig = append(projconfig, `+</ProjectConfiguration>`)
 
-			replacer.ReplaceInLines("${PLATFORM}", platform.Name, projconfig)
-			replacer.ReplaceInLines("${CONFIG}", config.Name, projconfig)
-			writer.WriteLns(projconfig)
-		}
+		replacer.ReplaceInLines("${PLATFORM}", platform.Name, projconfig)
+		replacer.ReplaceInLines("${CONFIG}", config.Name, projconfig)
+		writer.WriteLns(projconfig)
 	}
 	writer.WriteLn(`+</ItemGroup>`)
 
-	for _, platform := range prj.Platforms {
+	{
 		toolsets := []string{}
 		toolsets = append(toolsets, `+<PropertyGroup Condition="'$(Platform)'=='${PLATFORM}'" Label="Configuration">`)
 		toolsets = append(toolsets, `++<PlatformToolset>${TOOLSET[${PLATFORM}]}</PlatformToolset>`)
@@ -156,7 +150,7 @@ func generateVisualStudio2015Project(prj *denv.Project, v vars.Variables, replac
 	writer.WriteLn(`+<ImportGroup Label="TargetDirs"/>`)
 	writer.WriteLn(`+<Import Project="$(VCTargetsPath)\Microsoft.Cpp.Default.props"/>`)
 
-	for _, platform := range prj.Platforms {
+	{
 		for _, config := range platform.Configs {
 			configuration := []string{}
 			configuration = append(configuration, `+<PropertyGroup Condition="'$(Configuration)|$(Platform)'=='${CONFIG}|${PLATFORM}'" Label="Configuration">`)
@@ -182,7 +176,7 @@ func generateVisualStudio2015Project(prj *denv.Project, v vars.Variables, replac
 
 	writer.WriteLn(`<Import Project="$(VCTargetsPath)\Microsoft.Cpp.props"/>`)
 
-	for _, platform := range prj.Platforms {
+	{
 		userprops := []string{}
 		userprops = append(userprops, `+<ImportGroup Condition="'$(Platform)'=='${PLATFORM}'" Label="PropertySheets">`)
 		userprops = append(userprops, `++<Import Condition="exists('$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props')" Label="LocalAppDataPlatform" Project="$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props"/>`)
@@ -191,7 +185,7 @@ func generateVisualStudio2015Project(prj *denv.Project, v vars.Variables, replac
 		writer.WriteLns(userprops)
 	}
 
-	for _, platform := range prj.Platforms {
+	{
 		platformprops := []string{}
 		platformprops = append(platformprops, `+<PropertyGroup Condition="'$(Platform)'=='${PLATFORM}'">`)
 		platformprops = append(platformprops, `++<LinkIncremental>true</LinkIncremental>`)
@@ -226,7 +220,7 @@ func generateVisualStudio2015Project(prj *denv.Project, v vars.Variables, replac
 		includedirs = append(includedirs, includedir)
 	}
 
-	for _, platform := range prj.Platforms {
+	{
 		for _, config := range platform.Configs {
 			compileandlink := []string{}
 			compileandlink = append(compileandlink, `+<ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='${CONFIG}|${PLATFORM}'">`)
@@ -509,9 +503,9 @@ func GenerateVisualStudio2015Solution(p *denv.Project) {
 
 	// Glob all the source and header files for every project
 	for _, prj := range projects {
-		fmt.Println("GLOBBING: " + prj.Name + " : " + prj.PackagePath)
-		prj.SrcFiles.GlobFiles(prj.PackagePath)
-		prj.HdrFiles.GlobFiles(prj.PackagePath)
+		fmt.Println("GLOBBING: " + prj.Name + " : " + prj.PackagePath + " : ignore(" + strings.Join(prj.Platform.FilePatternsToIgnore, ", ") + ")")
+		prj.SrcFiles.GlobFiles(prj.PackagePath, prj.Platform.FilePatternsToIgnore)
+		prj.HdrFiles.GlobFiles(prj.PackagePath, prj.Platform.FilePatternsToIgnore)
 	}
 
 	// Generate all the projects
@@ -558,9 +552,10 @@ func GenerateVisualStudio2015Solution(p *denv.Project) {
 	configs := make(map[string]string)
 
 	for _, project := range projects {
-		for _, platform := range project.Platforms {
-			for _, config := range platform.Configs {
-				configstr := fmt.Sprintf("%s|%s", config.Name, platform.Name)
+		var pp = project.Platform
+		{
+			for _, config := range pp.Configs {
+				configstr := fmt.Sprintf("%s|%s", config.Name, pp.Name)
 				configs[configstr] = configstr
 			}
 		}
@@ -577,11 +572,12 @@ func GenerateVisualStudio2015Solution(p *denv.Project) {
 	// ProjectConfigurationPlatforms
 	writer.WriteLn("+GlobalSection(ProjectConfigurationPlatforms) = postSolution")
 	for _, project := range projects {
-		for _, platform := range project.Platforms {
-			for _, config := range platform.Configs {
-				configplatform := fmt.Sprintf("%s|%s", config.Name, platform.Name)
+		var pp = project.Platform
+		{
+			for _, config := range pp.Configs {
+				configplatform := fmt.Sprintf("%s|%s", config.Name, pp.Name)
 				activecfg := fmt.Sprintf("++{%s}.%s|%s.ActiveCfg = %s|%s", project.GUID, config.Name, configplatform, config.Name, configplatform)
-				buildcfg := fmt.Sprintf("++{%s}.%s|%s.Buid.0 = %s|%s", project.GUID, config.Name, configplatform, config.Name, configplatform)
+				buildcfg := fmt.Sprintf("++{%s}.%s|%s.Build.0 = %s|%s", project.GUID, config.Name, configplatform, config.Name, configplatform)
 				writer.WriteLn(activecfg)
 				writer.WriteLn(buildcfg)
 			}

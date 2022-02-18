@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"os"
 	"runtime"
+	"strings"
 
 	"github.com/jurgen-kluft/xcode/cli"
 	"github.com/jurgen-kluft/xcode/denv"
@@ -31,7 +32,7 @@ func Init() error {
 		},
 		cli.StringFlag{
 			Name:        "OS",
-			Usage:       "OS to include (windows, darwin)",
+			Usage:       "OS to include (windows, darwin, linux)",
 			Destination: &OS,
 		},
 		cli.StringFlag{
@@ -42,13 +43,15 @@ func Init() error {
 	}
 	app.Action = func(c *cli.Context) {
 		if OS == "" {
-			OS = runtime.GOOS
+			OS = strings.ToLower(runtime.GOOS)
 		}
 		if ARCH == "" {
-			ARCH = runtime.GOARCH
+			ARCH = strings.ToLower(runtime.GOARCH)
 		}
 		if DEV == "" {
 			if OS == "darwin" {
+				DEV = "TUNDRA"
+			} else if OS == "linux" {
 				DEV = "TUNDRA"
 			} else {
 				DEV = "VS2017"

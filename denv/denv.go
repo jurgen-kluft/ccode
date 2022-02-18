@@ -22,7 +22,7 @@ const (
 // XCodeDEV constant: Visual Studio, Tundra, CodeLite?
 var XCodeDEV string
 
-// XCodeOS constant: Windows, Mac OS
+// XCodeOS constant: Windows, Darwin, Linux
 var XCodeOS string
 
 // XCodeARCH constant: x64 ?
