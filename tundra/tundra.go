@@ -12,26 +12,26 @@ import (
 	"path/filepath"
 )
 
-func fullReplaceVar(varname string, prjname string, platform string, config string, v vars.Variables, replacer func(name, value string)) bool {
-	value, err := v.GetVar(fmt.Sprintf("%s:%s[%s][%s]", prjname, varname, platform, config))
-	if err == nil {
-		replacer(varname, value)
-	} else {
-		value, err = v.GetVar(fmt.Sprintf("%s:%s", prjname, varname))
-		if err == nil {
-			replacer(varname, value)
-		} else {
-			return false
-		}
-	}
-	return true
-}
+// func fullReplaceVar(varname string, prjname string, platform string, config string, v vars.Variables, replacer func(name, value string)) bool {
+// 	value, err := v.GetVar(fmt.Sprintf("%s:%s[%s][%s]", prjname, varname, platform, config))
+// 	if err == nil {
+// 		replacer(varname, value)
+// 	} else {
+// 		value, err = v.GetVar(fmt.Sprintf("%s:%s", prjname, varname))
+// 		if err == nil {
+// 			replacer(varname, value)
+// 		} else {
+// 			return false
+// 		}
+// 	}
+// 	return true
+// }
 
-func fullReplaceVarWithDefault(varname string, vardefaultvalue string, prjname string, platform string, config string, v vars.Variables, replacer func(name, value string)) {
-	if !fullReplaceVar(varname, prjname, platform, config, v, replacer) {
-		replacer(varname, vardefaultvalue)
-	}
-}
+// func fullReplaceVarWithDefault(varname string, vardefaultvalue string, prjname string, platform string, config string, v vars.Variables, replacer func(name, value string)) {
+// 	if !fullReplaceVar(varname, prjname, platform, config, v, replacer) {
+// 		replacer(varname, vardefaultvalue)
+// 	}
+// }
 
 // AddProjectVariables adds variables from the Project information
 //   Example for 'xhash' project with 'xbase' as a dependency:
@@ -113,21 +113,21 @@ func GenerateTundraBuildFile(pkg *denv.Package) error {
 		mainprj = pkg.GetUnittest()
 	}
 	if mainprj == nil {
-		return fmt.Errorf("This package has no main app or main test")
+		return fmt.Errorf("this package has no main app or main test")
 	}
 
 	writer := &denv.ProjectTextWriter{}
 	slnfilepath := filepath.Join(mainprj.ProjectPath, "tundra.lua")
 	if writer.Open(slnfilepath) != nil {
 		fmt.Printf("Error opening file '%s'", slnfilepath)
-		return fmt.Errorf("Error opening file '%s'", slnfilepath)
+		return fmt.Errorf("error opening file '%s'", slnfilepath)
 	}
 
 	// And dependency projects (dependency tree)
 	depmap := map[string]*denv.Project{}
 	depmap[mainprj.Name] = mainprj
 	depstack := &strStack{mainprj.Name}
-	for depstack.Empty() == false {
+	for !depstack.Empty() {
 		prjname := depstack.Pop()
 		prj := depmap[prjname]
 		for _, dep := range prj.Dependencies {
@@ -151,9 +151,8 @@ func GenerateTundraBuildFile(pkg *denv.Package) error {
 
 	// Main project
 	projects := []*denv.Project{mainprj}
-	for _, dep := range dependencies {
-		projects = append(projects, dep)
-	}
+	projects = append(projects, dependencies...)
+
 	for _, prj := range projects {
 		isdep := prj.PackageURL != mainprj.PackageURL
 		addProjectVariables(prj, isdep, variables, replacer)
@@ -163,9 +162,26 @@ func GenerateTundraBuildFile(pkg *denv.Package) error {
 
 	// Glob all the source and header files for every project
 	for _, prj := range projects {
-		fmt.Println("GLOBBING: " + prj.Name + " : " + prj.PackagePath)
-		prj.SrcFiles.GlobFiles(prj.PackagePath)
-		prj.HdrFiles.GlobFiles(prj.PackagePath)
+		fmt.Println("GLOBBING: " + prj.Name + " : " + prj.PackagePath + " : ignore(" + strings.Join(prj.Platform.FilePatternsToIgnore, ", ") + ")")
+		prj.SrcFiles.GlobFiles(prj.PackagePath, prj.Platform.FilePatternsToIgnore)
+		prj.HdrFiles.GlobFiles(prj.PackagePath, prj.Platform.FilePatternsToIgnore)
+
+		// Convert the list of source files to a string by delimiting with double quotes and joining them with a comma
+		relpath, _ := filepath.Rel(prj.ProjectPath, prj.PackagePath)
+		src_files := ""
+		for n, src := range prj.SrcFiles.Files {
+			srcfile := filepath.Join(relpath, src)
+			if src_files != "" {
+				src_files += ","
+			}
+			src_files += `"` + srcfile + `"`
+			if n%3 == 2 { // max 3 entries on one line
+				src_files += "\n"
+			}
+		}
+
+		// Register the list of source files as a variable for the project
+		variables.AddVar(prj.Name+":SOURCE_FILES", src_files)
 	}
 
 	writer.WriteLn(`local GlobExtension = require("tundra.syntax.glob")`)
@@ -195,19 +211,6 @@ func GenerateTundraBuildFile(pkg *denv.Package) error {
 	writer.WriteLn(`++},`)
 	writer.WriteLn(`+},`)
 	writer.WriteLn(`+Units = function ()`)
-	writer.WriteLn(`++-- Recursively globs for source files relevant to current build-id`)
-	writer.WriteLn(`++local function SourceGlob(dir)`)
-	writer.WriteLn(`+++return FGlob {`)
-	writer.WriteLn(`++++Dir = dir,`)
-	writer.WriteLn(`++++Extensions = { ".c", ".cpp", ".s", ".asm" },`)
-	writer.WriteLn(`++++Filters = {`)
-	writer.WriteLn(`+++++{ Pattern = "_win32"; Config = "win64-*-*" },`)
-	writer.WriteLn(`+++++{ Pattern = "_mac"; Config = "macosx-*-*" },`)
-	writer.WriteLn(`+++++{ Pattern = "_linux"; Config = "linux-*-*" },`)
-	writer.WriteLn(`+++++{ Pattern = "_test"; Config = "*-*-*-test" },`)
-	writer.WriteLn(`++++}`)
-	writer.WriteLn(`+++}`)
-	writer.WriteLn(`++end`)
 
 	for _, dep := range dependencies {
 		dependency := []string{}
@@ -220,7 +223,7 @@ func GenerateTundraBuildFile(pkg *denv.Package) error {
 		}
 
 		// Scan the source folder for source files and write them all out
-		dependency = append(dependency, `+++Sources = { SourceGlob("${SOURCE_DIR}") },`)
+		dependency = append(dependency, `+++Sources = { ${SOURCE_FILES} },`)
 
 		// We do not want to have tundra glob the source files, so we glob them here in the same
 		// manner as we would do for Visual Studio.
@@ -229,9 +232,11 @@ func GenerateTundraBuildFile(pkg *denv.Package) error {
 		dependency = append(dependency, `+++Includes = { ${INCLUDE_DIRS} },`)
 		dependency = append(dependency, `++}`)
 
+		replacer.ReplaceInLines("${SOURCE_FILES}", "${"+dep.Name+":SOURCE_FILES}", dependency)
 		replacer.ReplaceInLines("${SOURCE_DIR}", "${"+dep.Name+":SOURCE_DIR}", dependency)
 
 		configitems := map[string]items.List{
+			"SOURCE_FILES": items.NewList("${"+dep.Name+":SOURCE_FILES}", ",", ""),
 			"INCLUDE_DIRS": items.NewList("${"+dep.Name+":INCLUDE_DIRS}", ",", ""),
 		}
 
@@ -239,13 +244,15 @@ func GenerateTundraBuildFile(pkg *denv.Package) error {
 			varkeystr := fmt.Sprintf("${%s}", configitem)
 			varlist := defaults.Copy()
 
-			for _, depDep := range dep.Dependencies {
-				varkey := fmt.Sprintf("%s:%s", depDep.Name, configitem)
-				varitem, err := variables.GetVar(varkey)
-				if err == nil {
-					varlist = varlist.Add(varitem)
-				} else {
-					fmt.Println("ERROR: could not find variable " + varkey)
+			if configitem != "SOURCE_FILES" {
+				for _, depDep := range dep.Dependencies {
+					varkey := fmt.Sprintf("%s:%s", depDep.Name, configitem)
+					varitem, err := variables.GetVar(varkey)
+					if err == nil {
+						varlist = varlist.Add(varitem)
+					} else {
+						fmt.Println("ERROR: could not find variable " + varkey)
+					}
 				}
 			}
 			varset := items.ListToSet(varlist)
@@ -267,12 +274,13 @@ func GenerateTundraBuildFile(pkg *denv.Package) error {
 	} else {
 		program = append(program, `+++Config = "*-*-*-*",`)
 	}
-	program = append(program, `+++Sources = { SourceGlob("${SOURCE_DIR}") },`)
+	program = append(program, `+++Sources = { ${SOURCE_FILES} },`)
 	program = append(program, `+++Includes = { ${INCLUDE_DIRS} },`)
 	program = append(program, `+++Depends = { ${DEPENDS} },`)
 	program = append(program, `++}`)
 
 	configitems := map[string]items.List{
+		"SOURCE_FILES": items.NewList("${"+mainprj.Name+":SOURCE_FILES}", ",", ""),
 		"INCLUDE_DIRS": items.NewList("${"+mainprj.Name+":INCLUDE_DIRS}", ",", ""),
 	}
 
@@ -280,13 +288,15 @@ func GenerateTundraBuildFile(pkg *denv.Package) error {
 		varkeystr := fmt.Sprintf("${%s}", configitem)
 		varlist := defaults.Copy()
 
-		for _, depDep := range mainprj.Dependencies {
-			varkey := fmt.Sprintf("%s:%s", depDep.Name, configitem)
-			varitem, err := variables.GetVar(varkey)
-			if err == nil {
-				varlist = varlist.Add(varitem)
-			} else {
-				fmt.Println("ERROR: could not find variable " + varkey)
+		if configitem != "SOURCE_FILES" {
+			for _, depDep := range mainprj.Dependencies {
+				varkey := fmt.Sprintf("%s:%s", depDep.Name, configitem)
+				varitem, err := variables.GetVar(varkey)
+				if err == nil {
+					varlist = varlist.Add(varitem)
+				} else {
+					fmt.Println("ERROR: could not find variable " + varkey)
+				}
 			}
 		}
 		varset := items.ListToSet(varlist)
