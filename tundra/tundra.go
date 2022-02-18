@@ -160,6 +160,13 @@ func GenerateTundraBuildFile(pkg *denv.Package) error {
 
 	variables.Print()
 
+	// Glob all the source and header files for every project
+	for _, prj := range projects {
+		fmt.Println("GLOBBING: " + prj.Name + " : " + prj.PackagePath)
+		prj.SrcFiles.GlobFiles(prj.PackagePath)
+		prj.HdrFiles.GlobFiles(prj.PackagePath)
+	}
+
 	writer.WriteLn(`local GlobExtension = require("tundra.syntax.glob")`)
 	writer.WriteLn(``)
 	writer.WriteLn(`Build {`)
@@ -179,6 +186,11 @@ func GenerateTundraBuildFile(pkg *denv.Package) error {
 	writer.WriteLn(`+++{ "TARGET_MAC_TEST_DEBUG", "TARGET_MAC", "PLATFORM_64BIT"; Config = "macosx-*-debug-test" },`)
 	writer.WriteLn(`+++{ "TARGET_MAC_TEST_RELEASE", "TARGET_MAC", "PLATFORM_64BIT"; Config = "macosx-*-release-test" },`)
 
+	writer.WriteLn(`+++{ "TARGET_LINUX_DEV_DEBUG", "TARGET_LINUX", "PLATFORM_64BIT"; Config = "linux-*-debug-dev" },`)
+	writer.WriteLn(`+++{ "TARGET_LINUX_DEV_RELEASE", "TARGET_LINUX", "PLATFORM_64BIT"; Config = "linux-*-release-dev" },`)
+	writer.WriteLn(`+++{ "TARGET_LINUX_TEST_DEBUG", "TARGET_LINUX", "PLATFORM_64BIT"; Config = "linux-*-debug-test" },`)
+	writer.WriteLn(`+++{ "TARGET_LINUX_TEST_RELEASE", "TARGET_LINUX", "PLATFORM_64BIT"; Config = "linux-*-release-test" },`)
+
 	writer.WriteLn(`++},`)
 	writer.WriteLn(`+},`)
 	writer.WriteLn(`+Units = function ()`)
@@ -190,37 +202,12 @@ func GenerateTundraBuildFile(pkg *denv.Package) error {
 	writer.WriteLn(`++++Filters = {`)
 	writer.WriteLn(`+++++{ Pattern = "_win32"; Config = "win64-*-*" },`)
 	writer.WriteLn(`+++++{ Pattern = "_mac"; Config = "macosx-*-*" },`)
+	writer.WriteLn(`+++++{ Pattern = "_linux"; Config = "linux-*-*" },`)
 	writer.WriteLn(`+++++{ Pattern = "_test"; Config = "*-*-*-test" },`)
 	writer.WriteLn(`++++}`)
 	writer.WriteLn(`+++}`)
 	writer.WriteLn(`++end`)
 
-	// Write out something like this:
-	/*
-	   local xbase_inc = "source/main/include/"
-	   local xunittest_inc = "../xunittest/source/main/include/"
-
-	   local xbase_lib = StaticLibrary {
-	     Name = "xbase",
-	     Config = "*-*-*-static",
-	     Sources = { SourceGlob("source/main/cpp") },
-	     Includes = { xbase_inc },
-	   }
-
-	   local xunittest_lib = StaticLibrary {
-	     Name = "xunittest",
-	     Config = "*-*-*-static",
-	     Sources = { SourceGlob("../xunittest/source/main/cpp") },
-	     Includes = { xunittest_inc },
-	   }
-
-	   local unittest = Program {
-	     Name = "xbase_unittest",
-	     Depends = { xbase_lib, xunittest_lib },
-	     Sources = { SourceGlob("source/test/cpp") },
-	     Includes = { "source/test/include/", xbase_inc, xunittest_inc },
-	   }
-	*/
 	for _, dep := range dependencies {
 		dependency := []string{}
 		dependency = append(dependency, `++local ${Name}_library = ${${Name}:TYPE} {`)
@@ -231,7 +218,13 @@ func GenerateTundraBuildFile(pkg *denv.Package) error {
 			dependency = append(dependency, `+++Config = "*-*-*-*",`)
 		}
 
+		// Scan the source folder for source files and write them all out
 		dependency = append(dependency, `+++Sources = { SourceGlob("${SOURCE_DIR}") },`)
+
+		// We do not want to have tundra glob the source files, so we glob them here in the same
+		// manner as we would do for Visual Studio.
+
+		// Scan the include folder for folders that need to be added to the include path
 		dependency = append(dependency, `+++Includes = { ${INCLUDE_DIRS} },`)
 		dependency = append(dependency, `++}`)
 
@@ -332,6 +325,7 @@ func GenerateTundraBuildFile(pkg *denv.Package) error {
 	writer.WriteLn(`+++CXXOPTS = {`)
 	writer.WriteLn(`++++"-std=c++11",`)
 	writer.WriteLn(`++++"-arch x86_64",`)
+	writer.WriteLn(`++++"-g",`)
 	writer.WriteLn(`++++"-Wno-new-returns-null",`)
 	writer.WriteLn(`++++"-Wno-missing-braces",`)
 	writer.WriteLn(`++++"-Wno-unused-function",`)
