@@ -51,11 +51,15 @@ func (l List) Add(add string) List {
 		return l
 	}
 	additems := strings.Split(add, l.Delimiter)
+	seen := map[string]bool{}
 	currentitems := []string{}
 	for _, item := range append(l.Items, additems...) {
 		item = strings.Trim(item, " "+l.Delimiter)
 		if len(item) > 0 {
-			currentitems = append(currentitems, item)
+			if _, dup := seen[item]; !dup {
+				currentitems = append(currentitems, item)
+				seen[item] = true
+			}
 		}
 	}
 	return List{Items: currentitems, Delimiter: l.Delimiter, Quote: l.Quote}
@@ -80,13 +84,17 @@ func (l List) Prefix(prefix string, prefixer Prefixer) List {
 	return List{Items: currentitems, Delimiter: l.Delimiter, Quote: l.Quote}
 }
 
-// ListToSet converts a List to a Set
+// ListToSet converts a List to a Set and removes duplicates
 func ListToSet(list List) Set {
 	set := Set{Items: []string{}, Delimiter: list.Delimiter, Quote: list.Quote}
+	seen := map[string]bool{}
 	for _, item := range list.Items {
 		item = strings.Trim(item, " "+list.Delimiter)
 		if len(item) > 0 {
-			set = set.Add(item)
+			if _, dup := seen[item]; !dup {
+				set = set.Add(item)
+				seen[item] = true
+			}
 		}
 	}
 	return set

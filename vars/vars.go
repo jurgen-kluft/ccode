@@ -24,7 +24,7 @@ func NewReplacer() Replacer {
 }
 
 func (v *basicReplacer) ReplaceInLine(variable string, replacement string, line string) string {
-	for true {
+	for {
 		n := strings.Count(line, variable)
 		if n > 0 {
 			line = strings.Replace(line, variable, replacement, n)
@@ -46,7 +46,7 @@ func (v *basicReplacer) InsertInLine(variable string, insertment string, insertm
 	if len(insertment) == 0 {
 		return line
 	}
-	if strings.HasSuffix(insertment, insertmentSuffix) == false {
+	if !strings.HasSuffix(insertment, insertmentSuffix) {
 		insertment = insertment + insertmentSuffix
 	}
 	piv := -1
@@ -80,7 +80,7 @@ type Variables interface {
 	HasVar(key string) bool
 	SetVar(key string, value string) error
 	AddVar(key string, value string)
-	GetVar(key string) (string, error)
+	GetVar(key string) string
 	DelVar(key string) error
 	Iterate(iter VariablesIter)
 	ReplaceInLine(replacer Replacer, line string) string
@@ -100,7 +100,7 @@ func NewVars() Variables {
 }
 
 func MakeVarKey(key string) string {
-	if strings.HasPrefix(key, "${") == false {
+	if !strings.HasPrefix(key, "${") {
 		key = fmt.Sprintf("${%s}", key)
 	}
 	return key
@@ -133,12 +133,12 @@ func (v *basicVariables) AddVar(key string, value string) {
 	v.vars[key] = value
 }
 
-func (v *basicVariables) GetVar(key string) (string, error) {
+func (v *basicVariables) GetVar(key string) string {
 	key = MakeVarKey(key)
 	if value, ok := v.vars[key]; ok {
-		return value, nil
+		return value
 	}
-	return "", fmt.Errorf("Variables doesn't contain var with key %s", key)
+	return ""
 }
 
 func (v *basicVariables) DelVar(key string) error {

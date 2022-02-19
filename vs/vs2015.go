@@ -160,11 +160,9 @@ func generateVisualStudio2015Project(prj *denv.Project, v vars.Variables, replac
 			configuration = append(configuration, `++<CharacterSet>NotSet</CharacterSet>`)
 			configuration = append(configuration, `+</PropertyGroup>`)
 			varkey := fmt.Sprintf("%s:USE_DEBUG_LIBS[%s][%s]", prj.Name, platform.Name, config.Name)
-			usedebuglibs, err := v.GetVar(varkey)
-			if err == nil {
+			usedebuglibs := v.GetVar(varkey)
+			if len(usedebuglibs) > 0 {
 				replacer.ReplaceInLines("${USE_DEBUG_LIBS}", usedebuglibs, configuration)
-			} else {
-				//fmt.Println("ERROR: could not find variable " + varkey)
 			}
 
 			replacer.ReplaceInLines("${PLATFORM}", platform.Name, configuration)
@@ -205,7 +203,7 @@ func generateVisualStudio2015Project(prj *denv.Project, v vars.Variables, replac
 		for configitem := range configitems {
 			varkeystr := fmt.Sprintf("${%s}", configitem)
 			varkey := fmt.Sprintf("%s:%s", prj.Name, configitem)
-			varitem, _ := v.GetVar(varkey)
+			varitem := v.GetVar(varkey)
 			replacer.ReplaceInLines(varkeystr, varitem, platformprops)
 		}
 
@@ -270,11 +268,9 @@ func generateVisualStudio2015Project(prj *denv.Project, v vars.Variables, replac
 				varlist := items.NewList("", ";", "")
 				for _, project := range projects {
 					varkey := fmt.Sprintf("%s:%s[%s][%s]", project.Name, configitem, platform.Name, config.Name)
-					varitem, err := v.GetVar(varkey)
-					if err == nil {
+					varitem := v.GetVar(varkey)
+					if len(varitem) > 0 {
 						varlist = varlist.Add(varitem)
-					} else {
-						//fmt.Println("ERROR: could not find variable " + varkey)
 					}
 				}
 				varset := items.ListToSet(varlist)
@@ -337,12 +333,12 @@ func generateVisualStudio2015Project(prj *denv.Project, v vars.Variables, replac
 }
 
 func fullReplaceVar(varname string, prjname string, platform string, config string, v vars.Variables, replacer func(name, value string)) bool {
-	value, err := v.GetVar(fmt.Sprintf("%s:%s[%s][%s]", prjname, varname, platform, config))
-	if err == nil {
+	value := v.GetVar(fmt.Sprintf("%s:%s[%s][%s]", prjname, varname, platform, config))
+	if len(value) > 0 {
 		replacer(varname, value)
 	} else {
-		value, err = v.GetVar(fmt.Sprintf("%s:%s", prjname, varname))
-		if err == nil {
+		value = v.GetVar(fmt.Sprintf("%s:%s", prjname, varname))
+		if len(value) > 0 {
 			replacer(varname, value)
 		} else {
 			return false
