@@ -67,8 +67,8 @@ func (l List) Add(add string) List {
 
 // Merge will combine
 func (l List) Merge(list List) List {
-	items := l.String()
-	return list.Add(items)
+	items := list.String()
+	return l.Add(items)
 }
 
 // Prefix will add a @prefix to every item in the @List

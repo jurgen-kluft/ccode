@@ -60,7 +60,7 @@ func addProjectVariables(p *denv.Project, isdep bool, v vars.Variables, r vars.R
 
 	configitems := []string{"OPTIMIZATION", "DEBUG_INFO", "USE_DEBUG_LIBS"}
 	getdefault := func(configname string, configitem int) string {
-		defaults := []string{}
+		var defaults []string
 		if strings.Contains(strings.ToLower(configname), "debug") {
 			defaults = []string{"Disabled", "true", "true"}
 		} else {
@@ -143,9 +143,7 @@ func generateVisualStudio2015Project(prj *denv.Project, v vars.Variables, replac
 
 	projects := []*denv.Project{}
 	projects = append(projects, prj)
-	for _, dep := range prj.Dependencies {
-		projects = append(projects, dep)
-	}
+	projects = append(projects, prj.Dependencies...)
 
 	writer.WriteLn(`+<ImportGroup Label="TargetDirs"/>`)
 	writer.WriteLn(`+<Import Project="$(VCTargetsPath)\Microsoft.Cpp.Default.props"/>`)
@@ -210,13 +208,13 @@ func generateVisualStudio2015Project(prj *denv.Project, v vars.Variables, replac
 		writer.WriteLns(platformprops)
 	}
 
-	includedirs := []string{}
-	for _, project := range projects {
-		includedir := "${${Name}:IncludeDir}"
-		includedir = replacer.ReplaceInLine("${Name}", project.Name, includedir)
-		includedir = v.ReplaceInLine(replacer, includedir)
-		includedirs = append(includedirs, includedir)
-	}
+	// includedirs := []string{}
+	// for _, project := range projects {
+	// 	includedir := "${${Name}:IncludeDir}"
+	// 	includedir = replacer.ReplaceInLine("${Name}", project.Name, includedir)
+	// 	includedir = v.ReplaceInLine(replacer, includedir)
+	// 	includedirs = append(includedirs, includedir)
+	// }
 
 	{
 		for _, config := range platform.Configs {
@@ -248,8 +246,8 @@ func generateVisualStudio2015Project(prj *denv.Project, v vars.Variables, replac
 			libraries := []string{}
 			for _, depproject := range prj.Dependencies {
 				if depproject.HasConfig(platform.Name, config.Name) {
-					depconfig, hasconfig := depproject.GetConfig(platform.Name, config.Name)
-					if hasconfig {
+					depconfig := depproject.GetConfig(config.Name)
+					if depconfig != nil {
 						libraries = append(libraries, depconfig.LibraryFile)
 					}
 				}
@@ -363,7 +361,7 @@ func generateFilters(prjguid string, files []string) (items map[string]string, f
 		items[hdrfile] = dirpath
 
 		// We need to add every 'depth' of the path
-		for true {
+		for {
 			//fmt.Printf("dir:\"%s\" --> \"%s\" | ", dirpath, filepath.Dir(dirpath))
 			dirpath = filepath.Dir(dirpath)
 			if dirpath == "." || dirpath == "/" {
@@ -463,7 +461,7 @@ func GenerateVisualStudio2015Solution(p *denv.Project) {
 	depmap := map[string]*denv.Project{}
 	depmap[p.Name] = p
 	depstack := &strStack{p.Name}
-	for depstack.Empty() == false {
+	for !depstack.Empty() {
 		prjname := depstack.Pop()
 		prj := depmap[prjname]
 		for _, dep := range prj.Dependencies {
@@ -487,9 +485,8 @@ func GenerateVisualStudio2015Solution(p *denv.Project) {
 
 	// Main project
 	projects := []*denv.Project{p}
-	for _, dep := range dependencies {
-		projects = append(projects, dep)
-	}
+	projects = append(projects, dependencies...)
+
 	for _, prj := range projects {
 		isdep := prj.PackageURL != p.PackageURL
 		addProjectVariables(prj, isdep, variables, replacer)

@@ -8,6 +8,7 @@ import (
 // Config represents a project build configuration, like 'Debug' or 'Release'
 type Config struct {
 	Name         string
+	Config       string
 	Defines      items.List
 	IncludeDirs  items.List
 	LibraryDirs  items.List
@@ -16,22 +17,27 @@ type Config struct {
 	Vars         vars.Variables
 }
 
-func defaultPlatformConfig(name string) *Config {
-	defines := getDefines(name)
-	return &Config{Name: name,
-		Defines:      defines,
-		IncludeDirs:  items.NewList(Path("source\\main\\include"), ";", ""),
-		LibraryDirs:  items.NewList(Path("target\\${Name}\\bin\\$(PackageSignature)"), ";", ""),
-		LibraryFiles: items.NewList("", ";", ""),
-		LibraryFile:  "${Name}_$(PackageSignature).lib",
-		Vars:         vars.NewVars(),
-	}
+var DevDebugStatic = &Config{
+	Name:         "DevDebugStatic",
+	Config:       "*-*-debug",
+	Defines:      items.NewList("TARGET_DEBUG;TARGET_DEV;_DEBUG", ";", ""),
+	IncludeDirs:  items.NewList(Path("source\\main\\include"), ";", ""),
+	LibraryDirs:  items.NewList(Path("target\\${Name}\\bin\\$(PackageSignature)"), ";", ""),
+	LibraryFiles: items.NewList("", ";", ""),
+	LibraryFile:  "${Name}_$(PackageSignature).lib",
+	Vars:         vars.NewVars(),
 }
 
-const (
-	DevDebugStatic   = "DevDebugStatic"
-	DevReleaseStatic = "DevReleaseStatic"
-)
+var DevReleaseStatic = &Config{
+	Name:         "DevReleaseStatic",
+	Config:       "*-*-release",
+	Defines:      items.NewList("TARGET_RELEASE;TARGET_DEV;NDEBUG", ";", ""),
+	IncludeDirs:  items.NewList(Path("source\\main\\include"), ";", ""),
+	LibraryDirs:  items.NewList(Path("target\\${Name}\\bin\\$(PackageSignature)"), ";", ""),
+	LibraryFiles: items.NewList("", ";", ""),
+	LibraryFile:  "${Name}_$(PackageSignature).lib",
+	Vars:         vars.NewVars(),
+}
 
 // ConfigSet type for mapping a config-name to a config-object
 type ConfigSet map[string]*Config
@@ -72,7 +78,8 @@ func (c *Config) Copy() *Config {
 
 // CopyConfig makes a deep copy of a Config
 func CopyConfig(config *Config) *Config {
-	newconfig := &Config{Name: config.Name, Defines: config.Defines, IncludeDirs: items.NewList("", ";", ""), LibraryDirs: items.NewList("", ";", ""), LibraryFiles: items.NewList("", ";", ""), LibraryFile: ""}
+	newconfig := &Config{Name: config.Name, Config: config.Config}
+	newconfig.Config = config.Config
 	newconfig.Defines = items.CopyList(config.Defines)
 	newconfig.IncludeDirs = items.CopyList(config.IncludeDirs)
 	newconfig.LibraryDirs = items.CopyList(config.LibraryDirs)

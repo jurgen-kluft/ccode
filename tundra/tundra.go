@@ -12,27 +12,6 @@ import (
 	"path/filepath"
 )
 
-// func fullReplaceVar(varname string, prjname string, platform string, config string, v vars.Variables, replacer func(name, value string)) bool {
-// 	value, err := v.GetVar(fmt.Sprintf("%s:%s[%s][%s]", prjname, varname, platform, config))
-// 	if err == nil {
-// 		replacer(varname, value)
-// 	} else {
-// 		value, err = v.GetVar(fmt.Sprintf("%s:%s", prjname, varname))
-// 		if err == nil {
-// 			replacer(varname, value)
-// 		} else {
-// 			return false
-// 		}
-// 	}
-// 	return true
-// }
-
-// func fullReplaceVarWithDefault(varname string, vardefaultvalue string, prjname string, platform string, config string, v vars.Variables, replacer func(name, value string)) {
-// 	if !fullReplaceVar(varname, prjname, platform, config, v, replacer) {
-// 		replacer(varname, vardefaultvalue)
-// 	}
-// }
-
 // AddProjectVariables adds variables from the Project information
 //   Example for 'xhash' project with 'xbase' as a dependency:
 //   - xhash:GUID
@@ -64,17 +43,28 @@ func addProjectVariables(p *denv.Project, isdep bool, v vars.Variables, r vars.R
 		v.AddVar(fmt.Sprintf("%s:SOURCE_DIR", p.Name), denv.Path(p.SrcPath))
 	}
 
-	var platform = p.Platform
-	{
-		for _, config := range platform.Configs {
-			includes := config.IncludeDirs.Prefix(path, items.PathPrefixer)
-			includes = includes.Prefix(path, denv.PathFixer)
-			includes.Delimiter = ","
-			includes.Quote = `"`
-			v.AddVar(fmt.Sprintf("%s:INCLUDE_DIRS", p.Name), includes.String())
-		}
+	for _, config := range p.Platform.Configs {
+		v.AddVar(p.Name+":"+config.Name+":DEFINES", config.Defines.String())
 	}
 
+	for _, config := range p.Platform.Configs {
+		includes := config.IncludeDirs.Prefix(path, items.PathPrefixer)
+		includes = includes.Prefix(path, denv.PathFixer)
+		includes.Delimiter = ","
+		includes.Quote = `"`
+		v.AddVar(fmt.Sprintf("%s:INCLUDE_DIRS", p.Name), includes.String())
+	}
+}
+
+func collectProjectDefinesFromDependencies(prj *denv.Project) {
+	for _, prjConfig := range prj.Platform.Configs {
+		for _, dep := range prj.Dependencies {
+			// Get the config from the dependency
+			depConfig := dep.GetConfig(prjConfig.Name)
+			// Merge the defines
+			prjConfig.Defines = prjConfig.Defines.Merge(depConfig.Defines)
+		}
+	}
 }
 
 // setupProjectPaths will set correct paths for the main and dependency packages
@@ -116,13 +106,6 @@ func GenerateTundraBuildFile(pkg *denv.Package) error {
 		return fmt.Errorf("this package has no main app or main test")
 	}
 
-	units := &denv.ProjectTextWriter{}
-	unitsfilepath := filepath.Join(mainprj.ProjectPath, "units.lua")
-	if units.Open(unitsfilepath) != nil {
-		fmt.Printf("Error opening file '%s'", unitsfilepath)
-		return fmt.Errorf("error opening file '%s'", unitsfilepath)
-	}
-
 	// And dependency projects (dependency tree)
 	depmap := map[string]*denv.Project{}
 	depmap[mainprj.Name] = mainprj
@@ -153,9 +136,15 @@ func GenerateTundraBuildFile(pkg *denv.Package) error {
 	projects := []*denv.Project{mainprj}
 	projects = append(projects, dependencies...)
 
+	// Register project variables
 	for _, prj := range projects {
 		isdep := prj.PackageURL != mainprj.PackageURL
 		addProjectVariables(prj, isdep, variables, replacer)
+	}
+
+	// For each project collect defines from dependencies
+	for _, prj := range projects {
+		collectProjectDefinesFromDependencies(prj)
 	}
 
 	variables.Print()
@@ -169,67 +158,25 @@ func GenerateTundraBuildFile(pkg *denv.Package) error {
 		// Convert the list of source files to a string by delimiting with double quotes and joining them with a comma
 		relpath, _ := filepath.Rel(prj.ProjectPath, prj.PackagePath)
 		src_files := ""
-		for n, src := range prj.SrcFiles.Files {
+		for _, src := range prj.SrcFiles.Files {
 			srcfile := filepath.Join(relpath, src)
-			if src_files != "" {
-				src_files += ","
-			}
-			src_files += `"` + srcfile + `"`
-			if n%3 == 2 { // max 3 entries on one line
-				src_files += "\n"
-			}
+			src_files += `                "` + srcfile + `",` + "\n"
 		}
 
 		// Register the list of source files as a variable for the project
 		variables.AddVar(prj.Name+":SOURCE_FILES", src_files)
 	}
 
+	units := &denv.ProjectTextWriter{}
+	unitsfilepath := filepath.Join(mainprj.ProjectPath, "units.lua")
+	if units.Open(unitsfilepath) != nil {
+		fmt.Printf("Error opening file '%s'", unitsfilepath)
+		return fmt.Errorf("error opening file '%s'", unitsfilepath)
+	}
+
 	units.WriteLn(`require "tundra.syntax.glob"`)
 	units.WriteLn(`require "tundra.path"`)
 	units.WriteLn(`require "tundra.util"`)
-
-	/*
-	   -----------------------------------------------------------------------------------------------------------------------
-
-	   local XUNITTEST_SRCDIR = "../xunittest/source/main/cpp/"
-	   local XUNITTEST_INCDIR = "../xunittest/source/main/include/"
-
-	   local xunittest_library = StaticLibrary {
-	       Name = "xunittest",
-
-	       Env = {
-	           CPPPATH = {
-	               XUNITTEST_SRCDIR,
-	               XUNITTEST_INCDIR,
-	           },
-	           CPPDEFS = {
-	               { "TARGET_DEBUG", Config = "*-*-debug" },
-	               { "TARGET_RELEASE", Config = "*-*-release" },
-	               { "TARGET_PC", Config = "win64-*-*" },
-	               { "TARGET_LINUX", Config = "linux-*-*" },
-	               { "TARGET_MAC", Config = "macos-*-*" },
-	           },
-	       },
-
-	   	   Includes = { XUNITTEST_INCDIR, XUNITTEST_SRCDIR },
-
-	       Sources = {
-	           XUNITTEST_SRCDIR .. "entry/ut_Entry_Mac.cpp",XUNITTEST_SRCDIR .. "ut_AssertException.cpp"
-	           ,XUNITTEST_SRCDIR .. "ut_Checks.cpp",XUNITTEST_SRCDIR .. "ut_ReportAssert.cpp"
-	           ,XUNITTEST_SRCDIR .. "ut_Stdout_Mac.cpp",XUNITTEST_SRCDIR .. "ut_Stdout_Win32.cpp"
-	           ,XUNITTEST_SRCDIR .. "ut_StringBuilder.cpp",XUNITTEST_SRCDIR .. "ut_Test.cpp"
-	           ,XUNITTEST_SRCDIR .. "ut_TestList.cpp",XUNITTEST_SRCDIR .. "ut_TestReporter.cpp"
-	           ,XUNITTEST_SRCDIR .. "ut_TestReporterStdout.cpp",XUNITTEST_SRCDIR .. "ut_TestReporterTeamCity.cpp"
-	           ,XUNITTEST_SRCDIR .. "ut_TestResults.cpp",XUNITTEST_SRCDIR .. "ut_TestRunner.cpp"
-	           ,XUNITTEST_SRCDIR .. "ut_TestState.cpp",XUNITTEST_SRCDIR .. "ut_Test_Mac.cpp"
-	           ,XUNITTEST_SRCDIR .. "ut_Test_Win32.cpp",XUNITTEST_SRCDIR .. "ut_TimeConstraint.cpp"
-	           ,XUNITTEST_SRCDIR .. "ut_TimeHelpers_Mac.cpp",XUNITTEST_SRCDIR .. "ut_TimeHelpers_Win32.cpp"
-	           ,XUNITTEST_SRCDIR .. "ut_Utils.cpp",XUNITTEST_SRCDIR .. "ut_Utils_Mac.cpp"
-	           ,XUNITTEST_SRCDIR .. "ut_Utils_Win32.cpp"
-	       },
-	   }
-
-	*/
 
 	for _, dep := range dependencies {
 		dependency := make([]string, 0)
@@ -246,10 +193,18 @@ func GenerateTundraBuildFile(pkg *denv.Package) error {
 		}
 		dependency = append(dependency, `++},`)
 		dependency = append(dependency, `++CPPDEFS = {`)
-		dependency = append(dependency, `+++{ "TARGET_DEBUG", Config = "*-*-debug" },`)
-		dependency = append(dependency, `+++{ "TARGET_RELEASE", Config = "*-*-release" },`)
-		dependency = append(dependency, `+++{ "TARGET_PC", Config = "win64-*-*" },`)
-		dependency = append(dependency, `+++{ "TARGET_LINUX", Config = "linux-*-*" },`)
+		// dependency = append(dependency, `+++{ "TARGET_DEBUG", Config = "*-*-debug" },`)
+		// dependency = append(dependency, `+++{ "TARGET_RELEASE", Config = "*-*-release" },`)
+
+		for _, cfg := range dep.Platform.Configs {
+			dependency = append(dependency, `+++{`)
+			for _, def := range cfg.Defines.Items {
+				dependency = append(dependency, `++++"`+def+`",`)
+			}
+			dependency = append(dependency, `++++Config = "`+cfg.Config+`" `)
+			dependency = append(dependency, `+++},`)
+		}
+
 		dependency = append(dependency, `+++{ "TARGET_MAC", Config = "macos-*-*" },`)
 		dependency = append(dependency, `+++{ "TARGET_TEST", Config = "*-*-*-test" },`)
 		dependency = append(dependency, `++},`)
@@ -308,19 +263,47 @@ func GenerateTundraBuildFile(pkg *denv.Package) error {
 		program = append(program, `+++"${`+depDep.Name+`:SOURCE_DIR}",`)
 	}
 	program = append(program, `++},`)
+
 	program = append(program, `++CPPDEFS = {`)
-	program = append(program, `+++{ "TARGET_DEBUG", Config = "*-*-debug" },`)
-	program = append(program, `+++{ "TARGET_RELEASE", Config = "*-*-release" },`)
-	program = append(program, `+++{ "TARGET_PC", Config = "win64-*-*" },`)
-	program = append(program, `+++{ "TARGET_LINUX", Config = "linux-*-*" },`)
+	// program = append(program, `+++{ "TARGET_DEBUG", Config = "*-*-debug" },`)
+	// program = append(program, `+++{ "TARGET_RELEASE", Config = "*-*-release" },`)
+
+	for _, cfg := range mainprj.Platform.Configs {
+		program = append(program, `+++{`)
+		for _, def := range cfg.Defines.Items {
+			program = append(program, `++++"`+def+`",`)
+		}
+		program = append(program, `++++Config = "`+cfg.Config+`" `)
+		program = append(program, `+++},`)
+	}
+
 	program = append(program, `+++{ "TARGET_MAC", Config = "macos-*-*" },`)
 	program = append(program, `+++{ "TARGET_TEST", Config = "*-*-*-test" },`)
 	program = append(program, `++},`)
 	program = append(program, `+},`)
 
-	program = append(program, `+Sources = { ${SOURCE_FILES} },`)
-	program = append(program, `+Includes = { ${INCLUDE_DIRS} },`)
-	program = append(program, `+Depends = { ${DEPENDS} },`)
+	program = append(program, `+Sources = {`)
+	program = append(program, `++${SOURCE_FILES}`)
+	program = append(program, `+},`)
+	program = append(program, `+Includes = {`)
+	program = append(program, `++${INCLUDE_DIRS}`)
+	program = append(program, `+},`)
+	program = append(program, `+Depends = {`)
+	program = append(program, `++${DEPENDS}`)
+	program = append(program, `+},`)
+
+	// if the platform is Mac also write out the Frameworks we are using
+	if mainprj.Platform.OS == "darwin" {
+		program = append(program, `+Frameworks = {`)
+		program = append(program, `++{ "Cocoa" },`)
+		program = append(program, `++{ "Metal" },`)
+		program = append(program, `++{ "OpenGL" },`)
+		program = append(program, `++{ "IOKit" },`)
+		program = append(program, `++{ "CoreVideo" },`)
+		program = append(program, `++{ "QuartzCore" },`)
+		program = append(program, `+},`)
+	}
+
 	program = append(program, `}`)
 
 	replacer.ReplaceInLines("${SOURCE_FILES}", "${"+mainprj.Name+":SOURCE_FILES}", program)
@@ -433,6 +416,9 @@ func GenerateTundraBuildFile(pkg *denv.Package) error {
 	tundra.WriteLn(`    Frameworks = {`)
 	tundra.WriteLn(`        { "Cocoa" },`)
 	tundra.WriteLn(`        { "Metal" },`)
+	tundra.WriteLn(`        { "OpenGL" },`)
+	tundra.WriteLn(`        { "IOKit" },`)
+	tundra.WriteLn(`        { "CoreVideo" },`)
 	tundra.WriteLn(`        { "QuartzCore" },`)
 	tundra.WriteLn(`    },`)
 	tundra.WriteLn(`}`)

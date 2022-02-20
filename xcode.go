@@ -8,7 +8,6 @@ import (
 
 	"github.com/jurgen-kluft/xcode/cli"
 	"github.com/jurgen-kluft/xcode/denv"
-	"github.com/jurgen-kluft/xcode/items"
 	"github.com/jurgen-kluft/xcode/tundra"
 	"github.com/jurgen-kluft/xcode/vs"
 )
@@ -20,45 +19,44 @@ func Init() error {
 	app.Name = "xcode"
 	app.Usage = "xcode --DEV=VS2017 --OS=Windows --ARCH=amd64"
 
-	DEV := ""
-	OS := runtime.GOOS
-	ARCH := runtime.GOARCH
+	denv.DEV = ""
+	denv.OS = runtime.GOOS
+	denv.ARCH = runtime.GOARCH
 
 	app.Flags = []cli.Flag{
 		cli.StringFlag{
 			Name:        "DEV",
 			Usage:       "The build system to generate projects for",
-			Destination: &DEV,
+			Destination: &denv.DEV,
 		},
 		cli.StringFlag{
 			Name:        "OS",
 			Usage:       "OS to include (windows, darwin, linux)",
-			Destination: &OS,
+			Destination: &denv.OS,
 		},
 		cli.StringFlag{
 			Name:        "ARCH",
 			Usage:       "Architecture to include (386, amd64)",
-			Destination: &ARCH,
+			Destination: &denv.ARCH,
 		},
 	}
 	app.Action = func(c *cli.Context) {
-		if OS == "" {
-			OS = strings.ToLower(runtime.GOOS)
+		if denv.OS == "" {
+			denv.OS = strings.ToLower(runtime.GOOS)
 		}
-		if ARCH == "" {
-			ARCH = strings.ToLower(runtime.GOARCH)
+		if denv.ARCH == "" {
+			denv.ARCH = strings.ToLower(runtime.GOARCH)
 		}
-		if DEV == "" {
-			if OS == "darwin" {
-				DEV = "TUNDRA"
-			} else if OS == "linux" {
-				DEV = "TUNDRA"
+		if denv.DEV == "" {
+			if denv.OS == "darwin" {
+				denv.DEV = "TUNDRA"
+			} else if denv.OS == "linux" {
+				denv.DEV = "TUNDRA"
 			} else {
-				DEV = "VS2017"
+				denv.DEV = "VS2017"
 			}
 		}
-		fmt.Printf("xcode (DEV:%s, OS:%s, ARCH:%s)\n", DEV, OS, ARCH)
-		denv.Init(DEV, OS, ARCH)
+		fmt.Printf("XCode (DEV:%s, OS:%s, ARCH:%s)\n", denv.DEV, denv.OS, denv.ARCH)
 	}
 	return app.Run(os.Args)
 }
@@ -66,10 +64,10 @@ func Init() error {
 // Generate is the main function that requires 'arguments' to then generate
 // workspace and project files for a specified IDE.
 func Generate(pkg *denv.Package) error {
-	if vs.IsVisualStudio(denv.XCodeDEV, denv.XCodeOS, denv.XCodeARCH) {
-		return vs.GenerateVisualStudioSolutionAndProjects(vs.GetVisualStudio(denv.XCodeDEV), "", items.NewList(denv.XCodeOS, ",", "").Items, pkg)
-	} else if tundra.IsTundra(denv.XCodeDEV, denv.XCodeOS, denv.XCodeARCH) {
+	if vs.IsVisualStudio(denv.DEV, denv.OS, denv.ARCH) {
+		return vs.GenerateVisualStudioSolutionAndProjects(vs.GetVisualStudio(denv.DEV), pkg)
+	} else if tundra.IsTundra(denv.DEV, denv.OS, denv.ARCH) {
 		return tundra.GenerateTundraBuildFile(pkg)
 	}
-	return fmt.Errorf("Unknown DEV '%s'", denv.XCodeDEV)
+	return fmt.Errorf("Unknown DEV '%s'", denv.DEV)
 }

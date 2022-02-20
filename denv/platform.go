@@ -36,13 +36,13 @@ func (p *Platform) HasConfig(configname string) bool {
 }
 
 // GetConfig will return the Config with name @configname
-func (p *Platform) GetConfig(configname string) (*Config, bool) {
+func (p *Platform) GetConfig(configname string) *Config {
 	for _, config := range p.Configs {
 		if config.Name == configname {
-			return config, true
+			return config
 		}
 	}
-	return nil, false
+	return nil
 }
 
 func (p *Platform) ReplaceVars(v vars.Variables, r vars.Replacer) {
@@ -99,10 +99,10 @@ var defaultWinPlatform = Platform{
 	Name:                 PlatformWin64,
 	OS:                   "windows",
 	FilePatternsToIgnore: []string{"_darwin", "_linux", "_nob"},
-	Defines:              items.NewList("PLATFORM_PC;TARGET_PC;PLATFORM_64BIT", ";", ""),
+	Defines:              items.NewList("TARGET_PC", ";", ""),
 	Configs: ConfigSet{
-		DevDebugStatic:   defaultPlatformConfig(DevDebugStatic),
-		DevReleaseStatic: defaultPlatformConfig(DevReleaseStatic),
+		"DevDebugStatic":   DevDebugStatic.Copy(),
+		"DevReleaseStatic": DevReleaseStatic.Copy(),
 	},
 }
 
@@ -110,10 +110,10 @@ var defaultDarwinPlatform = Platform{
 	Name:                 PlatformDarwin64,
 	OS:                   "darwin",
 	FilePatternsToIgnore: []string{"_win32", "_linux", "_nob"},
-	Defines:              items.NewList("PLATFORM_MAC;TARGET_MAC;PLATFORM_64BIT", ";", ""),
+	Defines:              items.NewList("TARGET_MAC", ";", ""),
 	Configs: ConfigSet{
-		DevDebugStatic:   defaultPlatformConfig(DevDebugStatic),
-		DevReleaseStatic: defaultPlatformConfig(DevReleaseStatic),
+		"DevDebugStatic":   DevDebugStatic.Copy(),
+		"DevReleaseStatic": DevReleaseStatic.Copy(),
 	},
 }
 
@@ -121,10 +121,10 @@ var defaultLinuxPlatform = Platform{
 	Name:                 PlatformLinux64,
 	OS:                   "linux",
 	FilePatternsToIgnore: []string{"_win32", "_darwin", "_nob"},
-	Defines:              items.NewList("PLATFORM_LINUX;TARGET_LINUX;PLATFORM_64BIT", ";", ""),
+	Defines:              items.NewList("TARGET_LINUX", ";", ""),
 	Configs: ConfigSet{
-		DevDebugStatic:   defaultPlatformConfig(DevDebugStatic),
-		DevReleaseStatic: defaultPlatformConfig(DevReleaseStatic),
+		"DevDebugStatic":   DevDebugStatic.Copy(),
+		"DevReleaseStatic": DevReleaseStatic.Copy(),
 	},
 }
 
@@ -143,14 +143,14 @@ func (pset PlatformSet) Copy() PlatformSet {
 // GetDefaultPlatforms returns the default platform according to the OS we are running on at the moment
 func GetDefaultPlatform() *Platform {
 	platform := &Platform{}
-	if XCodeOS == "windows" {
+	if OS == "windows" {
 		var p = defaultWinPlatform
 		platform.Name = p.Name
 		platform.OS = p.OS
 		platform.Defines = p.Defines.Copy()
 		platform.Configs = p.Configs.Copy()
 		platform.FilePatternsToIgnore = p.FilePatternsToIgnore
-	} else if XCodeOS == "linux" {
+	} else if OS == "linux" {
 		var p = defaultLinuxPlatform
 		platform.Name = p.Name
 		platform.OS = p.OS
