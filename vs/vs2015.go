@@ -301,9 +301,15 @@ func generateVisualStudio2015Project(prj *denv.Project, v vars.Variables, replac
 		writer.WriteLn("+<ItemGroup>")
 		for _, srcfile := range prj.SrcFiles.Files {
 			srcfile = filepath.Join(relpath, srcfile)
-			clcompile := "++<ClCompile Include=\"${FILE}\"/>"
-			clcompile = replacer.ReplaceInLine("${FILE}", srcfile, clcompile)
-			writer.WriteLn(clcompile)
+			if strings.HasSuffix(srcfile, ".c") {
+				writer.WriteLn(fmt.Sprintf("++<ClCompile Include=\"%s\">", srcfile))
+				writer.WriteLn(`+++<CompileAs>CompileAsC</CompileAs>`)
+				writer.WriteLn("++</ClCompile>")
+			} else if strings.HasSuffix(srcfile, ".cpp") {
+				writer.WriteLn(fmt.Sprintf("++<ClCompile Include=\"%s\" />", srcfile))
+			} else {
+				writer.WriteLn(fmt.Sprintf("++<None Include=\"%s\" />", srcfile))
+			}
 		}
 		writer.WriteLn("+</ItemGroup>")
 	}
