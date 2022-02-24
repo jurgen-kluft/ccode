@@ -18,6 +18,12 @@ const (
 	TUNDRA       DevEnum = 0x20000
 )
 
+const (
+	OS_WINDOWS = "windows"
+	OS_MAC     = "mac"
+	OS_LINUX   = "linux"
+)
+
 // XCodeDEV constant: Visual Studio, Tundra
 var DEV string
 

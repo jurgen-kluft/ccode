@@ -25,18 +25,46 @@ import (
 //   - xhash:DEBUG_INFO[Platform][Config]
 //   - xhash:TOOL_SET[Platform]
 //
-func addProjectVariables(p *denv.Project, isdep bool, v vars.Variables, r vars.Replacer) {
 
+func mergeProjectDependency(p *denv.Project) {
+	// Merge include directories, library directories, libraries and defines from dependencies
+	//    Project.Platform.Config[debug].IncludeDirs <- Dep.Platform.Config[debug].IncludeDirs
+	//    Project.Platform.Config[release].IncludeDirs <- Dep.Platform.Config[release].IncludeDirs
+	//    ... etc.
+	for _, config := range p.Platform.Configs {
+		for _, dep := range p.Dependencies {
+			depConfig := dep.GetConfig(config.Name)
+			p.LibraryFiles = p.LibraryFiles.Merge(dep.LibraryFiles)
+			config.LibraryFiles = config.LibraryFiles.Merge(p.LibraryFiles)
+			if depConfig != nil {
+				fmt.Println("Merging ", dep.Name, " into ", p.Name, " for ", config.Name)
+				//fmt.Println("  Includes: ", config.IncludeDirs.String(), " <- ", depConfig.IncludeDirs.String())
+				//fmt.Println("  Libraries: ", config.LibraryDirs.String(), " <- ", depConfig.LibraryDirs.String())
+				//fmt.Println("  Defines: ", config.Defines.String(), " <- ", depConfig.Defines.String())
+				//fmt.Println("  Libraries: ", config.LibraryFiles.String(), " <- ", depConfig.LibraryFiles.String())
+				config.IncludeDirs = config.IncludeDirs.Merge(depConfig.IncludeDirs)
+				config.LibraryDirs = config.LibraryDirs.Merge(depConfig.LibraryDirs)
+				config.LibraryFiles = config.LibraryFiles.Merge(depConfig.LibraryFiles)
+				config.Defines = config.Defines.Merge(depConfig.Defines)
+			}
+		}
+	}
+}
+
+func initProjectVariables(p *denv.Project, v vars.Variables, r vars.Replacer) {
 	p.MergeVars(v)
 	p.ReplaceVars(v, r)
+}
 
+func addProjectVariables(p *denv.Project, v vars.Variables, r vars.Replacer) {
 	v.AddVar(p.Name+":GUID", p.GUID)
 	v.AddVar(p.Name+":ROOT_DIR", p.PackagePath)
 
-	path, _ := filepath.Rel(p.ProjectPath, p.PackagePath)
+	//path, _ := filepath.Rel(p.ProjectPath, p.PackagePath)
 
-	v.AddVar(p.Name+":OUTDIR", filepath.Join(path, "target", p.Name, "bin", "$(Configuration)_$(Platform)_$(PlatformToolset)")+"\\")
-	v.AddVar(p.Name+":INTDIR", filepath.Join(path, "target", p.Name, "obj", "$(Configuration)_$(Platform)_$(PlatformToolset)")+"\\")
+	// Every output should be pointing into the current local /target folder
+	v.AddVar(p.Name+":OUTDIR", filepath.Join("target", p.Name, "bin", "$(Configuration)_$(Platform)_$(PlatformToolset)")+"\\")
+	v.AddVar(p.Name+":INTDIR", filepath.Join("target", p.Name, "obj", "$(Configuration)_$(Platform)_$(PlatformToolset)")+"\\")
 
 	switch p.Type {
 	case denv.StaticLibrary:
@@ -47,15 +75,11 @@ func addProjectVariables(p *denv.Project, isdep bool, v vars.Variables, r vars.R
 		v.AddVar(p.Name+":TYPE", "Application")
 	}
 
-	var platform = p.Platform
-	for _, config := range platform.Configs {
-		includes := config.IncludeDirs.Prefix(path, items.PathPrefixer)
-		libdirs := config.LibraryDirs.Prefix(path, items.PathPrefixer)
-
-		v.AddVar(fmt.Sprintf("%s:INCLUDE_DIRS[%s][%s]", p.Name, platform.Name, config.Name), includes.String())
-		v.AddVar(fmt.Sprintf("%s:LIBRARY_DIRS[%s][%s]", p.Name, platform.Name, config.Name), libdirs.String())
-		v.AddVar(fmt.Sprintf("%s:LIBRARY_FILES[%s][%s]", p.Name, platform.Name, config.Name), config.LibraryFiles.String())
-		v.AddVar(fmt.Sprintf("%s:DEFINES[%s][%s]", p.Name, platform.Name, config.Name), config.Defines.String())
+	for _, config := range p.Platform.Configs {
+		v.AddVar(fmt.Sprintf("%s:INCLUDE_DIRS[%s][%s]", p.Name, p.Platform.Name, config.Name), config.IncludeDirs.String())
+		v.AddVar(fmt.Sprintf("%s:LIBRARY_DIRS[%s][%s]", p.Name, p.Platform.Name, config.Name), config.LibraryDirs.String())
+		v.AddVar(fmt.Sprintf("%s:LIBRARY_FILES[%s][%s]", p.Name, p.Platform.Name, config.Name), config.LibraryFiles.String())
+		v.AddVar(fmt.Sprintf("%s:DEFINES[%s][%s]", p.Name, p.Platform.Name, config.Name), config.Defines.String())
 	}
 
 	configitems := []string{"OPTIMIZATION", "DEBUG_INFO", "USE_DEBUG_LIBS"}
@@ -70,13 +94,13 @@ func addProjectVariables(p *denv.Project, isdep bool, v vars.Variables, r vars.R
 	}
 
 	for i, configitem := range configitems {
-		for _, config := range platform.Configs {
+		for _, config := range p.Platform.Configs {
 			value := getdefault(config.Name, i)
-			v.AddVar(fmt.Sprintf("%s:%s[%s][%s]", p.Name, configitem, platform.Name, config.Name), value)
+			v.AddVar(fmt.Sprintf("%s:%s[%s][%s]", p.Name, configitem, p.Platform.Name, config.Name), value)
 		}
 	}
 
-	v.AddVar(fmt.Sprintf("TOOLSET[%s]", platform.Name), "v141")
+	v.AddVar(fmt.Sprintf("TOOLSET[%s]", p.Platform.Name), "v141")
 }
 
 // setupProjectPaths will set correct paths for the main and dependency packages
@@ -87,10 +111,15 @@ func setupProjectPaths(prj *denv.Project, deps []*denv.Project) {
 	prj.PackagePath, _ = os.Getwd()
 	prj.ProjectPath, _ = os.Getwd()
 	fmt.Println("PACKAGE:" + prj.Name + " -  packagePath=" + prj.PackagePath + ", projectpath=" + prj.ProjectPath)
+
 	for _, dep := range deps {
-		//dep.PackagePath = filepath.Join(prj.PackagePath, "vendor", denv.Path(dep.PackageURL))
 		dep.PackagePath = denv.Path(filepath.Join(prj.PackagePath, "..", dep.Name))
 		dep.ProjectPath = prj.ProjectPath
+		path, _ := filepath.Rel(dep.ProjectPath, dep.PackagePath)
+		for _, config := range dep.Platform.Configs {
+			config.IncludeDirs = config.IncludeDirs.Prefix(path, items.PathPrefixer)
+			//config.LibraryDirs = config.LibraryDirs.Prefix(path, items.PathPrefixer)
+		}
 		fmt.Println("DEPENDENCY:" + dep.Name + " -  packagePath=" + dep.PackagePath + ", projectpath=" + dep.ProjectPath)
 	}
 }
@@ -244,6 +273,9 @@ func generateVisualStudio2015Project(prj *denv.Project, v vars.Variables, replac
 			compileandlink = append(compileandlink, `+</ItemDefinitionGroup>`)
 
 			libraries := []string{}
+			for _, lib := range prj.LibraryFiles.Items {
+				libraries = append(libraries, lib)
+			}
 			for _, depproject := range prj.Dependencies {
 				if depproject.HasConfig(platform.Name, config.Name) {
 					depconfig := depproject.GetConfig(config.Name)
@@ -479,23 +511,39 @@ func GenerateVisualStudio2015Solution(p *denv.Project) {
 	}
 	delete(depmap, p.Name)
 
+	// Make every project unique (there are duplicates in the tree)
+	for _, prj := range depmap {
+		for i, dep := range prj.Dependencies {
+			prj.Dependencies[i] = depmap[dep.Name]
+		}
+	}
+
 	dependencies := []*denv.Project{}
 	for _, dep := range depmap {
 		dependencies = append(dependencies, dep)
 	}
 
-	setupProjectPaths(p, dependencies)
-
 	variables := vars.NewVars()
 	replacer := vars.NewReplacer()
+
+	for _, prj := range dependencies {
+		initProjectVariables(prj, variables, replacer)
+	}
+	initProjectVariables(p, variables, replacer)
+
+	setupProjectPaths(p, dependencies)
+
+	for _, prj := range dependencies {
+		mergeProjectDependency(prj)
+	}
+	mergeProjectDependency(p)
 
 	// Main project
 	projects := []*denv.Project{p}
 	projects = append(projects, dependencies...)
 
 	for _, prj := range projects {
-		isdep := prj.PackageURL != p.PackageURL
-		addProjectVariables(prj, isdep, variables, replacer)
+		addProjectVariables(prj, variables, replacer)
 	}
 
 	variables.Print()

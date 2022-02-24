@@ -6,6 +6,7 @@ import (
 	"strings"
 
 	"github.com/jurgen-kluft/xcode/glob"
+	"github.com/jurgen-kluft/xcode/items"
 	"github.com/jurgen-kluft/xcode/uid"
 	"github.com/jurgen-kluft/xcode/vars"
 )
@@ -83,6 +84,7 @@ type Project struct {
 	SrcPath      string
 	HdrFiles     *Files
 	SrcFiles     *Files
+	LibraryFiles items.List
 	CustomFiles  []*CustomFiles
 	Dependencies []*Project
 	Vars         vars.Variables
@@ -111,6 +113,11 @@ func (prj *Project) GetConfig(configname string) *Config {
 // AddDefine adds a define
 func (prj *Project) AddDefine(define string) {
 	prj.Platform.AddDefine(define)
+}
+
+// AddDefine adds a library or libraries
+func (prj *Project) AddLibrary(library string) {
+	prj.LibraryFiles = prj.LibraryFiles.Add(library)
 }
 
 // AddVar adds a variable to this project
@@ -164,6 +171,7 @@ func SetupDefaultCppLibProject(name string, URL string) *Project {
 	project.SrcPath = Path("source\\main\\cpp")
 	project.SrcFiles = &Files{GlobPaths: defaultMainSourcePaths, VirtualPaths: []string{}, Files: []string{}}
 	project.HdrFiles = &Files{GlobPaths: defaultMainIncludePaths, VirtualPaths: []string{}, Files: []string{}}
+	project.LibraryFiles = items.NewList("", ";", "")
 
 	if OS == "darwin" {
 		project.SrcFiles.GlobPaths = append(project.SrcFiles.GlobPaths, defaultCocoaMainSourcePaths...)
@@ -193,6 +201,7 @@ func SetupDefaultCppTestProject(name string, URL string) *Project {
 	project.SrcPath = Path("source\\test\\cpp")
 	project.SrcFiles = &Files{GlobPaths: defaultTestSourcePaths, VirtualPaths: []string{}, Files: []string{}}
 	project.HdrFiles = &Files{GlobPaths: defaultTestIncludePaths, VirtualPaths: []string{}, Files: []string{}}
+	project.LibraryFiles = items.NewList("", ";", "")
 
 	if OS == "darwin" {
 		project.SrcFiles.GlobPaths = append(project.SrcFiles.GlobPaths, defaultCocoaMainSourcePaths...)
@@ -223,6 +232,7 @@ func SetupDefaultCppAppProject(name string, URL string) *Project {
 	project.SrcPath = Path("source\\main\\cpp")
 	project.SrcFiles = &Files{GlobPaths: defaultMainSourcePaths, VirtualPaths: []string{}, Files: []string{}}
 	project.HdrFiles = &Files{GlobPaths: defaultMainIncludePaths, VirtualPaths: []string{}, Files: []string{}}
+	project.LibraryFiles = items.NewList("", ";", "")
 
 	if OS == "darwin" {
 		project.SrcFiles.GlobPaths = append(project.SrcFiles.GlobPaths, defaultCocoaMainSourcePaths...)

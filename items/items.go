@@ -46,23 +46,28 @@ func (l List) Copy() List {
 
 // Add adds an item to the list
 func (l List) Add(add string) List {
-	add = strings.Trim(add, " "+l.Delimiter)
+	add = strings.Trim(add, " "+l.Quote+l.Delimiter)
 	if len(add) == 0 {
 		return l
 	}
+
 	additems := strings.Split(add, l.Delimiter)
-	seen := map[string]bool{}
-	currentitems := []string{}
-	for _, item := range append(l.Items, additems...) {
-		item = strings.Trim(item, " "+l.Delimiter)
+	for _, item := range additems {
+		item = strings.Trim(item, " "+l.Quote+l.Delimiter)
 		if len(item) > 0 {
-			if _, dup := seen[item]; !dup {
-				currentitems = append(currentitems, item)
-				seen[item] = true
+			dup := false
+			for _, litem := range l.Items {
+				if litem == item {
+					dup = true
+					break
+				}
+			}
+			if !dup {
+				l.Items = append(l.Items, item)
 			}
 		}
 	}
-	return List{Items: currentitems, Delimiter: l.Delimiter, Quote: l.Quote}
+	return List{Items: l.Items, Delimiter: l.Delimiter, Quote: l.Quote}
 }
 
 // Merge will combine
@@ -75,7 +80,7 @@ func (l List) Merge(list List) List {
 func (l List) Prefix(prefix string, prefixer Prefixer) List {
 	currentitems := []string{}
 	for _, item := range l.Items {
-		item = strings.Trim(item, " "+l.Delimiter)
+		item = strings.Trim(item, " "+l.Quote+l.Delimiter)
 		if len(item) > 0 {
 			item = prefixer(item, prefix)
 			currentitems = append(currentitems, item)
@@ -89,7 +94,7 @@ func ListToSet(list List) Set {
 	set := Set{Items: []string{}, Delimiter: list.Delimiter, Quote: list.Quote}
 	seen := map[string]bool{}
 	for _, item := range list.Items {
-		item = strings.Trim(item, " "+list.Delimiter)
+		item = strings.Trim(item, " "+list.Quote+list.Delimiter)
 		if len(item) > 0 {
 			if _, dup := seen[item]; !dup {
 				set = set.Add(item)
