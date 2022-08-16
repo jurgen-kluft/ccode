@@ -1,4 +1,4 @@
-package xcode
+package ccode
 
 import (
 	"fmt"
@@ -6,10 +6,10 @@ import (
 	"runtime"
 	"strings"
 
-	"github.com/jurgen-kluft/xcode/cli"
-	"github.com/jurgen-kluft/xcode/denv"
-	"github.com/jurgen-kluft/xcode/tundra"
-	"github.com/jurgen-kluft/xcode/vs"
+	"github.com/jurgen-kluft/ccode/cli"
+	"github.com/jurgen-kluft/ccode/denv"
+	"github.com/jurgen-kluft/ccode/tundra"
+	"github.com/jurgen-kluft/ccode/vs"
 )
 
 // Init will initialize xcode before anything else is run

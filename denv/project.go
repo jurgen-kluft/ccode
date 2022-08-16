@@ -5,10 +5,10 @@ import (
 	"path/filepath"
 	"strings"
 
-	"github.com/jurgen-kluft/xcode/glob"
-	"github.com/jurgen-kluft/xcode/items"
-	"github.com/jurgen-kluft/xcode/uid"
-	"github.com/jurgen-kluft/xcode/vars"
+	"github.com/jurgen-kluft/ccode/glob"
+	"github.com/jurgen-kluft/ccode/items"
+	"github.com/jurgen-kluft/ccode/uid"
+	"github.com/jurgen-kluft/ccode/vars"
 )
 
 // Files helps to collect source and header files as well as virtual files as they

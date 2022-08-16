@@ -1,8 +1,8 @@
 package denv
 
 import (
-	"github.com/jurgen-kluft/xcode/items"
-	"github.com/jurgen-kluft/xcode/vars"
+	"github.com/jurgen-kluft/ccode/items"
+	"github.com/jurgen-kluft/ccode/vars"
 )
 
 // Config represents a project build configuration, like 'Debug' or 'Release'

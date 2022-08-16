@@ -4,8 +4,8 @@ import (
 	"os"
 	"testing"
 
-	"github.com/jurgen-kluft/xcode/denv"
-	"github.com/jurgen-kluft/xcode/vs"
+	"github.com/jurgen-kluft/ccode/denv"
+	"github.com/jurgen-kluft/ccode/vs"
 )
 
 // (projectname string, sourcefiles []string, headerfiles []string, platforms []string, configs []string, depprojectnames []string, vars vars.Variables, replacer vars.Replacer, writer ProjectWriter) {

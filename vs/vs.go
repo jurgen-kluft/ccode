@@ -3,7 +3,7 @@ package vs
 import (
 	"fmt"
 
-	"github.com/jurgen-kluft/xcode/denv"
+	"github.com/jurgen-kluft/ccode/denv"
 )
 
 // IsVisualStudio returns true if the incoming string @ide is equal to any of

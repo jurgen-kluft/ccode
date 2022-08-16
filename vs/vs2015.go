@@ -5,10 +5,10 @@ import (
 	"os"
 	"strings"
 
-	"github.com/jurgen-kluft/xcode/denv"
-	"github.com/jurgen-kluft/xcode/items"
-	"github.com/jurgen-kluft/xcode/uid"
-	"github.com/jurgen-kluft/xcode/vars"
+	"github.com/jurgen-kluft/ccode/denv"
+	"github.com/jurgen-kluft/ccode/items"
+	"github.com/jurgen-kluft/ccode/uid"
+	"github.com/jurgen-kluft/ccode/vars"
 
 	"path/filepath"
 )
