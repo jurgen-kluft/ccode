@@ -159,7 +159,7 @@ var defaultCocoaMainSourcePaths = []string{Path("source\\main\\^**\\*.m"), Path(
 
 // SetupDefaultCppLibProject returns a default C++ project
 // Example:
-//              SetupDefaultCppLibProject("xbase", "github.com\\jurgen-kluft")
+//              SetupDefaultCppLibProject("cbase", "github.com\\jurgen-kluft")
 //
 func SetupDefaultCppLibProject(name string, URL string) *Project {
 	project := &Project{Name: name}
@@ -189,7 +189,7 @@ func SetupDefaultCppLibProject(name string, URL string) *Project {
 
 // SetupDefaultCppTestProject returns a default C++ project
 // Example:
-//              SetupDefaultCppTestProject("xbase", "github.com\\jurgen-kluft")
+//              SetupDefaultCppTestProject("cbase", "github.com\\jurgen-kluft")
 //
 func SetupDefaultCppTestProject(name string, URL string) *Project {
 	project := &Project{Name: name}
@@ -220,7 +220,7 @@ func SetupDefaultCppTestProject(name string, URL string) *Project {
 
 // SetupDefaultCppAppProject returns a default C++ project
 // Example:
-//              SetupDefaultCppAppProject("xbase", "github.com\\jurgen-kluft")
+//              SetupDefaultCppAppProject("cbase", "github.com\\jurgen-kluft")
 //
 func SetupDefaultCppAppProject(name string, URL string) *Project {
 	project := &Project{Name: name}

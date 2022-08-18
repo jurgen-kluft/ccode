@@ -11,20 +11,20 @@ import (
 // (projectname string, sourcefiles []string, headerfiles []string, platforms []string, configs []string, depprojectnames []string, vars vars.Variables, replacer vars.Replacer, writer ProjectWriter) {
 func TestSimpleProject(t *testing.T) {
 
-	xunittestproject := denv.SetupDefaultCppLibProject("xunittest", "github.com\\jurgen-kluft\\xunittest")
+	cunittestproject := denv.SetupDefaultCppLibProject("cunittest", "github.com\\jurgen-kluft\\cunittest")
 
-	xbaseproject := denv.SetupDefaultCppLibProject("xbase", "github.com\\jurgen-kluft\\xbase")
-	xbaseproject.Dependencies = append(xbaseproject.Dependencies, xunittestproject)
+	cbaseproject := denv.SetupDefaultCppLibProject("cbase", "github.com\\jurgen-kluft\\cbase")
+	cbaseproject.Dependencies = append(cbaseproject.Dependencies, cunittestproject)
 
-	xtestproject := denv.SetupDefaultCppLibProject("xtest", "github.com\\jurgen-kluft\\xtest")
-	xtestproject.Type = denv.Executable
-	xtestproject.Dependencies = append(xtestproject.Dependencies, xunittestproject)
-	xtestproject.Dependencies = append(xtestproject.Dependencies, xbaseproject)
+	ctestproject := denv.SetupDefaultCppLibProject("ctest", "github.com\\jurgen-kluft\\ctest")
+	ctestproject.Type = denv.Executable
+	ctestproject.Dependencies = append(ctestproject.Dependencies, cunittestproject)
+	ctestproject.Dependencies = append(ctestproject.Dependencies, cbaseproject)
 
 	// Since we are running the test at the wrong location we need to change
 	// the current work directory to the actual package directory
-	os.Chdir("/Users/Jurgen/golang/src/github.com/jurgen-kluft/xtest")
-	//os.Chdir(denv.Path("D:/Dev.Go/src/github.com/jurgen-kluft/xtest"))
+	os.Chdir("/Users/Jurgen/golang/src/github.com/jurgen-kluft/ctest")
+	//os.Chdir(denv.Path("D:/Dev.Go/src/github.com/jurgen-kluft/ctest"))
 
-	vs.GenerateVisualStudio2015Solution(xtestproject)
+	vs.GenerateVisualStudio2015Solution(ctestproject)
 }

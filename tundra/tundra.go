@@ -13,7 +13,7 @@ import (
 )
 
 // AddProjectVariables adds variables from the Project information
-//   Example for 'xhash' project with 'xbase' as a dependency:
+//   Example for 'xhash' project with 'cbase' as a dependency:
 //   - xhash:GUID
 //   - xhash:ROOT_DIR
 //   - xhash:INCLUDE_DIRS
