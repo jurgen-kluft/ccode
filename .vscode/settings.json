@@ -1,19 +1,16 @@
 // Place your settings in this file to overwrite default and user settings.
 {
-    	// Run 'go build'/'go test' on save.
-	"go.buildOnSave": true,
-
 	// Flags to `go build` during build-on-save (e.g. ['-ldflags="-s"'])
 	"go.buildFlags": [],
 
 	// Run 'golint' on save.
-	"go.lintOnSave": true,
+	"go.lintOnSave": "file",
 
 	// Flags to pass to `golint` (e.g. ['-min_confidenc=.8'])
 	"go.lintFlags": [],
 
 	// Run 'go tool vet' on save.
-	"go.vetOnSave": true,
+	"go.vetOnSave": "off",
 
 	// Flags to pass to `go tool vet` (e.g. ['-all', '-shadow'])
 	"go.vetFlags": [],
@@ -23,9 +20,6 @@
 
 	// Complete functions with their parameter signature
 	"go.useCodeSnippetsOnFunctionSuggest": false,
-
-	// [EXPERIMENTAL] Run formatting tool on save.
-	"go.formatOnSave": true,
 
 	// Specifies the timeout for go test in ParseDuration format.
 	"go.testTimeout": "30s",
