@@ -12,12 +12,12 @@ import (
 	"github.com/jurgen-kluft/ccode/vs"
 )
 
-// Init will initialize xcode before anything else is run
+// Init will initialize ccode before anything else is run
 func Init() error {
 	// Parse command-line
 	app := cli.NewApp()
-	app.Name = "xcode"
-	app.Usage = "xcode --DEV=VS2017 --OS=Windows --ARCH=amd64"
+	app.Name = "ccode"
+	app.Usage = "ccode --DEV=VS2017 --OS=Windows --ARCH=amd64"
 
 	denv.DEV = ""
 	denv.OS = runtime.GOOS
@@ -56,7 +56,7 @@ func Init() error {
 				denv.DEV = "VS2017"
 			}
 		}
-		fmt.Printf("XCode (DEV:%s, OS:%s, ARCH:%s)\n", denv.DEV, denv.OS, denv.ARCH)
+		fmt.Printf("CCode (DEV:%s, OS:%s, ARCH:%s)\n", denv.DEV, denv.OS, denv.ARCH)
 	}
 	return app.Run(os.Args)
 }
