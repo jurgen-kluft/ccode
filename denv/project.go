@@ -151,7 +151,7 @@ func (prj *Project) ReplaceVars(v vars.Variables, r vars.Replacer) {
 }
 
 var defaultMainSourcePaths = []string{Path("source\\main\\^**\\*.cpp"), Path("source\\main\\^**\\*.c")}
-var defaultTestSourcePaths = []string{Path("source\\test\\^**\\*.cpp")}
+var defaultTestSourcePaths = []string{Path("source\\test\\^**\\*.cpp"), Path("source\\main\\^**\\*.c")}
 var defaultMainIncludePaths = []string{Path("source\\main\\include\\^**\\*.h"), Path("source\\main\\include\\^**\\*.hpp"), Path("source\\main\\include\\^**\\*.inl")}
 var defaultTestIncludePaths = []string{Path("source\\test\\include\\^**\\*.h"), Path("source\\main\\include\\^**\\*.h")}
 
