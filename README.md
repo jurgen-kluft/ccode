@@ -1,11 +1,13 @@
-# XCODE - Package Manager + Project Generator
+# CCODE - Package Manager + Project Generator
 
-This is a project generator that uses Go and its package management to work with C++ or C# packages. The structure of packages are defined in Go and files can be generated for Visual Studio, .sln, .vcxproj and .filters. Any C++ external dependency like Boost, DirectX or whatnot should be wrapped in a package (github or other git server).
+This is a project generator that uses Go and its package management for C++ packages. The structure of packages are defined in Go and files can be generated for Visual Studio (.sln, .vcxproj and .filters) as well as (Tundra)[https://github.com/deplinenoise/tundra].
+
+Any C++ external dependency like Boost, DirectX or whatnot should be wrapped in a package (github or other git server).
 
 This allows you to write packages (C++ libraries) and use them in another package by defining a dependency on them. Using the go package management solution you can 'get' these packages and then by running 'go run $name.go' you can generate projects files . The goal is to support these IDE's and/or build-systems:
 
-* Visual Studio 2015/2017 (supported)
-* Tundra (<https://github.com/deplinenoise/tundra>) (basic support)
+* (Visual Studio)[https://visualstudio.microsoft.com] (supported)
+* (Tundra)[https://github.com/deplinenoise/tundra] (supported)
 
 Currently the design is quite set and the goal is to keep creating and maintaining packages to a minimum.
 
@@ -16,8 +18,8 @@ These are the steps to make a new package:
 3. In the root create a folder called ``package`` with a file in it called ``package.go``
 4. Once you have specified everything in package.go:
    * In the root 'go get' (this will get all your specified dependencies in GO_PATH)
-   * To generate the VS solution and projects just run: ``go run mylibrary.go``  
-   * To generate the Tundra build file run: ``go run mylibrary.go --DEV=Tundra``
+   * To generate the VS solution (default on Windows) and projects just run: ``go run mylibrary.go``  
+   * To generate the Tundra build file (default on MacOS) run: ``go run mylibrary.go``
 
 Example:
 The content of the ```mylibrary.go``` file:
@@ -27,12 +29,12 @@ package main
 
 import (
     "github.com/jurgen-kluft/mylibrary/package"
-    "github.com/jurgen-kluft/xcode"
+    "github.com/jurgen-kluft/ccode"
 )
 
 func main() {
-    xcode.Init()
-    xcode.Generate(mylibrary.GetPackage())
+    ccode.Init()
+    ccode.Generate(mylibrary.GetPackage())
 }
 ```
 
@@ -42,7 +44,7 @@ The content of the ```/package/package.go``` file with one dependency on 'myunit
 package mylibrary
 
 import (
-    "github.com/jurgen-kluft/xcode/denv"
+    "github.com/jurgen-kluft/ccode/denv"
     "github.com/githubusername/myunittest/package"
 )
 
