@@ -3,6 +3,7 @@ package tundra
 import (
 	"fmt"
 	"os"
+	"runtime"
 	"strings"
 
 	"github.com/jurgen-kluft/ccode/denv"
@@ -395,7 +396,11 @@ func GenerateTundraBuildFile(pkg *denv.Package) error {
 	tundra.WriteLn(`        CXXOPTS = {`)
 	tundra.WriteLn(`            mac_opts,`)
 	tundra.WriteLn(`            "-std=c++14",`)
-	tundra.WriteLn(`			"-arch x86_64",`)
+	if runtime.GOARCH == "amd64" {
+		tundra.WriteLn(`			"-arch x86_64",`)
+	} else if runtime.GOARCH == "arm64" {
+		tundra.WriteLn(`			"-arch arm64",`)
+	}
 	tundra.WriteLn(`        },`)
 	tundra.WriteLn(``)
 	tundra.WriteLn(`        SHLIBOPTS = {`)
