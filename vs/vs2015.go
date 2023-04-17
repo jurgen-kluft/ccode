@@ -100,12 +100,14 @@ func addProjectVariables(p *denv.Project, v vars.Variables, r vars.Replacer) {
 		}
 	}
 
-	v.AddVar(fmt.Sprintf("TOOLSET[%s]", p.Platform.Name), "v141")
+	v.AddVar(fmt.Sprintf("TOOLSET[%s]", p.Platform.Name), "v143")
 }
 
 // setupProjectPaths will set correct paths for the main and dependency packages
 // Note: This currently assumes that the dependency packages are in the vendor
-//       folder relative to the main package.
+//
+//	folder relative to the main package.
+//
 // All project and workspace files will be written in the root of the main package
 func setupProjectPaths(prj *denv.Project, deps []*denv.Project) {
 	prj.PackagePath, _ = os.Getwd()
