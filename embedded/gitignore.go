@@ -7,7 +7,7 @@ import (
 	"os"
 )
 
-//go:embed .gitignore
+//go:embed gitignore.txt
 var gitIgnore string
 var gitIgnoreFilename = ".gitignore"
 
