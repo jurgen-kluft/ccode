@@ -3,32 +3,35 @@
 !*/
 
 vendor/
+t2-output/
+target/
+zig-cache/
+tags
 
 #except the following files
+!.gitignore
+!.clang-format
 !*.cpp
 !*.hpp
 !*.c
 !*.h
 !*.inl
 
-!*.sln
-!*.vcproj
-!*.vcxproj
+!*.zig
 
-!*.txt
+!*.go
 
 !*.cs
 !*.csproj
 !*.resx
 
-!*.go
-
 !*.hlsl
 !*.fragment
 
-!*.mold
-!*.sc
-!*.diagram
+!*.md
+!*.jpg
+!*.txt
+!*.html
 
 !*.ini
 !*.bat
