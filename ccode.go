@@ -8,6 +8,7 @@ import (
 
 	"github.com/jurgen-kluft/ccode/cli"
 	"github.com/jurgen-kluft/ccode/denv"
+	"github.com/jurgen-kluft/ccode/embedded"
 	"github.com/jurgen-kluft/ccode/tundra"
 	"github.com/jurgen-kluft/ccode/vs"
 )
@@ -70,4 +71,9 @@ func Generate(pkg *denv.Package) error {
 		return tundra.GenerateTundraBuildFile(pkg)
 	}
 	return fmt.Errorf("Unknown DEV '%s'", denv.DEV)
+}
+
+func GenerateFiles() {
+	embedded.WriteClangFormat(false)
+	embedded.WriteGitIgnore(false)
 }
