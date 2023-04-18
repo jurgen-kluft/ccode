@@ -56,7 +56,7 @@ func initProjectVariables(p *denv.Project, v vars.Variables, r vars.Replacer) {
 	p.ReplaceVars(v, r)
 }
 
-func addProjectVariables(p *denv.Project, v vars.Variables, r vars.Replacer) {
+func addProjectVariables(p *denv.Project, v vars.Variables, r vars.Replacer, dev denv.DevEnum) {
 	v.AddVar(p.Name+":GUID", p.GUID)
 	v.AddVar(p.Name+":ROOT_DIR", p.PackagePath)
 
@@ -100,7 +100,17 @@ func addProjectVariables(p *denv.Project, v vars.Variables, r vars.Replacer) {
 		}
 	}
 
-	v.AddVar(fmt.Sprintf("TOOLSET[%s]", p.Platform.Name), "v143")
+	// based on 'dev' we can set the toolset
+	switch dev {
+	case denv.VS2015:
+		v.AddVar(fmt.Sprintf("TOOLSET[%s]", p.Platform.Name), "v140")
+	case denv.VS2017:
+		v.AddVar(fmt.Sprintf("TOOLSET[%s]", p.Platform.Name), "v141")
+	case denv.VS2019:
+		v.AddVar(fmt.Sprintf("TOOLSET[%s]", p.Platform.Name), "v142")
+	case denv.VS2022:
+		v.AddVar(fmt.Sprintf("TOOLSET[%s]", p.Platform.Name), "v143")
+	}
 }
 
 // setupProjectPaths will set correct paths for the main and dependency packages
@@ -130,7 +140,7 @@ func setupProjectPaths(prj *denv.Project, deps []*denv.Project) {
 var CPPprojectID = "8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942"
 
 // generateVisualStudio2015Project generates a Visual Studio 2015 project (.vcxproj) file
-func generateVisualStudio2015Project(prj *denv.Project, v vars.Variables, replacer vars.Replacer, writer denv.ProjectWriter) {
+func generateVisualStudioProject(prj *denv.Project, v vars.Variables, replacer vars.Replacer, writer denv.ProjectWriter) {
 	var platform = prj.Platform
 
 	writer.WriteLn(`<?xml version="1.0" encoding="utf-8"?>`)
@@ -417,7 +427,7 @@ func generateFilters(prjguid string, files []string) (items map[string]string, f
 }
 
 // generateVisualStudio2015ProjectFilters generates a Visual Studio 2015 project filters (.vcxproj.filters) file
-func generateVisualStudio2015ProjectFilters(prj *denv.Project, writer denv.ProjectWriter) {
+func generateVisualStudioProjectFilters(prj *denv.Project, writer denv.ProjectWriter, dev denv.DevEnum) {
 	writer.WriteLn(`<?xml version="1.0" encoding="utf-8"?>`)
 	writer.WriteLn(`<Project ToolsVersion="4.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">`)
 
@@ -474,7 +484,7 @@ func (s *strStack) Pop() string {
 // GenerateVisualStudio2015Solution generates a Visual Studio 2015 solution (.sln) file
 // for the current project. It also generates the project file for the current projects
 // as well as the project files for the dependencies.
-func GenerateVisualStudio2015Solution(p *denv.Project) {
+func GenerateVisualStudioSolution(p *denv.Project, dev denv.DevEnum) {
 
 	writer := &denv.ProjectTextWriter{}
 	slnfilepath := filepath.Join(p.ProjectPath, p.Name+".sln")
@@ -483,10 +493,27 @@ func GenerateVisualStudio2015Solution(p *denv.Project) {
 		return
 	}
 
-	writer.WriteLn("Microsoft Visual Studio Solution File, Format Version 12.00")
-	writer.WriteLn("# Visual Studio 14")
-	writer.WriteLn("VisualStudioVersion = 14.0.24720.0")
-	writer.WriteLn("MinimumVisualStudioVersion = 10.0.40219.1")
+	if dev == denv.VS2015 {
+		writer.WriteLn("Microsoft Visual Studio Solution File, Format Version 12.00")
+		writer.WriteLn("# Visual Studio 14")
+		writer.WriteLn("VisualStudioVersion = 14.0.24720.0")
+		writer.WriteLn("MinimumVisualStudioVersion = 10.0.40219.1")
+	} else if dev == denv.VS2017 {
+		writer.WriteLn("Microsoft Visual Studio Solution File, Format Version 12.00")
+		writer.WriteLn("# Visual Studio 15")
+		writer.WriteLn("VisualStudioVersion = 15.0.28307.1234")
+		writer.WriteLn("MinimumVisualStudioVersion = 10.0.40219.1")
+	} else if dev == denv.VS2019 {
+		writer.WriteLn("Microsoft Visual Studio Solution File, Format Version 12.00")
+		writer.WriteLn("# Visual Studio Version 17")
+		writer.WriteLn("VisualStudioVersion = 17.5.33414.496")
+		writer.WriteLn("MinimumVisualStudioVersion = 10.0.40219.1")
+	} else if dev == denv.VS2022 {
+		writer.WriteLn("Microsoft Visual Studio Solution File, Format Version 12.00")
+		writer.WriteLn("# Visual Studio Version 17")
+		writer.WriteLn("VisualStudioVersion = 17.5.33414.496")
+		writer.WriteLn("MinimumVisualStudioVersion = 10.0.40219.1")
+	}
 
 	// Write Projects and their dependency information
 	//
@@ -545,7 +572,7 @@ func GenerateVisualStudio2015Solution(p *denv.Project) {
 	projects = append(projects, dependencies...)
 
 	for _, prj := range projects {
-		addProjectVariables(prj, variables, replacer)
+		addProjectVariables(prj, variables, replacer, dev)
 	}
 
 	variables.Print()
@@ -562,13 +589,13 @@ func GenerateVisualStudio2015Solution(p *denv.Project) {
 		// Generate the project file
 		prjwriter := &denv.ProjectTextWriter{}
 		prjwriter.Open(filepath.Join(prj.ProjectPath, prj.Name+".vcxproj"))
-		generateVisualStudio2015Project(prj, variables, replacer, prjwriter)
+		generateVisualStudioProject(prj, variables, replacer, prjwriter)
 		prjwriter.Close()
 
 		// Generate the project filters file
 		prjwriter = &denv.ProjectTextWriter{}
 		prjwriter.Open(filepath.Join(prj.ProjectPath, prj.Name+".vcxproj.filters"))
-		generateVisualStudio2015ProjectFilters(prj, prjwriter)
+		generateVisualStudioProjectFilters(prj, prjwriter, dev)
 		prjwriter.Close()
 	}
 

@@ -16,8 +16,8 @@ import (
 func Init() error {
 	// Parse command-line
 	app := cli.NewApp()
-	app.Name = "ccode"
-	app.Usage = "ccode --DEV=VS2017 --OS=Windows --ARCH=amd64"
+	app.Name = "ccode, a tool to generate C/C++ workspace and project files"
+	app.Usage = "ccode --DEV=VS2022 --OS=Windows --ARCH=amd64"
 
 	denv.DEV = ""
 	denv.OS = runtime.GOOS
@@ -26,7 +26,7 @@ func Init() error {
 	app.Flags = []cli.Flag{
 		cli.StringFlag{
 			Name:        "DEV",
-			Usage:       "The build system to generate projects for",
+			Usage:       "The build system to generate projects for (VS2022, TUNDRA))",
 			Destination: &denv.DEV,
 		},
 		cli.StringFlag{
@@ -53,7 +53,7 @@ func Init() error {
 			} else if denv.OS == "linux" {
 				denv.DEV = "TUNDRA"
 			} else {
-				denv.DEV = "VS2017"
+				denv.DEV = "VS2022"
 			}
 		}
 		fmt.Printf("CCode (DEV:%s, OS:%s, ARCH:%s)\n", denv.DEV, denv.OS, denv.ARCH)

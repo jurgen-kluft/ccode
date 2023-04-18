@@ -15,6 +15,8 @@ const (
 	VS2013       DevEnum = VISUALSTUDIO | 2013
 	VS2015       DevEnum = VISUALSTUDIO | 2015
 	VS2017       DevEnum = VISUALSTUDIO | 2017
+	VS2019       DevEnum = VISUALSTUDIO | 2019
+	VS2022       DevEnum = VISUALSTUDIO | 2022
 	TUNDRA       DevEnum = 0x20000
 )
 
