@@ -26,5 +26,5 @@ func TestSimpleProject(t *testing.T) {
 	os.Chdir("/Users/Jurgen/golang/src/github.com/jurgen-kluft/ctest")
 	//os.Chdir(denv.Path("D:/Dev.Go/src/github.com/jurgen-kluft/ctest"))
 
-	vs.GenerateVisualStudio2015Solution(ctestproject)
+	vs.GenerateVisualStudioSolution(ctestproject, denv.VS2022)
 }

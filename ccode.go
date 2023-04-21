@@ -76,5 +76,5 @@ func Generate(pkg *denv.Package) error {
 func GenerateFiles() {
 	embedded.WriteClangFormat(false)
 	embedded.WriteGitIgnore(false)
-	embedded.WriteTestMainCxx(true)
+	embedded.WriteTestMainCpp(true)
 }

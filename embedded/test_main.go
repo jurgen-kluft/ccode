@@ -9,9 +9,9 @@ import (
 
 //go:embed test_main.txt
 var testMain string
-var testMainFilename = "source/test/cpp/test_main.cxx"
+var testMainFilename = "source/test/cpp/test_main.cpp"
 
-func WriteTestMainCxx(overwrite bool) {
+func WriteTestMainCpp(overwrite bool) {
 	// check if the file exists, if it does not, create it
 	_, err := os.Stat(testMainFilename)
 	if err == nil && !overwrite {
