@@ -3,6 +3,7 @@ package embedded
 import (
 	"bufio"
 	"io"
+	"io/fs"
 	"log"
 	"os"
 	"path/filepath"
@@ -50,34 +51,6 @@ var (
 	semiColonNl  = []byte(";\n")
 	bar          = []byte("|")
 )
-
-// ascii -> ebcdic lookup table
-var ebcdicTable = []byte{
-	0040, 0240, 0241, 0242, 0243, 0244, 0245, 0246,
-	0247, 0250, 0325, 0056, 0074, 0050, 0053, 0174,
-	0046, 0251, 0252, 0253, 0254, 0255, 0256, 0257,
-	0260, 0261, 0041, 0044, 0052, 0051, 0073, 0176,
-	0055, 0057, 0262, 0263, 0264, 0265, 0266, 0267,
-	0270, 0271, 0313, 0054, 0045, 0137, 0076, 0077,
-	0272, 0273, 0274, 0275, 0276, 0277, 0300, 0301,
-	0302, 0140, 0072, 0043, 0100, 0047, 0075, 0042,
-	0303, 0141, 0142, 0143, 0144, 0145, 0146, 0147,
-	0150, 0151, 0304, 0305, 0306, 0307, 0310, 0311,
-	0312, 0152, 0153, 0154, 0155, 0156, 0157, 0160,
-	0161, 0162, 0136, 0314, 0315, 0316, 0317, 0320,
-	0321, 0345, 0163, 0164, 0165, 0166, 0167, 0170,
-	0171, 0172, 0322, 0323, 0324, 0133, 0326, 0327,
-	0330, 0331, 0332, 0333, 0334, 0335, 0336, 0337,
-	0340, 0341, 0342, 0343, 0344, 0135, 0346, 0347,
-	0173, 0101, 0102, 0103, 0104, 0105, 0106, 0107,
-	0110, 0111, 0350, 0351, 0352, 0353, 0354, 0355,
-	0175, 0112, 0113, 0114, 0115, 0116, 0117, 0120,
-	0121, 0122, 0356, 0357, 0360, 0361, 0362, 0363,
-	0134, 0237, 0123, 0124, 0125, 0126, 0127, 0130,
-	0131, 0132, 0364, 0365, 0366, 0367, 0370, 0371,
-	0060, 0061, 0062, 0063, 0064, 0065, 0066, 0067,
-	0070, 0071, 0372, 0373, 0374, 0375, 0376, 0377,
-}
 
 // convert a byte into its binary representation
 func binaryEncode(dst, src []byte) {
@@ -544,50 +517,63 @@ func xxd(r io.Reader, w io.Writer, fname string) error {
 	return nil
 }
 
+func fileNameWithoutExtension(fileName string) string {
+	return fileName[:len(fileName)-len(filepath.Ext(fileName))]
+}
+
 func WriteEmbedded() {
 
-	// Collect all files in 'embedded' folder
-	err := filepath.Walk("embedded",
-		func(path string, info os.FileInfo, err error) error {
+	// Collect all files in 'embedded' folder.
+	// Anything under the 'embedded' folder will be considered to be embedded.
+	// The directory hierarchy will be put over the root, e.g. :
+	// embedded/source/main/cpp/data.txt -> source/main/cpp/data.cpp
+
+	root_dir, err := os.Getwd()
+	if err != nil {
+		log.Println(err)
+	}
+	embedded_dir := root_dir + "/embedded"
+	err = filepath.WalkDir(embedded_dir,
+		func(path string, d fs.DirEntry, err error) error {
 			if err != nil {
 				return err
 			}
+			if !d.IsDir() {
+				subdir, filename := filepath.Split(path)
+				subdir = subdir[len(embedded_dir)+1:]
 
-			var (
-				inFilename  string
-				outFilename string
-				arrayName   string
-			)
+				arrayName := fileNameWithoutExtension(filename)
+				inFilename := path
+				outFilename := filepath.Join(root_dir, subdir, arrayName+".cpp")
+				log.Printf("input: %s", inFilename)
+				log.Printf("output: %s", outFilename)
 
-			var inFile *os.File
+				var inFile *os.File
+				inFile, err = os.Open(inFilename)
+				if err != nil {
+					log.Fatalln(err)
+				}
+				defer inFile.Close()
 
-			inFile, err = os.Open(inFilename)
-			if err != nil {
-				log.Fatalln(err)
-			}
+				var outFile *os.File
+				outFile, err = os.Create(outFilename)
+				if err != nil {
+					log.Fatalln(err)
+				}
+				defer outFile.Close()
 
-			defer inFile.Close()
+				out := bufio.NewWriter(outFile)
+				defer out.Flush()
 
-			var outFile *os.File
-
-			outFile, err = os.Create(outFilename)
-			if err != nil {
-				log.Fatalln(err)
-			}
-
-			defer outFile.Close()
-
-			dumpType = dumpCformat
-
-			out := bufio.NewWriter(outFile)
-			defer out.Flush()
-
-			if err = xxd(inFile, out, arrayName); err != nil {
-				log.Fatalln(err)
+				dumpType = dumpCformat
+				if err = xxd(inFile, out, arrayName); err != nil {
+					log.Fatalln(err)
+				}
 			}
 
 			return nil
 		})
+
 	if err != nil {
 		log.Println(err)
 	}
