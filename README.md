@@ -77,3 +77,4 @@ There are some requirements for the layout of folders inside of your repository 
 2. source\main\include\mylibrary: all the header files of your library
 3. source\test\cpp: all the cpp files of your unittest app
 4. source\test\include: all the header files of your unittest app
+5. embedded\**: all the files that need to be auto embedded (file to .cpp 'C array') 
