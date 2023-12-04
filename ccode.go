@@ -77,4 +77,5 @@ func GenerateFiles() {
 	embedded.WriteClangFormat(false)
 	embedded.WriteGitIgnore(false)
 	embedded.WriteTestMainCpp(true)
+	embedded.WriteEmbedded()
 }
