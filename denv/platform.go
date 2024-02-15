@@ -142,6 +142,9 @@ func (pset PlatformSet) Copy() PlatformSet {
 
 // GetDefaultPlatforms returns the default platform according to the OS we are running on at the moment
 func GetDefaultPlatform() *Platform {
+
+	//dev := GetDevEnum(DEV)
+
 	platform := &Platform{}
 	if OS == "windows" {
 		var p = defaultWinPlatform

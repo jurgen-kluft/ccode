@@ -9,6 +9,7 @@ import (
 	"github.com/jurgen-kluft/ccode/cli"
 	"github.com/jurgen-kluft/ccode/denv"
 	"github.com/jurgen-kluft/ccode/embedded"
+	"github.com/jurgen-kluft/ccode/cmake"
 	"github.com/jurgen-kluft/ccode/tundra"
 	"github.com/jurgen-kluft/ccode/vs"
 )
@@ -27,7 +28,7 @@ func Init() error {
 	app.Flags = []cli.Flag{
 		cli.StringFlag{
 			Name:        "DEV",
-			Usage:       "The build system to generate projects for (VS2022, TUNDRA))",
+			Usage:       "The build system to generate projects for (VS2022, TUNDRA, CMAKE))",
 			Destination: &denv.DEV,
 		},
 		cli.StringFlag{
@@ -66,9 +67,11 @@ func Init() error {
 // workspace and project files for a specified IDE.
 func Generate(pkg *denv.Package) error {
 	if vs.IsVisualStudio(denv.DEV, denv.OS, denv.ARCH) {
-		return vs.GenerateVisualStudioSolutionAndProjects(vs.GetVisualStudio(denv.DEV), pkg)
+		return vs.GenerateBuildFiles(vs.GetVisualStudio(denv.DEV), pkg)
 	} else if tundra.IsTundra(denv.DEV, denv.OS, denv.ARCH) {
-		return tundra.GenerateTundraBuildFile(pkg)
+		return tundra.GenerateBuildFiles(pkg)
+	} else if cmake.IsCMake(denv.DEV, denv.OS, denv.ARCH) {
+		return cmake.GenerateBuildFiles(pkg)
 	}
 	return fmt.Errorf("Unknown DEV '%s'", denv.DEV)
 }

@@ -30,8 +30,8 @@ func GetVisualStudio(dev string) denv.DevEnum {
 	return -1
 }
 
-// GenerateVisualStudioSolutionAndProjects will generate the Solution and Project files for the incoming project
-func GenerateVisualStudioSolutionAndProjects(dev denv.DevEnum, pkg *denv.Package) error {
+// GenerateBuildFiles will generate the Solution and Project files for the incoming project
+func GenerateBuildFiles(dev denv.DevEnum, pkg *denv.Package) error {
 
 	prj := pkg.GetMainApp()
 	if prj == nil {

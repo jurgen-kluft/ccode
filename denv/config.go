@@ -8,7 +8,10 @@ import (
 // Config represents a project build configuration, like 'Debug' or 'Release'
 type Config struct {
 	Name         string
-	Config       string
+	Type         string // Static, Dynamic, Executable
+	Config       string // Debug, Release, Final
+	Build        string // Dev, Test, Retail
+	Tundra       string // Tundra specific config string
 	Defines      items.List
 	IncludeDirs  items.List
 	LibraryDirs  items.List
@@ -19,7 +22,10 @@ type Config struct {
 
 var DevDebugStatic = &Config{
 	Name:         "DevDebugStatic",
-	Config:       "*-*-debug",
+	Type:         "Static",
+	Config:       "Debug",
+	Build:        "Dev",
+	Tundra:       "*-*-debug",
 	Defines:      items.NewList("TARGET_DEBUG;TARGET_DEV;_DEBUG", ";", ""),
 	IncludeDirs:  items.NewList(Path("source\\main\\include"), ";", ""),
 	LibraryDirs:  items.NewList(Path("target\\${Name}\\bin\\$(PackageSignature)"), ";", ""),
@@ -30,7 +36,10 @@ var DevDebugStatic = &Config{
 
 var DevReleaseStatic = &Config{
 	Name:         "DevReleaseStatic",
-	Config:       "*-*-release",
+	Type:         "Static",
+	Config:       "Release",
+	Build:        "Dev",
+	Tundra:       "*-*-release",
 	Defines:      items.NewList("TARGET_RELEASE;TARGET_DEV;NDEBUG", ";", ""),
 	IncludeDirs:  items.NewList(Path("source\\main\\include"), ";", ""),
 	LibraryDirs:  items.NewList(Path("target\\${Name}\\bin\\$(PackageSignature)"), ";", ""),

@@ -95,8 +95,8 @@ func (s *strStack) Pop() string {
 	return d
 }
 
-// GenerateTundraBuildFile will generate the tundra.lua file to be used by the Tundra Build System
-func GenerateTundraBuildFile(pkg *denv.Package) error {
+// GenerateBuildFiles will generate the tundra.lua file to be used by the Tundra Build System
+func GenerateBuildFiles(pkg *denv.Package) error {
 	mainprj := pkg.GetMainApp()
 	mainapp := true
 	if mainprj == nil {
