@@ -14,11 +14,11 @@ import (
 )
 
 // AddProjectVariables adds variables from the Project information
-//   Example for 'xhash' project with 'cbase' as a dependency:
-//   - xhash:GUID
-//   - xhash:ROOT_DIR
-//   - xhash:INCLUDE_DIRS
 //
+//	Example for 'xhash' project with 'cbase' as a dependency:
+//	- xhash:GUID
+//	- xhash:ROOT_DIR
+//	- xhash:INCLUDE_DIRS
 func addProjectVariables(p *denv.Project, isdep bool, v vars.Variables, r vars.Replacer) {
 
 	p.MergeVars(v)
@@ -27,7 +27,7 @@ func addProjectVariables(p *denv.Project, isdep bool, v vars.Variables, r vars.R
 	v.AddVar(p.Name+":GUID", p.GUID)
 	v.AddVar(p.Name+":ROOT_DIR", denv.Path(p.PackagePath))
 
-	path, _ := filepath.Rel(p.ProjectPath, p.PackagePath)
+	path, _ := filepath.Rel(p.ProjectPath+"/target/tundra", p.PackagePath)
 
 	switch p.Type {
 	case denv.StaticLibrary:
@@ -39,9 +39,9 @@ func addProjectVariables(p *denv.Project, isdep bool, v vars.Variables, r vars.R
 	}
 
 	if isdep {
-		v.AddVar(fmt.Sprintf("%s:SOURCE_DIR", p.Name), denv.Path("..\\"+p.Name+"\\"+p.SrcPath))
+		v.AddVar(fmt.Sprintf("%s:SOURCE_DIR", p.Name), denv.Path("..\\..\\..\\"+p.Name+"\\"+p.SrcPath))
 	} else {
-		v.AddVar(fmt.Sprintf("%s:SOURCE_DIR", p.Name), denv.Path(p.SrcPath))
+		v.AddVar(fmt.Sprintf("%s:SOURCE_DIR", p.Name), denv.Path("..\\..\\"+p.SrcPath))
 	}
 
 	for _, config := range p.Platform.Configs {
@@ -70,7 +70,9 @@ func collectProjectDefinesFromDependencies(prj *denv.Project) {
 
 // setupProjectPaths will set correct paths for the main and dependency packages
 // Note: This currently assumes that the dependency packages are in the vendor
-//       folder relative to the main package.
+//
+//	folder relative to the main package.
+//
 // All project and workspace files will be written in the root of the main package
 func setupProjectPaths(prj *denv.Project, deps []*denv.Project) {
 	prj.PackagePath, _ = os.Getwd()
@@ -157,7 +159,7 @@ func GenerateBuildFiles(pkg *denv.Package) error {
 		prj.HdrFiles.GlobFiles(prj.PackagePath, prj.Platform.FilePatternsToIgnore)
 
 		// Convert the list of source files to a string by delimiting with double quotes and joining them with a comma
-		relpath, _ := filepath.Rel(prj.ProjectPath, prj.PackagePath)
+		relpath, _ := filepath.Rel(prj.ProjectPath+"/target/tundra", prj.PackagePath)
 		src_files := ""
 		for _, src := range prj.SrcFiles.Files {
 			srcfile := filepath.Join(relpath, src)
@@ -168,8 +170,10 @@ func GenerateBuildFiles(pkg *denv.Package) error {
 		variables.AddVar(prj.Name+":SOURCE_FILES", src_files)
 	}
 
+	os.MkdirAll("target/tundra", os.ModePerm)
+
 	units := &denv.ProjectTextWriter{}
-	unitsfilepath := filepath.Join(mainprj.ProjectPath, "units.lua")
+	unitsfilepath := filepath.Join(mainprj.ProjectPath, "target/tundra/units.lua")
 	if units.Open(unitsfilepath) != nil {
 		fmt.Printf("Error opening file '%s'", unitsfilepath)
 		return fmt.Errorf("error opening file '%s'", unitsfilepath)
@@ -354,7 +358,7 @@ func GenerateBuildFiles(pkg *denv.Package) error {
 	}
 
 	tundra := &denv.ProjectTextWriter{}
-	tundrafilepath := filepath.Join(mainprj.ProjectPath, "tundra.lua")
+	tundrafilepath := filepath.Join(mainprj.ProjectPath, "target/tundra/tundra.lua")
 	if tundra.Open(tundrafilepath) != nil {
 		fmt.Printf("Error opening file '%s'", tundrafilepath)
 		return fmt.Errorf("error opening file '%s'", tundrafilepath)
