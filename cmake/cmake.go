@@ -285,24 +285,23 @@ func GenerateBuildFiles(pkg *denv.Package) error {
 		}
 
 		// target_link_libraries
-		link_libraries := "+target_link_libraries(${Name}_program"
+		link_libraries := make([]string, 0)
+		link_libraries = append(link_libraries, `+# link libraries`)
+		link_libraries = append(link_libraries, "+target_link_libraries(${Name}_program PRIVATE")
 		for _, dep := range dependencies {
-			link_libraries = link_libraries + ` ` + dep.Name + `_library`
+			link_libraries = append(link_libraries, `+++`+dep.Name+`_library`)
 		}
-		link_libraries = link_libraries + `)`
-		program = append(program, link_libraries)
-
-		// if the platform is Mac also write out the Frameworks we are using
-		// if mainprj.Platform.OS == "darwin" {
-		// 	program = append(program, `Frameworks = {`)
-		// 	program = append(program, `+{ "Cocoa" },`)
-		// 	program = append(program, `+{ "Metal" },`)
-		// 	program = append(program, `+{ "OpenGL" },`)
-		// 	program = append(program, `+{ "IOKit" },`)
-		// 	program = append(program, `+{ "CoreVideo" },`)
-		// 	program = append(program, `+{ "QuartzCore" },`)
-		// 	program = append(program, `},`)
-		// }
+		if denv.OS == denv.OS_MAC {
+			link_libraries = append(link_libraries, `+++"-framework Foundation"`)
+			link_libraries = append(link_libraries, `+++"-framework Cocoa"`)
+			link_libraries = append(link_libraries, `+++"-framework Metal"`)
+			link_libraries = append(link_libraries, `+++"-framework OpenGL"`)
+			link_libraries = append(link_libraries, `+++"-framework IOKit"`)
+			link_libraries = append(link_libraries, `+++"-framework CoreVideo"`)
+			link_libraries = append(link_libraries, `+++"-framework QuartzCore"`)
+		}
+		link_libraries = append(link_libraries, `+)`)
+		program = append(program, link_libraries...)
 
 		configitems := map[string]items.List{
 			"INCLUDE_DIRS": items.NewList(variables.GetVar(mainprj.Name+":INCLUDE_DIRS"), ",", ""),

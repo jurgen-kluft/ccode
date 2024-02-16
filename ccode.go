@@ -7,9 +7,9 @@ import (
 	"strings"
 
 	"github.com/jurgen-kluft/ccode/cli"
+	"github.com/jurgen-kluft/ccode/cmake"
 	"github.com/jurgen-kluft/ccode/denv"
 	"github.com/jurgen-kluft/ccode/embedded"
-	"github.com/jurgen-kluft/ccode/cmake"
 	"github.com/jurgen-kluft/ccode/tundra"
 	"github.com/jurgen-kluft/ccode/vs"
 )
@@ -19,7 +19,7 @@ func Init() error {
 	// Parse command-line
 	app := cli.NewApp()
 	app.Name = "ccode, a tool to generate C/C++ workspace and project files"
-	app.Usage = "ccode --DEV=VS2022 --OS=Windows --ARCH=amd64"
+	app.Usage = "ccode --DEV=VS2022 --OS=windows --ARCH=amd64"
 
 	denv.DEV = ""
 	denv.OS = runtime.GOOS
@@ -50,11 +50,8 @@ func Init() error {
 			denv.ARCH = strings.ToLower(runtime.GOARCH)
 		}
 		if denv.DEV == "" {
-			if denv.OS == "darwin" {
-				denv.DEV = "TUNDRA"
-			} else if denv.OS == "linux" {
-				denv.DEV = "TUNDRA"
-			} else {
+			denv.DEV = "TUNDRA"
+			if denv.OS == "windows" {
 				denv.DEV = "VS2022"
 			}
 		}

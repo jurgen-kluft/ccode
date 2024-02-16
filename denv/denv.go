@@ -45,7 +45,7 @@ func GetDevEnum(dev string) DevEnum {
 
 const (
 	OS_WINDOWS = "windows"
-	OS_MAC     = "mac"
+	OS_MAC     = "darwin"
 	OS_LINUX   = "linux"
 )
 
