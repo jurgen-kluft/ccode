@@ -232,13 +232,24 @@ func GenerateBuildFiles(pkg *denv.Package) error {
 			dependency = append(dependency, `+# set compiler definitions`)
 			dependency = append(dependency, `+target_compile_definitions(${Name}_library PUBLIC ${`+dep.Name+`:`+cfg.Name+`:DEFINES})`)
 
-			// register all the include directories of this dependency
-			dependency = append(dependency, `+# set include directories`)
-			includeDirectories := strings.Split(variables.GetVar(dep.Name+":INCLUDE_DIRS"), ",")
-			for _, includeDirectory := range includeDirectories {
-				dependency = append(dependency, `+target_include_directories(${Name}_library PUBLIC ../../`+includeDirectory+`)`)
+			// register all the include directories of this dependency, for this we need to
+			// collect all the dependencies of this dependency.
+			// collect all unique dependencies of this dependency by using a map
+			all_dependencies := map[string]*denv.Project{}
+			all_dependencies[dep.Name] = dep
+			depstack := &strStack{dep.Name}
+			for !depstack.Empty() {
+				prjname := depstack.Pop()
+				prj := all_dependencies[prjname]
+				for _, ddep := range prj.Dependencies {
+					if _, ok := all_dependencies[ddep.Name]; !ok {
+						depstack.Push(ddep.Name)
+						all_dependencies[ddep.Name] = ddep
+					}
+				}
 			}
-			for _, ddep := range dep.Dependencies {
+
+			for _, ddep := range all_dependencies {
 				includeDirectories := strings.Split(variables.GetVar(ddep.Name+":INCLUDE_DIRS"), ",")
 				for _, includeDirectory := range includeDirectories {
 					dependency = append(dependency, `+target_include_directories(${Name}_library PUBLIC ../../`+includeDirectory+`)`)
