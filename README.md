@@ -16,10 +16,28 @@ This allows you to write packages (C++ libraries) and use them in another packag
 
 * [Visual Studio](https://visualstudio.microsoft.com) (supported)
 * [Tundra](https://github.com/deplinenoise/tundra) (supported)
-* [CMake](https://cmake.org/) (WIP)
+* [CMake](https://cmake.org/) (supported)
 * [Zig](https://ziglang.org/learn/build-system/) (WIP)
 
 Currently the design is quite set and the goal is to keep creating and maintaining packages to a minimum.
+
+If you have repository/package that uses ccode, you can do the following to generate the CMake build files:
+
+1. `go run cbase.go --DEV=cmake`
+2. cd into `target/cmake`
+3. `cmake -DCMAKE_BUILD_TYPE=DEBUG`
+4. `make`
+
+For Visual Studio build files (on Windows):
+
+1. `go run cbase.go`
+2. In the root of your package you now should have a `cbase_test.sln` solution file
+
+For Tundra:
+
+1. `go run cbase.go --DEV=tundra`
+2. cd into `target/tundra`
+3. run `tundra`
 
 These are the steps to make a new package:
 
