@@ -517,7 +517,7 @@ func GenerateVisualStudioSolution(p *denv.Project, dev denv.DevEnum) {
 
 	// Write Projects and their dependency information
 	//
-	//          Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "xhash", "source\main\cpp\xhash.vcxproj", "{04AB9C6F-0B84-4111-A772-53C03F5CB3C2}"
+	//          Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "chash", "source\main\cpp\xhash.vcxproj", "{04AB9C6F-0B84-4111-A772-53C03F5CB3C2}"
 	//          	ProjectSection(ProjectDependencies) = postProject
 	//          		{B83DA73D-6E7B-458D-A6C7-87013421D360} = {B83DA73D-6E7B-458D-A6C7-87013421D360}
 	//          	EndProjectSection
