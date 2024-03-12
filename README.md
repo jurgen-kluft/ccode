@@ -10,9 +10,9 @@ There are a couple of notable features that are triggered when generating the pr
 * generating `source/test/cpp/test_main.cpp`
 * converting any file in `embedded` (following the directory structure) to C style array's so as to embed those files into your library/app
 
-Also this project is a personal project and so is not perfect but it serves my needs, feel free to post issues/requests if you want to see additional features.
+Also this project is a personal project and thus is not perfect but it serves my needs, feel free to post issues/requests if you want to see additional features.
 
-This allows you to write packages (C++ libraries) and use them in another package by defining a dependency on them. Using the go package management solution you can 'get' these packages and then by running 'go run $name.go' you can generate projects files . The goal is to support these IDE's and/or build-systems:
+This allows me to write packages (C++ libraries) and use them in another C++ package by defining a dependency on them. Using the go package management solution you can 'get' these packages and then by running 'go run $name.go' you can generate VS projects files. The goal is to support the following IDE's and/or build-systems:
 
 * [Visual Studio](https://visualstudio.microsoft.com) (supported)
 * [Tundra](https://github.com/deplinenoise/tundra) (supported)
