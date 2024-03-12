@@ -21,7 +21,7 @@ This allows you to write packages (C++ libraries) and use them in another packag
 
 Currently the design is quite set and the goal is to keep creating and maintaining packages to a minimum.
 
-If you have repository/package that uses ccode, you can do the following to generate the CMake build files, this example uses `cbase` as an example:
+If you have repository/package that uses ccode, you can do the following to generate the CMake build files, this example uses the `cbase` repository:
 
 1. `go run cbase.go --DEV=cmake`
 2. cd into `target/cmake`
