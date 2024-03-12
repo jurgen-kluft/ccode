@@ -1,7 +1,7 @@
 # CCODE - Package Manager + Project Generator
 
 This is a project generator that uses Go and its package management for C++ packages. 
-The structure of packages are defined in Go and files can be generated for Visual Studio (.sln, .vcxproj and .filters), CMake as well as Tundra. Work in progress for Zig as build systems.
+The structure of packages are defined in Go and files can be generated for Visual Studio (.sln, .vcxproj and .filters), CMake as well as Tundra. Work in progress for also supporting Zig as a build system.
 
 Any C++ external dependency like Boost, DirectX or whatnot should be wrapped in a package (github or other git server).
 There are a couple of notable features that are triggered when generating the project files:
