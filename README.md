@@ -100,9 +100,8 @@ func GetPackage() *denv.Package {
 
 There are some requirements for the layout of folders inside of your repository to hold the library and unittest files, this is the layout:
 
-1. source\main\cpp: all the cpp files of your library. Source files should include header files like  
-   ```#include "mylibrary/header.h"```
-2. source\main\include\mylibrary: all the header files of your library
-3. source\test\cpp: all the cpp files of your unittest app
-4. source\test\include: all the header files of your unittest app
-5. embedded\**: all the files that need to be auto embedded (file to .cpp 'C array') 
+1. `source\main\cpp`: the cpp files of your library. Header files should be included as ```#include "mylibrary/header.h"```
+2. `source\main\include\mylibrary`: the header files of your library
+3. `source\test\cpp`: the cpp files of your unittest app
+4. `source\test\include`: the header files of your unittest app
+5. `embedded\**`: all the files that need to be auto embedded (file to .cpp 'C array') 
