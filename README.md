@@ -21,7 +21,7 @@ This allows you to write packages (C++ libraries) and use them in another packag
 
 Currently the design is quite set and the goal is to keep creating and maintaining packages to a minimum.
 
-If you have repository/package that uses ccode, you can do the following to generate the CMake build files:
+If you have repository/package that uses ccode, you can do the following to generate the CMake build files, this example uses `cbase` as an example:
 
 1. `go run cbase.go --DEV=cmake`
 2. cd into `target/cmake`
@@ -37,7 +37,7 @@ For Tundra:
 
 1. `go run cbase.go --DEV=tundra`
 2. cd into `target/tundra`
-3. run `tundra`
+3. run `tundra2 debug` or `tundra2 release`
 
 These are the steps to make a new package:
 
