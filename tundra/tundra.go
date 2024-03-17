@@ -419,7 +419,7 @@ func GenerateBuildFiles(pkg *denv.Package) error {
 	tundra.WriteLn(`    },`)
 	tundra.WriteLn(``)
 	tundra.WriteLn(`	ReplaceEnv = {`)
-	tundra.WriteLn(`		OBJECTROOT = "target",`)
+	tundra.WriteLn(`		OBJECTROOT = "../../target",`)
 	tundra.WriteLn(`	},`)
 	tundra.WriteLn(``)
 	tundra.WriteLn(`    Frameworks = {`)
