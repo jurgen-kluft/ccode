@@ -98,7 +98,7 @@ func (pset PlatformSet) ReplaceVars(v vars.Variables, r vars.Replacer) {
 var defaultWinPlatform = Platform{
 	Name:                 PlatformWin64,
 	OS:                   "windows",
-	FilePatternsToIgnore: []string{"_darwin", "_linux", "_nob"},
+	FilePatternsToIgnore: []string{"_darwin", "_mac", "_linux", "_nob"},
 	Defines:              items.NewList("TARGET_PC", ";", ""),
 	Configs: ConfigSet{
 		"DevDebugStatic":   DevDebugStatic.Copy(),
@@ -109,7 +109,7 @@ var defaultWinPlatform = Platform{
 var defaultDarwinPlatform = Platform{
 	Name:                 PlatformDarwin64,
 	OS:                   "darwin",
-	FilePatternsToIgnore: []string{"_win32", "_linux", "_nob"},
+	FilePatternsToIgnore: []string{"_win32", "_pc", "_linux", "_nob"},
 	Defines:              items.NewList("TARGET_MAC", ";", ""),
 	Configs: ConfigSet{
 		"DevDebugStatic":   DevDebugStatic.Copy(),
@@ -120,7 +120,7 @@ var defaultDarwinPlatform = Platform{
 var defaultLinuxPlatform = Platform{
 	Name:                 PlatformLinux64,
 	OS:                   "linux",
-	FilePatternsToIgnore: []string{"_win32", "_darwin", "_nob"},
+	FilePatternsToIgnore: []string{"_win32", "_pc", "_darwin", "_mac", "_nob"},
 	Defines:              items.NewList("TARGET_LINUX", ";", ""),
 	Configs: ConfigSet{
 		"DevDebugStatic":   DevDebugStatic.Copy(),
