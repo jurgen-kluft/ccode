@@ -139,6 +139,60 @@ func GenerateBuildFiles(pkg *denv.Package) error {
 	projects := []*denv.Project{mainprj}
 	projects = append(projects, dependencies...)
 
+	// -----------------------------------------------------------------------------------------------------------
+	// Every project has dependencies, however nested dependencies should also be added to the top level project
+	depstack.Push(mainprj.Name)
+	for _, dep := range dependencies {
+		depstack.Push(dep.Name)
+	}
+
+	for !depstack.Empty() {
+		currentProjectName := depstack.Pop()
+		var currentProject *denv.Project
+		if currentProjectName == mainprj.Name {
+			currentProject = mainprj
+		} else {
+			currentProject = depmap[currentProjectName]
+		}
+
+		// Build the full map of dependencies for this project
+		currentProjectDepMap := map[string]*denv.Project{}
+
+		// Initialize the stack with the dependencies of this project
+		currentDepStack := &strStack{}
+		for _, dep := range currentProject.Dependencies {
+			currentDepStack.Push(dep.Name)
+		}
+
+		// Now handle the map of current dependencies until it is empty
+		for !currentDepStack.Empty() {
+			currentDepName := currentDepStack.Pop()
+			currentDep := depmap[currentDepName]
+
+			if _, ok := currentProjectDepMap[currentDepName]; !ok {
+				// This dependency is not yet a dependency of the current project, add it
+				currentProjectDepMap[currentDepName] = currentDep
+
+				// Iterate over the dependencies of this dependency project and schedule a dependency when
+				// it has not been recognized as being part of the dependencies of currentProject
+				for _, dep := range currentDep.Dependencies {
+					if _, ok := currentProjectDepMap[dep.Name]; !ok {
+						currentDepStack.Push(dep.Name)
+					}
+				}
+			}
+		}
+
+		// Empty the list of dependencies of this project, and then add all of the dependencies that where found
+		if len(currentProject.Dependencies) < len(currentProjectDepMap) {
+			currentProject.Dependencies = currentProject.Dependencies[:0]
+			for _, dep := range currentProjectDepMap {
+				currentProject.Dependencies = append(currentProject.Dependencies, dep)
+			}
+		}
+	}
+	// -----------------------------------------------------------------------------------------------------------
+
 	// Register project variables
 	for _, prj := range projects {
 		isdep := prj.PackageURL != mainprj.PackageURL
