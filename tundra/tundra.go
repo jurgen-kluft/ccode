@@ -132,6 +132,7 @@ func GenerateBuildFiles(pkg *denv.Package) error {
 		}
 	}
 
+	// Build a list of all projects that are dependencies
 	dependencies := []*denv.Project{}
 	for _, dep := range depmap {
 		dependencies = append(dependencies, dep)
@@ -142,7 +143,7 @@ func GenerateBuildFiles(pkg *denv.Package) error {
 	variables := vars.NewVars()
 	replacer := vars.NewReplacer()
 
-	// Main project
+	// Main project + dependency projects
 	projects := []*denv.Project{mainprj}
 	projects = append(projects, dependencies...)
 
