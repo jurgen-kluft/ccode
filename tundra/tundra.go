@@ -268,12 +268,12 @@ func GenerateBuildFiles(pkg *denv.Package) error {
 			for _, def := range cfg.Defines.Items {
 				dependency = append(dependency, `++++"`+def+`",`)
 			}
-			dependency = append(dependency, `++++Config = "`+cfg.Config+`" `)
+			dependency = append(dependency, `++++Config = "*-*-`+strings.ToLower(strings.ToLower(cfg.Config))+`" `)
 			dependency = append(dependency, `+++},`)
 		}
 
 		dependency = append(dependency, `+++{ "TARGET_MAC", Config = "macos-*-*" },`)
-		dependency = append(dependency, `+++{ "TARGET_TEST", Config = "*-*-*-test" },`)
+		dependency = append(dependency, `+++{ "TARGET_TEST", Config = "*-*-test" },`)
 		dependency = append(dependency, `++},`)
 		dependency = append(dependency, `+},`)
 		dependency = append(dependency, `+Includes = {`)
@@ -340,12 +340,12 @@ func GenerateBuildFiles(pkg *denv.Package) error {
 		for _, def := range cfg.Defines.Items {
 			program = append(program, `++++"`+def+`",`)
 		}
-		program = append(program, `++++Config = "`+cfg.Config+`" `)
+		program = append(program, `++++Config = "*-*-`+strings.ToLower(cfg.Config)+`" `)
 		program = append(program, `+++},`)
 	}
 
 	program = append(program, `+++{ "TARGET_MAC", Config = "macos-*-*" },`)
-	program = append(program, `+++{ "TARGET_TEST", Config = "*-*-*-test" },`)
+	program = append(program, `+++{ "TARGET_TEST", Config = "*-*-test" },`)
 	program = append(program, `++},`)
 	program = append(program, `+},`)
 
