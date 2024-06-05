@@ -73,9 +73,34 @@ func Generate(pkg *denv.Package) error {
 	return fmt.Errorf("Unknown DEV '%s'", denv.DEV)
 }
 
+// DEV is an enumeration for all possible IDE's that are supported
+type GenerateFile int
+
+// All development environment
+const (
+	CLANGFORMAT GenerateFile = 0x20000
+	GITIGNORE   GenerateFile = 0x40000
+	MAINTEST    GenerateFile = 0x80000
+	EMBEDDED    GenerateFile = 0x100000
+	ALL         GenerateFile = CLANGFORMAT | GITIGNORE | MAINTEST | EMBEDDED
+	INVALID     GenerateFile = 0x0
+)
+
+func GenerateSpecificFiles(files GenerateFile) {
+	if files&CLANGFORMAT == CLANGFORMAT {
+		embedded.WriteClangFormat(false)
+	}
+	if files&GITIGNORE == GITIGNORE {
+		embedded.WriteGitIgnore(false)
+	}
+	if files&MAINTEST == MAINTEST {
+		embedded.WriteTestMainCpp(true)
+	}
+	if files&EMBEDDED == EMBEDDED {
+		embedded.WriteEmbedded()
+	}
+}
+
 func GenerateFiles() {
-	embedded.WriteClangFormat(false)
-	embedded.WriteGitIgnore(false)
-	embedded.WriteTestMainCpp(true)
-	embedded.WriteEmbedded()
+	GenerateSpecificFiles(ALL)
 }
