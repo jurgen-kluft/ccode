@@ -104,3 +104,7 @@ func GenerateSpecificFiles(files GenerateFile) {
 func GenerateFiles() {
 	GenerateSpecificFiles(ALL)
 }
+
+func GenerateCppCode(inputFile string, outputFile string) error {
+	return embedded.GenerateCppCode(inputFile, outputFile)
+}
