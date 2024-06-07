@@ -64,16 +64,18 @@ func main() {
     ccode.Init()
 
     // This will generate
-    // - .gitignore
-    // - .clang-format
-    // - source/test/cpp/test_main.cpp    
+    // - ./.gitignore
+    // - ./.clang-format
+    // - ./source/test/cpp/test_main.cpp    
     ccode.GenerateFiles()
     
-    // This will generate the Visual Studio solution and projects, CMakeLists.txt, Tundra build files or Zig build files
+    // This will generate the Visual Studio solution and projects, CMakeLists.txt, 
+    // Tundra build files or Zig build files
     ccode.Generate(mylibrary.GetPackage())
 
-    // You can also insert generated C++ enums with ToString functions, the my_enums.h file should 
-    // already exist and have 2 delimiter lines that you can configure as 'between'. 
+    // You can also insert generated C++ enums with ToString functions, the my_enums.h
+    // file should already exist and have 2 delimiter lines that you can configure as 
+    // 'between'. 
     ccode.GenerateCppCode("embedded/generate.cpp.json", "main/include/cbase/my_enums.h")
 }
 ```
@@ -116,4 +118,4 @@ There are some requirements for the layout of folders inside of your repository 
 2. `source\main\include\mylibrary`: the header files of your library
 3. `source\test\cpp`: the cpp files of your unittest app
 4. `source\test\include`: the header files of your unittest app
-5. `embedded\**`: all the files that need to be auto embedded (file to .cpp 'C array') 
+5. `embedded\**`: all the files that need to be auto embedded or are used for code generation (e.g. file to .cpp 'C array', C++ enum code generation) 
