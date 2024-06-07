@@ -62,7 +62,19 @@ import (
 
 func main() {
     ccode.Init()
+
+    // This will generate
+    // - .gitignore
+    // - .clang-format
+    // - source/test/cpp/test_main.cpp    
+    ccode.GenerateFiles()
+    
+    // This will generate the Visual Studio solution and projects, CMakeLists.txt, Tundra build files or Zig build files
     ccode.Generate(mylibrary.GetPackage())
+
+    // You can also insert generated C++ enums with ToString functions, the my_enums.h file should 
+    // already exist and have 2 delimiter lines that you can configure as 'between'. 
+    ccode.GenerateCppCode("embedded/generate.cpp.json", "main/include/cbase/my_enums.h")
 }
 ```
 
