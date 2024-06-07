@@ -118,4 +118,6 @@ There are some requirements for the layout of folders inside of your repository 
 2. `source\main\include\mylibrary`: the header files of your library
 3. `source\test\cpp`: the cpp files of your unittest app
 4. `source\test\include`: the header files of your unittest app
-5. `embedded\**`: all the files that need to be auto embedded or are used for code generation (e.g. file to .cpp 'C array', C++ enum code generation) 
+5. `embedded\**`: all the files that need to be auto embedded or are used for code generation 
+   - binary file to .cpp `C array`
+   - C++ enum code generation (from `.json` file)
