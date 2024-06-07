@@ -76,7 +76,7 @@ func main() {
     // You can also insert generated C++ enums with ToString functions, the my_enums.h
     // file should already exist and have 2 delimiter lines that you can configure as 
     // 'between'. 
-    ccode.GenerateCppCode("embedded/generate.cpp.json", "main/include/cbase/my_enums.h")
+    ccode.GenerateCppCode("embedded/my_enums.h.json", "main/include/cbase/my_enums.h")
 }
 ```
 
