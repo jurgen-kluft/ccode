@@ -22,6 +22,7 @@ vendor/
 !*.resx
 
 !*.go
+!*.json
 
 !*.hlsl
 !*.fragment

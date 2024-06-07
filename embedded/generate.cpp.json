@@ -1,0 +1,24 @@
+{
+    "between": "=> Generated <=",
+    "indentation": "    ",
+    "enums": [
+        {
+            "name": "BlendOperation",
+            "namespace": true,
+            "type": "byte",
+            "enums": [
+                "Add",
+                "Subtract",
+                "RevSubtract",
+                "Min",
+                "Max"
+            ],
+            "generate": [
+                "ToString",
+                "Mask",
+                "MaskToEnum",
+                "EnumToMask"
+            ]
+        }
+    ]
+}
