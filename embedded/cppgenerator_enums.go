@@ -64,7 +64,7 @@ namespace BlendOperation {
 */
 
 // This is the public function that will generate the C++ code
-func GenerateCppCode(inputFile string, outputFile string) error {
+func GenerateCppEnums(inputFile string, outputFile string) error {
 	// Read the JSON file
 	data, err := os.ReadFile(inputFile)
 	if err != nil {

@@ -1,0 +1,77 @@
+{
+    "between": "=> Generated Structs <=",
+    "indentation": "    ",
+    "class": false,
+    "camelcase": true,
+    "prefix": "m",
+    "constructor": "default,full,copy",
+    "structs": [
+        {
+            "name": "Rect2DInt",
+            "class": false,
+            "camelcase": true,
+            "prefix": "m",
+            "constructor": "default,full,copy",
+            "members": [
+                {
+                    "name": "x",
+                    "type": "i16"
+                },
+                {
+                    "name": "y",
+                    "type": "i16"
+                },
+                {
+                    "name": "width",
+                    "type": "u16"
+                },
+                {
+                    "name": "height",
+                    "type": "u16"
+                }
+            ]
+        },
+        {
+            "name": "Viewport",
+            "initialize": true,
+            "members": [
+                {
+                    "name": "rect",
+                    "type": "Rect2DInt",
+                    "initializer": ""
+                },
+                {
+                    "name": "min_depth",
+                    "type": "float",
+                    "initializer": "0.0f"
+                },
+                {
+                    "name": "max_depth",
+                    "type": "float",
+                    "initializer": "0.0f"
+                }
+            ]
+        },
+        {
+            "name": "ViewportState",
+            "initialize": true,
+            "members": [
+                {
+                    "name": "num_viewports",
+                    "type": "u32",
+                    "initializer": "0"
+                },
+                {
+                    "name": "num_scissors",
+                    "type": "u32",
+                    "initializer": "0"
+                },
+                {
+                    "name": "viewport",
+                    "type": "Viewport*",
+                    "initializer": "nullptr"
+                }
+            ]
+        }
+    ]
+}

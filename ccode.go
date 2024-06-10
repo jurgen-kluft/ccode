@@ -105,6 +105,6 @@ func GenerateFiles() {
 	GenerateSpecificFiles(ALL)
 }
 
-func GenerateCppCode(inputFile string, outputFile string) error {
-	return embedded.GenerateCppCode(inputFile, outputFile)
+func GenerateCppEnums(inputFile string, outputFile string) error {
+	return embedded.GenerateCppEnums(inputFile, outputFile)
 }
