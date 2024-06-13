@@ -366,6 +366,7 @@ func GenerateBuildFiles(pkg *denv.Package) error {
 		program = append(program, `++{ "Metal" },`)
 		program = append(program, `++{ "OpenGL" },`)
 		program = append(program, `++{ "IOKit" },`)
+		program = append(program, `++{ "Carbon" },`)
 		program = append(program, `++{ "CoreVideo" },`)
 		program = append(program, `++{ "QuartzCore" },`)
 		program = append(program, `+},`)
