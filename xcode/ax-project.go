@@ -22,9 +22,10 @@ type ProjectConfig struct {
 	GuiApp                              bool
 	PchHeader                           string
 	Dependencies                        []string
-	MultithreadBuild                    bool
-	CppAsObjcpp                         bool
+	MultithreadBuild                    Boolean
+	CppAsObjcpp                         Boolean
 	XcodeBundleIdentifier               string
+	VisualcProjectTools                 string
 	VisualcPlatformToolset              string
 	VisualcWindowsTargetPlatformVersion string
 }
@@ -41,6 +42,11 @@ type XcodeProjectConfig struct {
 	DependencyProxyUuid       UUID
 	DependencyTargetUuid      UUID
 	DependencyTargetProxyUuid UUID
+}
+
+type MsDevProjectConfig struct {
+	Vcxproj string
+	UUID    UUID
 }
 
 func NewXcodeProjectConfig() *XcodeProjectConfig {
@@ -80,6 +86,7 @@ type Project struct {
 	Resolving           bool
 
 	GenDataXcode *XcodeProjectConfig
+	GenDataMsDev *MsDevProjectConfig
 }
 
 func NewProject(ws *Workspace, name string, input ProjectConfig) *Project {
@@ -96,7 +103,7 @@ func NewProject(ws *Workspace, name string, input ProjectConfig) *Project {
 		GenDataXcode:        &XcodeProjectConfig{},
 	}
 
-	p.Input.MultithreadBuild = ws.Config.MultithreadBuild
+	p.Input.MultithreadBuild = Boolean(ws.Config.MultithreadBuild)
 	p.Input.VisualcPlatformToolset = ws.Config.VisualcPlatformToolset
 	p.Input.VisualcWindowsTargetPlatformVersion = ws.Config.VisualcWindowsTargetPlatformVersion
 	p.Input.XcodeBundleIdentifier = "$(PROJECT_NAME)"

@@ -114,6 +114,11 @@ func PathGetRel(path, relativeTo string) string {
 	return ""
 }
 
+func PathWindowsPath(path string) (outPath string) {
+	outPath = strings.ReplaceAll(path, "/", "\\")
+	return
+}
+
 func PathGetCurrentDir() string {
 	pwd, err := os.Getwd()
 	if err == nil {

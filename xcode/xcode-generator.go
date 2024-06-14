@@ -1,7 +1,6 @@
 package xcode
 
 import (
-	"os"
 	"path/filepath"
 )
 
@@ -19,35 +18,29 @@ const (
 	xcode_kSourceTreeAbsolute         = "\"<absolute>\""
 )
 
-type Generator struct {
+type XcodeGenerator struct {
 	LastGenId UUID
 	Workspace *Workspace
 }
 
-func NewGenerator(ws *Workspace) *Generator {
-	return &Generator{
+func NewXcodeGenerator(ws *Workspace) *XcodeGenerator {
+	return &XcodeGenerator{
 		LastGenId: GenerateUUID(),
 		Workspace: ws,
 	}
 }
 
-func (g *Generator) Init(ws *Workspace) {
-	if len(ws.Compiler) == 0 {
-		ws.Compiler = "clang"
-	}
-	if len(ws.Os) == 0 {
-		ws.Os = "macosx"
-	}
-	if len(ws.Cpu) == 0 {
-		ws.Cpu = "aarch64"
+func (g *XcodeGenerator) Init(ws *Workspace) {
+	if ws.MakeTarget == nil {
+		ws.MakeTarget = NewDefaultMakeTarget()
 	}
 }
 
-func (g *Generator) QuoteString2(v string) string {
+func (g *XcodeGenerator) QuoteString2(v string) string {
 	return g.QuoteString(g.QuoteString(v))
 }
 
-func (g *Generator) QuoteString(v string) string {
+func (g *XcodeGenerator) QuoteString(v string) string {
 	o := "\""
 	for _, ch := range v {
 		switch ch {
@@ -63,21 +56,7 @@ func (g *Generator) QuoteString(v string) string {
 	return o
 }
 
-func WriteTextFile(filename string, text string) error {
-	f, err := os.Create(filename)
-	if err != nil {
-		return err
-	}
-	defer f.Close()
-
-	_, err = f.WriteString(text)
-	if err != nil {
-		return err
-	}
-	return nil
-}
-
-func (g *Generator) GenWorkspace() {
+func (g *XcodeGenerator) GenWorkspace() {
 	g.Workspace.Xcworkspace = g.Workspace.BuildDir + g.Workspace.WorkspaceName + ".xcworkspace"
 
 	for _, proj := range g.Workspace.Projects {
@@ -100,7 +79,7 @@ func (g *Generator) GenWorkspace() {
 	WriteTextFile(filename, wr.Buffer.String())
 }
 
-func (g *Generator) GenWorkspaceGroup(wr *XmlWriter, group *ProjectGroup) {
+func (g *XcodeGenerator) GenWorkspaceGroup(wr *XmlWriter, group *ProjectGroup) {
 	for _, c := range group.Children {
 		tag := wr.TagScope("Group")
 		wr.Attr("location", "container:")
@@ -117,7 +96,7 @@ func (g *Generator) GenWorkspaceGroup(wr *XmlWriter, group *ProjectGroup) {
 	}
 }
 
-func (g *Generator) GenProjectGenUuid(proj *Project) {
+func (g *XcodeGenerator) GenProjectGenUuid(proj *Project) {
 	gd := NewXcodeProjectConfig()
 	gd.Xcodeproj.Init(g.Workspace.BuildDir+proj.Name+".xcodeproj", false, true, g.Workspace)
 	gd.Pbxproj = filepath.Join(gd.Xcodeproj.AbsPath, "project.pbxproj")
@@ -151,9 +130,9 @@ func (g *Generator) GenProjectGenUuid(proj *Project) {
 	}
 }
 
-func (g *Generator) GenProject(proj *Project) {
+func (g *XcodeGenerator) GenProject(proj *Project) {
 	if proj.TypeIsExeOrDll() {
-		if g.Workspace.Os == "ios" {
+		if g.Workspace.MakeTarget.OSIsIos() {
 			//g.GenInfoPlistIOS(proj)
 		} else {
 			g.GenInfoPlistMacOSX(proj)
@@ -193,7 +172,7 @@ func (g *Generator) GenProject(proj *Project) {
 	WriteTextFile(filename, wr.Buffer.String())
 }
 
-func (g *Generator) GenBuildFileReference(wr *Writer, proj *Project, f *FileEntry) {
+func (g *XcodeGenerator) GenBuildFileReference(wr *Writer, proj *Project, f *FileEntry) {
 	wr.newline(0)
 	wr.commentBlock(f.Path)
 	scope := wr.NewObjectScope(f.GenDataXcode.BuildUUID.String())
@@ -204,7 +183,7 @@ func (g *Generator) GenBuildFileReference(wr *Writer, proj *Project, f *FileEntr
 	scope.Close()
 }
 
-func (g *Generator) GenFileReference(wr *Writer, proj *Project, f *FileEntry) {
+func (g *XcodeGenerator) GenFileReference(wr *Writer, proj *Project, f *FileEntry) {
 	wr.newline(0)
 	wr.commentBlock(f.Path)
 
@@ -239,7 +218,7 @@ func (g *Generator) GenFileReference(wr *Writer, proj *Project, f *FileEntry) {
 	scope.Close()
 }
 
-func (g *Generator) GenProjectDependencies(wr *Writer, proj *Project) {
+func (g *XcodeGenerator) GenProjectDependencies(wr *Writer, proj *Project) {
 	wr.newline(0)
 	wr.commentBlock("----- project dependencies -----------------")
 	for _, dp := range proj.DependenciesInherit {
@@ -338,7 +317,7 @@ func (g *Generator) GenProjectDependencies(wr *Writer, proj *Project) {
 	}
 }
 
-func (g *Generator) GenProjectPBXBuildFile(wr *Writer, proj *Project) {
+func (g *XcodeGenerator) GenProjectPBXBuildFile(wr *Writer, proj *Project) {
 	wr.newline(0)
 	wr.commentBlock("------ Begin PBXBuildFile section")
 
@@ -403,7 +382,7 @@ func (g *Generator) GenProjectPBXBuildFile(wr *Writer, proj *Project) {
 	}
 }
 
-func (g *Generator) GenProjectPBXGroup(wr *Writer, proj *Project) {
+func (g *XcodeGenerator) GenProjectPBXGroup(wr *Writer, proj *Project) {
 	wr.newline(0)
 	wr.commentBlock("------ Begin PBXGroup section")
 
@@ -487,7 +466,7 @@ func (g *Generator) GenProjectPBXGroup(wr *Writer, proj *Project) {
 	wr.commentBlock("------ End PBXGroup section")
 }
 
-func (g *Generator) GenProjectPBXProject(wr *Writer, proj *Project) {
+func (g *XcodeGenerator) GenProjectPBXProject(wr *Writer, proj *Project) {
 	wr.newline(0)
 	wr.commentBlock("------ Begin PBXProject section")
 
@@ -529,7 +508,7 @@ func (g *Generator) GenProjectPBXProject(wr *Writer, proj *Project) {
 	wr.commentBlock("------ End PBXProject section")
 }
 
-func (g *Generator) GenProjectPBXSourcesBuildPhase(wr *Writer, proj *Project) {
+func (g *XcodeGenerator) GenProjectPBXSourcesBuildPhase(wr *Writer, proj *Project) {
 	wr.newline(0)
 	wr.commentBlock("------ PBXSourcesBuildPhase section")
 
@@ -552,7 +531,7 @@ func (g *Generator) GenProjectPBXSourcesBuildPhase(wr *Writer, proj *Project) {
 	scope.Close()
 }
 
-func (g *Generator) GenProjectPBXResourcesBuildPhase(wr *Writer, proj *Project) {
+func (g *XcodeGenerator) GenProjectPBXResourcesBuildPhase(wr *Writer, proj *Project) {
 	wr.newline(0)
 	wr.commentBlock("------ PBXResourcesBuildPhase section")
 
@@ -572,22 +551,22 @@ func (g *Generator) GenProjectPBXResourcesBuildPhase(wr *Writer, proj *Project) 
 	scope.Close()
 }
 
-func (g *Generator) GenProjectPBXNativeTarget(wr *Writer, proj *Project) {
+func (g *XcodeGenerator) GenProjectPBXNativeTarget(wr *Writer, proj *Project) {
 	if !proj.HasOutputTarget {
 		return
 	}
 
 	productType := ""
 	if proj.TypeIsExe() {
-		if proj.Input.GuiApp || g.Workspace.Os == "ios" {
-			productType = "com.apple.product-type.application"
+		if proj.Input.GuiApp || g.Workspace.MakeTarget.OSIsIos() {
+			productType = ProductTypeApplication.String()
 		} else {
-			productType = "com.apple.product-type.tool"
+			productType = ProductTypeTool.String()
 		}
 	} else if proj.TypeIsDll() {
-		productType = "com.apple.product-type.library.dynamic"
+		productType = string(ProductTypeDynamicLib)
 	} else if proj.TypeIsLib() {
-		productType = "com.apple.product-type.library.static"
+		productType = string(ProductTypeStaticLib)
 	} else {
 		panic("Unsupported project type")
 	}
@@ -655,7 +634,7 @@ func (g *Generator) GenProjectPBXNativeTarget(wr *Writer, proj *Project) {
 	}
 }
 
-func (g *Generator) GenProjectXCBuildConfiguration(wr *Writer, proj *Project) {
+func (g *XcodeGenerator) GenProjectXCBuildConfiguration(wr *Writer, proj *Project) {
 	wr.newline(0)
 	wr.commentBlock("----- XCBuildConfiguration ---------------")
 	wr.newline(0)
@@ -781,47 +760,7 @@ func (g *Generator) GenProjectXCBuildConfiguration(wr *Writer, proj *Project) {
 	}
 }
 
-/*
-
-void Generator_xcode::gen_project_XCConfigurationList(XCodePbxWriter& wr, Project& proj) {
-	wr.newline();
-	wr.commentBlock("----- XCConfigurationList -----------------");
-	{
-		wr.newline(); wr.commentBlock("Build configuration list for PBXProject");
-		auto scope = wr.objectScope(proj.genData_xcode.configListUuid);
-		wr.member("isa", "XCConfigurationList");
-		{
-			auto scope = wr.arrayScope("buildConfigurations");
-			for (auto& config : proj.configs) {
-				wr.newline(); wr.commentBlock(config.name);
-				wr.newline();
-				wr.write(config.genData_xcode.projectConfigUuid);
-			}
-		}
-
-		wr.member("defaultConfigurationIsVisible", "0");
-		wr.member("defaultConfigurationName", g_ws->defaultConfigName());
-	}
-	{
-		wr.newline(); wr.commentBlock("Build configuration list for PBXNativeTarget");
-		auto scope = wr.objectScope(proj.genData_xcode.targetConfigListUuid);
-		wr.member("isa", "XCConfigurationList");
-		{
-			auto scope = wr.arrayScope("buildConfigurations");
-			for (auto& config : proj.configs) {
-				wr.newline(); wr.commentBlock(config.name);
-				wr.newline();
-				wr.write(config.genData_xcode.targetConfigUuid);
-			}
-		}
-
-		wr.member("defaultConfigurationIsVisible", "0");
-		wr.member("defaultConfigurationName", g_ws->defaultConfigName());
-	}
-}
-*/
-
-func (g *Generator) GenProjectXCConfigurationList(wr *Writer, proj *Project) {
+func (g *XcodeGenerator) GenProjectXCConfigurationList(wr *Writer, proj *Project) {
 	wr.newline(0)
 	wr.commentBlock("----- XCConfigurationList -----------------")
 	wr.newline(0)
@@ -871,70 +810,7 @@ func (g *Generator) GenProjectXCConfigurationList(wr *Writer, proj *Project) {
 	}
 }
 
-/*
-
-void Generator_xcode::gen_info_plist_MacOSX(Project& proj) {
-	auto& gd = proj.genData_xcode;
-
-	gd.info_plist_file.set(proj.name, "_info.plist");
-
-
-	XmlWriter wr;
-	wr.writeHeader();
-	wr.writeDocType("plist",
-		"-//Apple//DTD PLIST 1.0//EN",
-		"http://www.apple.com/DTDs/PropertyList-1.0.dtd");
-
-	{
-		auto tag = wr.tagScope("plist");
-		wr.attr("version", "1.0");
-		{
-			auto tag = wr.tagScope("dict");
-			wr.tagWithBody("key", "CFBundleDevelopmentRegion");
-			wr.tagWithBody("string", "en");
-
-			wr.tagWithBody("key", "CFBundleExecutable");
-			wr.tagWithBody("string", "$(EXECUTABLE_NAME)");
-
-			wr.tagWithBody("key", "CFBundleIconFile");
-			wr.tagWithBody("string", "");
-
-			wr.tagWithBody("key", "CFBundleIdentifier");
-			wr.tagWithBody("string", proj.input.xcode_bundle_identifier); //# $(PRODUCT_BUNDLE_IDENTIFIER)
-
-			wr.tagWithBody("key", "CFBundleInfoDictionaryVersion");
-			wr.tagWithBody("string", "6.0");
-
-			wr.tagWithBody("key", "CFBundleName");
-			wr.tagWithBody("string", "$(PRODUCT_NAME)");
-
-			wr.tagWithBody("key", "CFBundlePackageType");
-			wr.tagWithBody("string", "APPL");
-
-			wr.tagWithBody("key", "CFBundleShortVersionString");
-			wr.tagWithBody("string", "1.0");
-
-			wr.tagWithBody("key", "CFBundleVersion");
-			wr.tagWithBody("string", "1");
-
-			wr.tagWithBody("key", "LSMinimumSystemVersion");
-			wr.tagWithBody("string", "$(MACOSX_DEPLOYMENT_TARGET)");
-
-			wr.tagWithBody("key", "NSHumanReadableCopyright");
-			wr.tagWithBody("string", "=== Copyright ===");
-
-			wr.tagWithBody("key", "NSMainNibFile");
-			wr.tagWithBody("string", "MainMenu");
-
-			wr.tagWithBody("key", "NSPrincipalClass");
-			wr.tagWithBody("string", "NSApplication");
-		}
-	}
-	FileUtil::writeTextFile(String(g_ws->buildDir, gd.info_plist_file), wr.buffer());
-}
-*/
-
-func (g *Generator) GenInfoPlistMacOSX(proj *Project) {
+func (g *XcodeGenerator) GenInfoPlistMacOSX(proj *Project) {
 	gd := proj.GenDataXcode
 	gd.InfoPlistFile = proj.Name + "_info.plist"
 

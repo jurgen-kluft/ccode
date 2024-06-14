@@ -5,8 +5,22 @@ type WorkspaceConfig struct {
 	BuildDir                            string
 	StartupProject                      string
 	MultithreadBuild                    bool
+	VisualcProjectTools                 string
 	VisualcPlatformToolset              string
 	VisualcWindowsTargetPlatformVersion string
+}
+
+func NewWorkspaceConfig() *WorkspaceConfig {
+	wsc := &WorkspaceConfig{
+		ConfigList: []string{"Debug", "Release"},
+	}
+	wsc.BuildDir = "target"
+	wsc.StartupProject = "main"
+	wsc.MultithreadBuild = true
+	wsc.VisualcProjectTools = "14.0"
+	wsc.VisualcPlatformToolset = "v142"
+	wsc.VisualcWindowsTargetPlatformVersion = "10.0"
+	return wsc
 }
 
 type Workspace struct {
@@ -14,11 +28,7 @@ type Workspace struct {
 	WorkspaceName       string
 	Configs             map[string]*Config
 	Generator           string
-	HostOs              string
-	HostCpu             string
-	Os                  string
-	Compiler            string
-	Cpu                 string
+	MakeTarget          MakeTarget
 	PlatformName        string
 	StartupProject      *Project
 	Projects            map[string]*Project
@@ -49,4 +59,13 @@ type ExtraWorkspace struct {
 	GenDataVs2015 struct {
 		Sln string
 	}
+}
+
+func (ew *ExtraWorkspace) IndexOfProject(project *Project) int {
+	for i, p := range ew.Projects {
+		if p == project {
+			return i
+		}
+	}
+	return -1
 }

@@ -19,7 +19,7 @@ type ProjectGroup struct {
 	Projects      []*Project
 	Parent        *ProjectGroup
 	GenDataVs2015 struct {
-		Uuid string
+		Uuid UUID
 	}
 }
 

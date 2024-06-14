@@ -248,7 +248,7 @@ func NewConfig(name string, ws *Workspace) *Config {
 	c.registerConfigSetting(c.LinkLibs)
 	c.registerConfigSetting(c.LinkFiles)
 
-	if ws.Os == "windows" {
+	if ws.MakeTarget.OSIsWindows() {
 		c.ExeTargetSuffix = ".exe"
 		c.DllTargetSuffix = ".dll"
 	} else {
@@ -256,7 +256,7 @@ func NewConfig(name string, ws *Workspace) *Config {
 		c.DllTargetSuffix = ".so"
 	}
 
-	if ws.Compiler == "vc" {
+	if ws.MakeTarget.CompilerIsVc() {
 		c.LibTargetSuffix = ".lib"
 	} else {
 		c.LibTargetPrefix = "lib"
@@ -312,11 +312,11 @@ func (c *Config) initXcodeSettings() {
 
 	settings := make(map[string]string)
 
-	if c.Workspace.Os == "ios" {
+	if c.Workspace.MakeTarget.OSIsIos() {
 		settings["SDKROOT"] = "iphoneos"
 		settings["SUPPORTED_PLATFORMS"] = "iphonesimulator iphoneos"
 		settings["IPHONEOS_DEPLOYMENT_TARGET"] = "10.1"
-	} else if c.Workspace.Os == "macosx" || c.Workspace.Os == "macos" {
+	} else if c.Workspace.MakeTarget.OSIsMac() {
 		settings["SDKROOT"] = "macosx"
 		settings["SUPPORTED_PLATFORMS"] = "macosx"
 		settings["MACOSX_DEPLOYMENT_TARGET"] = "10.10" // c++11 require 10.10+
@@ -435,10 +435,10 @@ func (c *Config) resolve() {
 	}
 
 	defines := []string{}
-	defines = append(defines, "AX_GEN_CPU_"+strings.ToUpper(c.Workspace.Cpu))
-	defines = append(defines, "AX_GEN_OS_"+strings.ToUpper(c.Workspace.Os))
+	defines = append(defines, "AX_GEN_CPU_"+strings.ToUpper(c.Workspace.MakeTarget.ArchAsString()))
+	defines = append(defines, "AX_GEN_OS_"+strings.ToUpper(c.Workspace.MakeTarget.OSAsString()))
+	defines = append(defines, "AX_GEN_COMPILER_"+strings.ToUpper(c.Workspace.MakeTarget.CompilerAsString()))
 	defines = append(defines, "AX_GEN_GENERATOR_"+strings.ToUpper(c.Workspace.Generator))
-	defines = append(defines, "AX_GEN_COMPILER_"+strings.ToUpper(c.Workspace.Compiler))
 	defines = append(defines, "AX_GEN_CONFIG_"+strings.ToUpper(c.Name))
 	defines = append(defines, "AX_GEN_PLATFORM_NAME=\""+strings.ToUpper(c.Workspace.PlatformName+"\""))
 	defines = append(defines, "AX_GEN_PROJECT_"+strings.ToUpper(c.Project.Name))
@@ -453,7 +453,7 @@ func (c *Config) resolve() {
 		tmp = filepath.Join(c.Workspace.BuildDir, "bin", c.Name, c.OutTargetDir, c.ExeTargetPrefix, c.Project.Name, c.ExeTargetSuffix)
 	} else if c.Project.TypeIsDll() {
 		tmp = filepath.Join(c.Workspace.BuildDir, "bin", c.Name, c.OutTargetDir, c.DllTargetPrefix, c.Project.Name, c.DllTargetSuffix)
-		if c.Workspace.Os == "windows" {
+		if c.Workspace.MakeTarget.OSIsWindows() {
 			c.OutputLib = NewFileEntryInit(filepath.Join(c.Workspace.BuildDir, "lib", c.Name, c.LibTargetPrefix, c.Project.Name, c.LibTargetSuffix), false, false, c.Workspace)
 		} else {
 			c.OutputLib = NewFileEntryInit(filepath.Join(c.Workspace.BuildDir, "bin", c.Name, c.OutTargetDir, c.DllTargetPrefix, c.Project.Name, c.DllTargetSuffix), false, false, c.Workspace)
