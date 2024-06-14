@@ -24,37 +24,6 @@ const (
 	FileTypeMxx
 )
 
-// class FileEntry {
-// public:
-// 	void init(const StrView& absPath, bool isAbs, bool isGenerated);
-// 	bool excludedFromBuild {true};
-
-// 	const String&	absPath		() const { return _absPath; }
-// 	const String&	path		() const { return _path; }
-
-// 	FileType		type		() const { return _type; }
-// 	bool			type_is_c	() const { return _type == FileType::c_source; }
-// 	bool			type_is_cpp	() const { return _type == FileType::cpp_source; }
-// 	bool			type_is_c_or_cpp() const { return type_is_c() || type_is_cpp(); }
-// 	bool			type_is_ixx	() const { return _type == FileType::ixx; }
-
-// 	struct GenData_xcode {
-// 		String		uuid;
-// 		String		buildUuid;
-// 	};
-// 	GenData_xcode genData_xcode;
-
-// 	VirtualFolder* parent {nullptr};
-// 	bool	generated = {false};
-
-// 	explicit operator bool() const { return _absPath.operator bool(); }
-
-// private:
-// 	String		_absPath;
-// 	String		_path; // absPath or relative path depends on user input, and relative path always relative to _build_dir
-// 	FileType	_type {FileType::None};
-// };
-
 type FileEntryXcodeConfig struct {
 	UUID      UUID
 	BuildUUID UUID
