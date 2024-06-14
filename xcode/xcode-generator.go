@@ -91,15 +91,15 @@ func (g *XcodeGenerator) GenWorkspaceGroup(wr *XmlWriter, group *ProjectGroup) {
 
 	for _, proj := range group.Projects {
 		tag := wr.TagScope("FileRef")
-		wr.Attr("location", "container:"+proj.GenDataXcode.Xcodeproj.Path)
+		wr.Attr("location", "container:"+proj.GenDataXcode.XcodeProj.Path)
 		tag.Close()
 	}
 }
 
 func (g *XcodeGenerator) GenProjectGenUuid(proj *Project) {
 	gd := NewXcodeProjectConfig()
-	gd.Xcodeproj.Init(g.Workspace.BuildDir+proj.Name+".xcodeproj", false, true, g.Workspace)
-	gd.Pbxproj = filepath.Join(gd.Xcodeproj.AbsPath, "project.pbxproj")
+	gd.XcodeProj.Init(g.Workspace.BuildDir+proj.Name+".xcodeproj", false, true, g.Workspace)
+	gd.PbxProj = filepath.Join(gd.XcodeProj.AbsPath, "project.pbxproj")
 	gd.Uuid = GenerateUUID()
 	gd.TargetUuid = GenerateUUID()
 	gd.TargetProductUuid = GenerateUUID()
@@ -109,12 +109,14 @@ func (g *XcodeGenerator) GenProjectGenUuid(proj *Project) {
 	gd.DependencyTargetUuid = GenerateUUID()
 	gd.DependencyTargetProxyUuid = GenerateUUID()
 
-	for _, f := range proj.FileEntries {
+	for _, i := range proj.FileEntries.Dict {
+		f := proj.FileEntries.List[i]
 		f.GenDataXcode.UUID = GenerateUUID()
 		f.GenDataXcode.BuildUUID = GenerateUUID()
 	}
 
-	for _, f := range proj.ResourceDirs {
+	for _, i := range proj.ResourceDirs.Dict {
+		f := proj.FileEntries.List[i]
 		f.GenDataXcode.UUID = GenerateUUID()
 		f.GenDataXcode.BuildUUID = GenerateUUID()
 	}
@@ -168,7 +170,7 @@ func (g *XcodeGenerator) GenProject(proj *Project) {
 		wr.member("rootObject", proj.GenDataXcode.Uuid.String())
 	}
 
-	filename := proj.GenDataXcode.Pbxproj
+	filename := proj.GenDataXcode.PbxProj
 	WriteTextFile(filename, wr.Buffer.String())
 }
 
@@ -198,13 +200,13 @@ func (g *XcodeGenerator) GenFileReference(wr *Writer, proj *Project, f *FileEntr
 		explicitFileType := ""
 		switch f.Type {
 		case FileTypeCppSource:
-			if proj.Input.CppAsObjcpp {
+			if proj.Input.CppAsObjCpp {
 				explicitFileType = "sourcecode.cpp.objcpp"
 			} else {
 				explicitFileType = "sourcecode.cpp.cpp"
 			}
 		case FileTypeCSource:
-			if proj.Input.CppAsObjcpp {
+			if proj.Input.CppAsObjCpp {
 				explicitFileType = "sourcecode.c.objc"
 			} else {
 				explicitFileType = "sourcecode.c.c"
@@ -226,7 +228,7 @@ func (g *XcodeGenerator) GenProjectDependencies(wr *Writer, proj *Project) {
 			continue
 		}
 
-		targetBasename := PathBasename(dp.GenDataXcode.Xcodeproj.Path, true)
+		targetBasename := PathBasename(dp.GenDataXcode.XcodeProj.Path, true)
 
 		wr.newline(0)
 		wr.commentBlock(dp.Name)
@@ -275,7 +277,7 @@ func (g *XcodeGenerator) GenProjectDependencies(wr *Writer, proj *Project) {
 			{
 				wr.member("isa", "PBXFileReference")
 				wr.member("name", g.QuoteString(targetBasename))
-				wr.member("path", g.QuoteString(dp.GenDataXcode.Xcodeproj.Path))
+				wr.member("path", g.QuoteString(dp.GenDataXcode.XcodeProj.Path))
 				wr.member("sourceTree", xcode_kSourceTreeAbsolute)
 			}
 			scope.Close()
@@ -305,7 +307,8 @@ func (g *XcodeGenerator) GenProjectDependencies(wr *Writer, proj *Project) {
 			wr.member("isa", "PBXGroup")
 			{
 				scope := wr.NewArrayScope("children")
-				for _, f := range proj.ResourceDirs {
+				for _, i := range proj.ResourceDirs.Dict {
+					f := proj.ResourceDirs.List[i]
 					wr.write(f.GenDataXcode.UUID.String())
 				}
 				scope.Close()
@@ -321,14 +324,16 @@ func (g *XcodeGenerator) GenProjectPBXBuildFile(wr *Writer, proj *Project) {
 	wr.newline(0)
 	wr.commentBlock("------ Begin PBXBuildFile section")
 
-	for _, f := range proj.FileEntries {
+	for _, i := range proj.FileEntries.Dict {
+		f := proj.FileEntries.List[i]
 		if f.ExcludedFromBuild {
 			continue
 		}
 		g.GenBuildFileReference(wr, proj, f)
 	}
 
-	for _, f := range proj.ResourceDirs {
+	for _, i := range proj.ResourceDirs.Dict {
+		f := proj.ResourceDirs.List[i]
 		g.GenBuildFileReference(wr, proj, f)
 	}
 
@@ -340,11 +345,13 @@ func (g *XcodeGenerator) GenProjectPBXBuildFile(wr *Writer, proj *Project) {
 	wr.newline(0)
 	wr.commentBlock("------ Begin PBXFileReference section")
 
-	for _, f := range proj.FileEntries {
+	for _, i := range proj.FileEntries.Dict {
+		f := proj.FileEntries.List[i]
 		g.GenFileReference(wr, proj, f)
 	}
 
-	for _, f := range proj.ResourceDirs {
+	for _, i := range proj.ResourceDirs.Dict {
+		f := proj.ResourceDirs.List[i]
 		wr.newline(0)
 		wr.commentBlock(f.Path)
 		scope := wr.NewObjectScope(f.GenDataXcode.UUID.String())
@@ -455,7 +462,7 @@ func (g *XcodeGenerator) GenProjectPBXGroup(wr *Writer, proj *Project) {
 			scope.Close()
 		}
 		wr.member("sourceTree", xcode_kSourceTreeProject)
-		relPath := PathGetRel(proj.AxprojDir, g.Workspace.BuildDir)
+		relPath := PathGetRel(proj.AxProjDir, g.Workspace.BuildDir)
 		wr.member("path", g.QuoteString(relPath))
 		wr.member("name", "MainGroup")
 		scope.Close()
@@ -519,7 +526,8 @@ func (g *XcodeGenerator) GenProjectPBXSourcesBuildPhase(wr *Writer, proj *Projec
 		wr.member("runOnlyForDeploymentPostprocessing", "0")
 		{
 			scope := wr.NewArrayScope("files")
-			for _, f := range proj.FileEntries {
+			for _, i := range proj.FileEntries.Dict {
+				f := proj.FileEntries.List[i]
 				if f.ExcludedFromBuild {
 					continue
 				}
@@ -542,7 +550,8 @@ func (g *XcodeGenerator) GenProjectPBXResourcesBuildPhase(wr *Writer, proj *Proj
 		wr.member("runOnlyForDeploymentPostprocessing", "0")
 		{
 			scope := wr.NewArrayScope("files")
-			for _, f := range proj.ResourceDirs {
+			for _, i := range proj.ResourceDirs.Dict {
+				f := proj.ResourceDirs.List[i]
 				wr.write(f.GenDataXcode.BuildUUID.String())
 			}
 			scope.Close()

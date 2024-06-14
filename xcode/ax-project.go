@@ -17,22 +17,22 @@ const (
 )
 
 type ProjectConfig struct {
-	Group                               string
-	Type                                string
-	GuiApp                              bool
-	PchHeader                           string
-	Dependencies                        []string
-	MultithreadBuild                    Boolean
-	CppAsObjcpp                         Boolean
-	XcodeBundleIdentifier               string
-	VisualcProjectTools                 string
-	VisualcPlatformToolset              string
-	VisualcWindowsTargetPlatformVersion string
+	Group                             string
+	Type                              string
+	GuiApp                            bool
+	PchHeader                         string
+	Dependencies                      []string
+	MultiThreadedBuild                Boolean
+	CppAsObjCpp                       Boolean
+	XcodeBundleIdentifier             string
+	MsDevProjectTools                 string
+	MsDevPlatformToolset              string
+	MsDevWindowsTargetPlatformVersion string
 }
 
 type XcodeProjectConfig struct {
-	Xcodeproj                 *FileEntry
-	Pbxproj                   string
+	XcodeProj                 *FileEntry
+	PbxProj                   string
 	InfoPlistFile             string
 	Uuid                      UUID
 	TargetUuid                UUID
@@ -45,13 +45,13 @@ type XcodeProjectConfig struct {
 }
 
 type MsDevProjectConfig struct {
-	Vcxproj string
+	VcxProj string
 	UUID    UUID
 }
 
 func NewXcodeProjectConfig() *XcodeProjectConfig {
 	return &XcodeProjectConfig{
-		Xcodeproj: NewFileEntry(),
+		XcodeProj: NewFileEntry(),
 	}
 }
 
@@ -68,13 +68,13 @@ type Project struct {
 	Workspace           *Workspace
 	Input               ProjectConfig
 	Group               string
-	FileEntries         map[string]*FileEntry
-	ResourceDirs        map[string]*FileEntry
+	FileEntries         *FileEntryDict
+	ResourceDirs        *FileEntryDict
 	HasOutputTarget     bool
 	VirtualFolders      *VirtualFolders
 	PchCpp              *FileEntry
-	AxprojFilename      string
-	AxprojDir           string
+	AxProjFilename      string
+	AxProjDir           string
 	Name                string
 	Type                ProjectType
 	Configs             map[string]*Config
@@ -93,8 +93,8 @@ func NewProject(ws *Workspace, name string, input ProjectConfig) *Project {
 	p := &Project{
 		Workspace:           ws,
 		Input:               input,
-		FileEntries:         map[string]*FileEntry{},
-		ResourceDirs:        map[string]*FileEntry{},
+		FileEntries:         NewFileEntryDict(ws),
+		ResourceDirs:        NewFileEntryDict(ws),
 		VirtualFolders:      &VirtualFolders{},
 		Name:                name,
 		Configs:             map[string]*Config{},
@@ -103,9 +103,9 @@ func NewProject(ws *Workspace, name string, input ProjectConfig) *Project {
 		GenDataXcode:        &XcodeProjectConfig{},
 	}
 
-	p.Input.MultithreadBuild = Boolean(ws.Config.MultithreadBuild)
-	p.Input.VisualcPlatformToolset = ws.Config.VisualcPlatformToolset
-	p.Input.VisualcWindowsTargetPlatformVersion = ws.Config.VisualcWindowsTargetPlatformVersion
+	p.Input.MultiThreadedBuild = Boolean(ws.Config.MultithreadBuild)
+	p.Input.MsDevPlatformToolset = ws.Config.VisualcPlatformToolset
+	p.Input.MsDevWindowsTargetPlatformVersion = ws.Config.VisualcWindowsTargetPlatformVersion
 	p.Input.XcodeBundleIdentifier = "$(PROJECT_NAME)"
 
 	for _, src := range ws.Configs {
@@ -128,19 +128,15 @@ func (p *Project) TypeIsC() bool {
 func (p *Project) TypeIsExe() bool {
 	return p.Type == ProjectTypeCExe || p.Type == ProjectTypeCppExe
 }
-
 func (p *Project) TypeIsDll() bool {
 	return p.Type == ProjectTypeCDll || p.Type == ProjectTypeCppDll
 }
-
 func (p *Project) TypeIsLib() bool {
 	return p.Type == ProjectTypeCLib || p.Type == ProjectTypeCppLib
 }
-
 func (p *Project) TypeIsHeaders() bool {
 	return p.Type == ProjectTypeCHeaders || p.Type == ProjectTypeCppHeaders
 }
-
 func (p *Project) TypeIsExeOrDll() bool {
 	return p.TypeIsExe() || p.TypeIsDll()
 }
@@ -157,9 +153,9 @@ func (p *Project) DefaultConfig() *Config {
 
 func (p *Project) GenProjectGenUuid() {
 	gd := &XcodeProjectConfig{}
-	gd.Xcodeproj = NewFileEntry()
-	gd.Xcodeproj.Init(p.Workspace.BuildDir+p.Name+".xcodeproj", false, true, p.Workspace)
-	gd.Pbxproj = gd.Xcodeproj.AbsPath + "/project.pbxproj"
+	gd.XcodeProj = NewFileEntry()
+	gd.XcodeProj.Init(p.Workspace.BuildDir+p.Name+".xcodeproj", false, true, p.Workspace)
+	gd.PbxProj = gd.XcodeProj.AbsPath + "/project.pbxproj"
 	gd.Uuid = GenerateUUID()
 	gd.TargetUuid = GenerateUUID()
 	gd.TargetProductUuid = GenerateUUID()
@@ -169,12 +165,14 @@ func (p *Project) GenProjectGenUuid() {
 	gd.DependencyTargetUuid = GenerateUUID()
 	gd.DependencyTargetProxyUuid = GenerateUUID()
 
-	for _, f := range p.FileEntries {
+	for _, i := range p.FileEntries.Dict {
+		f := p.FileEntries.List[i]
 		f.GenDataXcode.UUID = GenerateUUID()
 		f.GenDataXcode.BuildUUID = GenerateUUID()
 	}
 
-	for _, f := range p.ResourceDirs {
+	for _, i := range p.ResourceDirs.Dict {
+		f := p.FileEntries.List[i]
 		f.GenDataXcode.UUID = GenerateUUID()
 		f.GenDataXcode.BuildUUID = GenerateUUID()
 	}
@@ -205,8 +203,8 @@ func (p *Project) Resolve() {
 	p.ResolveInternal()
 	p.Resolving = false
 
-	// fileEntries.sort();
-	// virtualFolders.sort();
+	//p.FileEntries.SortByKey()
+	//p.VirtualFolders.SortByKey()
 }
 
 func (p *Project) ResolveInternal() error {
@@ -290,11 +288,12 @@ func (p *Project) ResolveFiles() {
 		p.PchHeader.Init(p.Input.PchHeader, false, false, p.Workspace)
 	}
 
-	for _, f := range p.FileEntries {
+	for _, i := range p.FileEntries.Dict {
+		f := p.FileEntries.List[i]
 		if f.Generated {
 			p.VirtualFolders.AddFile(p.Workspace.BuildDir, f)
 		} else {
-			p.VirtualFolders.AddFile(p.AxprojDir, f)
+			p.VirtualFolders.AddFile(p.AxProjDir, f)
 		}
 	}
 }

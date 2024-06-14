@@ -40,21 +40,21 @@ func (g *MsDevGenerator) Init(ws *Workspace) {
 }
 
 func (g *MsDevGenerator) PlatformToolset(proj *Project) string {
-	if proj.Input.VisualcPlatformToolset != "" {
-		return proj.Input.VisualcPlatformToolset
+	if proj.Input.MsDevPlatformToolset != "" {
+		return proj.Input.MsDevPlatformToolset
 	}
 	return g.Workspace.Config.VisualcPlatformToolset
 }
 
 func (g *MsDevGenerator) TargetPlatformVersion(proj *Project) string {
-	if proj.Input.VisualcWindowsTargetPlatformVersion != "" {
-		return proj.Input.VisualcWindowsTargetPlatformVersion
+	if proj.Input.MsDevWindowsTargetPlatformVersion != "" {
+		return proj.Input.MsDevWindowsTargetPlatformVersion
 	}
 	return g.Workspace.Config.VisualcWindowsTargetPlatformVersion
 }
 
 func (g *MsDevGenerator) genProject(proj *Project) {
-	proj.GenDataMsDev.Vcxproj = filepath.Join(g.Workspace.BuildDir, proj.Name, ".vcxproj")
+	proj.GenDataMsDev.VcxProj = filepath.Join(g.Workspace.BuildDir, proj.Name, ".vcxproj")
 
 	proj.GenDataMsDev.UUID = GenerateUUID()
 
@@ -64,7 +64,7 @@ func (g *MsDevGenerator) genProject(proj *Project) {
 		tag := wr.TagScope("Project")
 
 		wr.Attr("DefaultTargets", "Build")
-		wr.Attr("ToolsVersion", proj.Input.VisualcProjectTools)
+		wr.Attr("ToolsVersion", proj.Input.MsDevProjectTools)
 		wr.Attr("xmlns", "http://schemas.microsoft.com/developer/msbuild/2003")
 
 		{
@@ -88,8 +88,8 @@ func (g *MsDevGenerator) genProject(proj *Project) {
 			wr.TagWithBody("Keyword", "Win32Proj")
 			wr.TagWithBody("RootNamespace", proj.Name)
 
-			if proj.Input.VisualcProjectTools != "" {
-				wr.TagWithBody("WindowsTargetPlatformVersion", proj.Input.VisualcWindowsTargetPlatformVersion)
+			if proj.Input.MsDevProjectTools != "" {
+				wr.TagWithBody("WindowsTargetPlatformVersion", proj.Input.MsDevWindowsTargetPlatformVersion)
 			} else {
 				wr.TagWithBody("WindowsTargetPlatformVersion", g.TargetPlatformVersion(proj))
 			}
@@ -147,7 +147,8 @@ func (g *MsDevGenerator) genProject(proj *Project) {
 				wr.TagWithBody("RemoteProjectDir", projectDir)
 
 				fileToCopy := ""
-				for _, f := range proj.FileEntries {
+				for _, i := range proj.FileEntries.Dict {
+					f := proj.FileEntries.List[i]
 					fileToCopy += f.Path + ":=" + projectDir + "/" + f.Path + ";"
 				}
 
@@ -212,7 +213,7 @@ func (g *MsDevGenerator) genProject(proj *Project) {
 		tag.Close()
 	}
 
-	WriteTextFile(proj.GenDataMsDev.Vcxproj, wr.Buffer.String())
+	WriteTextFile(proj.GenDataMsDev.VcxProj, wr.Buffer.String())
 }
 
 func (g *MsDevGenerator) genProjectFiles(wr *XmlWriter, proj *Project) {
@@ -220,9 +221,11 @@ func (g *MsDevGenerator) genProjectFiles(wr *XmlWriter, proj *Project) {
 
 	g.genProjectPch(wr, proj)
 
-	for _, f := range proj.FileEntries {
+	for _, i := range proj.FileEntries.Dict {
 		var tagName string
 		var excludedFromBuild bool
+
+		f := proj.FileEntries.List[i]
 
 		switch f.Type {
 		case FileTypeIxx, FileTypeCSource, FileTypeCppSource:
@@ -351,7 +354,7 @@ func (g *MsDevGenerator) genProjectConfig(wr *XmlWriter, proj *Project, config *
 
 			} else {
 				wr.TagWithBody("SDLCheck", "true")
-				wr.TagWithBodyBool("MultiProcessorCompilation", proj.Input.MultithreadBuild.Bool())
+				wr.TagWithBodyBool("MultiProcessorCompilation", proj.Input.MultiThreadedBuild.Bool())
 
 				if g.Workspace.MakeTarget.CompilerIsClang() {
 					wr.TagWithBody("DebugInformationFormat", "None")
