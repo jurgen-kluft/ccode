@@ -1,4 +1,4 @@
-package xcode
+package axe
 
 type WorkspaceConfig struct {
 	ConfigList                          []string

@@ -1,4 +1,4 @@
-package xcode
+package axe
 
 import "strings"
 
@@ -34,18 +34,18 @@ func (xml XmlTagScope) Close() {
 	}
 }
 
-func (xml *XmlWriter) writeHeader() {
+func (xml *XmlWriter) WriteHeader() {
 	xml.Buffer.WriteString("<?xml version=\"1.0\" encoding=\"UTF-8\"?>")
 }
 
-func (xml *XmlWriter) writeDocType(name, publicId, systemId string) {
+func (xml *XmlWriter) WriteDocType(name, publicId, systemId string) {
 	xml.NewLine(0)
 	xml.Buffer.WriteString("<!DOCTYPE ")
 	xml.Buffer.WriteString(name)
 	xml.Buffer.WriteString(" PUBLIC ")
-	xml.quoteString(publicId)
+	xml.QuoteString(publicId)
 	xml.Buffer.WriteString(" ")
-	xml.quoteString(systemId)
+	xml.QuoteString(systemId)
 	xml.Buffer.WriteString(">")
 }
 
@@ -86,7 +86,7 @@ func (xml *XmlWriter) Attr(name, value string) {
 	xml.Buffer.WriteString(" ")
 	xml.Buffer.WriteString(name)
 	xml.Buffer.WriteString("=")
-	xml.quoteString(value)
+	xml.QuoteString(value)
 }
 
 func (xml *XmlWriter) Body(text string) {
@@ -131,7 +131,7 @@ func (xml *XmlWriter) CloseBeginTag() {
 	xml.DoBeginTag = false
 }
 
-func (xml *XmlWriter) quoteString(v string) {
+func (xml *XmlWriter) QuoteString(v string) {
 	xml.Buffer.WriteString("\"")
 
 	for _, ch := range v {

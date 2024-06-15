@@ -1,4 +1,4 @@
-package xcode
+package axe
 
 import "sort"
 
@@ -164,21 +164,21 @@ func (s EntrySort) Less(i, j int) bool {
 
 func (d *FileEntryDict) SortByEntry() {
 
-	// Create a list of indexes
+	// Create a List of indexes
 	indexes := make([]int, len(d.List))
 	for i := range indexes {
 		indexes[i] = i
 	}
 
-	// Sort the list through the custom sort
+	// Sort the List through the custom sort
 	sort.Sort(EntrySort{d, indexes})
 
-	// Create a new list of entries
+	// Create a new List of Entries
 	newList := make([]*FileEntry, len(d.List))
 	for i, v := range indexes {
 		newList[i] = d.List[v]
 	}
 
-	// Replace the old list with the new one
+	// Replace the old List with the new one
 	d.List = newList
 }

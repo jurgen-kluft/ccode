@@ -2,6 +2,8 @@ package xcode
 
 import (
 	"path/filepath"
+
+	. "github.com/jurgen-kluft/ccode/axe"
 )
 
 const (
@@ -657,8 +659,8 @@ func (g *XcodeGenerator) GenProjectXCBuildConfiguration(wr *Writer, proj *Projec
 			{
 				scope := wr.NewObjectScope("buildSettings")
 				//cc_flags
-				for key, i := range config.XcodeSettings.entries {
-					wr.member(key, g.QuoteString(config.XcodeSettings.list[i]))
+				for key, i := range config.XcodeSettings.Entries {
+					wr.member(key, g.QuoteString(config.XcodeSettings.List[i]))
 				}
 				wr.member("CLANG_CXX_LANGUAGE_STANDARD", g.QuoteString(config.CppStd))
 				scope.Close()
@@ -690,7 +692,7 @@ func (g *XcodeGenerator) GenProjectXCBuildConfiguration(wr *Writer, proj *Projec
 
 				{
 					scope := wr.NewArrayScope("GCC_PREPROCESSOR_DEFINITIONS")
-					for _, q := range config.CppDefines.FinalDict.list {
+					for _, q := range config.CppDefines.FinalDict.List {
 						wr.newline(0)
 						wr.write(g.QuoteString(q.Path))
 					}
@@ -698,7 +700,7 @@ func (g *XcodeGenerator) GenProjectXCBuildConfiguration(wr *Writer, proj *Projec
 				}
 				{
 					scope := wr.NewArrayScope("HEADER_SEARCH_PATHS")
-					for _, q := range config.IncludeDirs.FinalDict.list {
+					for _, q := range config.IncludeDirs.FinalDict.List {
 						wr.newline(0)
 						if filepath.IsAbs(q.Path) {
 							wr.write(g.QuoteString2(q.Path))
@@ -710,7 +712,7 @@ func (g *XcodeGenerator) GenProjectXCBuildConfiguration(wr *Writer, proj *Projec
 				}
 				{
 					scope := wr.NewArrayScope("OTHER_CFLAGS")
-					for _, q := range config.CppFlags.FinalDict.list {
+					for _, q := range config.CppFlags.FinalDict.List {
 						wr.newline(0)
 						wr.write(g.QuoteString(q.Path))
 					}
@@ -718,7 +720,7 @@ func (g *XcodeGenerator) GenProjectXCBuildConfiguration(wr *Writer, proj *Projec
 				}
 				{
 					scope := wr.NewArrayScope("OTHER_CPLUSPLUSFLAGS")
-					for _, q := range config.CppFlags.FinalDict.list {
+					for _, q := range config.CppFlags.FinalDict.List {
 						wr.newline(0)
 						wr.write(g.QuoteString(q.Path))
 					}
@@ -727,19 +729,19 @@ func (g *XcodeGenerator) GenProjectXCBuildConfiguration(wr *Writer, proj *Projec
 
 				{
 					scope := wr.NewArrayScope("OTHER_LDFLAGS")
-					for _, q := range config.LinkFlags.FinalDict.list {
+					for _, q := range config.LinkFlags.FinalDict.List {
 						wr.newline(0)
 						wr.write(g.QuoteString(q.Path))
 					}
-					for _, q := range config.LinkDirs.FinalDict.list {
+					for _, q := range config.LinkDirs.FinalDict.List {
 						wr.newline(0)
 						wr.write(g.QuoteString(filepath.Join("-L", q.Path)))
 					}
-					for _, q := range config.LinkLibs.FinalDict.list {
+					for _, q := range config.LinkLibs.FinalDict.List {
 						wr.newline(0)
 						wr.write(g.QuoteString(filepath.Join("-l", q.Path)))
 					}
-					for _, q := range config.LinkFiles.FinalDict.list {
+					for _, q := range config.LinkFiles.FinalDict.List {
 						wr.newline(0)
 						wr.write(g.QuoteString2(q.Path))
 					}
@@ -757,8 +759,8 @@ func (g *XcodeGenerator) GenProjectXCBuildConfiguration(wr *Writer, proj *Projec
 					wr.member("GCC_PRECOMPILE_PREFIX_HEADER", "YES")
 				}
 
-				for key, value := range config.XcodeSettings.entries {
-					wr.member(key, g.QuoteString(config.XcodeSettings.list[value]))
+				for key, value := range config.XcodeSettings.Entries {
+					wr.member(key, g.QuoteString(config.XcodeSettings.List[value]))
 				}
 
 				scope.Close()
@@ -824,8 +826,8 @@ func (g *XcodeGenerator) GenInfoPlistMacOSX(proj *Project) {
 	gd.InfoPlistFile = proj.Name + "_info.plist"
 
 	wr := NewXmlWriter()
-	wr.writeHeader()
-	wr.writeDocType("plist", "-//Apple//DTD PLIST 1.0//EN", "http://www.apple.com/DTDs/PropertyList-1.0.dtd")
+	wr.WriteHeader()
+	wr.WriteDocType("plist", "-//Apple//DTD PLIST 1.0//EN", "http://www.apple.com/DTDs/PropertyList-1.0.dtd")
 
 	{
 		tag := wr.TagScope("plist")

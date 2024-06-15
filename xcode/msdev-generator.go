@@ -2,6 +2,8 @@ package xcode
 
 import (
 	"path/filepath"
+
+	. "github.com/jurgen-kluft/ccode/axe"
 )
 
 type MsDevGenerator struct {
@@ -60,7 +62,7 @@ func (g *MsDevGenerator) genProject(proj *Project) {
 
 	wr := NewXmlWriter()
 	{
-		wr.writeHeader()
+		wr.WriteHeader()
 		tag := wr.TagScope("Project")
 
 		wr.Attr("DefaultTargets", "Build")
@@ -399,8 +401,8 @@ func (g *MsDevGenerator) genProjectConfig(wr *XmlWriter, proj *Project, config *
 			g.genConfigOption(wr, "PreprocessorDefinitions", config.CppDefines.FinalDict, "")
 			g.genConfigOption(wr, "AdditionalIncludeDirectories", config.IncludeDirs.FinalDict, "")
 
-			for key, i := range config.VstudioClCompile.entries {
-				wr.TagWithBody(key, config.VstudioClCompile.list[i])
+			for key, i := range config.VstudioClCompile.Entries {
+				wr.TagWithBody(key, config.VstudioClCompile.List[i])
 			}
 
 			tag.Close()
@@ -421,10 +423,10 @@ func (g *MsDevGenerator) genProjectConfig(wr *XmlWriter, proj *Project, config *
 					relativeTo = "$(RemoteRootDir)/"
 				}
 				tmp := ""
-				for _, p := range config.LinkLibs.FinalDict.list {
+				for _, p := range config.LinkLibs.FinalDict.List {
 					tmp += p.Path + ";"
 				}
-				for _, p := range config.LinkFiles.FinalDict.list {
+				for _, p := range config.LinkFiles.FinalDict.List {
 					tmp += relativeTo + p.Path + ";"
 				}
 				tmp += "%(" + optName + ")"
@@ -435,7 +437,7 @@ func (g *MsDevGenerator) genProjectConfig(wr *XmlWriter, proj *Project, config *
 				wr.TagWithBody("VerboseOutput", "true")
 
 				tmp := ""
-				for _, e := range config.LinkFlags.FinalDict.list {
+				for _, e := range config.LinkFlags.FinalDict.List {
 					tmp += " -Wl," + e.Path
 				}
 				wr.TagWithBody("AdditionalOptions", tmp)
@@ -451,8 +453,8 @@ func (g *MsDevGenerator) genProjectConfig(wr *XmlWriter, proj *Project, config *
 				wr.TagWithBody("GenerateDebugInformation", "true")
 
 				tmp := ""
-				for _, i := range config.LinkFlags.FinalDict.entries {
-					tmp += " " + config.LinkFlags.FinalDict.list[i].Path
+				for _, i := range config.LinkFlags.FinalDict.Entries {
+					tmp += " " + config.LinkFlags.FinalDict.List[i].Path
 				}
 				wr.TagWithBody("AdditionalOptions", tmp)
 
@@ -462,8 +464,8 @@ func (g *MsDevGenerator) genProjectConfig(wr *XmlWriter, proj *Project, config *
 				}
 			}
 
-			for key, i := range config.VstudioLink.entries {
-				wr.TagWithBody(key, config.VstudioLink.list[i])
+			for key, i := range config.VstudioLink.Entries {
+				wr.TagWithBody(key, config.VstudioLink.List[i])
 			}
 
 			tag.Close()
@@ -487,74 +489,12 @@ func (g *MsDevGenerator) genProjectConfig(wr *XmlWriter, proj *Project, config *
 
 func (g *MsDevGenerator) genConfigOption(wr *XmlWriter, name string, value *ConfigEntryDict, relativeTo string) {
 	option := ""
-	for _, p := range value.list {
+	for _, p := range value.List {
 		option += relativeTo + p.Path + ";"
 	}
 	option += "%(" + name + ")"
 	wr.TagWithBody(name, option)
 }
-
-/*
-
-void Generator_vs2015::gen_workspace(ExtraWorkspace& ws) {
-	Log::info("gen_workspace ", ws.name);
-
-	ws.genData_vs2015.sln.set(g_ws->buildDir, ws.name, ".sln");
-
-	String o;
-	o.append(slnFileHeader());
-
-	{
-		o.append("\n# ---- projects ----\n");
-		for (auto& proj : ws.projects) {
-			o.append("Project(\"{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}\") = ",
-					 "\"", proj->name, "\", \"", proj->name, ".vcxproj\", \"", proj->genData_vs2015.uuid, "\"\n");
-
-			if (proj->_dependencies_inherit) {
-				if (proj->type_is_exe_or_dll()) {
-					o.append("\tProjectSection(ProjectDependencies) = postProject\n");
-					for (auto& dp : proj->_dependencies_inherit) {
-						o.append("\t\t", dp->genData_vs2015.uuid, " = ", dp->genData_vs2015.uuid, "\n");
-					}
-					o.append("\tEndProjectSection\n");
-				}
-			}
-			o.append("EndProject\n");
-		}
-	}
-	{
-		auto* root = g_ws->projectGroups.root;
-		o.append("\n# ---- Groups ----\n");
-		for (auto& c : g_ws->projectGroups.dict) {
-			if (&c == root) continue;
-			genUuid(c.genData_vs2015.uuid);
-
-			auto catName = Path::basename(c.path, true);
-			o.append("Project(\"{2150E333-8FDC-42A3-9474-1A3956D46DE8}\") = \"",
-						catName, "\", \"", catName, "\", \"", c.genData_vs2015.uuid, "\"\n");
-			o.append("EndProject\n");
-		}
-
-		o.append("\n# ----  (ProjectGroups) -> parent ----\n");
-		o.append("Global\n");
-		o.append("\tGlobalSection(NestedProjects) = preSolution\n");
-		for (auto& c : g_ws->projectGroups.dict) {
-			if (c.parent && c.parent != root) {
-				o.append("\t\t", c.genData_vs2015.uuid, " = ", c.parent->genData_vs2015.uuid, "\n");
-			}
-
-			for (auto& proj : c.projects) {
-				if (ws.projects.indexOf(proj) < 0) continue;
-				o.append("\t\t", proj->genData_vs2015.uuid, " = ", c.genData_vs2015.uuid, "\n");
-			}
-		}
-		o.append("\tEndGlobalSection\n");
-		o.append("EndGlobal\n");
-	}
-
-	FileUtil::writeTextFile(ws.genData_vs2015.sln, o);
-}
-*/
 
 func (g *MsDevGenerator) genWorkspace(ws *ExtraWorkspace) {
 	ws.GenDataVs2015.Sln = filepath.Join(g.Workspace.BuildDir, ws.Name, ".sln")
@@ -622,72 +562,10 @@ func (g *MsDevGenerator) genWorkspace(ws *ExtraWorkspace) {
 	WriteTextFile(ws.GenDataVs2015.Sln, sb)
 }
 
-/*
-
-void Generator_vs2015::gen_vcxproj_filters(Project& proj) {
-	XmlWriter wr;
-
-	{
-		wr.writeHeader();
-		auto tag = wr.tagScope("Project");
-		wr.attr("ToolsVersion", "4.0");
-		wr.attr("xmlns", "http://schemas.microsoft.com/developer/msbuild/2003");
-
-		if (proj.pch_cpp.path()) {
-			auto& f = proj.pch_cpp;
-			proj.virtualFolders.add(g_ws->buildDir, f);
-		}
-
-		//------------
-		{
-			auto tag = wr.tagScope("ItemGroup");
-			for (auto& d : proj.virtualFolders.dict) {
-				if (d.path == ".") continue;
-				auto tag = wr.tagScope("Filter");
-				String winPath;
-				Path::windowsPath(winPath, d.path);
-				wr.attr("Include", winPath);
-			}
-		}
-
-		{
-			auto tag = wr.tagScope("ItemGroup");
-			for (auto& pair : proj.virtualFolders.dict.pairs()) {
-				for (auto f : pair.value->files) {
-					if (!f) continue;
-
-					auto type = StrView("ClInclude");
-					switch (f->type()) {
-						case FileType::ixx:	ax_fallthrough
-						case FileType::c_source: ax_fallthrough
-						case FileType::cpp_source: {
-							type = "ClCompile";
-						}break;
-						default: break;
-					}
-
-					auto tag = wr.tagScope(type);
-					wr.attr("Include", f->path());
-					if (pair.key) {
-						String winPath;
-						Path::windowsPath(winPath, pair.key);
-						wr.tagWithBody("Filter", winPath);
-					}
-				}
-			}
-		}
-	}
-
-	String filename;
-	filename.append(g_ws->buildDir, proj.name, ".vcxproj.filters");
-	FileUtil::writeTextFile(filename, wr.buffer());
-}
-*/
-
 func (g *MsDevGenerator) genVcxprojFilters(proj *Project) {
 	wr := NewXmlWriter()
 	{
-		wr.writeHeader()
+		wr.WriteHeader()
 
 		tag := wr.TagScope("Project")
 		wr.Attr("ToolsVersion", "4.0")
