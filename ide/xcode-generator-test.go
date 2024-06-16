@@ -7,48 +7,14 @@ import (
 	"github.com/jurgen-kluft/ccode/axe"
 )
 
-type MsDevTestGenerator struct {
+type XcodeTestGenerator struct {
 }
 
-func NewMsDevTestGenerator() *MsDevTestGenerator {
-	return &MsDevTestGenerator{}
+func NewXcodeTestGenerator() *XcodeTestGenerator {
+	return &XcodeTestGenerator{}
 }
 
-// TestRun("~/dev.go/src/github.com/jurgen-kluft", "cbase"")
-//
-//	ccore = "~/dev.go/src/github.com/jurgen-kluft/ccore"
-//	cbase = "~/dev.go/src/github.com/jurgen-kluft/cbase"
-//	cunittest = "~/dev.go/src/github.com/jurgen-kluft/cunittest"
-
-// C++ source files for the cbase library are in "source/main/cpp" and should be globbed
-// C++ header files for the cbase library are in "source/main/include" and should be globbed
-// C++ source files for the cbase unittest project are in "source/test/cpp" and should be globbed
-
-// The cbase C++ library dependencies are:
-// - ccore
-// - cunittest
-
-// The ccore C++ library has no dependencies
-// The cunittest C++ library has no dependencies
-
-// For all the libraries there are 4 build configurations:
-// - debug
-// - release
-// - debug_test
-// - release_test
-
-// For the unittest project there are 2 build configurations:
-// - debug_test
-// - release_test
-
-// The cbase library is a static library
-// The ccore library is a static library
-// The cunittest library is a static library
-// The cbase unittest project is an executable
-
-// The above are all the details needed to generate the Visual Studio solution and project files
-
-func (m *MsDevTestGenerator) TestRun(ccoreAbsPath string, projectName string) error {
+func (x *XcodeTestGenerator) TestRun(ccoreAbsPath string, projectName string) error {
 
 	ws := axe.NewWorkspace(ccoreAbsPath, projectName)
 
@@ -59,7 +25,7 @@ func (m *MsDevTestGenerator) TestRun(ccoreAbsPath string, projectName string) er
 
 	// Add the configurations
 	for _, name := range ws.Config.ConfigList {
-		m.addWorkspaceConfiguration(ws, name)
+		x.addWorkspaceConfiguration(ws, name)
 	}
 
 	visualStudioVersion := axe.VisualStudio2022
@@ -104,11 +70,11 @@ func (m *MsDevTestGenerator) TestRun(ccoreAbsPath string, projectName string) er
 		cbase_lib.GlobFiles(filepath.Join(ccoreAbsPath, "cbase"), "source/main/include/^**/*.h")
 		cbase_lib.GlobFiles(filepath.Join(ccoreAbsPath, "cbase"), "source/main/include/^**/*.inl")
 
-		config := m.createDefaultProjectConfiguration(cbase_lib, "Debug")
+		config := x.createDefaultProjectConfiguration(cbase_lib, "Debug")
 		config.CppDefines.ValuesToAdd("")
-		m.createDefaultProjectConfiguration(cbase_lib, "Release")
-		m.createDefaultProjectConfiguration(cbase_lib, "DebugTest")
-		m.createDefaultProjectConfiguration(cbase_lib, "ReleaseTest")
+		x.createDefaultProjectConfiguration(cbase_lib, "Release")
+		x.createDefaultProjectConfiguration(cbase_lib, "DebugTest")
+		x.createDefaultProjectConfiguration(cbase_lib, "ReleaseTest")
 	}
 
 	// ccore library project
@@ -130,10 +96,10 @@ func (m *MsDevTestGenerator) TestRun(ccoreAbsPath string, projectName string) er
 		ccore_lib.GlobFiles(filepath.Join(ccoreAbsPath, "ccore"), "source/main/include/^**/*.h")
 		ccore_lib.GlobFiles(filepath.Join(ccoreAbsPath, "ccore"), "source/main/include/^**/*.inl")
 
-		m.createDefaultProjectConfiguration(ccore_lib, "Debug")
-		m.createDefaultProjectConfiguration(ccore_lib, "Release")
-		m.createDefaultProjectConfiguration(ccore_lib, "DebugTest")
-		m.createDefaultProjectConfiguration(ccore_lib, "ReleaseTest")
+		x.createDefaultProjectConfiguration(ccore_lib, "Debug")
+		x.createDefaultProjectConfiguration(ccore_lib, "Release")
+		x.createDefaultProjectConfiguration(ccore_lib, "DebugTest")
+		x.createDefaultProjectConfiguration(ccore_lib, "ReleaseTest")
 	}
 
 	// cunittest library project
@@ -152,8 +118,8 @@ func (m *MsDevTestGenerator) TestRun(ccoreAbsPath string, projectName string) er
 		cunittest_lib.GlobFiles(filepath.Join(ccoreAbsPath, "cunittest"), "source/main/cpp/^**/*.cpp")
 		cunittest_lib.GlobFiles(filepath.Join(ccoreAbsPath, "cunittest"), "source/main/include/^**/*.h")
 
-		m.createDefaultProjectConfiguration(cunittest_lib, "DebugTest")
-		m.createDefaultProjectConfiguration(cunittest_lib, "ReleaseTest")
+		x.createDefaultProjectConfiguration(cunittest_lib, "DebugTest")
+		x.createDefaultProjectConfiguration(cunittest_lib, "ReleaseTest")
 	}
 
 	// cbase unittest project, this is an executable
@@ -172,8 +138,8 @@ func (m *MsDevTestGenerator) TestRun(ccoreAbsPath string, projectName string) er
 		cbase_unittest.GlobFiles(filepath.Join(ccoreAbsPath, "cbase"), "source/test/cpp/^**/*.cpp")
 		cbase_unittest.GlobFiles(filepath.Join(ccoreAbsPath, "cbase"), "source/test/include/^**/*.h")
 
-		m.createDefaultProjectConfiguration(cbase_unittest, "DebugTest")
-		m.createDefaultProjectConfiguration(cbase_unittest, "ReleaseTest")
+		x.createDefaultProjectConfiguration(cbase_unittest, "DebugTest")
+		x.createDefaultProjectConfiguration(cbase_unittest, "ReleaseTest")
 	}
 
 	if err := ws.Finalize(); err != nil {
@@ -186,7 +152,7 @@ func (m *MsDevTestGenerator) TestRun(ccoreAbsPath string, projectName string) er
 	return nil
 }
 
-func (m *MsDevTestGenerator) createDefaultProjectConfiguration(p *axe.Project, configName string) *axe.Config {
+func (x *XcodeTestGenerator) createDefaultProjectConfiguration(p *axe.Project, configName string) *axe.Config {
 	config := p.GetOrCreateConfig(configName)
 
 	config.AddIncludeDir("source/main/include")
@@ -198,7 +164,7 @@ func (m *MsDevTestGenerator) createDefaultProjectConfiguration(p *axe.Project, c
 	return config
 }
 
-func (m *MsDevTestGenerator) addWorkspaceConfiguration(ws *axe.Workspace, configName string) {
+func (x *XcodeTestGenerator) addWorkspaceConfiguration(ws *axe.Workspace, configName string) {
 	config := axe.NewConfig(configName, ws, nil)
 
 	if config.IsDebug {
