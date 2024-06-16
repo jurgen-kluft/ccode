@@ -7,17 +7,15 @@ import (
 )
 
 type Config struct {
-	Name             string
-	Workspace        *Workspace
-	IsDebug          bool
-	CppStd           string
-	CppEnableModules bool
-	WarningAsError   bool
-	WarningLevel     string
-	Project          *Project
-	OutputTarget     *FileEntry
-	OutputLib        *FileEntry
-	BuildTmpDir      *FileEntry
+	Name         string
+	Workspace    *Workspace
+	IsDebug      bool
+	CppStd       string
+	WarningLevel string
+	Project      *Project
+	OutputTarget *FileEntry
+	OutputLib    *FileEntry
+	BuildTmpDir  *FileEntry
 
 	OutTargetDir    string
 	ExeTargetPrefix string
@@ -144,8 +142,6 @@ func (c *Config) init(source *Config) {
 
 	if source != nil {
 		c.CppStd = source.CppStd
-		c.CppEnableModules = source.CppEnableModules
-		c.WarningAsError = source.WarningAsError
 		c.WarningLevel = source.WarningLevel
 		c.XcodeSettings = source.XcodeSettings.Copy()
 		c.VisualStudioClCompile = source.VisualStudioClCompile.Copy()
@@ -248,6 +244,8 @@ func (c *Config) InitVisualStudioSettings() {
 	c.VisualStudioClCompile.Add("MinimalRebuild", "false")
 	c.VisualStudioClCompile.Add("ExceptionHandling", "false")
 	c.VisualStudioClCompile.Add("CompileAs", "CompileAsCpp")
+	c.VisualStudioClCompile.Add("EnableModules", "false")
+	c.VisualStudioClCompile.Add("TreatWarningAsError", "true")
 
 	if c.Workspace.MakeTarget.CompilerIsClang() {
 		c.VisualStudioClCompile.Add("DebugInformationFormat", "None")

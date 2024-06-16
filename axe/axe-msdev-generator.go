@@ -340,7 +340,6 @@ func (g *MsDevGenerator) genProjectConfig(wr *XmlWriter, proj *Project, config *
 
 			if g.Workspace.MakeTarget.OSIsLinux() {
 				wr.TagWithBody("Verbose", "true")
-
 			} else {
 				wr.TagWithBody("SDLCheck", "true")
 				wr.TagWithBodyBool("MultiProcessorCompilation", proj.Settings.MultiThreadedBuild.Bool())
@@ -358,12 +357,6 @@ func (g *MsDevGenerator) genProjectConfig(wr *XmlWriter, proj *Project, config *
 			if config.WarningLevel != "" {
 				wr.TagWithBody("WarningLevel", config.WarningLevel)
 			}
-
-			if config.CppEnableModules {
-				wr.TagWithBodyBool("EnableModules", config.CppEnableModules)
-			}
-
-			wr.TagWithBodyBool("TreatWarningAsError", config.WarningAsError)
 
 			g.genConfigOption(wr, "DisableSpecificWarnings", config.DisableWarning.FinalDict)
 			g.genConfigOption(wr, "PreprocessorDefinitions", config.CppDefines.FinalDict)

@@ -181,7 +181,6 @@ func TestRun(ccoreAbsPath string, projectName string) error {
 
 func createDefaultProjectConfiguration(p *axe.Project, configName string) *axe.Config {
 	config := p.GetOrCreateConfig(configName)
-	config.WarningAsError = true
 
 	config.AddIncludeDir("source/main/include")
 	if strings.HasSuffix(configName, "Test") {
@@ -195,7 +194,6 @@ func createDefaultProjectConfiguration(p *axe.Project, configName string) *axe.C
 func addWorkspaceConfiguration(ws *axe.Workspace, configName string) {
 	config := axe.NewConfig(configName, ws, nil)
 
-	config.WarningAsError = true
 	if config.IsDebug {
 		config.CppDefines.ValuesToAdd("DEBUG", "_DEBUG")
 	} else {
