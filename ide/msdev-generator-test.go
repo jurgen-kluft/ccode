@@ -41,9 +41,9 @@ import (
 
 // The above are all the details needed to generate the Visual Studio solution and project files
 
-func TestRun(workspacePath string, libraryPath string) error {
+func TestRun(ccoreAbsPath string, projectName string) error {
 
-	ws := axe.NewWorkspace()
+	ws := axe.NewWorkspace(ccoreAbsPath, projectName)
 
 	ws.Config.ConfigList = []string{"Debug", "Release", "Debug Test", "Release Test"}
 	ws.GenerateAbsPath = "target"
@@ -59,19 +59,19 @@ func TestRun(workspacePath string, libraryPath string) error {
 
 	ws.Generator = "msdev"
 	ws.MakeTarget = axe.NewDefaultMakeTarget()
-	ws.WorkspaceName = "cbase"
-	ws.WorkspaceAbsPath = workspacePath
-	ws.GenerateAbsPath = filepath.Join(workspacePath, "cbase", "target")
+	ws.WorkspaceName = projectName
+	ws.WorkspaceAbsPath = ccoreAbsPath
+	ws.GenerateAbsPath = filepath.Join(ccoreAbsPath, projectName, "target", ws.Generator)
 
 	debugConfig := axe.NewConfig("Debug", ws, nil)
 	releaseConfig := axe.NewConfig("Release", ws, nil)
 	debugTestConfig := axe.NewConfig("Debug Test", ws, nil)
 	releaseTestConfig := axe.NewConfig("Release Test", ws, nil)
 
-	ws.Configs["Debug"] = debugConfig
-	ws.Configs["Release"] = releaseConfig
-	ws.Configs["Debug Test"] = debugTestConfig
-	ws.Configs["Release Test"] = releaseTestConfig
+	ws.AddConfig(debugConfig)
+	ws.AddConfig(releaseConfig)
+	ws.AddConfig(debugTestConfig)
+	ws.AddConfig(releaseTestConfig)
 
 	var cbase_lib *axe.Project
 	var ccore_lib *axe.Project
@@ -90,11 +90,12 @@ func TestRun(workspacePath string, libraryPath string) error {
 		cbaseProjectConfig.CppAsObjCpp = false
 
 		cbase_lib = axe.NewProject(ws, "cbase_lib", "cbase", axe.ProjectTypeCppLib, cbaseProjectConfig)
-		cbase_lib.GlobFiles(filepath.Join(workspacePath, libraryPath), "source/main/cpp/^**/*.cpp")
-		cbase_lib.GlobFiles(filepath.Join(workspacePath, libraryPath), "source/main/cpp/^**/*.m")
-		cbase_lib.GlobFiles(filepath.Join(workspacePath, libraryPath), "source/main/cpp/^**/*.mm")
-		cbase_lib.GlobFiles(filepath.Join(workspacePath, libraryPath), "source/main/include/^**/*.h")
-		cbase_lib.GlobFiles(filepath.Join(workspacePath, libraryPath), "source/main/include/^**/*.inl")
+		cbase_lib.ProjectFilename = "cbase_lib"
+		cbase_lib.GlobFiles(filepath.Join(ccoreAbsPath, "cbase"), "source/main/cpp/^**/*.cpp")
+		cbase_lib.GlobFiles(filepath.Join(ccoreAbsPath, "cbase"), "source/main/cpp/^**/*.m")
+		cbase_lib.GlobFiles(filepath.Join(ccoreAbsPath, "cbase"), "source/main/cpp/^**/*.mm")
+		cbase_lib.GlobFiles(filepath.Join(ccoreAbsPath, "cbase"), "source/main/include/^**/*.h")
+		cbase_lib.GlobFiles(filepath.Join(ccoreAbsPath, "cbase"), "source/main/include/^**/*.inl")
 
 		createDefaultProjectConfiguration(cbase_lib, "Debug")
 		createDefaultProjectConfiguration(cbase_lib, "Release")
@@ -114,11 +115,12 @@ func TestRun(workspacePath string, libraryPath string) error {
 		ccoreProjectConfig.CppAsObjCpp = false
 
 		ccore_lib = axe.NewProject(ws, "ccore_lib", "ccore", axe.ProjectTypeCppLib, ccoreProjectConfig)
-		ccore_lib.GlobFiles(filepath.Join(workspacePath, libraryPath), "source/main/cpp/^**/*.cpp")
-		ccore_lib.GlobFiles(filepath.Join(workspacePath, libraryPath), "source/main/cpp/^**/*.m")
-		ccore_lib.GlobFiles(filepath.Join(workspacePath, libraryPath), "source/main/cpp/^**/*.mm")
-		ccore_lib.GlobFiles(filepath.Join(workspacePath, libraryPath), "source/main/include/^**/*.h")
-		ccore_lib.GlobFiles(filepath.Join(workspacePath, libraryPath), "source/main/include/^**/*.inl")
+		ccore_lib.ProjectFilename = "ccore_lib"
+		ccore_lib.GlobFiles(filepath.Join(ccoreAbsPath, "ccore"), "source/main/cpp/^**/*.cpp")
+		ccore_lib.GlobFiles(filepath.Join(ccoreAbsPath, "ccore"), "source/main/cpp/^**/*.m")
+		ccore_lib.GlobFiles(filepath.Join(ccoreAbsPath, "ccore"), "source/main/cpp/^**/*.mm")
+		ccore_lib.GlobFiles(filepath.Join(ccoreAbsPath, "ccore"), "source/main/include/^**/*.h")
+		ccore_lib.GlobFiles(filepath.Join(ccoreAbsPath, "ccore"), "source/main/include/^**/*.inl")
 
 		createDefaultProjectConfiguration(ccore_lib, "Debug")
 		createDefaultProjectConfiguration(ccore_lib, "Release")
@@ -138,8 +140,9 @@ func TestRun(workspacePath string, libraryPath string) error {
 		cunittestProjectConfig.CppAsObjCpp = false
 
 		cunittest_lib = axe.NewProject(ws, "cunittest_lib", "cunittest", axe.ProjectTypeCppLib, cunittestProjectConfig)
-		cunittest_lib.GlobFiles(filepath.Join(workspacePath, libraryPath), "source/main/cpp/^**/*.cpp")
-		cunittest_lib.GlobFiles(filepath.Join(workspacePath, libraryPath), "source/main/include/^**/*.h")
+		cunittest_lib.ProjectFilename = "cunittest"
+		cunittest_lib.GlobFiles(filepath.Join(ccoreAbsPath, "cunittest"), "source/main/cpp/^**/*.cpp")
+		cunittest_lib.GlobFiles(filepath.Join(ccoreAbsPath, "cunittest"), "source/main/include/^**/*.h")
 
 		createDefaultProjectConfiguration(cunittest_lib, "Debug Test")
 		createDefaultProjectConfiguration(cunittest_lib, "Release Test")
@@ -157,8 +160,9 @@ func TestRun(workspacePath string, libraryPath string) error {
 		cbaseTestProjectConfig.CppAsObjCpp = false
 
 		cbase_unittest = axe.NewProject(ws, "cbase_unittest", "cbase", axe.ProjectTypeCppExe, cbaseTestProjectConfig)
-		cbase_unittest.GlobFiles(filepath.Join(workspacePath, libraryPath), "source/test/cpp/^**/*.cpp")
-		cbase_unittest.GlobFiles(filepath.Join(workspacePath, libraryPath), "source/test/include/^**/*.h")
+		cbase_unittest.ProjectFilename = "cbase_unittest"
+		cbase_unittest.GlobFiles(filepath.Join(ccoreAbsPath, "cbase"), "source/test/cpp/^**/*.cpp")
+		cbase_unittest.GlobFiles(filepath.Join(ccoreAbsPath, "cbase"), "source/test/include/^**/*.h")
 
 		createDefaultProjectConfiguration(cbase_unittest, "Debug Test")
 		createDefaultProjectConfiguration(cbase_unittest, "Release Test")

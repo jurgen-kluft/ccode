@@ -3,6 +3,7 @@ package ide
 import (
 	"path/filepath"
 
+	"github.com/jurgen-kluft/ccode/axe"
 	. "github.com/jurgen-kluft/ccode/axe"
 )
 
@@ -13,10 +14,12 @@ type MsDevGenerator struct {
 }
 
 func NewMsDevGenerator(ws *Workspace) *MsDevGenerator {
-	return &MsDevGenerator{
+	g := &MsDevGenerator{
 		LastGenId: GenerateUUID(),
 		Workspace: ws,
 	}
+	g.init(ws)
+	return g
 }
 
 func (g *MsDevGenerator) Generate() {
@@ -30,7 +33,7 @@ func (g *MsDevGenerator) Generate() {
 	}
 }
 
-func (g *MsDevGenerator) Init(ws *Workspace) {
+func (g *MsDevGenerator) init(ws *Workspace) {
 	if ws.MakeTarget == nil {
 		ws.MakeTarget = NewDefaultMakeTarget()
 	}
@@ -67,7 +70,7 @@ func (g *MsDevGenerator) TargetPlatformVersion(proj *Project) string {
 }
 
 func (g *MsDevGenerator) genProject(proj *Project) {
-	projectFilepath := filepath.Join(g.Workspace.GenerateAbsPath, proj.ProjectFilename, ".vcxproj")
+	projectFilepath := filepath.Join(g.Workspace.GenerateAbsPath, proj.ProjectFilename+".vcxproj")
 
 	proj.GenDataMsDev.UUID = GenerateUUID()
 
@@ -100,12 +103,7 @@ func (g *MsDevGenerator) genProject(proj *Project) {
 			wr.TagWithBody("ProjectGuid", proj.GenDataMsDev.UUID.String())
 			wr.TagWithBody("Keyword", "Win32Proj")
 			wr.TagWithBody("RootNamespace", proj.Name)
-
-			if proj.Settings.MsDev.ProjectTools != "" {
-				wr.TagWithBody("WindowsTargetPlatformVersion", proj.Settings.MsDev.WindowsTargetPlatformVersion)
-			} else {
-				wr.TagWithBody("WindowsTargetPlatformVersion", g.TargetPlatformVersion(proj))
-			}
+			wr.TagWithBody("WindowsTargetPlatformVersion", proj.Settings.MsDev.WindowsTargetPlatformVersion)
 			tag.Close()
 		}
 
@@ -221,7 +219,7 @@ func (g *MsDevGenerator) genProject(proj *Project) {
 		tag.Close()
 	}
 
-	WriteTextFile(projectFilepath, wr.Buffer.String())
+	wr.WriteToFile(projectFilepath)
 }
 
 func (g *MsDevGenerator) genProjectFiles(wr *XmlWriter, proj *Project) {
@@ -232,6 +230,7 @@ func (g *MsDevGenerator) genProjectFiles(wr *XmlWriter, proj *Project) {
 	for _, f := range proj.FileEntries.Values {
 		tagName := ""
 		excludedFromBuild := false
+		remoteCopyFile := false
 		switch f.Type {
 		case FileTypeIxx, FileTypeCSource, FileTypeCppSource:
 			tagName = "ClCompile"
@@ -248,8 +247,9 @@ func (g *MsDevGenerator) genProjectFiles(wr *XmlWriter, proj *Project) {
 		if excludedFromBuild {
 			wr.TagWithBody("ExcludedFromBuild", "true")
 		}
-
-		wr.TagWithBody("RemoteCopyFile", "false")
+		if remoteCopyFile {
+			wr.TagWithBody("RemoteCopyFile", "false")
+		}
 		tag.Close()
 	}
 
@@ -480,30 +480,34 @@ func (g *MsDevGenerator) genConfigOption(wr *XmlWriter, name string, value *KeyV
 }
 
 func (g *MsDevGenerator) genWorkspace(ws *ExtraWorkspace) {
-	visualStudioSolutionFilepath := filepath.Join(g.Workspace.GenerateAbsPath, ws.Workspace.WorkspaceName, ".sln")
+	visualStudioSolutionFilepath := filepath.Join(g.Workspace.GenerateAbsPath, ws.Workspace.WorkspaceName+".sln")
 
-	sb := ws.MsDev.SlnHeader
+	sb := axe.NewLineWriter()
+
+	sb.WriteManyLines(ws.MsDev.SlnHeader)
+
 	{
-		sb += "\n# ---- projects ----\n"
+		sb.WriteLines("", "# ---- projects ----", "")
 		for _, proj := range ws.Projects {
-			sb += "Project(\"{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}\") = "
-			sb += "\"" + proj.Name + "\", \"" + proj.Name + ".vcxproj\", \"" + proj.GenDataMsDev.UUID.String() + "\"\n"
+			sb.Write("Project(\"{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}\") = ")
+			sb.WriteLine("\"" + proj.Name + "\", \"" + proj.Name + ".vcxproj\", \"" + proj.GenDataMsDev.UUID.String() + "\"")
 
-			if len(proj.DependenciesInherit) > 0 {
+			if len(proj.DependenciesInherit.Values) > 0 {
 				if proj.TypeIsExeOrDll() {
-					sb += "\tProjectSection(ProjectDependencies) = postProject\n"
-					for _, dp := range proj.DependenciesInherit {
-						sb += "\t\t" + dp.GenDataMsDev.UUID.String() + " = " + dp.GenDataMsDev.UUID.String() + "\n"
+					sb.WriteLine("\tProjectSection(ProjectDependencies) = postProject")
+					for _, dp := range proj.DependenciesInherit.Values {
+						sb.WriteLine("\t\t" + dp.GenDataMsDev.UUID.String() + " = " + dp.GenDataMsDev.UUID.String())
 					}
-					sb += "\tEndProjectSection\n"
+					sb.WriteLine("\tEndProjectSection")
 				}
 			}
-			sb += "EndProject\n"
+			sb.WriteLine("EndProject")
 		}
 	}
 	{
 		root := g.Workspace.ProjectGroups.Root
-		sb += "\n# ---- Groups ----\n"
+		//sb += "\n# ---- Groups ----\n"
+		sb.WriteLines("", "# ---- Groups ----", "")
 		for _, c := range g.Workspace.ProjectGroups.Values {
 			if c == root {
 				continue
@@ -511,17 +515,28 @@ func (g *MsDevGenerator) genWorkspace(ws *ExtraWorkspace) {
 			c.MsDev.UUID = GenerateUUID()
 
 			catName := PathBasename(c.Path, true)
-			sb += "Project(\"{2150E333-8FDC-42A3-9474-1A3956D46DE8}\") = \""
-			sb += catName + "\", \"" + catName + "\", \"" + c.MsDev.UUID.String() + "\"\n"
-			sb += "EndProject\n"
+			// sb += "Project(\"{2150E333-8FDC-42A3-9474-1A3956D46DE8}\") = \""
+			// sb += catName + "\", \"" + catName + "\", \"" + c.MsDev.UUID.String() + "\"\n"
+			// sb += "EndProject\n"
+			sb.Write("Project(\"{2150E333-8FDC-42A3-9474-1A3956D46DE8}\") = \"")
+			sb.Write(catName)
+			sb.Write("\", \"")
+			sb.Write(catName)
+			sb.Write("\", \"")
+			sb.Write(c.MsDev.UUID.String())
+			sb.WriteLine("\"")
 		}
 
-		sb += "\n# ----  (ProjectGroups) -> parent ----\n"
-		sb += "Global\n"
-		sb += "\tGlobalSection(NestedProjects) = preSolution\n"
+		sb.WriteLines("", "# ----  (ProjectGroups) -> parent ----", "")
+		sb.WriteLine("Global")
+		sb.WriteLine("\tGlobalSection(NestedProjects) = preSolution")
+
 		for _, c := range g.Workspace.ProjectGroups.Values {
 			if c.Parent != nil && c.Parent != root {
-				sb += "\t\t" + c.MsDev.UUID.String() + " = " + c.Parent.MsDev.UUID.String() + "\n"
+				sb.Write("\t\t")
+				sb.Write(c.MsDev.UUID.String())
+				sb.Write(" = ")
+				sb.WriteLine(c.Parent.MsDev.UUID.String())
 			}
 
 			for _, proj := range c.Projects {
@@ -531,18 +546,21 @@ func (g *MsDevGenerator) genWorkspace(ws *ExtraWorkspace) {
 				if ws.IndexOfProject(proj) < 0 {
 					continue
 				}
-				sb += "\t\t" + proj.GenDataMsDev.UUID.String() + " = " + c.MsDev.UUID.String() + "\n"
+				sb.Write("\t\t")
+				sb.Write(proj.GenDataMsDev.UUID.String())
+				sb.Write(" = ")
+				sb.WriteLine(c.MsDev.UUID.String())
 			}
 		}
-		sb += "\tEndGlobalSection\n"
-		sb += "EndGlobal\n"
+		sb.WriteLine("\tEndGlobalSection")
+		sb.WriteLine("EndGlobal")
 	}
 
-	WriteTextFile(visualStudioSolutionFilepath, sb)
+	sb.WriteToFile(visualStudioSolutionFilepath)
 }
 
 func (g *MsDevGenerator) genProjectFilters(proj *Project) {
-	projectFiltersFilepath := filepath.Join(g.Workspace.GenerateAbsPath, proj.ProjectFilename, ".vcxproj.filters")
+	projectFiltersFilepath := filepath.Join(g.Workspace.GenerateAbsPath, proj.ProjectFilename+".vcxproj.filters")
 
 	wr := NewXmlWriter()
 	{
@@ -600,5 +618,5 @@ func (g *MsDevGenerator) genProjectFilters(proj *Project) {
 		tag.Close()
 	}
 
-	WriteTextFile(projectFiltersFilepath, wr.Buffer.String())
+	wr.WriteToFile(projectFiltersFilepath)
 }

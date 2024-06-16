@@ -1,6 +1,9 @@
 package axe
 
-import "fmt"
+import (
+	"fmt"
+	"path/filepath"
+)
 
 type WorkspaceConfig struct {
 	ConfigList         []string           // The list of configurations to generate (e.g. ["Debug", "Release", "Debug Test", "Release Test"])
@@ -10,12 +13,12 @@ type WorkspaceConfig struct {
 	MsDev              VisualStudioConfig // The project configuration to use for msdev
 }
 
-func NewWorkspaceConfig() *WorkspaceConfig {
+func NewWorkspaceConfig(workspacePath string, projectName string) *WorkspaceConfig {
 	wsc := &WorkspaceConfig{
 		ConfigList: []string{"Debug", "Release", "Debug Test", "Release Test"},
 	}
-	wsc.GenerateAbsPath = "target"
-	wsc.StartupProject = "main"
+	wsc.GenerateAbsPath = filepath.Join(workspacePath, projectName, "target")
+	wsc.StartupProject = projectName
 	wsc.MultiThreadedBuild = true
 	wsc.MsDev = NewVisualStudioConfig(VisualStudio2022)
 	return wsc
@@ -25,13 +28,13 @@ type Workspace struct {
 	Config           *WorkspaceConfig           // The configuration for the workspace
 	WorkspaceName    string                     // The name of the workspace (e.g. For VisualStudio -> "cbase.sln", for Xcode -> "cbase.xcworkspace")
 	WorkspaceAbsPath string                     // The workspace directory is the path where all the projects and workspace are to be generated
+	GenerateAbsPath  string                     // Where to generate the workspace and project files
+	Generator        string                     // Name of the generator, ccore compiler define
 	Configs          map[string]*Config         // The configuration instances for the workspace
-	Generator        string                     // ccore compiler define
 	MakeTarget       MakeTarget                 // The make target for the workspace (e.g. contains details like OS, Compiler, Arch, etc.)
 	StartupProject   *Project                   // The project instance that will be marked as the startup project
 	Projects         map[string]*Project        // The project instances that are part of the workspace
 	ProjectGroups    *ProjectGroups             // The project groups that are part of the workspace
-	GenerateAbsPath  string                     // Where to generate the workspace and project files
 	MasterWorkspace  *ExtraWorkspace            // The master workspace that contains all projects
 	ExtraWorkspaces  map[string]*ExtraWorkspace // The extra workspaces that contain a subset of the projects
 }
@@ -153,9 +156,9 @@ func (ew *ExtraWorkspace) resolve() {
 	}
 }
 
-func NewWorkspace() *Workspace {
+func NewWorkspace(ccoreAbsPath string, projectRelPath string) *Workspace {
 	ws := &Workspace{
-		Config:          NewWorkspaceConfig(),
+		Config:          NewWorkspaceConfig(ccoreAbsPath, projectRelPath),
 		Configs:         make(map[string]*Config),
 		Projects:        make(map[string]*Project),
 		ProjectGroups:   NewProjectGroups(nil),

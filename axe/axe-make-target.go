@@ -80,47 +80,36 @@ type MakeTargetInstance struct {
 func (t *MakeTargetInstance) OSIsLinux() bool {
 	return strings.EqualFold(t.Os, OS_LINUX)
 }
-
 func (t *MakeTargetInstance) OSIsWindows() bool {
 	return strings.EqualFold(t.Os, OS_WINDOWS)
 }
-
 func (t *MakeTargetInstance) OSIsMac() bool {
 	return strings.EqualFold(t.Os, OS_MAC)
 }
-
 func (t *MakeTargetInstance) OSIsIos() bool {
 	return strings.EqualFold(t.Os, OS_IOS)
 }
-
 func (t *MakeTargetInstance) CompilerIsGcc() bool {
 	return strings.EqualFold(t.Compiler, COMPILER_GCC)
 }
-
 func (t *MakeTargetInstance) CompilerIsClang() bool {
 	return strings.EqualFold(t.Compiler, COMPILER_CLANG)
 }
-
 func (t *MakeTargetInstance) CompilerIsVc() bool {
 	return strings.EqualFold(t.Compiler, COMPILER_VC)
 }
-
 func (t *MakeTargetInstance) ArchIsX64() bool {
-	return strings.EqualFold(t.Cpu, ARCH_X64)
+	return strings.EqualFold(t.Cpu, ARCH_X64) || strings.EqualFold(t.Cpu, ARCH_ARM64)
 }
-
 func (t *MakeTargetInstance) ArchIsArm64() bool {
 	return strings.EqualFold(t.Cpu, ARCH_ARM64)
 }
-
 func (t *MakeTargetInstance) OSAsString() string {
 	return t.Os
 }
-
 func (t *MakeTargetInstance) CompilerAsString() string {
 	return t.Compiler
 }
-
 func (t *MakeTargetInstance) ArchAsString() string {
 	return t.Cpu
 }

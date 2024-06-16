@@ -83,7 +83,7 @@ func (g *XcodeGenerator) genWorkSpace() {
 	}
 
 	filename := xcodeWorkspace + "/contents.xcworkspacedata"
-	WriteTextFile(filename, wr.Buffer.String())
+	wr.WriteToFile(filename)
 }
 
 func (g *XcodeGenerator) genWorkspaceGroup(wr *XmlWriter, group *ProjectGroup) {
@@ -230,7 +230,7 @@ func (g *XcodeGenerator) genFileReference(wr *XcodeWriter, proj *Project, f *Fil
 func (g *XcodeGenerator) genProjectDependencies(wr *XcodeWriter, proj *Project) {
 	wr.newline(0)
 	wr.commentBlock("----- project dependencies -----------------")
-	for _, dp := range proj.DependenciesInherit {
+	for _, dp := range proj.DependenciesInherit.Values {
 		if !dp.HasOutputTarget {
 			continue
 		}
@@ -297,7 +297,7 @@ func (g *XcodeGenerator) genProjectDependencies(wr *XcodeWriter, proj *Project) 
 			wr.member("isa", "PBXGroup")
 			{
 				scope := wr.NewArrayScope("children")
-				for _, dp := range proj.DependenciesInherit {
+				for _, dp := range proj.DependenciesInherit.Values {
 					wr.write(dp.GenDataXcode.Uuid.String())
 				}
 				scope.Close()
@@ -639,7 +639,7 @@ func (g *XcodeGenerator) genProjectPBXNativeTarget(wr *XcodeWriter, proj *Projec
 			{
 				scope := wr.NewArrayScope("dependencies")
 				if proj.TypeIsExeOrDll() {
-					for _, dp := range proj.DependenciesInherit {
+					for _, dp := range proj.DependenciesInherit.Values {
 						wr.write(dp.GenDataXcode.DependencyTargetUuid.String())
 					}
 				}
@@ -885,5 +885,5 @@ func (g *XcodeGenerator) genInfoPlistMacOSX(proj *Project) {
 	}
 
 	filename := g.Workspace.GenerateAbsPath + gd.InfoPlistFile
-	WriteTextFile(filename, wr.Buffer.String())
+	wr.WriteToFile(filename)
 }

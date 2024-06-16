@@ -2,7 +2,7 @@ package axe
 
 type VisualStudioConfig struct {
 	Version                      EnumVisualStudio
-	SlnHeader                    string
+	SlnHeader                    []string
 	ProjectTools                 string // e.g. 14.0
 	PlatformToolset              string // e.g. v140
 	WindowsTargetPlatformVersion string // e.g. 10.0
@@ -10,30 +10,37 @@ type VisualStudioConfig struct {
 
 // ----------------------------------------------------------------------------------------------------
 // ----------------------------------------------------------------------------------------------------
+var slnFileHeader2015 = []string{
+	"Microsoft Visual Studio Solution File, Format Version 12.00",
+	"# Visual Studio 14",
+	"VisualStudioVersion = 14.0.25420.1",
+	"MinimumVisualStudioVersion = 10.0.40219.1",
+	"",
+}
 
-const slnFileHeader2015 = `Microsoft Visual Studio Solution File, Format Version 12.00\r\n"
-					"# Visual Studio 14\r\n"
-					"VisualStudioVersion = 14.0.25420.1\r\n"
-					"MinimumVisualStudioVersion = 10.0.40219.1\r\n"
-					"\r\n`
+var slnFileHeader2017 = []string{
+	"Microsoft Visual Studio Solution File, Format Version 12.00",
+	"# Visual Studio 15",
+	"VisualStudioVersion = 15.0.26403.0",
+	"MinimumVisualStudioVersion = 10.0.40219.1",
+	"",
+}
 
-const slnFileHeader2017 = `Microsoft Visual Studio Solution File, Format Version 12.00\r\n"
-                    "# Visual Studio 15\r\n"
-                    "VisualStudioVersion = 15.0.26403.0\r\n"
-                    "MinimumVisualStudioVersion = 10.0.40219.1\r\n"
-                    "\r\n`
+var slnFileHeader2019 = []string{
+	"Microsoft Visual Studio Solution File, Format Version 12.00",
+	"# Visual Studio 16",
+	"VisualStudioVersion = 16.0.28803.352",
+	"MinimumVisualStudioVersion = 10.0.40219.1",
+	"",
+}
 
-const slnFileHeader2019 = `Microsoft Visual Studio Solution File, Format Version 12.00\r\n"
-                    "# Visual Studio 16\r\n"
-                    "VisualStudioVersion = 16.0.28803.352\r\n"
-                    "MinimumVisualStudioVersion = 10.0.40219.1\r\n"
-                    "\r\n`
-
-const slnFileHeader2022 = `Microsoft Visual Studio Solution File, Format Version 12.00\r\n"
-                    "# Visual Studio Version 17\r\n"
-                    "VisualStudioVersion = 17.0.31314.256\r\n"
-                    "MinimumVisualStudioVersion = 10.0.40219.1\r\n"
-                    "\r\n`
+var slnFileHeader2022 = []string{
+	"Microsoft Visual Studio Solution File, Format Version 12.00",
+	"# Visual Studio Version 17",
+	"VisualStudioVersion = 17.0.31314.256",
+	"MinimumVisualStudioVersion = 10.0.40219.1",
+	"",
+}
 
 // ----------------------------------------------------------------------------------------------------
 // ----------------------------------------------------------------------------------------------------
@@ -50,7 +57,7 @@ const (
 // ----------------------------------------------------------------------------------------------------
 // ----------------------------------------------------------------------------------------------------
 
-var VisualStudioSlnHeaderMap = map[EnumVisualStudio]string{
+var VisualStudioSlnHeaderMap = map[EnumVisualStudio][]string{
 	VisualStudio2015: slnFileHeader2015,
 	VisualStudio2017: slnFileHeader2017,
 	VisualStudio2019: slnFileHeader2019,

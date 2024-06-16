@@ -18,7 +18,8 @@ type VirtualFolder struct {
 
 type VirtualFolders struct {
 	DiskPath string
-	Folders  map[string]*VirtualFolder
+	Map      map[string]int
+	Folders  []*VirtualFolder
 	Root     *VirtualFolder
 }
 
@@ -30,28 +31,25 @@ func NewVirtualFolder() *VirtualFolder {
 	return c
 }
 
-func (f *VirtualFolders) GetOrAddParent(filePath string) *VirtualFolder {
+func (f *VirtualFolders) getOrAddParent(filePath string) *VirtualFolder {
 	dir, _ := PathUp(filePath)
 	if len(dir) == 0 || dir == "." {
 		return f.Root
 	}
 
-	v := f.Folders[dir]
-	if v == nil {
-		v = NewVirtualFolder()
+	v, created := f.getOrCreateFolder(dir)
+	if created {
 		v.Path = dir
 		v.DiskPath = filepath.Join(f.DiskPath, dir)
-
-		p := f.GetOrAddParent(dir)
+		p := f.getOrAddParent(dir)
 		p.Children = append(p.Children, v)
 		v.Parent = p
-		f.Folders[dir] = v
 	}
 
 	return v
 }
 
-func (c *VirtualFolder) Sort() {
+func (c *VirtualFolder) SortByKey() {
 	sort.Slice(c.Children, func(i, j int) bool {
 		return c.Children[i].Path < c.Children[j].Path
 	})
@@ -60,22 +58,40 @@ func (c *VirtualFolder) Sort() {
 	})
 
 	for _, child := range c.Children {
-		child.Sort()
+		child.SortByKey()
 	}
 }
 
 func NewVirtualFolders(diskPath string) *VirtualFolders {
 	v := &VirtualFolders{
 		DiskPath: diskPath,
-		Folders:  make(map[string]*VirtualFolder),
+		Map:      make(map[string]int),
 	}
 	v.Root = NewVirtualFolder()
-	v.Folders["."] = v.Root
+	v.Map["."] = len(v.Folders)
+	v.Folders = []*VirtualFolder{v.Root}
 	return v
 }
 
+func (f *VirtualFolders) getOrCreateFolder(key string) (*VirtualFolder, bool) {
+	if v, ok := f.Map[key]; ok {
+		return f.Folders[v], false
+	}
+	v := NewVirtualFolder()
+	f.Map[key] = len(f.Folders)
+	f.Folders = append(f.Folders, v)
+	return v, true
+}
+
 func (f *VirtualFolders) AddFile(file *FileEntry) {
-	p := f.GetOrAddParent(file.Path)
+	p := f.getOrAddParent(file.Path)
 	file.Parent = p
 	p.Files = append(p.Files, file)
+}
+
+func (f *VirtualFolders) SortByKey() {
+
+	if f.Root != nil {
+		f.Root.SortByKey()
+	}
 }

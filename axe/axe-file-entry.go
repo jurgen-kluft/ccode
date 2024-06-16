@@ -22,6 +22,7 @@ const (
 	FileTypeCSource
 	FileTypeCuHeader
 	FileTypeCuSource
+	FileTypeObjC
 	FileTypeIxx
 	FileTypeMxx
 )
@@ -57,19 +58,23 @@ func (fe *FileEntry) Init(path string, isGenerated bool) {
 
 	ext := PathExtension(fe.Path)
 	switch ext {
-	case "h", "hpp":
+	case ".h", ".hpp", ".inl":
 		fe.Type = FileTypeCppHeader
 		fe.ExcludedFromBuild = true
-	case "cpp", "cc", "cxx":
+	case ".cpp", ".cc", ".cxx":
 		fe.Type = FileTypeCppSource
-	case "c":
+	case ".c":
 		fe.Type = FileTypeCSource
-	case "cuh":
+	case ".cuh":
 		fe.Type = FileTypeCuHeader
-	case "cu":
+	case ".cu":
 		fe.Type = FileTypeCuSource
-	case "ixx":
+	case ".ixx":
 		fe.Type = FileTypeIxx
+	case ".m", ".mm":
+		fe.Type = FileTypeObjC
+	case ".mxx":
+		fe.Type = FileTypeMxx
 	}
 }
 
@@ -83,6 +88,10 @@ func (f *FileEntry) Is_CPP() bool {
 
 func (f *FileEntry) Is_C_or_CPP() bool {
 	return f.Is_C() || f.Is_CPP()
+}
+
+func (f *FileEntry) Is_ObjC() bool {
+	return f.Type == FileTypeObjC
 }
 
 func (f *FileEntry) Is_IXX() bool {
@@ -112,7 +121,7 @@ func (d *FileEntryDict) Add(path string, isGenerated bool) *FileEntry {
 	}
 
 	e := NewFileEntryInit(key, isGenerated)
-	d.Dict[key] = len(d.Values) - 1
+	d.Dict[key] = len(d.Values)
 	d.Keys = append(d.Keys, key)
 	d.Values = append(d.Values, e)
 	return e
@@ -120,48 +129,12 @@ func (d *FileEntryDict) Add(path string, isGenerated bool) *FileEntry {
 
 func (d *FileEntryDict) SortByKey() {
 	sort.Strings(d.Keys)
-	newList := []*FileEntry{}
+	sortedValues := make([]*FileEntry, 0, len(d.Values))
 	for _, k := range d.Keys {
-		newList = append(newList, d.Values[d.Dict[k]])
+		sortedValues = append(sortedValues, d.Values[d.Dict[k]])
 	}
-	d.Values = newList
-}
-
-// Custom sort for []FileEntry
-type EntrySort struct {
-	d *FileEntryDict
-	i []int
-}
-
-func (s EntrySort) Len() int {
-	return len(s.i)
-}
-
-func (s EntrySort) Swap(i, j int) {
-	s.i[i], s.i[j] = s.i[j], s.i[i]
-}
-
-func (s EntrySort) Less(i, j int) bool {
-	return s.d.Values[s.i[i]].Path < s.d.Values[s.i[j]].Path
-}
-
-func (d *FileEntryDict) SortByEntry() {
-
-	// Create a Values of indexes
-	indexes := make([]int, len(d.Values))
-	for i := range indexes {
-		indexes[i] = i
+	d.Values = sortedValues
+	for i, k := range d.Keys {
+		d.Dict[k] = i
 	}
-
-	// Sort the Values through the custom sort
-	sort.Sort(EntrySort{d, indexes})
-
-	// Create a new Values of Entries
-	newList := make([]*FileEntry, len(d.Values))
-	for i, v := range indexes {
-		newList[i] = d.Values[v]
-	}
-
-	// Replace the old Values with the new one
-	d.Values = newList
 }

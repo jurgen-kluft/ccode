@@ -1,17 +1,24 @@
 package axe
 
-import "strings"
-
+// --------------------------------------------------------------------------------------------
+// --------------------------------------------------------------------------------------------
 type XmlWriter struct {
-	Buffer     strings.Builder
+	writer     *LineWriter
 	Tags       []string
 	DoBeginTag bool
 	NoNewLine  bool
 }
 
 func NewXmlWriter() *XmlWriter {
-	return &XmlWriter{}
+	return &XmlWriter{writer: NewLineWriter()}
 }
+
+func (xml *XmlWriter) WriteToFile(filename string) error {
+	return xml.writer.WriteToFile(filename)
+}
+
+// --------------------------------------------------------------------------------------------
+// --------------------------------------------------------------------------------------------
 
 type XmlTagScope struct {
 	XmlWriter *XmlWriter
@@ -34,19 +41,23 @@ func (xml XmlTagScope) Close() {
 	}
 }
 
+// --------------------------------------------------------------------------------------------
+// XmlWriter implementation
+// --------------------------------------------------------------------------------------------
+
 func (xml *XmlWriter) WriteHeader() {
-	xml.Buffer.WriteString("<?xml version=\"1.0\" encoding=\"UTF-8\"?>")
+	xml.writer.Write("<?xml version=\"1.0\" encoding=\"UTF-8\"?>")
 }
 
 func (xml *XmlWriter) WriteDocType(name, publicId, systemId string) {
-	xml.NewLine(0)
-	xml.Buffer.WriteString("<!DOCTYPE ")
-	xml.Buffer.WriteString(name)
-	xml.Buffer.WriteString(" PUBLIC ")
+	xml.newLine(0)
+	xml.writer.Write("<!DOCTYPE ")
+	xml.writer.Write(name)
+	xml.writer.Write(" PUBLIC ")
 	xml.QuoteString(publicId)
-	xml.Buffer.WriteString(" ")
+	xml.writer.Write(" ")
 	xml.QuoteString(systemId)
-	xml.Buffer.WriteString(">")
+	xml.writer.Write(">")
 }
 
 func (xml *XmlWriter) TagScope(name string) *XmlTagScope {
@@ -56,9 +67,9 @@ func (xml *XmlWriter) TagScope(name string) *XmlTagScope {
 
 func (xml *XmlWriter) BeginTag(name string) {
 	xml.CloseBeginTag()
-	xml.NewLine(0)
-	xml.Buffer.WriteString("<")
-	xml.Buffer.WriteString(name)
+	xml.newLine(0)
+	xml.writer.Write("<")
+	xml.writer.Write(name)
 	xml.DoBeginTag = true
 	xml.Tags = append(xml.Tags, name)
 }
@@ -69,41 +80,41 @@ func (xml *XmlWriter) EndTag() {
 	}
 
 	if xml.DoBeginTag {
-		xml.Buffer.WriteString("/>")
+		xml.writer.Write("/>")
 		xml.DoBeginTag = false
 	} else {
 		xml.CloseBeginTag()
-		xml.NewLine(-1)
-		xml.Buffer.WriteString("</")
-		xml.Buffer.WriteString(xml.Tags[len(xml.Tags)-1])
-		xml.Buffer.WriteString(">")
+		xml.newLine(-1)
+		xml.writer.Write("</")
+		xml.writer.Write(xml.Tags[len(xml.Tags)-1])
+		xml.writer.Write(">")
 	}
 
 	xml.Tags = xml.Tags[:len(xml.Tags)-1]
 }
 
 func (xml *XmlWriter) Attr(name, value string) {
-	xml.Buffer.WriteString(" ")
-	xml.Buffer.WriteString(name)
-	xml.Buffer.WriteString("=")
+	xml.writer.Write(" ")
+	xml.writer.Write(name)
+	xml.writer.Write("=")
 	xml.QuoteString(value)
 }
 
 func (xml *XmlWriter) Body(text string) {
 	xml.CloseBeginTag()
-	xml.NewLine(0)
-	xml.Buffer.WriteString(text)
+	xml.newLine(0)
+	xml.writer.Write(text)
 }
 
-func (xml *XmlWriter) NewLine(offset int) {
+func (xml *XmlWriter) newLine(offset int) {
 	if xml.NoNewLine {
 		return
 	}
 
-	xml.Buffer.WriteString("\n")
+	xml.writer.NewLine()
 	n := len(xml.Tags) + offset
 	for i := 0; i < n; i++ {
-		xml.Buffer.WriteString("  ")
+		xml.writer.Write("  ")
 	}
 }
 
@@ -127,29 +138,29 @@ func (xml *XmlWriter) CloseBeginTag() {
 	if !xml.DoBeginTag {
 		return
 	}
-	xml.Buffer.WriteString(">")
+	xml.writer.Write(">")
 	xml.DoBeginTag = false
 }
 
 func (xml *XmlWriter) QuoteString(v string) {
-	xml.Buffer.WriteString("\"")
+	xml.writer.Write("\"")
 
 	for _, ch := range v {
 		switch ch {
 		case '"':
-			xml.Buffer.WriteString("&quot;")
+			xml.writer.Write("&quot;")
 		case '\'':
-			xml.Buffer.WriteString("&apos;")
+			xml.writer.Write("&apos;")
 		case '<':
-			xml.Buffer.WriteString("&lt;")
+			xml.writer.Write("&lt;")
 		case '>':
-			xml.Buffer.WriteString("&gt;")
+			xml.writer.Write("&gt;")
 		case '&':
-			xml.Buffer.WriteString("&amp;")
+			xml.writer.Write("&amp;")
 		default:
-			xml.Buffer.WriteRune(ch)
+			xml.writer.Write(string(ch))
 		}
 	}
 
-	xml.Buffer.WriteString("\"")
+	xml.writer.Write("\"")
 }

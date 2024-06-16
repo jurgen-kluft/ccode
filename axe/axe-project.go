@@ -141,6 +141,10 @@ func NewXcodeProjectConfig() *XcodeProjectConfig {
 	}
 }
 
+func NewMsDevProjectConfig() *MsDevProjectConfig {
+	return &MsDevProjectConfig{}
+}
+
 type Project struct {
 	Workspace           *Workspace  // The workspace this project is part of
 	Name                string      // The name of the project
@@ -158,7 +162,7 @@ type Project struct {
 	Configs             map[string]*Config
 	GeneratedFilesDir   string
 	Dependencies        *ProjectDependencies
-	DependenciesInherit []*Project
+	DependenciesInherit *ProjectDependencies
 	PchHeader           *FileEntry
 	Resolved            bool
 	Resolving           bool
@@ -173,15 +177,16 @@ func NewProject(ws *Workspace, name string, subPath string, projectType ProjectT
 		Name:                name,
 		Type:                projectType,
 		ProjectAbsPath:      filepath.Join(ws.WorkspaceAbsPath, subPath),
-		GenerateAbsPath:     filepath.Join(ws.WorkspaceAbsPath, subPath, ws.GenerateAbsPath, ws.Generator),
+		GenerateAbsPath:     ws.GenerateAbsPath,
 		Settings:            settings,
 		FileEntries:         NewFileEntryDict(ws),
 		ResourceDirs:        NewFileEntryDict(ws),
 		HasOutputTarget:     false,
 		Configs:             map[string]*Config{},
 		Dependencies:        NewProjectDependencies(),
-		DependenciesInherit: []*Project{},
-		GenDataXcode:        &XcodeProjectConfig{},
+		DependenciesInherit: NewProjectDependencies(),
+		GenDataXcode:        NewXcodeProjectConfig(),
+		GenDataMsDev:        NewMsDevProjectConfig(),
 	}
 	p.VirtualFolders = NewVirtualFolders(p.ProjectAbsPath) // The path that is the root path of the virtual folder/file structure
 
@@ -278,6 +283,7 @@ func (p *Project) resolve() error {
 	if p.Resolved {
 		return nil
 	}
+	p.Resolved = true
 
 	if p.Resolving {
 		return fmt.Errorf("cyclic dependencies in project %s", p.Name)
@@ -289,8 +295,8 @@ func (p *Project) resolve() error {
 	}
 	p.Resolving = false
 
-	//p.FileEntries.SortByKey()
-	//p.VirtualFolders.SortByKey()
+	p.FileEntries.SortByKey()
+	p.VirtualFolders.SortByKey()
 	return nil
 }
 
@@ -340,12 +346,10 @@ func (p *Project) resolveInternal() error {
 		for pcKey, pc := range p.Configs {
 			pc.inherit(dp.Configs[pcKey])
 		}
-
-		for _, dpdp := range dp.DependenciesInherit {
-			p.DependenciesInherit = append(p.DependenciesInherit, dpdp)
+		for _, dpdp := range dp.DependenciesInherit.Values {
+			p.DependenciesInherit.AddUnique(dpdp)
 		}
-
-		p.DependenciesInherit = append(p.DependenciesInherit, dp)
+		p.DependenciesInherit.AddUnique(dp)
 	}
 
 	for _, c := range p.Configs {
