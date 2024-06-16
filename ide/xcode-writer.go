@@ -1,4 +1,4 @@
-package xcode
+package ide
 
 import (
 	"fmt"
@@ -12,21 +12,21 @@ const (
 	Array
 )
 
-type Writer struct {
+type XcodeWriter struct {
 	Buffer        strings.Builder
 	Levels        []int8
 	NewlineNeeded bool
 }
 
-func NewWriter() *Writer {
-	w := &Writer{}
+func NewXcodeWriter() *XcodeWriter {
+	w := &XcodeWriter{}
 	w.Buffer = strings.Builder{}
 	w.Levels = make([]int8, 0)
 	w.NewlineNeeded = true
 	return w
 }
 
-func (w *Writer) StringBuilder() *strings.Builder {
+func (w *XcodeWriter) StringBuilder() *strings.Builder {
 	return &w.Buffer
 }
 
@@ -34,7 +34,7 @@ func (w *Writer) StringBuilder() *strings.Builder {
 // ------------------------------------------------------------------------------------------------
 
 type ObjectScope struct {
-	W *Writer
+	W *XcodeWriter
 }
 
 func (o *ObjectScope) Close() {
@@ -49,12 +49,12 @@ func (o *ObjectScope) NewObjectScope() *ObjectScope {
 	return scope
 }
 
-func (w *Writer) NewObjectScope(name string) *ObjectScope {
+func (w *XcodeWriter) NewObjectScope(name string) *ObjectScope {
 	w.beginObject(name)
 	return &ObjectScope{w}
 }
 
-func (w *Writer) beginObject(name string) {
+func (w *XcodeWriter) beginObject(name string) {
 	if len(name) > 0 {
 		w.memberName(name)
 	}
@@ -62,15 +62,15 @@ func (w *Writer) beginObject(name string) {
 	w.Levels = append(w.Levels, int8(Object))
 }
 
-func (w *Writer) endObject() {
+func (w *XcodeWriter) endObject() {
 	w.newline(-1)
 	w.Buffer.WriteString("}")
 
 	if len(w.Levels) == 0 {
-		panic("XCode Writer error endObject level")
+		panic("XCode XcodeWriter error endObject level")
 	}
 	if w.Levels[len(w.Levels)-1] != int8(Object) {
-		panic("XCode Writer error endObject")
+		panic("XCode XcodeWriter error endObject")
 	}
 	w.Levels = w.Levels[:len(w.Levels)-1]
 	w.writeTail()
@@ -80,7 +80,7 @@ func (w *Writer) endObject() {
 // ------------------------------------------------------------------------------------------------
 
 type ArrayScope struct {
-	W *Writer
+	W *XcodeWriter
 }
 
 func (a ArrayScope) Close() {
@@ -95,12 +95,12 @@ func (a ArrayScope) NewArrayScope() *ArrayScope {
 	return scope
 }
 
-func (w *Writer) NewArrayScope(name string) *ArrayScope {
+func (w *XcodeWriter) NewArrayScope(name string) *ArrayScope {
 	w.beginArray(name)
 	return &ArrayScope{w}
 }
 
-func (w *Writer) beginArray(name string) {
+func (w *XcodeWriter) beginArray(name string) {
 	if len(name) > 0 {
 		w.memberName(name)
 	}
@@ -108,14 +108,14 @@ func (w *Writer) beginArray(name string) {
 	w.Levels = append(w.Levels, int8(Array))
 }
 
-func (w *Writer) endArray() {
+func (w *XcodeWriter) endArray() {
 	w.Buffer.WriteString(")")
 
 	if len(w.Levels) == 0 {
-		panic("XCode Writer error endArray level")
+		panic("XCode XcodeWriter error endArray level")
 	}
 	if w.Levels[len(w.Levels)-1] != int8(Array) {
-		panic("XCode Writer error endArray")
+		panic("XCode XcodeWriter error endArray")
 	}
 	w.Levels = w.Levels[:len(w.Levels)-1]
 	w.writeTail()
@@ -124,15 +124,15 @@ func (w *Writer) endArray() {
 // ------------------------------------------------------------------------------------------------
 // ------------------------------------------------------------------------------------------------
 
-func (w *Writer) commentBlock(s string) {
+func (w *XcodeWriter) commentBlock(s string) {
 	w.Buffer.WriteString(" /* ")
 	w.Buffer.WriteString(s)
 	w.Buffer.WriteString(" */ ")
 }
 
-func (w *Writer) memberName(name string) {
+func (w *XcodeWriter) memberName(name string) {
 	if len(w.Levels) == 0 || w.Levels[len(w.Levels)-1] != int8(Object) {
-		panic("XCode Writer member must inside object scope")
+		panic("XCode XcodeWriter member must inside object scope")
 	}
 
 	w.newline(0)
@@ -140,16 +140,16 @@ func (w *Writer) memberName(name string) {
 	w.Buffer.WriteString(" = ")
 }
 
-func (w *Writer) member(name, value string) {
+func (w *XcodeWriter) member(name, value string) {
 	w.memberName(name)
 	w.write(value)
 }
 
-func (w *Writer) write(value string) {
+func (w *XcodeWriter) write(value string) {
 	w.Buffer.WriteString(value)
 }
 
-func (w *Writer) writeTail() {
+func (w *XcodeWriter) writeTail() {
 	if len(w.Levels) == 0 {
 		return
 	}
@@ -162,7 +162,7 @@ func (w *Writer) writeTail() {
 	}
 }
 
-func (w *Writer) quoteString(v string) {
+func (w *XcodeWriter) quoteString(v string) {
 	w.Buffer.WriteString("\"")
 
 	for _, ch := range v {
@@ -197,7 +197,7 @@ func (w *Writer) quoteString(v string) {
 	w.Buffer.WriteString("\"")
 }
 
-func (w *Writer) newline(offset int) {
+func (w *XcodeWriter) newline(offset int) {
 	if w.NewlineNeeded {
 		w.Buffer.WriteString("\n")
 		n := len(w.Levels) + offset

@@ -23,6 +23,35 @@ type MakeTarget interface {
 	ArchAsString() string
 }
 
+func NewMakeTarget(os string, compiler string, cpu string) MakeTarget {
+	target := &MakeTargetInstance{
+		Os:       os,
+		Compiler: compiler,
+		Cpu:      cpu,
+	}
+	target.MakeTarget = target
+	return target
+}
+
+func NewMakeTargetMacOS() MakeTarget {
+	arch := runtime.GOARCH
+	return NewMakeTarget(OS_MAC, COMPILER_CLANG, arch)
+}
+
+func NewMakeTargetWindows() MakeTarget {
+	return NewMakeTarget(OS_WINDOWS, COMPILER_VC, ARCH_X64)
+}
+
+func NewDefaultMakeTarget() MakeTarget {
+	// use golang internal 'runtime' variables to determine the default target
+	if strings.Contains(runtime.GOOS, "windows") {
+		return NewMakeTargetWindows()
+	} else if strings.Contains(runtime.GOOS, "darwin") {
+		return NewMakeTargetMacOS()
+	}
+	return NewMakeTarget(OS_LINUX, COMPILER_GCC, ARCH_X64)
+}
+
 const (
 	OS_LINUX   = "linux"
 	OS_WINDOWS = "windows"
@@ -94,32 +123,4 @@ func (t *MakeTargetInstance) CompilerAsString() string {
 
 func (t *MakeTargetInstance) ArchAsString() string {
 	return t.Cpu
-}
-
-func NewMakeTarget(os string, compiler string, cpu string) MakeTarget {
-	target := &MakeTargetInstance{
-		Os:       os,
-		Compiler: compiler,
-		Cpu:      cpu,
-	}
-	target.MakeTarget = target
-	return target
-}
-
-func NewMakeTargetAppleSilicon() MakeTarget {
-	return NewMakeTarget(OS_MAC, COMPILER_CLANG, ARCH_ARM64)
-}
-
-func NewMakeTargetWindows() MakeTarget {
-	return NewMakeTarget(OS_WINDOWS, COMPILER_VC, ARCH_X64)
-}
-
-func NewDefaultMakeTarget() MakeTarget {
-	// use golang internal 'runtime' variables to determine the default target
-	if strings.Contains(runtime.GOOS, "windows") {
-		return NewMakeTargetWindows()
-	} else if strings.Contains(runtime.GOOS, "darwin") {
-		return NewMakeTargetAppleSilicon()
-	}
-	return NewMakeTarget(OS_LINUX, COMPILER_GCC, ARCH_X64)
 }

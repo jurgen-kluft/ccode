@@ -1,4 +1,4 @@
-package xcode
+package axe
 
 type VisualStudioConfig struct {
 	Version                      EnumVisualStudio
@@ -7,8 +7,6 @@ type VisualStudioConfig struct {
 	PlatformToolset              string // e.g. v140
 	WindowsTargetPlatformVersion string // e.g. 10.0
 }
-
-var visualStudioDefaultConfig = &VisualStudioConfig{Version: VisualStudio2022, ProjectTools: "14.0", PlatformToolset: "v140", WindowsTargetPlatformVersion: "10.0"}
 
 // ----------------------------------------------------------------------------------------------------
 // ----------------------------------------------------------------------------------------------------
@@ -62,16 +60,28 @@ var VisualStudioSlnHeaderMap = map[EnumVisualStudio]string{
 // ----------------------------------------------------------------------------------------------------
 // ----------------------------------------------------------------------------------------------------
 
-func NewVisualStudioConfig(version EnumVisualStudio, tools string, platform string, target string) *VisualStudioConfig {
-	return &VisualStudioConfig{
+func NewVisualStudioConfig(version EnumVisualStudio) VisualStudioConfig {
+	tools := "14.0"
+	platform := "v140"
+	target := "10.0"
+
+	switch version {
+	case VisualStudio2017:
+		tools = "15.0"
+		platform = "v141"
+	case VisualStudio2019:
+		tools = "16.0"
+		platform = "v142"
+	case VisualStudio2022:
+		tools = "17.0"
+		platform = "v143"
+	}
+
+	return VisualStudioConfig{
 		Version:                      version,
 		SlnHeader:                    VisualStudioSlnHeaderMap[version],
 		ProjectTools:                 tools,
 		PlatformToolset:              platform,
 		WindowsTargetPlatformVersion: target,
 	}
-}
-
-func NewVisualStudioDefaultConfig() *VisualStudioConfig {
-	return NewVisualStudioConfig(visualStudioDefaultConfig.Version, visualStudioDefaultConfig.ProjectTools, visualStudioDefaultConfig.PlatformToolset, visualStudioDefaultConfig.WindowsTargetPlatformVersion)
 }

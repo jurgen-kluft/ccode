@@ -4,6 +4,7 @@ import (
 	"os"
 	"path/filepath"
 	"strings"
+	"unicode/utf8"
 )
 
 type PathParts struct {
@@ -84,6 +85,28 @@ func PathSplit(path string) PathParts {
 		parts.Name = ""
 	}
 
+	return parts
+}
+
+// PathSplitRelativeFilePath first makes sure the path is relative, then it splits
+//
+//	the path into each directory, filename and extension
+func PathSplitRelativeFilePath(path string, splitFilenameAndExtension bool) []string {
+	// e.g        /Documents/Books/Sci-fi/Asimov/IRobot.epub
+	// split into [Documents, Books, Sci-fi, Asimov, IRobot, epub]
+
+	// make sure the path is relative
+	if PathIsAbs(path) {
+		return nil
+	}
+
+	parts := strings.Split(path, "/") // split the path into parts where the last part is the filename
+	if splitFilenameAndExtension {    // do we keep the filename as it is or split it into filename and extension
+		filename := parts[len(parts)-1]                         // Get the filename
+		ext := filepath.Ext(filename)                           // Get the extension of the filename
+		parts[len(parts)-1] = strings.TrimSuffix(filename, ext) // Remove the extension from the filename
+		parts = append(parts, ext)                              // Add the extension to the parts
+	}
 	return parts
 }
 
@@ -169,5 +192,81 @@ func PathIsFile(path string) bool {
 	if fi, err := os.Stat(path); err == nil {
 		return !fi.IsDir()
 	}
+	return false
+}
+
+func MatchCharCaseInsensitive(a rune, b rune) bool {
+	if a >= 'A' && a <= 'Z' {
+		a += (a - 'A') + 'a'
+	}
+	if b >= 'A' && b <= 'Z' {
+		b += (b - 'A') + 'a'
+	}
+	return a == b
+}
+
+// Make this UTF-8 safe
+func PathMatchWildcard(path, wildcard string, ignoreCase bool) bool {
+	pb := 0
+	pe := len(path)
+
+	wb := 0
+	we := len(wildcard)
+
+	for pb < pe && wb < we {
+
+		pc, ps := utf8.DecodeRuneInString(path[pb:])
+		wc, ws := utf8.DecodeRuneInString(wildcard[wb:])
+
+		if wc == '?' {
+			pb += ps
+			wb += ws
+			continue
+		}
+
+		if ignoreCase {
+			if MatchCharCaseInsensitive(wc, pc) {
+				pb += ps
+				wb += ws
+				continue
+			}
+		} else {
+			if wildcard[wb] == path[pb] {
+				pb += ps
+				wb += ws
+				continue
+			}
+		}
+
+		if wc == '*' {
+			w1 := wb + ws
+			if w1 >= we {
+				return true
+			}
+
+			p1 := pb + ps
+			if p1 >= pe {
+				return false
+			}
+
+			pb = p1
+
+			pc, ps = utf8.DecodeRuneInString(path[pb:])
+			wc, ws = utf8.DecodeRuneInString(wildcard[w1:])
+
+			if pc == wc {
+				wb = w1
+			}
+
+			continue
+		}
+
+		return false
+	}
+
+	if pb == pe && wb == we {
+		return true
+	}
+
 	return false
 }

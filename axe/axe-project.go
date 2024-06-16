@@ -1,6 +1,12 @@
 package axe
 
-import "fmt"
+import (
+	"fmt"
+	"path/filepath"
+	"strings"
+
+	"github.com/jurgen-kluft/ccode/glob"
+)
 
 type ProjectType int
 
@@ -16,18 +22,98 @@ const (
 	ProjectTypeCppExe
 )
 
+func (t ProjectType) String() string {
+	switch t {
+	case ProjectTypeCHeaders:
+		return "c_headers"
+	case ProjectTypeCppHeaders:
+		return "cpp_headers"
+	case ProjectTypeCLib:
+		return "c_lib"
+	case ProjectTypeCExe:
+		return "c_exe"
+	case ProjectTypeCDll:
+		return "c_dll"
+	case ProjectTypeCppLib:
+		return "cpp_lib"
+	case ProjectTypeCppDll:
+		return "cpp_dll"
+	case ProjectTypeCppExe:
+		return "cpp_exe"
+	}
+
+	return "error"
+}
+
+type ExclusionFilter struct {
+	Exclusions []string
+}
+
+func (f *ExclusionFilter) IsExcluded(filepath string) bool {
+	parts := PathSplitRelativeFilePath(filepath, true)
+	for i := 0; i < len(parts)-1; i++ {
+		for _, exclusion := range f.Exclusions {
+			if strings.HasSuffix(parts[i], exclusion) {
+				return true
+			}
+		}
+	}
+	return false
+}
+
+func NewExclusionFilter(target MakeTarget) *ExclusionFilter {
+	if target.OSIsMac() {
+		return &ExclusionFilter{Exclusions: []string{"_win32", "_win64", "_pc", "_linux", "_nob"}}
+	} else if target.OSIsWindows() {
+		return &ExclusionFilter{Exclusions: []string{"_mac", "_macos", "_darwin", "_linux", "_unix", "_nob"}}
+	} else if target.OSIsLinux() {
+		return &ExclusionFilter{Exclusions: []string{"_win32", "_win64", "_pc", "_mac", "_macos", "_darwin", "_nob"}}
+	}
+	return &ExclusionFilter{Exclusions: []string{"_nob"}}
+}
+
+type ProjectDependencies struct {
+	Dict   map[string]int
+	Values []*Project
+}
+
+func NewProjectDependencies() *ProjectDependencies {
+	return &ProjectDependencies{
+		Dict:   map[string]int{},
+		Values: []*Project{},
+	}
+}
+
+func (pd *ProjectDependencies) AddUnique(p *Project) {
+	if _, ok := pd.Dict[p.Name]; !ok {
+		pd.Dict[p.Name] = len(pd.Values)
+		pd.Values = append(pd.Values, p)
+	}
+}
+
 type ProjectConfig struct {
-	Group                             string
-	Type                              string
-	GuiApp                            bool
-	PchHeader                         string
-	Dependencies                      []string
-	MultiThreadedBuild                Boolean
-	CppAsObjCpp                       Boolean
-	XcodeBundleIdentifier             string
-	MsDevProjectTools                 string
-	MsDevPlatformToolset              string
-	MsDevWindowsTargetPlatformVersion string
+	Group              string
+	Type               ProjectType // ccore compiler define (CCORE_GEN_TYPE_{Type})
+	IsGuiApp           bool
+	PchHeader          string
+	Dependencies       []string
+	MultiThreadedBuild Boolean
+	CppAsObjCpp        Boolean
+	Xcode              struct {
+		BundleIdentifier string
+	}
+	MsDev VisualStudioConfig
+}
+
+func NewProjectConfig() *ProjectConfig {
+	return &ProjectConfig{}
+}
+
+func NewVisualStudioProjectConfig(version EnumVisualStudio) *ProjectConfig {
+	config := &ProjectConfig{}
+	config.Dependencies = make([]string, 0)
+	config.MsDev = NewVisualStudioConfig(version)
+	return config
 }
 
 type XcodeProjectConfig struct {
@@ -55,31 +141,23 @@ func NewXcodeProjectConfig() *XcodeProjectConfig {
 	}
 }
 
-type Vs2015ProjectConfig struct {
-	VcxProj string
-	UUID    string
-}
-
-type MakefileProjectConfig struct {
-	Makefile string
-}
-
 type Project struct {
-	Workspace           *Workspace
-	Input               ProjectConfig
-	Group               string
+	Workspace           *Workspace  // The workspace this project is part of
+	Name                string      // The name of the project
+	Type                ProjectType // The type of the project
+	ProjectAbsPath      string      // The path where the project is located on disk, under the workspace directory
+	GenerateAbsPath     string      // Where the project will be saved on disk
+	Settings            *ProjectConfig
+	Group               *ProjectGroup
 	FileEntries         *FileEntryDict
 	ResourceDirs        *FileEntryDict
 	HasOutputTarget     bool
 	VirtualFolders      *VirtualFolders
 	PchCpp              *FileEntry
-	AxProjFilename      string
-	AxProjDir           string
-	Name                string
-	Type                ProjectType
+	ProjectFilename     string
 	Configs             map[string]*Config
-	GeneratedFileDir    string
-	Dependencies        []*Project
+	GeneratedFilesDir   string
+	Dependencies        *ProjectDependencies
 	DependenciesInherit []*Project
 	PchHeader           *FileEntry
 	Resolved            bool
@@ -89,29 +167,33 @@ type Project struct {
 	GenDataMsDev *MsDevProjectConfig
 }
 
-func NewProject(ws *Workspace, name string, input ProjectConfig) *Project {
+func NewProject(ws *Workspace, name string, subPath string, projectType ProjectType, settings *ProjectConfig) *Project {
 	p := &Project{
 		Workspace:           ws,
-		Input:               input,
+		Name:                name,
+		Type:                projectType,
+		ProjectAbsPath:      filepath.Join(ws.WorkspaceAbsPath, subPath),
+		GenerateAbsPath:     filepath.Join(ws.WorkspaceAbsPath, subPath, ws.GenerateAbsPath, ws.Generator),
+		Settings:            settings,
 		FileEntries:         NewFileEntryDict(ws),
 		ResourceDirs:        NewFileEntryDict(ws),
-		VirtualFolders:      &VirtualFolders{},
-		Name:                name,
+		HasOutputTarget:     false,
 		Configs:             map[string]*Config{},
-		Dependencies:        []*Project{},
+		Dependencies:        NewProjectDependencies(),
 		DependenciesInherit: []*Project{},
 		GenDataXcode:        &XcodeProjectConfig{},
 	}
+	p.VirtualFolders = NewVirtualFolders(p.ProjectAbsPath) // The path that is the root path of the virtual folder/file structure
 
-	p.Input.MultiThreadedBuild = Boolean(ws.Config.MultithreadBuild)
-	p.Input.MsDevPlatformToolset = ws.Config.VisualcPlatformToolset
-	p.Input.MsDevWindowsTargetPlatformVersion = ws.Config.VisualcWindowsTargetPlatformVersion
-	p.Input.XcodeBundleIdentifier = "$(PROJECT_NAME)"
+	p.Settings.MultiThreadedBuild = Boolean(ws.Config.MultiThreadedBuild)
+	p.Settings.MsDev.PlatformToolset = ws.Config.MsDev.PlatformToolset
+	p.Settings.MsDev.WindowsTargetPlatformVersion = ws.Config.MsDev.WindowsTargetPlatformVersion
+	p.Settings.Xcode.BundleIdentifier = "$(PROJECT_NAME)"
 
-	for _, src := range ws.Configs {
-		dst := &Config{}
-		dst.Init(p, src, src.Name)
-		p.Configs[src.Name] = dst
+	for _, srcConfig := range ws.Configs {
+		dstConfig := NewConfig(srcConfig.Name, ws, p)
+		p.Configs[srcConfig.Name] = dstConfig
+		dstConfig.init(srcConfig)
 	}
 
 	return p
@@ -120,11 +202,9 @@ func NewProject(ws *Workspace, name string, input ProjectConfig) *Project {
 func (p *Project) TypeIsCpp() bool {
 	return p.Type == ProjectTypeCppLib || p.Type == ProjectTypeCppDll || p.Type == ProjectTypeCppExe
 }
-
 func (p *Project) TypeIsC() bool {
 	return p.Type == ProjectTypeCLib || p.Type == ProjectTypeCDll || p.Type == ProjectTypeCExe
 }
-
 func (p *Project) TypeIsExe() bool {
 	return p.Type == ProjectTypeCExe || p.Type == ProjectTypeCppExe
 }
@@ -141,11 +221,15 @@ func (p *Project) TypeIsExeOrDll() bool {
 	return p.TypeIsExe() || p.TypeIsDll()
 }
 
-func (p *Project) DefaultConfig() *Config {
-	name := p.Workspace.DefaultConfigName()
+func (p *Project) GetDefaultConfig() *Config {
+	name := p.Workspace.Config.ConfigList[0]
+	return p.GetOrCreateConfig(name)
+}
+
+func (p *Project) GetOrCreateConfig(name string) *Config {
 	c := p.Configs[name]
 	if c == nil {
-		c = NewDefaultConfig(p.Workspace)
+		c = NewConfig(name, p.Workspace, p)
 		p.Configs[name] = c
 	}
 	return c
@@ -154,8 +238,8 @@ func (p *Project) DefaultConfig() *Config {
 func (p *Project) GenProjectGenUuid() {
 	gd := &XcodeProjectConfig{}
 	gd.XcodeProj = NewFileEntry()
-	gd.XcodeProj.Init(p.Workspace.BuildDir+p.Name+".xcodeproj", false, true, p.Workspace)
-	gd.PbxProj = gd.XcodeProj.AbsPath + "/project.pbxproj"
+	gd.XcodeProj.Init(filepath.Join(p.Workspace.GenerateAbsPath, p.Name, ".xcodeproj"), true)
+	gd.PbxProj = filepath.Join(gd.XcodeProj.Path, "project.pbxproj")
 	gd.Uuid = GenerateUUID()
 	gd.TargetUuid = GenerateUUID()
 	gd.TargetProductUuid = GenerateUUID()
@@ -166,13 +250,13 @@ func (p *Project) GenProjectGenUuid() {
 	gd.DependencyTargetProxyUuid = GenerateUUID()
 
 	for _, i := range p.FileEntries.Dict {
-		f := p.FileEntries.List[i]
+		f := p.FileEntries.Values[i]
 		f.GenDataXcode.UUID = GenerateUUID()
 		f.GenDataXcode.BuildUUID = GenerateUUID()
 	}
 
 	for _, i := range p.ResourceDirs.Dict {
-		f := p.FileEntries.List[i]
+		f := p.FileEntries.Values[i]
 		f.GenDataXcode.UUID = GenerateUUID()
 		f.GenDataXcode.BuildUUID = GenerateUUID()
 	}
@@ -190,78 +274,71 @@ func (p *Project) GenProjectGenUuid() {
 	p.GenDataXcode = gd
 }
 
-func (p *Project) Resolve() {
+func (p *Project) resolve() error {
 	if p.Resolved {
-		return
+		return nil
 	}
 
 	if p.Resolving {
-		panic("Cycle dependencies in project " + p.Name)
+		return fmt.Errorf("cyclic dependencies in project %s", p.Name)
 	}
 
 	p.Resolving = true
-	p.ResolveInternal()
+	if err := p.resolveInternal(); err != nil {
+		return err
+	}
 	p.Resolving = false
 
 	//p.FileEntries.SortByKey()
 	//p.VirtualFolders.SortByKey()
+	return nil
 }
 
-func (p *Project) ResolveInternal() error {
-	p.ResolveFiles()
+func (p *Project) resolveInternal() error {
+	p.resolveFiles()
 
-	if p.Input.Type == "cpp_exe" {
+	p.Type = p.Settings.Type
+
+	if p.Settings.Type == ProjectTypeCppExe {
 		p.HasOutputTarget = true
-		p.Type = ProjectTypeCppExe
-	} else if p.Input.Type == "c_exe" {
+	} else if p.Settings.Type == ProjectTypeCExe {
 		p.HasOutputTarget = true
-		p.Type = ProjectTypeCExe
-	} else if p.Input.Type == "cpp_dll" {
+	} else if p.Settings.Type == ProjectTypeCppDll {
 		p.HasOutputTarget = true
-		p.Type = ProjectTypeCppDll
-	} else if p.Input.Type == "c_dll" {
+	} else if p.Settings.Type == ProjectTypeCDll {
 		p.HasOutputTarget = true
-		p.Type = ProjectTypeCDll
-	} else if p.Input.Type == "cpp_lib" {
+	} else if p.Settings.Type == ProjectTypeCppLib {
 		p.HasOutputTarget = true
-		p.Type = ProjectTypeCppLib
-	} else if p.Input.Type == "c_lib" {
+	} else if p.Settings.Type == ProjectTypeCLib {
 		p.HasOutputTarget = true
-		p.Type = ProjectTypeCLib
-	} else if p.Input.Type == "c_headers" {
-		p.Type = ProjectTypeCHeaders
-	} else if p.Input.Type == "cpp_headers" {
-		p.Type = ProjectTypeCppHeaders
+	} else if p.Settings.Type == ProjectTypeCHeaders {
+		// ...
+	} else if p.Settings.Type == ProjectTypeCppHeaders {
+		// ...
 	} else {
-		// panic("Unknown project type " + p.Input.Type + " from project " + p.Name)
-		return fmt.Errorf("Unknown project type %s from project %s", p.Input.Type, p.Name)
+		return fmt.Errorf("unknown project type %q from project %q", p.Settings.Type, p.Name)
 	}
 
-	i := 0
 	for _, c := range p.Workspace.Configs {
-		c.Inherit(c)
-		i++
+		c.inherit(c)
 	}
 
-	for _, d := range p.Input.Dependencies {
+	for _, d := range p.Settings.Dependencies {
 		dp := p.Workspace.Projects[d]
 		if dp == nil {
-			//panic("Cannot find dependency project '" + d + "' for project '" + p.Name + "'")
-			return fmt.Errorf("Cannot find dependency project '%s' for project '%s'", d, p.Name)
+			return fmt.Errorf("cannot find dependency project '%s' for project '%s'", d, p.Name)
 		}
-
 		if dp == p {
-			// panic("project depends on itself, project='" + p.Name + "'")
 			return fmt.Errorf("project depends on itself, project='%s'", p.Name)
 		}
 
-		p.Dependencies = append(p.Dependencies, dp)
-		dp.Resolve()
+		p.Dependencies.AddUnique(dp)
+		if err := dp.resolve(); err != nil {
+			return err
+		}
 
-		i = 0
-		for _, c := range dp.Configs {
-			c.Inherit(c)
-			i++
+		for pcKey, pc := range p.Configs {
+			pc.inherit(dp.Configs[pcKey])
 		}
 
 		for _, dpdp := range dp.DependenciesInherit {
@@ -271,29 +348,43 @@ func (p *Project) ResolveInternal() error {
 		p.DependenciesInherit = append(p.DependenciesInherit, dp)
 	}
 
-	i = 0
 	for _, c := range p.Configs {
-		c.ComputeFinal()
-		i++
+		c.finalize()
 	}
 
 	return nil
 }
 
-func (p *Project) ResolveFiles() {
-	p.GeneratedFileDir = p.Workspace.BuildDir + "_generated_/" + p.Name + "/"
+func (p *Project) resolveFiles() {
+	p.GeneratedFilesDir = filepath.Join(p.Workspace.GenerateAbsPath, "_generated_", p.Name)
 
-	if p.Input.PchHeader != "" {
+	if p.Settings.PchHeader != "" {
 		p.PchHeader = NewFileEntry()
-		p.PchHeader.Init(p.Input.PchHeader, false, false, p.Workspace)
+		p.PchHeader.Init(p.Settings.PchHeader, false)
 	}
 
-	for _, i := range p.FileEntries.Dict {
-		f := p.FileEntries.List[i]
+	for _, f := range p.FileEntries.Values {
 		if f.Generated {
-			p.VirtualFolders.AddFile(p.Workspace.BuildDir, f)
+			p.VirtualFolders.AddFile(f)
 		} else {
-			p.VirtualFolders.AddFile(p.AxProjDir, f)
+			p.VirtualFolders.AddFile(f)
 		}
+	}
+}
+
+func (p *Project) GlobFiles(dir string, pattern string) {
+	pp := strings.Split(pattern, "^")
+	path := filepath.Join(dir, pp[0])
+	files, err := glob.GlobFiles(path, pp[1])
+	if err != nil {
+		panic(err)
+	}
+
+	exclusionFilter := NewExclusionFilter(p.Workspace.MakeTarget)
+	for _, file := range files {
+		if exclusionFilter.IsExcluded(file) {
+			continue
+		}
+		p.FileEntries.Add(filepath.Join(pp[0], file), false)
 	}
 }

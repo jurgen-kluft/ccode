@@ -1,25 +1,12 @@
 package axe
 
-// class ProjectGroup {
-// public:
-// 	String path;
-// 	Vector<ProjectGroup*> children;
-// 	Vector<Project*> projects;
-// 	ProjectGroup* parent {nullptr};
-
-// 	struct GenData_vs2015 {
-// 		String		uuid;
-// 	};
-// 	GenData_vs2015 genData_vs2015;
-// };
-
 type ProjectGroup struct {
-	Path          string
-	Children      []*ProjectGroup
-	Projects      []*Project
-	Parent        *ProjectGroup
-	GenDataVs2015 struct {
-		Uuid UUID
+	Path     string
+	Children []*ProjectGroup
+	Projects []*Project
+	Parent   *ProjectGroup
+	MsDev    struct {
+		UUID UUID
 	}
 }
 
@@ -30,21 +17,28 @@ func NewProjectGroup() *ProjectGroup {
 	}
 }
 
-type ProjectGroupDict struct {
-	Groups   map[string]int
-	Projects []*ProjectGroup
-	Root     *ProjectGroup
+type ProjectGroups struct {
+	Dict   map[string]int
+	Values []*ProjectGroup
+	Root   *ProjectGroup
 }
 
-func NewProjectGroupDict(root *ProjectGroup) *ProjectGroupDict {
-	return &ProjectGroupDict{
-		Groups:   make(map[string]int),
-		Projects: make([]*ProjectGroup, 0),
-		Root:     root,
+func NewProjectGroups(root *ProjectGroup) *ProjectGroups {
+	return &ProjectGroups{
+		Dict:   make(map[string]int),
+		Values: make([]*ProjectGroup, 0),
+		Root:   root,
 	}
 }
 
-func (d *ProjectGroupDict) GetOrAddParent(path string) *ProjectGroup {
+func (d *ProjectGroups) Add(p *Project) *ProjectGroup {
+	group := d.GetOrAddGroup(p.Settings.Group)
+	p.Group = group
+	group.Projects = append(group.Projects, p)
+	return group
+}
+
+func (d *ProjectGroups) GetOrAddParent(path string) *ProjectGroup {
 	parent, sub := PathUp(path)
 	if len(sub) == 0 {
 		return d.Root
@@ -52,12 +46,12 @@ func (d *ProjectGroupDict) GetOrAddParent(path string) *ProjectGroup {
 	return d.GetOrAddGroup(parent)
 }
 
-func (d *ProjectGroupDict) GetOrAddGroup(group string) *ProjectGroup {
-	if idx, ok := d.Groups[group]; ok {
-		return d.Projects[idx]
+func (d *ProjectGroups) GetOrAddGroup(group string) *ProjectGroup {
+	if idx, ok := d.Dict[group]; ok {
+		return d.Values[idx]
 	}
-	idx := len(d.Projects)
-	d.Groups[group] = idx
-	d.Projects = append(d.Projects, NewProjectGroup())
-	return d.Projects[idx]
+	idx := len(d.Values)
+	d.Dict[group] = idx
+	d.Values = append(d.Values, NewProjectGroup())
+	return d.Values[idx]
 }

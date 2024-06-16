@@ -32,7 +32,6 @@ type FileEntryXcodeConfig struct {
 }
 
 type FileEntry struct {
-	AbsPath           string
 	Path              string
 	Type              FileType
 	GenDataXcode      FileEntryXcodeConfig
@@ -45,23 +44,18 @@ func NewFileEntry() *FileEntry {
 	return &FileEntry{Parent: nil, ExcludedFromBuild: true, Generated: false}
 }
 
-func NewFileEntryInit(absPath string, isAbs bool, isGenerated bool, ws *Workspace) *FileEntry {
+func NewFileEntryInit(path string, isGenerated bool) *FileEntry {
 	fe := &FileEntry{Parent: nil, ExcludedFromBuild: true, Generated: false}
-	fe.Init(absPath, isAbs, isGenerated, ws)
+	fe.Init(path, isGenerated)
 	return fe
 }
 
-func (fe *FileEntry) Init(absPath string, isAbs bool, isGenerated bool, ws *Workspace) {
+func (fe *FileEntry) Init(path string, isGenerated bool) {
 
-	if isAbs {
-		fe.Path = absPath
-	} else {
-		fe.Path = PathGetRel(absPath, ws.BuildDir)
-	}
+	fe.Path = path
+	fe.ExcludedFromBuild = false
 
 	ext := PathExtension(fe.Path)
-
-	fe.ExcludedFromBuild = false
 	switch ext {
 	case "h", "hpp":
 		fe.Type = FileTypeCppHeader
@@ -99,7 +93,7 @@ type FileEntryDict struct {
 	Workspace *Workspace
 	Dict      map[string]int
 	Keys      []string
-	List      []*FileEntry
+	Values    []*FileEntry
 }
 
 func NewFileEntryDict(ws *Workspace) *FileEntryDict {
@@ -107,31 +101,20 @@ func NewFileEntryDict(ws *Workspace) *FileEntryDict {
 		Workspace: ws,
 		Dict:      make(map[string]int),
 		Keys:      []string{},
-		List:      []*FileEntry{},
+		Values:    []*FileEntry{},
 	}
 }
 
-func (d *FileEntryDict) Add(path, fromDir string, isGenerated bool) *FileEntry {
+func (d *FileEntryDict) Add(path string, isGenerated bool) *FileEntry {
 	key := path
-	isAbs := true
-
-	if fromDir != "" {
-		isAbs = PathIsAbs(path)
-		if isAbs {
-			key = path
-		} else {
-			key = PathMakeFullPath(fromDir, path)
-		}
-	}
-
 	if e, ok := d.Dict[key]; ok {
-		return d.List[e]
+		return d.Values[e]
 	}
 
-	e := NewFileEntryInit(key, isAbs, isGenerated, d.Workspace)
-	d.Dict[key] = len(d.List) - 1
+	e := NewFileEntryInit(key, isGenerated)
+	d.Dict[key] = len(d.Values) - 1
 	d.Keys = append(d.Keys, key)
-	d.List = append(d.List, e)
+	d.Values = append(d.Values, e)
 	return e
 }
 
@@ -139,9 +122,9 @@ func (d *FileEntryDict) SortByKey() {
 	sort.Strings(d.Keys)
 	newList := []*FileEntry{}
 	for _, k := range d.Keys {
-		newList = append(newList, d.List[d.Dict[k]])
+		newList = append(newList, d.Values[d.Dict[k]])
 	}
-	d.List = newList
+	d.Values = newList
 }
 
 // Custom sort for []FileEntry
@@ -159,26 +142,26 @@ func (s EntrySort) Swap(i, j int) {
 }
 
 func (s EntrySort) Less(i, j int) bool {
-	return s.d.List[s.i[i]].Path < s.d.List[s.i[j]].Path
+	return s.d.Values[s.i[i]].Path < s.d.Values[s.i[j]].Path
 }
 
 func (d *FileEntryDict) SortByEntry() {
 
-	// Create a List of indexes
-	indexes := make([]int, len(d.List))
+	// Create a Values of indexes
+	indexes := make([]int, len(d.Values))
 	for i := range indexes {
 		indexes[i] = i
 	}
 
-	// Sort the List through the custom sort
+	// Sort the Values through the custom sort
 	sort.Sort(EntrySort{d, indexes})
 
-	// Create a new List of Entries
-	newList := make([]*FileEntry, len(d.List))
+	// Create a new Values of Entries
+	newList := make([]*FileEntry, len(d.Values))
 	for i, v := range indexes {
-		newList[i] = d.List[v]
+		newList[i] = d.Values[v]
 	}
 
-	// Replace the old List with the new one
-	d.List = newList
+	// Replace the old Values with the new one
+	d.Values = newList
 }

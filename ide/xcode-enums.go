@@ -1,4 +1,4 @@
-package xcode
+package ide
 
 type ProductTypeEnum string
 

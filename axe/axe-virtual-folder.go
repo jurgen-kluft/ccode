@@ -6,14 +6,20 @@ import (
 )
 
 type VirtualFolder struct {
-	Path          string
 	DiskPath      string
+	Path          string
 	Children      []*VirtualFolder
 	Files         []*FileEntry
 	Parent        *VirtualFolder
 	GenData_xcode struct {
 		UUID UUID
 	}
+}
+
+type VirtualFolders struct {
+	DiskPath string
+	Folders  map[string]*VirtualFolder
+	Root     *VirtualFolder
 }
 
 func NewVirtualFolder() *VirtualFolder {
@@ -24,9 +30,9 @@ func NewVirtualFolder() *VirtualFolder {
 	return c
 }
 
-func (f *VirtualFolders) GetOrAddParent(baseDir, path string) *VirtualFolder {
-	dir, name := filepath.Split(filepath.Clean(path))
-	if len(name) == 0 {
+func (f *VirtualFolders) GetOrAddParent(filePath string) *VirtualFolder {
+	dir, _ := PathUp(filePath)
+	if len(dir) == 0 || dir == "." {
 		return f.Root
 	}
 
@@ -34,12 +40,11 @@ func (f *VirtualFolders) GetOrAddParent(baseDir, path string) *VirtualFolder {
 	if v == nil {
 		v = NewVirtualFolder()
 		v.Path = dir
-		v.DiskPath = filepath.Join(baseDir, dir)
+		v.DiskPath = filepath.Join(f.DiskPath, dir)
 
-		p := f.GetOrAddParent(baseDir, dir)
-		v.Parent = p
+		p := f.GetOrAddParent(dir)
 		p.Children = append(p.Children, v)
-
+		v.Parent = p
 		f.Folders[dir] = v
 	}
 
@@ -59,29 +64,18 @@ func (c *VirtualFolder) Sort() {
 	}
 }
 
-type VirtualFolders struct {
-	Folders map[string]*VirtualFolder
-	Root    *VirtualFolder
-}
-
-func NewVirtualFolders() *VirtualFolders {
-	return &VirtualFolders{
-		Folders: make(map[string]*VirtualFolder),
+func NewVirtualFolders(diskPath string) *VirtualFolders {
+	v := &VirtualFolders{
+		DiskPath: diskPath,
+		Folders:  make(map[string]*VirtualFolder),
 	}
+	v.Root = NewVirtualFolder()
+	v.Folders["."] = v.Root
+	return v
 }
 
-// void VirtualFolderDict::add(const StrView& baseDir, FileEntry& file) {
-// 	String rel;
-// 	Path::getRel(rel, file.absPath(), baseDir);
-
-// 	auto* p = getOrAddParent(baseDir, rel);
-// 	file.parent = p;
-// 	p->files.append(&file);
-// }
-
-func (f *VirtualFolders) AddFile(baseDir string, file *FileEntry) {
-	rel := file.AbsPath
-	p := f.GetOrAddParent(baseDir, rel)
+func (f *VirtualFolders) AddFile(file *FileEntry) {
+	p := f.GetOrAddParent(file.Path)
 	file.Parent = p
 	p.Files = append(p.Files, file)
 }
