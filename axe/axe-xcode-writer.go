@@ -1,4 +1,4 @@
-package ide
+package axe
 
 import (
 	"fmt"

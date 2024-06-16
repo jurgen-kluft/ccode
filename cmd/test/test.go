@@ -6,5 +6,5 @@ import (
 
 // main
 func main() {
-	ide.GenerateIde()
+	ide.GenerateMsDevIde()
 }

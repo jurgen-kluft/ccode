@@ -172,7 +172,7 @@ func TestRun(ccoreAbsPath string, projectName string) error {
 		return err
 	}
 
-	g := NewMsDevGenerator(ws)
+	g := axe.NewMsDevGenerator(ws)
 	g.Generate()
 
 	return nil

@@ -1,10 +1,7 @@
-package ide
+package axe
 
 import (
 	"path/filepath"
-
-	"github.com/jurgen-kluft/ccode/axe"
-	. "github.com/jurgen-kluft/ccode/axe"
 )
 
 type MsDevGenerator struct {
@@ -482,7 +479,7 @@ func (g *MsDevGenerator) genConfigOption(wr *XmlWriter, name string, value *KeyV
 func (g *MsDevGenerator) genWorkspace(ws *ExtraWorkspace) {
 	visualStudioSolutionFilepath := filepath.Join(g.Workspace.GenerateAbsPath, ws.Workspace.WorkspaceName+".sln")
 
-	sb := axe.NewLineWriter()
+	sb := NewLineWriter()
 
 	sb.WriteManyLines(ws.MsDev.SlnHeader)
 

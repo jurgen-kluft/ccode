@@ -1,9 +1,7 @@
-package ide
+package axe
 
 import (
 	"path/filepath"
-
-	. "github.com/jurgen-kluft/ccode/axe"
 )
 
 const (
@@ -573,14 +571,14 @@ func (g *XcodeGenerator) genProjectPBXNativeTarget(wr *XcodeWriter, proj *Projec
 	productType := ""
 	if proj.TypeIsExe() {
 		if proj.Settings.IsGuiApp || g.Workspace.MakeTarget.OSIsIos() {
-			productType = ProductTypeApplication.String()
+			productType = XcodeProductTypeApplication.String()
 		} else {
-			productType = ProductTypeTool.String()
+			productType = XcodeProductTypeTool.String()
 		}
 	} else if proj.TypeIsDll() {
-		productType = string(ProductTypeDynamicLib)
+		productType = string(XcodeProductTypeDynamicLib)
 	} else if proj.TypeIsLib() {
-		productType = string(ProductTypeStaticLib)
+		productType = string(XcodeProductTypeStaticLib)
 	} else {
 		panic("Unsupported project type")
 	}
