@@ -4,8 +4,8 @@ import (
 	"unicode/utf8"
 )
 
-// A stringBuilder is used to efficiently build a string using [stringBuilder.Write] methods.
-// It minimizes memory copying. The zero value is ready to use.
+// This custom stringBuilder is used to efficiently build a string using Write methods.
+// The main purpose is to  minimize memory re-allocations and copies when building a string.
 type stringBuilder struct {
 	cursor int
 	buf    []byte

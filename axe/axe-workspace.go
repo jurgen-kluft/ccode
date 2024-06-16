@@ -5,12 +5,15 @@ import (
 	"path/filepath"
 )
 
+// -----------------------------------------------------------------------------------------------------
+// -----------------------------------------------------------------------------------------------------
+
 type WorkspaceConfig struct {
-	ConfigList         []string           // The list of configurations to generate (e.g. ["Debug", "Release", "Debug Test", "Release Test"])
-	GenerateAbsPath    string             // The directory where the workspace and project files will be generated
-	StartupProject     string             // The name of the project that will be marked as the startup project
-	MultiThreadedBuild bool               // Whether to mark 'multi-threaded build' in the project files
-	MsDev              VisualStudioConfig // The project configuration to use for msdev
+	ConfigList         []string            // The list of configurations to generate (e.g. ["Debug", "Release", "Debug Test", "Release Test"])
+	GenerateAbsPath    string              // The directory where the workspace and project files will be generated
+	StartupProject     string              // The name of the project that will be marked as the startup project
+	MultiThreadedBuild bool                // Whether to mark 'multi-threaded build' in the project files
+	MsDev              *VisualStudioConfig // The project configuration to use for msdev
 }
 
 func NewWorkspaceConfig(workspacePath string, projectName string) *WorkspaceConfig {
@@ -24,6 +27,9 @@ func NewWorkspaceConfig(workspacePath string, projectName string) *WorkspaceConf
 	return wsc
 }
 
+// -----------------------------------------------------------------------------------------------------
+// -----------------------------------------------------------------------------------------------------
+
 type Workspace struct {
 	Config           *WorkspaceConfig           // The configuration for the workspace
 	WorkspaceName    string                     // The name of the workspace (e.g. For VisualStudio -> "cbase.sln", for Xcode -> "cbase.xcworkspace")
@@ -33,38 +39,33 @@ type Workspace struct {
 	Configs          map[string]*Config         // The configuration instances for the workspace
 	MakeTarget       MakeTarget                 // The make target for the workspace (e.g. contains details like OS, Compiler, Arch, etc.)
 	StartupProject   *Project                   // The project instance that will be marked as the startup project
-	Projects         map[string]*Project        // The project instances that are part of the workspace
+	ProjectList      *ProjectList               // The project list
 	ProjectGroups    *ProjectGroups             // The project groups that are part of the workspace
 	MasterWorkspace  *ExtraWorkspace            // The master workspace that contains all projects
 	ExtraWorkspaces  map[string]*ExtraWorkspace // The extra workspaces that contain a subset of the projects
 }
 
+func NewWorkspace(ccoreAbsPath string, projectRelPath string) *Workspace {
+	ws := &Workspace{
+		Config:          NewWorkspaceConfig(ccoreAbsPath, projectRelPath),
+		Configs:         make(map[string]*Config),
+		ProjectList:     NewProjectList(),
+		ProjectGroups:   NewProjectGroups(),
+		ExtraWorkspaces: make(map[string]*ExtraWorkspace),
+	}
+	ws.MakeTarget = NewDefaultMakeTarget()
+	ws.GenerateAbsPath = ws.Config.GenerateAbsPath
+	return ws
+}
+
+func (ws *Workspace) NewProject(name string, subPath string, projectType ProjectType, settings *ProjectConfig) *Project {
+	p := newProject(ws, name, subPath, projectType, settings)
+	ws.ProjectList.Add(p)
+	return p
+}
+
 func (ws *Workspace) DefaultConfigName() string {
 	return ws.Config.ConfigList[0]
-}
-
-type ExtraWorkspaceConfig struct {
-	Projects        []string
-	Groups          []string
-	ExcludeProjects []string
-	ExcludeGroups   []string
-}
-
-type ExtraWorkspace struct {
-	Workspace *Workspace
-	Name      string
-	Config    *ExtraWorkspaceConfig
-	Projects  []*Project
-	MsDev     VisualStudioConfig
-}
-
-func (ew *ExtraWorkspace) IndexOfProject(project *Project) int {
-	for i, p := range ew.Projects {
-		if p == project {
-			return i
-		}
-	}
-	return -1
 }
 
 func (ws *Workspace) AddConfig(config *Config) {
@@ -74,7 +75,7 @@ func (ws *Workspace) AddConfig(config *Config) {
 
 func (ws *Workspace) Finalize() error {
 	if ws.StartupProject == nil {
-		if startupProject, ok := ws.Projects[ws.Config.StartupProject]; ok {
+		if startupProject, ok := ws.ProjectList.Get(ws.Config.StartupProject); ok {
 			ws.StartupProject = startupProject
 		} else {
 			return fmt.Errorf("startup project \"%s\" not found as part of workspace \"%s\"", ws.Config.StartupProject, ws.WorkspaceName)
@@ -85,17 +86,18 @@ func (ws *Workspace) Finalize() error {
 		c.finalize()
 	}
 
-	for _, p := range ws.Projects {
+	for _, p := range ws.ProjectList.Values {
 		ws.ProjectGroups.Add(p)
 		if err := p.resolve(); err != nil {
 			return err
 		}
 	}
 
-	ws.MasterWorkspace.Name = ws.WorkspaceName
-	ws.MasterWorkspace.Projects = make([]*Project, 0, len(ws.Projects))
-	for _, p := range ws.Projects {
-		ws.MasterWorkspace.Projects = append(ws.MasterWorkspace.Projects, p)
+	ws.MasterWorkspace = NewExtraWorkspace(ws, ws.WorkspaceName)
+
+	ws.MasterWorkspace.ProjectList = NewProjectList()
+	for _, p := range ws.ProjectList.Values {
+		ws.MasterWorkspace.ProjectList.Add(p)
 	}
 
 	for _, ew := range ws.ExtraWorkspaces {
@@ -105,32 +107,55 @@ func (ws *Workspace) Finalize() error {
 	return nil
 }
 
+// -----------------------------------------------------------------------------------------------------
+// -----------------------------------------------------------------------------------------------------
+
+type ExtraWorkspaceConfig struct {
+	Projects        []string
+	Groups          []string
+	ExcludeProjects []string
+	ExcludeGroups   []string
+}
+
+type ExtraWorkspace struct {
+	Workspace   *Workspace
+	Name        string
+	Config      *ExtraWorkspaceConfig
+	ProjectList *ProjectList
+	MsDev       *VisualStudioConfig
+}
+
+func (ew *ExtraWorkspace) HasProject(project *Project) bool {
+	for _, p := range ew.ProjectList.Values {
+		if p == project {
+			return true
+		}
+	}
+	return false
+}
+
 func (ew *ExtraWorkspace) resolve() {
-	projectToAdd := make([]*Project, 0)
-	projectToRemove := make([]*Project, 0)
+	projectToAdd := NewProjectList()
+	projectToRemove := NewProjectList()
 
 	for _, name := range ew.Config.Projects {
-		for _, p := range ew.Workspace.Projects {
-			if PathMatchWildcard(p.Name, name, true) {
-				projectToAdd = append(projectToAdd, p)
-			}
-		}
+		ew.Workspace.ProjectList.CollectByWildcard(name, projectToAdd)
 	}
 
 	for _, name := range ew.Config.Groups {
 		for _, g := range ew.Workspace.ProjectGroups.Values {
 			if PathMatchWildcard(g.Path, name, true) {
 				for _, gp := range g.Projects {
-					projectToAdd = append(projectToAdd, gp)
+					projectToAdd.Add(gp)
 				}
 			}
 		}
 	}
 
 	for _, name := range ew.Config.ExcludeProjects {
-		for _, p := range ew.Workspace.Projects {
+		for _, p := range ew.Workspace.ProjectList.Values {
 			if PathMatchWildcard(p.Name, name, true) {
-				projectToRemove = append(projectToRemove, p)
+				projectToRemove.Add(p)
 			}
 		}
 	}
@@ -139,38 +164,24 @@ func (ew *ExtraWorkspace) resolve() {
 		for _, g := range ew.Workspace.ProjectGroups.Values {
 			if PathMatchWildcard(g.Path, name, true) {
 				for _, gp := range g.Projects {
-					projectToRemove = append(projectToRemove, gp)
+					projectToRemove.Add(gp)
 				}
 			}
 		}
 	}
 
-	for _, p := range projectToAdd {
-		if ew.IndexOfProject(p) >= 0 {
-			continue
-		}
-		if ew.IndexOfProject(p) >= 0 {
-			continue
-		}
-		ew.Projects = append(ew.Projects, p)
+	for _, p := range projectToAdd.Values {
+		ew.ProjectList.Add(p)
 	}
 }
 
-func NewWorkspace(ccoreAbsPath string, projectRelPath string) *Workspace {
-	ws := &Workspace{
-		Config:          NewWorkspaceConfig(ccoreAbsPath, projectRelPath),
-		Configs:         make(map[string]*Config),
-		Projects:        make(map[string]*Project),
-		ProjectGroups:   NewProjectGroups(nil),
-		ExtraWorkspaces: make(map[string]*ExtraWorkspace),
-	}
-	ws.MakeTarget = NewDefaultMakeTarget()
-	ws.GenerateAbsPath = ws.Config.GenerateAbsPath
-	ws.MasterWorkspace = &ExtraWorkspace{
+func NewExtraWorkspace(ws *Workspace, name string) *ExtraWorkspace {
+	ew := &ExtraWorkspace{
 		Workspace: ws,
-		Config: &ExtraWorkspaceConfig{
-			Projects: []string{"*"},
-		},
+		Name:      name,
+		MsDev:     ws.Config.MsDev,
+		Config:    &ExtraWorkspaceConfig{},
 	}
-	return ws
+	ew.MsDev = ws.Config.MsDev
+	return ew
 }

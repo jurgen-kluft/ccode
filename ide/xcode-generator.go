@@ -63,14 +63,13 @@ func (g *XcodeGenerator) Generate() {
 }
 
 func (g *XcodeGenerator) genWorkSpace() {
-	// g.Workspace.XcodeWorkspace = g.Workspace.GenerateAbsPath + g.Workspace.WorkspaceName + ".xcworkspace"
-	xcodeWorkspace := g.Workspace.GenerateAbsPath + g.Workspace.WorkspaceName + ".xcworkspace"
+	xcodeWorkspace := filepath.Join(g.Workspace.GenerateAbsPath, g.Workspace.WorkspaceName+".xcworkspace")
 
-	for _, proj := range g.Workspace.Projects {
+	for _, proj := range g.Workspace.ProjectList.Values {
 		g.genProjectGenUuid(proj)
 	}
 
-	for _, proj := range g.Workspace.Projects {
+	for _, proj := range g.Workspace.ProjectList.Values {
 		g.genProject(proj)
 	}
 
@@ -82,8 +81,7 @@ func (g *XcodeGenerator) genWorkSpace() {
 		g.genWorkspaceGroup(wr, g.Workspace.ProjectGroups.Root)
 	}
 
-	filename := xcodeWorkspace + "/contents.xcworkspacedata"
-	wr.WriteToFile(filename)
+	wr.WriteToFile(filepath.Join(xcodeWorkspace, "contents.xcworkspacedata"))
 }
 
 func (g *XcodeGenerator) genWorkspaceGroup(wr *XmlWriter, group *ProjectGroup) {

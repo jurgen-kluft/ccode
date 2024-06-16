@@ -89,7 +89,7 @@ func TestRun(ccoreAbsPath string, projectName string) error {
 		cbaseProjectConfig.MultiThreadedBuild = true
 		cbaseProjectConfig.CppAsObjCpp = false
 
-		cbase_lib = axe.NewProject(ws, "cbase_lib", "cbase", axe.ProjectTypeCppLib, cbaseProjectConfig)
+		cbase_lib = ws.NewProject("cbase_lib", "cbase", axe.ProjectTypeCppLib, cbaseProjectConfig)
 		cbase_lib.ProjectFilename = "cbase_lib"
 		cbase_lib.GlobFiles(filepath.Join(ccoreAbsPath, "cbase"), "source/main/cpp/^**/*.cpp")
 		cbase_lib.GlobFiles(filepath.Join(ccoreAbsPath, "cbase"), "source/main/cpp/^**/*.m")
@@ -114,7 +114,7 @@ func TestRun(ccoreAbsPath string, projectName string) error {
 		ccoreProjectConfig.MultiThreadedBuild = true
 		ccoreProjectConfig.CppAsObjCpp = false
 
-		ccore_lib = axe.NewProject(ws, "ccore_lib", "ccore", axe.ProjectTypeCppLib, ccoreProjectConfig)
+		ccore_lib = ws.NewProject("ccore_lib", "ccore", axe.ProjectTypeCppLib, ccoreProjectConfig)
 		ccore_lib.ProjectFilename = "ccore_lib"
 		ccore_lib.GlobFiles(filepath.Join(ccoreAbsPath, "ccore"), "source/main/cpp/^**/*.cpp")
 		ccore_lib.GlobFiles(filepath.Join(ccoreAbsPath, "ccore"), "source/main/cpp/^**/*.m")
@@ -139,7 +139,7 @@ func TestRun(ccoreAbsPath string, projectName string) error {
 		cunittestProjectConfig.MultiThreadedBuild = true
 		cunittestProjectConfig.CppAsObjCpp = false
 
-		cunittest_lib = axe.NewProject(ws, "cunittest_lib", "cunittest", axe.ProjectTypeCppLib, cunittestProjectConfig)
+		cunittest_lib = ws.NewProject("cunittest_lib", "cunittest", axe.ProjectTypeCppLib, cunittestProjectConfig)
 		cunittest_lib.ProjectFilename = "cunittest"
 		cunittest_lib.GlobFiles(filepath.Join(ccoreAbsPath, "cunittest"), "source/main/cpp/^**/*.cpp")
 		cunittest_lib.GlobFiles(filepath.Join(ccoreAbsPath, "cunittest"), "source/main/include/^**/*.h")
@@ -159,7 +159,7 @@ func TestRun(ccoreAbsPath string, projectName string) error {
 		cbaseTestProjectConfig.MultiThreadedBuild = true
 		cbaseTestProjectConfig.CppAsObjCpp = false
 
-		cbase_unittest = axe.NewProject(ws, "cbase_unittest", "cbase", axe.ProjectTypeCppExe, cbaseTestProjectConfig)
+		cbase_unittest = ws.NewProject("cbase_unittest", "cbase", axe.ProjectTypeCppExe, cbaseTestProjectConfig)
 		cbase_unittest.ProjectFilename = "cbase_unittest"
 		cbase_unittest.GlobFiles(filepath.Join(ccoreAbsPath, "cbase"), "source/test/cpp/^**/*.cpp")
 		cbase_unittest.GlobFiles(filepath.Join(ccoreAbsPath, "cbase"), "source/test/include/^**/*.h")
@@ -167,11 +167,6 @@ func TestRun(ccoreAbsPath string, projectName string) error {
 		createDefaultProjectConfiguration(cbase_unittest, "Debug Test")
 		createDefaultProjectConfiguration(cbase_unittest, "Release Test")
 	}
-
-	ws.Projects["cbase_lib"] = cbase_lib
-	ws.Projects["ccore_lib"] = ccore_lib
-	ws.Projects["cunittest_lib"] = cunittest_lib
-	ws.Projects["cbase_unittest"] = cbase_unittest
 
 	if err := ws.Finalize(); err != nil {
 		return err

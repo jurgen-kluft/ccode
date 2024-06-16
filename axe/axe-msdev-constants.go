@@ -67,7 +67,7 @@ var VisualStudioSlnHeaderMap = map[EnumVisualStudio][]string{
 // ----------------------------------------------------------------------------------------------------
 // ----------------------------------------------------------------------------------------------------
 
-func NewVisualStudioConfig(version EnumVisualStudio) VisualStudioConfig {
+func NewVisualStudioConfig(version EnumVisualStudio) *VisualStudioConfig {
 	tools := "14.0"
 	platform := "v140"
 	target := "10.0"
@@ -84,7 +84,7 @@ func NewVisualStudioConfig(version EnumVisualStudio) VisualStudioConfig {
 		platform = "v143"
 	}
 
-	return VisualStudioConfig{
+	return &VisualStudioConfig{
 		Version:                      version,
 		SlnHeader:                    VisualStudioSlnHeaderMap[version],
 		ProjectTools:                 tools,

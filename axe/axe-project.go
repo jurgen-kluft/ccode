@@ -8,6 +8,9 @@ import (
 	"github.com/jurgen-kluft/ccode/glob"
 )
 
+// -----------------------------------------------------------------------------------------------------
+// -----------------------------------------------------------------------------------------------------
+
 type ProjectType int
 
 const (
@@ -45,51 +48,8 @@ func (t ProjectType) String() string {
 	return "error"
 }
 
-type ExclusionFilter struct {
-	Exclusions []string
-}
-
-func (f *ExclusionFilter) IsExcluded(filepath string) bool {
-	parts := PathSplitRelativeFilePath(filepath, true)
-	for i := 0; i < len(parts)-1; i++ {
-		for _, exclusion := range f.Exclusions {
-			if strings.HasSuffix(parts[i], exclusion) {
-				return true
-			}
-		}
-	}
-	return false
-}
-
-func NewExclusionFilter(target MakeTarget) *ExclusionFilter {
-	if target.OSIsMac() {
-		return &ExclusionFilter{Exclusions: []string{"_win32", "_win64", "_pc", "_linux", "_nob"}}
-	} else if target.OSIsWindows() {
-		return &ExclusionFilter{Exclusions: []string{"_mac", "_macos", "_darwin", "_linux", "_unix", "_nob"}}
-	} else if target.OSIsLinux() {
-		return &ExclusionFilter{Exclusions: []string{"_win32", "_win64", "_pc", "_mac", "_macos", "_darwin", "_nob"}}
-	}
-	return &ExclusionFilter{Exclusions: []string{"_nob"}}
-}
-
-type ProjectDependencies struct {
-	Dict   map[string]int
-	Values []*Project
-}
-
-func NewProjectDependencies() *ProjectDependencies {
-	return &ProjectDependencies{
-		Dict:   map[string]int{},
-		Values: []*Project{},
-	}
-}
-
-func (pd *ProjectDependencies) AddUnique(p *Project) {
-	if _, ok := pd.Dict[p.Name]; !ok {
-		pd.Dict[p.Name] = len(pd.Values)
-		pd.Values = append(pd.Values, p)
-	}
-}
+// -----------------------------------------------------------------------------------------------------
+// -----------------------------------------------------------------------------------------------------
 
 type ProjectConfig struct {
 	Group              string
@@ -102,7 +62,7 @@ type ProjectConfig struct {
 	Xcode              struct {
 		BundleIdentifier string
 	}
-	MsDev VisualStudioConfig
+	MsDev *VisualStudioConfig
 }
 
 func NewProjectConfig() *ProjectConfig {
@@ -115,6 +75,9 @@ func NewVisualStudioProjectConfig(version EnumVisualStudio) *ProjectConfig {
 	config.MsDev = NewVisualStudioConfig(version)
 	return config
 }
+
+// -----------------------------------------------------------------------------------------------------
+// -----------------------------------------------------------------------------------------------------
 
 type XcodeProjectConfig struct {
 	XcodeProj                 *FileEntry
@@ -145,6 +108,49 @@ func NewMsDevProjectConfig() *MsDevProjectConfig {
 	return &MsDevProjectConfig{}
 }
 
+// -----------------------------------------------------------------------------------------------------
+// -----------------------------------------------------------------------------------------------------
+
+type ProjectList struct {
+	Dict   map[string]int
+	Values []*Project
+	Keys   []string
+}
+
+func NewProjectList() *ProjectList {
+	return &ProjectList{
+		Dict:   map[string]int{},
+		Values: []*Project{},
+		Keys:   []string{},
+	}
+}
+
+func (p *ProjectList) Add(project *Project) {
+	if _, ok := p.Dict[project.Name]; !ok {
+		p.Dict[project.Name] = len(p.Values)
+		p.Values = append(p.Values, project)
+		p.Keys = append(p.Keys, project.Name)
+	}
+}
+
+func (p *ProjectList) Get(name string) (*Project, bool) {
+	if i, ok := p.Dict[name]; ok {
+		return p.Values[i], true
+	}
+	return nil, false
+}
+
+func (p *ProjectList) CollectByWildcard(name string, list *ProjectList) {
+	for _, p := range p.Values {
+		if PathMatchWildcard(p.Name, name, true) {
+			list.Add(p)
+		}
+	}
+}
+
+// -----------------------------------------------------------------------------------------------------
+// -----------------------------------------------------------------------------------------------------
+
 type Project struct {
 	Workspace           *Workspace  // The workspace this project is part of
 	Name                string      // The name of the project
@@ -161,8 +167,8 @@ type Project struct {
 	ProjectFilename     string
 	Configs             map[string]*Config
 	GeneratedFilesDir   string
-	Dependencies        *ProjectDependencies
-	DependenciesInherit *ProjectDependencies
+	Dependencies        *ProjectList
+	DependenciesInherit *ProjectList
 	PchHeader           *FileEntry
 	Resolved            bool
 	Resolving           bool
@@ -171,7 +177,7 @@ type Project struct {
 	GenDataMsDev *MsDevProjectConfig
 }
 
-func NewProject(ws *Workspace, name string, subPath string, projectType ProjectType, settings *ProjectConfig) *Project {
+func newProject(ws *Workspace, name string, subPath string, projectType ProjectType, settings *ProjectConfig) *Project {
 	p := &Project{
 		Workspace:           ws,
 		Name:                name,
@@ -183,8 +189,8 @@ func NewProject(ws *Workspace, name string, subPath string, projectType ProjectT
 		ResourceDirs:        NewFileEntryDict(ws),
 		HasOutputTarget:     false,
 		Configs:             map[string]*Config{},
-		Dependencies:        NewProjectDependencies(),
-		DependenciesInherit: NewProjectDependencies(),
+		Dependencies:        NewProjectList(),
+		DependenciesInherit: NewProjectList(),
 		GenDataXcode:        NewXcodeProjectConfig(),
 		GenDataMsDev:        NewMsDevProjectConfig(),
 	}
@@ -330,15 +336,16 @@ func (p *Project) resolveInternal() error {
 	}
 
 	for _, d := range p.Settings.Dependencies {
-		dp := p.Workspace.Projects[d]
-		if dp == nil {
+		dp, ok := p.Workspace.ProjectList.Get(d)
+		if !ok {
 			return fmt.Errorf("cannot find dependency project '%s' for project '%s'", d, p.Name)
 		}
+
 		if dp == p {
 			return fmt.Errorf("project depends on itself, project='%s'", p.Name)
 		}
 
-		p.Dependencies.AddUnique(dp)
+		p.Dependencies.Add(dp)
 		if err := dp.resolve(); err != nil {
 			return err
 		}
@@ -347,9 +354,9 @@ func (p *Project) resolveInternal() error {
 			pc.inherit(dp.Configs[pcKey])
 		}
 		for _, dpdp := range dp.DependenciesInherit.Values {
-			p.DependenciesInherit.AddUnique(dpdp)
+			p.DependenciesInherit.Add(dpdp)
 		}
-		p.DependenciesInherit.AddUnique(dp)
+		p.DependenciesInherit.Add(dp)
 	}
 
 	for _, c := range p.Configs {
@@ -374,6 +381,36 @@ func (p *Project) resolveFiles() {
 			p.VirtualFolders.AddFile(f)
 		}
 	}
+}
+
+// -----------------------------------------------------------------------------------------------------
+// -----------------------------------------------------------------------------------------------------
+
+type ExclusionFilter struct {
+	Exclusions []string
+}
+
+func (f *ExclusionFilter) IsExcluded(filepath string) bool {
+	parts := PathSplitRelativeFilePath(filepath, true)
+	for i := 0; i < len(parts)-1; i++ {
+		for _, exclusion := range f.Exclusions {
+			if strings.HasSuffix(parts[i], exclusion) {
+				return true
+			}
+		}
+	}
+	return false
+}
+
+func NewExclusionFilter(target MakeTarget) *ExclusionFilter {
+	if target.OSIsMac() {
+		return &ExclusionFilter{Exclusions: []string{"_win32", "_win64", "_pc", "_linux", "_nob"}}
+	} else if target.OSIsWindows() {
+		return &ExclusionFilter{Exclusions: []string{"_mac", "_macos", "_darwin", "_linux", "_unix", "_nob"}}
+	} else if target.OSIsLinux() {
+		return &ExclusionFilter{Exclusions: []string{"_win32", "_win64", "_pc", "_mac", "_macos", "_darwin", "_nob"}}
+	}
+	return &ExclusionFilter{Exclusions: []string{"_nob"}}
 }
 
 func (p *Project) GlobFiles(dir string, pattern string) {

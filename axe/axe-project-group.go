@@ -10,8 +10,9 @@ type ProjectGroup struct {
 	}
 }
 
-func NewProjectGroup() *ProjectGroup {
+func NewProjectGroup(path string) *ProjectGroup {
 	return &ProjectGroup{
+		Path:     path,
 		Children: make([]*ProjectGroup, 0),
 		Projects: make([]*Project, 0),
 	}
@@ -23,12 +24,18 @@ type ProjectGroups struct {
 	Root   *ProjectGroup
 }
 
-func NewProjectGroups(root *ProjectGroup) *ProjectGroups {
-	return &ProjectGroups{
+func NewProjectGroups() *ProjectGroups {
+	g := &ProjectGroups{
 		Dict:   make(map[string]int),
 		Values: make([]*ProjectGroup, 0),
-		Root:   root,
+		Root:   nil,
 	}
+
+	g.Root = NewProjectGroup("<group_root>")
+	g.Dict["."] = 0
+	g.Values = append(g.Values, g.Root)
+
+	return g
 }
 
 func (d *ProjectGroups) Add(p *Project) *ProjectGroup {
@@ -39,19 +46,27 @@ func (d *ProjectGroups) Add(p *Project) *ProjectGroup {
 }
 
 func (d *ProjectGroups) GetOrAddParent(path string) *ProjectGroup {
-	parent, sub := PathUp(path)
-	if len(sub) == 0 {
+	parent, _ := PathUp(path)
+	if len(parent) == 0 || parent == "." {
 		return d.Root
 	}
 	return d.GetOrAddGroup(parent)
 }
 
-func (d *ProjectGroups) GetOrAddGroup(group string) *ProjectGroup {
-	if idx, ok := d.Dict[group]; ok {
+func (d *ProjectGroups) GetOrAddGroup(path string) *ProjectGroup {
+	if idx, ok := d.Dict[path]; ok {
 		return d.Values[idx]
 	}
+
+	v := NewProjectGroup(path)
+
 	idx := len(d.Values)
-	d.Dict[group] = idx
-	d.Values = append(d.Values, NewProjectGroup())
-	return d.Values[idx]
+	d.Dict[path] = idx
+	d.Values = append(d.Values, v)
+
+	p := d.GetOrAddParent(path)
+	v.Parent = p
+	p.Children = append(p.Children, v)
+
+	return v
 }

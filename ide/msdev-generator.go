@@ -23,7 +23,7 @@ func NewMsDevGenerator(ws *Workspace) *MsDevGenerator {
 }
 
 func (g *MsDevGenerator) Generate() {
-	for _, p := range g.Workspace.Projects {
+	for _, p := range g.Workspace.ProjectList.Values {
 		g.genProject(p)
 		g.genProjectFilters(p)
 	}
@@ -44,7 +44,7 @@ func (g *MsDevGenerator) init(ws *Workspace) {
 		g.VcxProjCpu = "Win32"
 	}
 
-	for _, p := range ws.Projects {
+	for _, p := range ws.ProjectList.Values {
 		g.genProject(p)
 		g.genProjectFilters(p)
 	}
@@ -488,7 +488,7 @@ func (g *MsDevGenerator) genWorkspace(ws *ExtraWorkspace) {
 
 	{
 		sb.WriteLines("", "# ---- projects ----", "")
-		for _, proj := range ws.Projects {
+		for _, proj := range ws.ProjectList.Values {
 			sb.Write("Project(\"{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}\") = ")
 			sb.WriteLine("\"" + proj.Name + "\", \"" + proj.Name + ".vcxproj\", \"" + proj.GenDataMsDev.UUID.String() + "\"")
 
@@ -543,7 +543,7 @@ func (g *MsDevGenerator) genWorkspace(ws *ExtraWorkspace) {
 				if proj == nil {
 					continue
 				}
-				if ws.IndexOfProject(proj) < 0 {
+				if !ws.HasProject(proj) {
 					continue
 				}
 				sb.Write("\t\t")
@@ -570,7 +570,7 @@ func (g *MsDevGenerator) genProjectFilters(proj *Project) {
 		wr.Attr("ToolsVersion", "4.0")
 		wr.Attr("xmlns", "http://schemas.microsoft.com/developer/msbuild/2003")
 
-		if proj.PchCpp.Path != "" {
+		if proj.PchCpp != nil && len(proj.PchCpp.Path) > 0 {
 			proj.VirtualFolders.AddFile(proj.PchCpp)
 		}
 
