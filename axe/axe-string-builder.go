@@ -69,16 +69,6 @@ func (b *stringBuilder) Write(p []byte) int {
 	return len(p)
 }
 
-// WriteByte appends the byte c to b's buffer
-func (b *stringBuilder) WriteByte(c byte) {
-	n := 1
-	if cap(b.buf)-b.cursor < n {
-		b.grow(n)
-	}
-	b.buf[b.cursor] = c
-	b.cursor += 1
-}
-
 // WriteRune appends the UTF-8 encoding of Unicode code point r to b's buffer.
 // It returns the length of r and a nil error.
 func (b *stringBuilder) WriteRune(r rune) int {
