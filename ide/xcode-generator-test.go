@@ -146,7 +146,7 @@ func (x *XcodeTestGenerator) TestRun(ccoreAbsPath string, projectName string) er
 		return err
 	}
 
-	g := axe.NewMsDevGenerator(ws)
+	g := axe.NewXcodeGenerator(ws)
 	g.Generate()
 
 	return nil
