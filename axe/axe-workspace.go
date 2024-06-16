@@ -9,7 +9,7 @@ import (
 // -----------------------------------------------------------------------------------------------------
 
 type WorkspaceConfig struct {
-	ConfigList         []string            // The list of configurations to generate (e.g. ["Debug", "Release", "Debug Test", "Release Test"])
+	ConfigList         []string            // The list of configurations to generate (e.g. ["Debug", "Release", "DebugTest", "ReleaseTest"])
 	GenerateAbsPath    string              // The directory where the workspace and project files will be generated
 	StartupProject     string              // The name of the project that will be marked as the startup project
 	MultiThreadedBuild bool                // Whether to mark 'multi-threaded build' in the project files
@@ -18,7 +18,7 @@ type WorkspaceConfig struct {
 
 func NewWorkspaceConfig(workspacePath string, projectName string) *WorkspaceConfig {
 	wsc := &WorkspaceConfig{
-		ConfigList: []string{"Debug", "Release", "Debug Test", "Release Test"},
+		ConfigList: []string{"Debug", "Release", "DebugTest", "ReleaseTest"},
 	}
 	wsc.GenerateAbsPath = filepath.Join(workspacePath, projectName, "target")
 	wsc.StartupProject = projectName

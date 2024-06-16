@@ -1,17 +1,9 @@
 package axe
 
-import "sort"
-
-// enum class FileType {
-// 	None,
-// 	cpp_header, // c or cpp header
-// 	cpp_source,
-// 	c_source,
-// 	cu_header,	// cuda header
-// 	cu_source,	// cuda source
-// 	ixx, // cpp modules
-// 	mxx, // cpp module implementation
-// };
+import (
+	"path/filepath"
+	"sort"
+)
 
 type FileType int
 
@@ -31,6 +23,10 @@ type FileEntryXcodeConfig struct {
 	UUID      UUID
 	BuildUUID UUID
 }
+
+// -----------------------------------------------------------------------------------------------
+// FileEntry
+// -----------------------------------------------------------------------------------------------
 
 type FileEntry struct {
 	Path              string
@@ -98,20 +94,30 @@ func (f *FileEntry) Is_IXX() bool {
 	return f.Type == FileTypeIxx
 }
 
+// -----------------------------------------------------------------------------------------------
+// FileEntryDict
+// -----------------------------------------------------------------------------------------------
+
 type FileEntryDict struct {
-	Workspace *Workspace
-	Dict      map[string]int
-	Keys      []string
-	Values    []*FileEntry
+	Workspace *Workspace     // The workspace this dict belongs to
+	Path      string         // All FileEntry objects are relative to this path
+	Dict      map[string]int // Maps path to index in Keys/Values
+	Keys      []string       // Keys
+	Values    []*FileEntry   // Values
 }
 
-func NewFileEntryDict(ws *Workspace) *FileEntryDict {
+func NewFileEntryDict(ws *Workspace, path string) *FileEntryDict {
 	return &FileEntryDict{
 		Workspace: ws,
+		Path:      path,
 		Dict:      make(map[string]int),
 		Keys:      []string{},
 		Values:    []*FileEntry{},
 	}
+}
+
+func (d *FileEntryDict) GetRelativePath(e *FileEntry, path string) string {
+	return PathGetRel(filepath.Join(d.Path, e.Path), path)
 }
 
 func (d *FileEntryDict) Add(path string, isGenerated bool) *FileEntry {

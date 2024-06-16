@@ -53,15 +53,15 @@ func (g *MsDevGenerator) init(ws *Workspace) {
 }
 
 func (g *MsDevGenerator) PlatformToolset(proj *Project) string {
-	if proj.Settings.MsDev.PlatformToolset != "" {
-		return proj.Settings.MsDev.PlatformToolset
+	if proj.Workspace.Config.MsDev.PlatformToolset != "" {
+		return proj.Workspace.Config.MsDev.PlatformToolset
 	}
 	return g.Workspace.Config.MsDev.PlatformToolset
 }
 
 func (g *MsDevGenerator) TargetPlatformVersion(proj *Project) string {
-	if proj.Settings.MsDev.WindowsTargetPlatformVersion != "" {
-		return proj.Settings.MsDev.WindowsTargetPlatformVersion
+	if proj.Workspace.Config.MsDev.WindowsTargetPlatformVersion != "" {
+		return proj.Workspace.Config.MsDev.WindowsTargetPlatformVersion
 	}
 	return g.Workspace.Config.MsDev.WindowsTargetPlatformVersion
 }
@@ -77,7 +77,7 @@ func (g *MsDevGenerator) genProject(proj *Project) {
 		tag := wr.TagScope("Project")
 
 		wr.Attr("DefaultTargets", "Build")
-		wr.Attr("ToolsVersion", proj.Settings.MsDev.ProjectTools)
+		wr.Attr("ToolsVersion", proj.Workspace.Config.MsDev.ProjectTools)
 		wr.Attr("xmlns", "http://schemas.microsoft.com/developer/msbuild/2003")
 
 		{
@@ -100,7 +100,7 @@ func (g *MsDevGenerator) genProject(proj *Project) {
 			wr.TagWithBody("ProjectGuid", proj.GenDataMsDev.UUID.String())
 			wr.TagWithBody("Keyword", "Win32Proj")
 			wr.TagWithBody("RootNamespace", proj.Name)
-			wr.TagWithBody("WindowsTargetPlatformVersion", proj.Settings.MsDev.WindowsTargetPlatformVersion)
+			wr.TagWithBody("WindowsTargetPlatformVersion", proj.Workspace.Config.MsDev.WindowsTargetPlatformVersion)
 			tag.Close()
 		}
 
@@ -240,7 +240,8 @@ func (g *MsDevGenerator) genProjectFiles(wr *XmlWriter, proj *Project) {
 		}
 
 		tag := wr.TagScope(tagName)
-		wr.Attr("Include", f.Path)
+		path := proj.FileEntries.GetRelativePath(f, proj.Workspace.GenerateAbsPath)
+		wr.Attr("Include", path)
 		if excludedFromBuild {
 			wr.TagWithBody("ExcludedFromBuild", "true")
 		}
@@ -309,11 +310,11 @@ func (g *MsDevGenerator) genProjectConfig(wr *XmlWriter, proj *Project, config *
 		targetName := PathBasename(config.OutputTarget.Path, false)
 		targetExt := PathExtension(config.OutputTarget.Path)
 
-		wr.TagWithBody("OutDir", outputTarget)
-		wr.TagWithBody("IntDir", intermediaDir)
+		wr.TagWithBody("OutDir", PathGetRel(outputTarget, proj.GenerateAbsPath))
+		wr.TagWithBody("IntDir", PathGetRel(intermediaDir, proj.GenerateAbsPath))
 		wr.TagWithBody("TargetName", targetName)
 		if targetExt != "" {
-			wr.TagWithBody("TargetExt", "."+targetExt)
+			wr.TagWithBody("TargetExt", targetExt)
 		}
 
 		tag.Close()
@@ -340,47 +341,18 @@ func (g *MsDevGenerator) genProjectConfig(wr *XmlWriter, proj *Project, config *
 			if g.Workspace.MakeTarget.OSIsLinux() {
 				wr.TagWithBody("Verbose", "true")
 
-				if config.IsDebug {
-					wr.TagWithBody("DebugInformationFormat", "FullDebug")
-					wr.TagWithBody("Optimization", "Disabled")
-					wr.TagWithBody("OmitFramePointers", "false")
-				} else {
-					wr.TagWithBody("DebugInformationFormat", "None")
-					wr.TagWithBody("Optimization", "Full")
-					wr.TagWithBody("OmitFramePointers", "true")
-				}
-
 			} else {
 				wr.TagWithBody("SDLCheck", "true")
 				wr.TagWithBodyBool("MultiProcessorCompilation", proj.Settings.MultiThreadedBuild.Bool())
-
-				if g.Workspace.MakeTarget.CompilerIsClang() {
-					wr.TagWithBody("DebugInformationFormat", "None")
-				} else {
-					wr.TagWithBody("DebugInformationFormat", "ProgramDatabase")
-				}
-
-				if config.IsDebug {
-					wr.TagWithBody("Optimization", "Disabled")
-					wr.TagWithBody("RuntimeLibrary", "MultiThreadedDebugDLL")
-					wr.TagWithBody("LinkIncremental", "true")
-				} else {
-					wr.TagWithBody("Optimization", "MaxSpeed")
-					wr.TagWithBody("WholeProgramOptimization", "true")
-					wr.TagWithBody("RuntimeLibrary", "MultiThreadedDLL")
-					wr.TagWithBody("FunctionLevelLinking", "true")
-					wr.TagWithBody("IntrinsicFunctions", "true")
-					wr.TagWithBody("WholeProgramOptimization", "true")
-					wr.TagWithBody("BasicRuntimeChecks", "Default")
-				}
 			}
 
 			if proj.PchHeader != nil {
 				wr.TagWithBody("PrecompiledHeader", "Use")
-
 				pch := "$(ProjectDir)" + proj.PchHeader.Path
 				wr.TagWithBody("PrecompiledHeaderFile", pch)
 				wr.TagWithBody("ForcedIncludeFiles", pch)
+			} else {
+				wr.TagWithBody("PrecompiledHeader", "NotUsing")
 			}
 
 			if config.WarningLevel != "" {
@@ -393,9 +365,12 @@ func (g *MsDevGenerator) genProjectConfig(wr *XmlWriter, proj *Project, config *
 
 			wr.TagWithBodyBool("TreatWarningAsError", config.WarningAsError)
 
-			g.genConfigOption(wr, "DisableSpecificWarnings", config.DisableWarning.FinalDict, "")
-			g.genConfigOption(wr, "PreprocessorDefinitions", config.CppDefines.FinalDict, "")
-			g.genConfigOption(wr, "AdditionalIncludeDirectories", config.IncludeDirs.FinalDict, "")
+			g.genConfigOption(wr, "DisableSpecificWarnings", config.DisableWarning.FinalDict)
+			g.genConfigOption(wr, "PreprocessorDefinitions", config.CppDefines.FinalDict)
+			g.genConfigOptionWithModifier(wr, "AdditionalIncludeDirectories", config.IncludeDirs.FinalDict, func(key string, value string) string {
+				path := PathGetRel(key, proj.Workspace.GenerateAbsPath)
+				return path
+			})
 
 			for key, i := range config.VisualStudioClCompile.Entries {
 				wr.TagWithBody(key, config.VisualStudioClCompile.Values[i])
@@ -411,15 +386,18 @@ func (g *MsDevGenerator) genProjectConfig(wr *XmlWriter, proj *Project, config *
 			}
 
 			if proj.TypeIsExeOrDll() {
-				g.genConfigOption(wr, "AdditionalLibraryDirectories", config.LinkDirs.FinalDict, "")
+				g.genConfigOption(wr, "AdditionalLibraryDirectories", config.LinkDirs.FinalDict)
 
 				optName := "AdditionalDependencies"
 				relativeTo := ""
 				if g.Workspace.MakeTarget.OSIsLinux() {
 					relativeTo = "$(RemoteRootDir)/"
 				}
-				tmp := config.LinkLibs.FinalDict.Concatenated("", ";")
-				tmp += config.LinkFiles.FinalDict.Concatenated(relativeTo, ";")
+				tmp := config.LinkLibs.FinalDict.Concatenated("", ";", func(string, s string) string { return s })
+				tmp += config.LinkFiles.FinalDict.Concatenated(relativeTo, ";", func(key string, value string) string {
+					path := PathGetRel(key, proj.Workspace.GenerateAbsPath)
+					return path
+				})
 				tmp += "%(" + optName + ")"
 				wr.TagWithBody(optName, tmp)
 			}
@@ -427,7 +405,7 @@ func (g *MsDevGenerator) genProjectConfig(wr *XmlWriter, proj *Project, config *
 			if g.Workspace.MakeTarget.OSIsLinux() {
 				wr.TagWithBody("VerboseOutput", "true")
 
-				tmp := config.LinkFlags.FinalDict.Concatenated(" -Wl,", "")
+				tmp := config.LinkFlags.FinalDict.Concatenated(" -Wl,", "", func(string, s string) string { return s })
 				wr.TagWithBody("AdditionalOptions", tmp)
 
 				if config.IsDebug {
@@ -440,7 +418,7 @@ func (g *MsDevGenerator) genProjectConfig(wr *XmlWriter, proj *Project, config *
 				wr.TagWithBody("SubSystem", "Console")
 				wr.TagWithBody("GenerateDebugInformation", "true")
 
-				tmp := config.LinkFlags.FinalDict.Concatenated(" ", "")
+				tmp := config.LinkFlags.FinalDict.Concatenated(" ", "", func(string, s string) string { return s })
 				wr.TagWithBody("AdditionalOptions", tmp)
 
 				if !config.IsDebug {
@@ -470,8 +448,14 @@ func (g *MsDevGenerator) genProjectConfig(wr *XmlWriter, proj *Project, config *
 	}
 }
 
-func (g *MsDevGenerator) genConfigOption(wr *XmlWriter, name string, value *KeyValueDict, relativeTo string) {
-	option := value.Concatenated(relativeTo, ";")
+func (g *MsDevGenerator) genConfigOption(wr *XmlWriter, name string, value *KeyValueDict) {
+	option := value.Concatenated("", ";", func(string, s string) string { return s })
+	option += "%(" + name + ")"
+	wr.TagWithBody(name, option)
+}
+
+func (g *MsDevGenerator) genConfigOptionWithModifier(wr *XmlWriter, name string, value *KeyValueDict, valueModifier func(string, string) string) {
+	option := value.Concatenated("", ";", valueModifier)
 	option += "%(" + name + ")"
 	wr.TagWithBody(name, option)
 }

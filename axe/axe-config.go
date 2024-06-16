@@ -246,6 +246,30 @@ func (c *Config) InitXcodeSettings() {
 func (c *Config) InitVisualStudioSettings() {
 	c.VisualStudioClCompile = NewKeyValueDict()
 	c.VisualStudioClCompile.Add("MinimalRebuild", "false")
+	c.VisualStudioClCompile.Add("ExceptionHandling", "false")
+	c.VisualStudioClCompile.Add("CompileAs", "CompileAsCpp")
+
+	if c.Workspace.MakeTarget.CompilerIsClang() {
+		c.VisualStudioClCompile.Add("DebugInformationFormat", "None")
+	} else {
+		c.VisualStudioClCompile.Add("DebugInformationFormat", "ProgramDatabase")
+	}
+
+	if c.IsDebug {
+		c.VisualStudioClCompile.Add("Optimization", "Disabled")
+		c.VisualStudioClCompile.Add("DebugInformationFormat", "FullDebug")
+		c.VisualStudioClCompile.Add("OmitFramePointers", "false")
+	} else {
+		c.VisualStudioClCompile.Add("Optimization", "Full") // MinSpace, MaxSpeed
+		c.VisualStudioClCompile.Add("DebugInformationFormat", "None")
+		c.VisualStudioClCompile.Add("OmitFramePointers", "true")
+		c.VisualStudioClCompile.Add("FunctionLevelLinking", "true")
+		c.VisualStudioClCompile.Add("IntrinsicFunctions", "true")
+		c.VisualStudioClCompile.Add("WholeProgramOptimization", "true")
+		c.VisualStudioClCompile.Add("BasicRuntimeChecks", "Default")
+	}
+
+	c.VisualStudioClCompile.Add("RuntimeLibrary", c.Workspace.Config.MsDev.RuntimeLibrary.String(c.IsDebug))
 }
 
 func (c *Config) inherit(rhs *Config) {

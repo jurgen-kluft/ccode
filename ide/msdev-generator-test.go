@@ -45,7 +45,7 @@ func TestRun(ccoreAbsPath string, projectName string) error {
 
 	ws := axe.NewWorkspace(ccoreAbsPath, projectName)
 
-	ws.Config.ConfigList = []string{"Debug", "Release", "Debug Test", "Release Test"}
+	ws.Config.ConfigList = []string{"Debug", "Release", "DebugTest", "ReleaseTest"}
 	ws.GenerateAbsPath = "target"
 	ws.Config.StartupProject = "cbase_unittest"
 	ws.Config.MultiThreadedBuild = true
@@ -65,8 +65,8 @@ func TestRun(ccoreAbsPath string, projectName string) error {
 
 	debugConfig := axe.NewConfig("Debug", ws, nil)
 	releaseConfig := axe.NewConfig("Release", ws, nil)
-	debugTestConfig := axe.NewConfig("Debug Test", ws, nil)
-	releaseTestConfig := axe.NewConfig("Release Test", ws, nil)
+	debugTestConfig := axe.NewConfig("DebugTest", ws, nil)
+	releaseTestConfig := axe.NewConfig("ReleaseTest", ws, nil)
 
 	ws.AddConfig(debugConfig)
 	ws.AddConfig(releaseConfig)
@@ -97,10 +97,11 @@ func TestRun(ccoreAbsPath string, projectName string) error {
 		cbase_lib.GlobFiles(filepath.Join(ccoreAbsPath, "cbase"), "source/main/include/^**/*.h")
 		cbase_lib.GlobFiles(filepath.Join(ccoreAbsPath, "cbase"), "source/main/include/^**/*.inl")
 
-		createDefaultProjectConfiguration(cbase_lib, "Debug")
+		config := createDefaultProjectConfiguration(cbase_lib, "Debug")
+		config.CppDefines.ValuesToAdd("")
 		createDefaultProjectConfiguration(cbase_lib, "Release")
-		createDefaultProjectConfiguration(cbase_lib, "Debug Test")
-		createDefaultProjectConfiguration(cbase_lib, "Release Test")
+		createDefaultProjectConfiguration(cbase_lib, "DebugTest")
+		createDefaultProjectConfiguration(cbase_lib, "ReleaseTest")
 	}
 
 	// ccore library project
@@ -124,8 +125,8 @@ func TestRun(ccoreAbsPath string, projectName string) error {
 
 		createDefaultProjectConfiguration(ccore_lib, "Debug")
 		createDefaultProjectConfiguration(ccore_lib, "Release")
-		createDefaultProjectConfiguration(ccore_lib, "Debug Test")
-		createDefaultProjectConfiguration(ccore_lib, "Release Test")
+		createDefaultProjectConfiguration(ccore_lib, "DebugTest")
+		createDefaultProjectConfiguration(ccore_lib, "ReleaseTest")
 	}
 
 	// cunittest library project
@@ -144,8 +145,8 @@ func TestRun(ccoreAbsPath string, projectName string) error {
 		cunittest_lib.GlobFiles(filepath.Join(ccoreAbsPath, "cunittest"), "source/main/cpp/^**/*.cpp")
 		cunittest_lib.GlobFiles(filepath.Join(ccoreAbsPath, "cunittest"), "source/main/include/^**/*.h")
 
-		createDefaultProjectConfiguration(cunittest_lib, "Debug Test")
-		createDefaultProjectConfiguration(cunittest_lib, "Release Test")
+		createDefaultProjectConfiguration(cunittest_lib, "DebugTest")
+		createDefaultProjectConfiguration(cunittest_lib, "ReleaseTest")
 	}
 
 	// cbase unittest project, this is an executable
@@ -164,8 +165,8 @@ func TestRun(ccoreAbsPath string, projectName string) error {
 		cbase_unittest.GlobFiles(filepath.Join(ccoreAbsPath, "cbase"), "source/test/cpp/^**/*.cpp")
 		cbase_unittest.GlobFiles(filepath.Join(ccoreAbsPath, "cbase"), "source/test/include/^**/*.h")
 
-		createDefaultProjectConfiguration(cbase_unittest, "Debug Test")
-		createDefaultProjectConfiguration(cbase_unittest, "Release Test")
+		createDefaultProjectConfiguration(cbase_unittest, "DebugTest")
+		createDefaultProjectConfiguration(cbase_unittest, "ReleaseTest")
 	}
 
 	if err := ws.Finalize(); err != nil {
@@ -178,7 +179,7 @@ func TestRun(ccoreAbsPath string, projectName string) error {
 	return nil
 }
 
-func createDefaultProjectConfiguration(p *axe.Project, configName string) {
+func createDefaultProjectConfiguration(p *axe.Project, configName string) *axe.Config {
 	config := p.GetOrCreateConfig(configName)
 	config.WarningAsError = true
 
@@ -188,6 +189,7 @@ func createDefaultProjectConfiguration(p *axe.Project, configName string) {
 	}
 
 	p.Configs[configName] = config
+	return config
 }
 
 func addWorkspaceConfiguration(ws *axe.Workspace, configName string) {

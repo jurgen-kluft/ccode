@@ -1,5 +1,7 @@
 # CCODE - Package Manager + Project Generator
 
+Note: v2.0, WIP package axe, new IDE files generator package, currently Visual Studio and Xcode.
+
 This is a project generator that uses Go and its package management for C++ packages. 
 The structure of packages are defined in Go and files can be generated for Visual Studio (.sln, .vcxproj and .filters), CMake as well as Tundra. Work in progress for also supporting Zig as a build system.
 

@@ -62,7 +62,6 @@ type ProjectConfig struct {
 	Xcode              struct {
 		BundleIdentifier string
 	}
-	MsDev *VisualStudioConfig
 }
 
 func NewProjectConfig() *ProjectConfig {
@@ -72,7 +71,6 @@ func NewProjectConfig() *ProjectConfig {
 func NewVisualStudioProjectConfig(version EnumVisualStudio) *ProjectConfig {
 	config := &ProjectConfig{}
 	config.Dependencies = make([]string, 0)
-	config.MsDev = NewVisualStudioConfig(version)
 	return config
 }
 
@@ -178,15 +176,16 @@ type Project struct {
 }
 
 func newProject(ws *Workspace, name string, subPath string, projectType ProjectType, settings *ProjectConfig) *Project {
+	projectAbsPath := filepath.Join(ws.WorkspaceAbsPath, subPath)
 	p := &Project{
 		Workspace:           ws,
 		Name:                name,
 		Type:                projectType,
-		ProjectAbsPath:      filepath.Join(ws.WorkspaceAbsPath, subPath),
+		ProjectAbsPath:      projectAbsPath,
 		GenerateAbsPath:     ws.GenerateAbsPath,
 		Settings:            settings,
-		FileEntries:         NewFileEntryDict(ws),
-		ResourceDirs:        NewFileEntryDict(ws),
+		FileEntries:         NewFileEntryDict(ws, projectAbsPath),
+		ResourceDirs:        NewFileEntryDict(ws, projectAbsPath),
 		HasOutputTarget:     false,
 		Configs:             map[string]*Config{},
 		Dependencies:        NewProjectList(),
@@ -197,8 +196,6 @@ func newProject(ws *Workspace, name string, subPath string, projectType ProjectT
 	p.VirtualFolders = NewVirtualFolders(p.ProjectAbsPath) // The path that is the root path of the virtual folder/file structure
 
 	p.Settings.MultiThreadedBuild = Boolean(ws.Config.MultiThreadedBuild)
-	p.Settings.MsDev.PlatformToolset = ws.Config.MsDev.PlatformToolset
-	p.Settings.MsDev.WindowsTargetPlatformVersion = ws.Config.MsDev.WindowsTargetPlatformVersion
 	p.Settings.Xcode.BundleIdentifier = "$(PROJECT_NAME)"
 
 	for _, srcConfig := range ws.Configs {

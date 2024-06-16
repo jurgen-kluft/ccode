@@ -59,10 +59,18 @@ func (d *KeyValueDict) Add(key string, value string) {
 	}
 }
 
-func (d *KeyValueDict) Concatenated(prefix string, suffix string) string {
+// func (d *KeyValueDict) Concatenated(prefix string, suffix string) string {
+// 	concat := ""
+// 	for _, value := range d.Values {
+// 		concat += prefix + value + suffix
+// 	}
+// 	return concat
+// }
+
+func (d *KeyValueDict) Concatenated(prefix string, suffix string, valueModifier func(string, string) string) string {
 	concat := ""
-	for _, value := range d.Values {
-		concat += prefix + value + suffix
+	for i, value := range d.Values {
+		concat += prefix + valueModifier(d.Keys[i], value) + suffix
 	}
 	return concat
 }

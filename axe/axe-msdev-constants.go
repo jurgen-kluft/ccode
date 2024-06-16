@@ -1,11 +1,39 @@
 package axe
 
+type RuntimeLibraryType int
+
+const (
+	RuntimeLibraryNone RuntimeLibraryType = iota
+	RuntimeLibraryMultiThreaded
+	RuntimeLibraryMultiThreadedDLL
+)
+
 type VisualStudioConfig struct {
 	Version                      EnumVisualStudio
 	SlnHeader                    []string
 	ProjectTools                 string // e.g. 14.0
 	PlatformToolset              string // e.g. v140
 	WindowsTargetPlatformVersion string // e.g. 10.0
+	RuntimeLibrary               RuntimeLibraryType
+}
+
+func (r RuntimeLibraryType) String(debug bool) string {
+	if debug {
+		switch r {
+		case RuntimeLibraryMultiThreaded:
+			return "MultiThreadedDebug"
+		case RuntimeLibraryMultiThreadedDLL:
+			return "MultiThreadedDebugDLL"
+		}
+	} else {
+		switch r {
+		case RuntimeLibraryMultiThreaded:
+			return "MultiThreadedDebug"
+		case RuntimeLibraryMultiThreadedDLL:
+			return "MultiThreadedDebugDLL"
+		}
+	}
+	return ""
 }
 
 // ----------------------------------------------------------------------------------------------------
@@ -90,5 +118,6 @@ func NewVisualStudioConfig(version EnumVisualStudio) *VisualStudioConfig {
 		ProjectTools:                 tools,
 		PlatformToolset:              platform,
 		WindowsTargetPlatformVersion: target,
+		RuntimeLibrary:               RuntimeLibraryMultiThreaded, // Static or Dynamic Linking of the Runtime
 	}
 }

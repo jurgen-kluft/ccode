@@ -43,7 +43,7 @@ func PathDirname(path string) string {
 
 func PathBasename(path string, withExtension bool) string {
 
-	pivot := strings.IndexAny(path, "/\\")
+	pivot := strings.LastIndexAny(path, "/\\")
 	if pivot < 0 {
 		pivot = 0
 	} else {
@@ -60,7 +60,7 @@ func PathBasename(path string, withExtension bool) string {
 		return path[pivot:]
 	}
 
-	return path[pivot:dot]
+	return path[pivot : pivot+dot]
 }
 
 func PathUp(path string) (parent, sub string) {
