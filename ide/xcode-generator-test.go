@@ -30,11 +30,11 @@ func (x *XcodeTestGenerator) TestRun(ccoreAbsPath string, projectName string) er
 
 	visualStudioVersion := axe.VisualStudio2022
 
-	ws.Generator = "msdev"
+	ws.Generator = axe.GeneratorXcode
 	ws.MakeTarget = axe.NewDefaultMakeTarget()
 	ws.WorkspaceName = projectName
 	ws.WorkspaceAbsPath = ccoreAbsPath
-	ws.GenerateAbsPath = filepath.Join(ccoreAbsPath, projectName, "target", ws.Generator)
+	ws.GenerateAbsPath = filepath.Join(ccoreAbsPath, projectName, "target", ws.Generator.String())
 
 	debugConfig := axe.NewConfig("Debug", ws, nil)
 	releaseConfig := axe.NewConfig("Release", ws, nil)

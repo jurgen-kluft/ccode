@@ -35,7 +35,7 @@ type Workspace struct {
 	WorkspaceName    string                     // The name of the workspace (e.g. For VisualStudio -> "cbase.sln", for Xcode -> "cbase.xcworkspace")
 	WorkspaceAbsPath string                     // The workspace directory is the path where all the projects and workspace are to be generated
 	GenerateAbsPath  string                     // Where to generate the workspace and project files
-	Generator        string                     // Name of the generator, ccore compiler define
+	Generator        GeneratorType              // Name of the generator, ccore compiler define
 	Configs          map[string]*Config         // The configuration instances for the workspace
 	MakeTarget       MakeTarget                 // The make target for the workspace (e.g. contains details like OS, Compiler, Arch, etc.)
 	StartupProject   *Project                   // The project instance that will be marked as the startup project

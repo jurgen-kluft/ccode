@@ -313,7 +313,7 @@ func (c *Config) resolve() {
 	defines = append(defines, "CCORE_GEN_CPU_"+strings.ToUpper(c.Workspace.MakeTarget.ArchAsString()))
 	defines = append(defines, "CCORE_GEN_OS_"+strings.ToUpper(c.Workspace.MakeTarget.OSAsString()))
 	defines = append(defines, "CCORE_GEN_COMPILER_"+strings.ToUpper(c.Workspace.MakeTarget.CompilerAsString()))
-	defines = append(defines, "CCORE_GEN_GENERATOR_"+strings.ToUpper(c.Workspace.Generator))
+	defines = append(defines, "CCORE_GEN_GENERATOR_"+strings.ToUpper(c.Workspace.Generator.String()))
 	defines = append(defines, "CCORE_GEN_CONFIG_"+strings.ToUpper(c.Name))
 	defines = append(defines, "CCORE_GEN_PLATFORM_NAME=\""+strings.ToUpper(c.Workspace.MakeTarget.OSAsString()+"\""))
 	defines = append(defines, "CCORE_GEN_PROJECT_"+strings.ToUpper(c.Project.Name))

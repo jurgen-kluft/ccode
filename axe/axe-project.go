@@ -337,12 +337,12 @@ func (p *Project) resolveInternal() error {
 		if !ok {
 			return fmt.Errorf("cannot find dependency project '%s' for project '%s'", d, p.Name)
 		}
-
 		if dp == p {
 			return fmt.Errorf("project depends on itself, project='%s'", p.Name)
 		}
 
 		p.Dependencies.Add(dp)
+
 		if err := dp.resolve(); err != nil {
 			return err
 		}
@@ -350,9 +350,11 @@ func (p *Project) resolveInternal() error {
 		for pcKey, pc := range p.Configs {
 			pc.inherit(dp.Configs[pcKey])
 		}
+
 		for _, dpdp := range dp.DependenciesInherit.Values {
 			p.DependenciesInherit.Add(dpdp)
 		}
+
 		p.DependenciesInherit.Add(dp)
 	}
 

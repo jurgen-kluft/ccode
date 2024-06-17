@@ -97,7 +97,7 @@ func (g *MsDevGenerator) genProject(proj *Project) {
 		{
 			tag := wr.TagScope("PropertyGroup")
 			wr.Attr("Label", "Globals")
-			wr.TagWithBody("ProjectGuid", proj.GenDataMsDev.UUID.String())
+			wr.TagWithBody("ProjectGuid", proj.GenDataMsDev.UUID.String(g.Workspace.Generator))
 			wr.TagWithBody("Keyword", "Win32Proj")
 			wr.TagWithBody("RootNamespace", proj.Name)
 			wr.TagWithBody("WindowsTargetPlatformVersion", proj.Workspace.Config.MsDev.WindowsTargetPlatformVersion)
@@ -450,6 +450,22 @@ func (g *MsDevGenerator) genConfigOptionWithModifier(wr *XmlWriter, name string,
 	wr.TagWithBody(name, option)
 }
 
+func (g *MsDevGenerator) writeSolutionProject(proj *Project, sb *LineWriter) {
+	sb.Write("Project(\"{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}\") = ")
+	sb.WriteLine("\"" + proj.Name + "\", \"" + proj.Name + ".vcxproj\", \"" + proj.GenDataMsDev.UUID.String(g.Workspace.Generator) + "\"")
+
+	if len(proj.DependenciesInherit.Values) > 0 {
+		{
+			sb.WriteLine("\tProjectSection(ProjectDependencies) = postProject")
+			for _, dp := range proj.DependenciesInherit.Values {
+				sb.WriteLine("\t\t" + dp.GenDataMsDev.UUID.String(g.Workspace.Generator) + " = " + dp.GenDataMsDev.UUID.String(g.Workspace.Generator))
+			}
+			sb.WriteLine("\tEndProjectSection")
+		}
+	}
+	sb.WriteLine("EndProject")
+}
+
 func (g *MsDevGenerator) genWorkspace(ws *ExtraWorkspace) {
 	visualStudioSolutionFilepath := filepath.Join(g.Workspace.GenerateAbsPath, ws.Workspace.WorkspaceName+".sln")
 
@@ -459,20 +475,13 @@ func (g *MsDevGenerator) genWorkspace(ws *ExtraWorkspace) {
 
 	{
 		sb.WriteLines("", "# ---- projects ----", "")
-		for _, proj := range ws.ProjectList.Values {
-			sb.Write("Project(\"{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}\") = ")
-			sb.WriteLine("\"" + proj.Name + "\", \"" + proj.Name + ".vcxproj\", \"" + proj.GenDataMsDev.UUID.String() + "\"")
 
-			if len(proj.DependenciesInherit.Values) > 0 {
-				if proj.TypeIsExeOrDll() {
-					sb.WriteLine("\tProjectSection(ProjectDependencies) = postProject")
-					for _, dp := range proj.DependenciesInherit.Values {
-						sb.WriteLine("\t\t" + dp.GenDataMsDev.UUID.String() + " = " + dp.GenDataMsDev.UUID.String())
-					}
-					sb.WriteLine("\tEndProjectSection")
-				}
+		g.writeSolutionProject(ws.Workspace.StartupProject, sb)
+		for _, proj := range ws.ProjectList.Values {
+			if proj == ws.Workspace.StartupProject {
+				continue
 			}
-			sb.WriteLine("EndProject")
+			g.writeSolutionProject(proj, sb)
 		}
 	}
 	{
@@ -494,7 +503,7 @@ func (g *MsDevGenerator) genWorkspace(ws *ExtraWorkspace) {
 			sb.Write("\", \"")
 			sb.Write(catName)
 			sb.Write("\", \"")
-			sb.Write(c.MsDev.UUID.String())
+			sb.Write(c.MsDev.UUID.String(g.Workspace.Generator))
 			sb.WriteLine("\"")
 		}
 
@@ -505,9 +514,9 @@ func (g *MsDevGenerator) genWorkspace(ws *ExtraWorkspace) {
 		for _, c := range g.Workspace.ProjectGroups.Values {
 			if c.Parent != nil && c.Parent != root {
 				sb.Write("\t\t")
-				sb.Write(c.MsDev.UUID.String())
+				sb.Write(c.MsDev.UUID.String(g.Workspace.Generator))
 				sb.Write(" = ")
-				sb.WriteLine(c.Parent.MsDev.UUID.String())
+				sb.WriteLine(c.Parent.MsDev.UUID.String(g.Workspace.Generator))
 			}
 
 			for _, proj := range c.Projects {
@@ -518,9 +527,9 @@ func (g *MsDevGenerator) genWorkspace(ws *ExtraWorkspace) {
 					continue
 				}
 				sb.Write("\t\t")
-				sb.Write(proj.GenDataMsDev.UUID.String())
+				sb.Write(proj.GenDataMsDev.UUID.String(g.Workspace.Generator))
 				sb.Write(" = ")
-				sb.WriteLine(c.MsDev.UUID.String())
+				sb.WriteLine(c.MsDev.UUID.String(g.Workspace.Generator))
 			}
 		}
 		sb.WriteLine("\tEndGlobalSection")

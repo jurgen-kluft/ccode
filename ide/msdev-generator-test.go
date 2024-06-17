@@ -52,7 +52,7 @@ func (m *MsDevTestGenerator) TestRun(ccoreAbsPath string, projectName string) er
 
 	ws := axe.NewWorkspace(ccoreAbsPath, projectName)
 
-	ws.Config.ConfigList = []string{"Debug", "Release", "DebugTest", "ReleaseTest"}
+	ws.Config.ConfigList = []string{"DebugTest", "ReleaseTest"}
 	ws.GenerateAbsPath = "target"
 	ws.Config.StartupProject = "cbase_unittest"
 	ws.Config.MultiThreadedBuild = true
@@ -64,19 +64,15 @@ func (m *MsDevTestGenerator) TestRun(ccoreAbsPath string, projectName string) er
 
 	visualStudioVersion := axe.VisualStudio2022
 
-	ws.Generator = "msdev"
+	ws.Generator = axe.GeneratorMsDev
 	ws.MakeTarget = axe.NewDefaultMakeTarget()
 	ws.WorkspaceName = projectName
 	ws.WorkspaceAbsPath = ccoreAbsPath
-	ws.GenerateAbsPath = filepath.Join(ccoreAbsPath, projectName, "target", ws.Generator)
+	ws.GenerateAbsPath = filepath.Join(ccoreAbsPath, projectName, "target", ws.Generator.String())
 
-	debugConfig := axe.NewConfig("Debug", ws, nil)
-	releaseConfig := axe.NewConfig("Release", ws, nil)
 	debugTestConfig := axe.NewConfig("DebugTest", ws, nil)
 	releaseTestConfig := axe.NewConfig("ReleaseTest", ws, nil)
 
-	ws.AddConfig(debugConfig)
-	ws.AddConfig(releaseConfig)
 	ws.AddConfig(debugTestConfig)
 	ws.AddConfig(releaseTestConfig)
 
@@ -104,8 +100,6 @@ func (m *MsDevTestGenerator) TestRun(ccoreAbsPath string, projectName string) er
 		cbase_lib.GlobFiles(filepath.Join(ccoreAbsPath, "cbase"), "source/main/include/^**/*.h")
 		cbase_lib.GlobFiles(filepath.Join(ccoreAbsPath, "cbase"), "source/main/include/^**/*.inl")
 
-		m.createDefaultProjectConfiguration(cbase_lib, "Debug")
-		m.createDefaultProjectConfiguration(cbase_lib, "Release")
 		m.createDefaultProjectConfiguration(cbase_lib, "DebugTest")
 		m.createDefaultProjectConfiguration(cbase_lib, "ReleaseTest")
 	}
@@ -129,8 +123,6 @@ func (m *MsDevTestGenerator) TestRun(ccoreAbsPath string, projectName string) er
 		ccore_lib.GlobFiles(filepath.Join(ccoreAbsPath, "ccore"), "source/main/include/^**/*.h")
 		ccore_lib.GlobFiles(filepath.Join(ccoreAbsPath, "ccore"), "source/main/include/^**/*.inl")
 
-		m.createDefaultProjectConfiguration(ccore_lib, "Debug")
-		m.createDefaultProjectConfiguration(ccore_lib, "Release")
 		m.createDefaultProjectConfiguration(ccore_lib, "DebugTest")
 		m.createDefaultProjectConfiguration(ccore_lib, "ReleaseTest")
 	}
