@@ -58,6 +58,21 @@ func (p *ConfigList) CollectByWildcard(name string, list *ConfigList) {
 }
 
 // -----------------------------------------------------------------------------------------------------
+// ConfigType
+// -----------------------------------------------------------------------------------------------------
+
+type ConfigType int
+
+const (
+	configTypeUnknown ConfigType = 0
+	configTypeDebug   ConfigType = 1
+	configTypeRelease ConfigType = 2
+	configTypeTest    ConfigType = 4
+	configTypeGuiApp  ConfigType = 8
+	configTypeConsole ConfigType = 16
+)
+
+// -----------------------------------------------------------------------------------------------------
 // Config
 // -----------------------------------------------------------------------------------------------------
 
@@ -71,13 +86,7 @@ type Config struct {
 	OutputLib    *FileEntry
 	BuildTmpDir  *FileEntry
 
-	OutTargetDir    string
-	ExeTargetPrefix string
-	ExeTargetSuffix string
-	DllTargetPrefix string
-	DllTargetSuffix string
-	LibTargetPrefix string
-	LibTargetSuffix string
+	OutTargetDir string
 
 	CppDefines     *VarSettings
 	CppFlags       *VarSettings
@@ -149,21 +158,6 @@ func NewConfig(name string, ws *Workspace, p *Project) *Config {
 		c.IncludeFiles.Name: c.IncludeFiles,
 		c.LinkDirs.Name:     c.LinkDirs,
 		c.LinkFiles.Name:    c.LinkFiles,
-	}
-
-	if c.Workspace.MakeTarget.OSIsWindows() {
-		c.ExeTargetSuffix = ".exe"
-		c.DllTargetSuffix = ".dll"
-	} else {
-		c.ExeTargetSuffix = ""
-		c.DllTargetSuffix = ".so"
-	}
-
-	if c.Workspace.MakeTarget.CompilerIsVc() {
-		c.LibTargetSuffix = ".lib"
-	} else {
-		c.LibTargetPrefix = "lib"
-		c.LibTargetSuffix = ".a"
 	}
 
 	c.XcodeSettings = NewKeyValueDict()

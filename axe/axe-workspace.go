@@ -13,6 +13,13 @@ type WorkspaceConfig struct {
 	StartupProject     string              // The name of the project that will be marked as the startup project
 	MultiThreadedBuild bool                // Whether to mark 'multi-threaded build' in the project files
 	MsDev              *VisualStudioConfig // The project configuration to use for msdev
+
+	ExeTargetPrefix string
+	ExeTargetSuffix string
+	DllTargetPrefix string
+	DllTargetSuffix string
+	LibTargetPrefix string
+	LibTargetSuffix string
 }
 
 func NewWorkspaceConfig(workspacePath string, projectName string) *WorkspaceConfig {
@@ -21,6 +28,7 @@ func NewWorkspaceConfig(workspacePath string, projectName string) *WorkspaceConf
 	wsc.StartupProject = projectName
 	wsc.MultiThreadedBuild = true
 	wsc.MsDev = NewVisualStudioConfig(VisualStudio2022)
+
 	return wsc
 }
 
@@ -42,9 +50,9 @@ type Workspace struct {
 	ExtraWorkspaces  map[string]*ExtraWorkspace // The extra workspaces that contain a subset of the projects
 }
 
-func NewWorkspace(ccoreAbsPath string, projectRelPath string) *Workspace {
+func NewWorkspace(wsc *WorkspaceConfig) *Workspace {
 	ws := &Workspace{
-		Config:          NewWorkspaceConfig(ccoreAbsPath, projectRelPath),
+		Config:          wsc,
 		Configs:         NewConfigList(),
 		ProjectList:     NewProjectList(),
 		ProjectGroups:   NewProjectGroups(),
@@ -52,6 +60,22 @@ func NewWorkspace(ccoreAbsPath string, projectRelPath string) *Workspace {
 	}
 	ws.MakeTarget = NewDefaultMakeTarget()
 	ws.GenerateAbsPath = ws.Config.GenerateAbsPath
+
+	if ws.MakeTarget.OSIsWindows() {
+		wsc.ExeTargetSuffix = ".exe"
+		wsc.DllTargetSuffix = ".dll"
+	} else {
+		wsc.ExeTargetSuffix = ""
+		wsc.DllTargetSuffix = ".so"
+	}
+
+	if ws.MakeTarget.CompilerIsVc() {
+		wsc.LibTargetSuffix = ".lib"
+	} else {
+		wsc.LibTargetPrefix = "lib"
+		wsc.LibTargetSuffix = ".a"
+	}
+
 	return ws
 }
 

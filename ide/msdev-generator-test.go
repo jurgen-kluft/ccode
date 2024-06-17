@@ -14,52 +14,19 @@ func NewMsDevTestGenerator() *MsDevTestGenerator {
 	return &MsDevTestGenerator{}
 }
 
-// TestRun("~/dev.go/src/github.com/jurgen-kluft", "cbase"")
-//
-//	ccore = "~/dev.go/src/github.com/jurgen-kluft/ccore"
-//	cbase = "~/dev.go/src/github.com/jurgen-kluft/cbase"
-//	cunittest = "~/dev.go/src/github.com/jurgen-kluft/cunittest"
-
-// C++ source files for the cbase library are in "source/main/cpp" and should be globbed
-// C++ header files for the cbase library are in "source/main/include" and should be globbed
-// C++ source files for the cbase unittest project are in "source/test/cpp" and should be globbed
-
-// The cbase C++ library dependencies are:
-// - ccore
-// - cunittest
-
-// The ccore C++ library has no dependencies
-// The cunittest C++ library has no dependencies
-
-// For all the libraries there are 4 build configurations:
-// - debug
-// - release
-// - debug_test
-// - release_test
-
-// For the unittest project there are 2 build configurations:
-// - debug_test
-// - release_test
-
-// The cbase library is a static library
-// The ccore library is a static library
-// The cunittest library is a static library
-// The cbase unittest project is an executable
-
-// The above are all the details needed to generate the Visual Studio solution and project files
-
 func (m *MsDevTestGenerator) TestRun(ccoreAbsPath string, projectName string) error {
 
 	visualStudioVersion := axe.VisualStudio2022
 
-	ws := axe.NewWorkspace(ccoreAbsPath, projectName)
+	wsc := axe.NewWorkspaceConfig(ccoreAbsPath, projectName)
+	wsc.StartupProject = "cbase_unittest"
+	wsc.MultiThreadedBuild = true
 
+	ws := axe.NewWorkspace(wsc)
 	ws.Generator = axe.GeneratorMsDev
 	ws.WorkspaceName = projectName
 	ws.WorkspaceAbsPath = ccoreAbsPath
 	ws.GenerateAbsPath = filepath.Join(ccoreAbsPath, projectName, "target", ws.Generator.String())
-	ws.Config.StartupProject = "cbase_unittest"
-	ws.Config.MultiThreadedBuild = true
 	m.addWorkspaceConfiguration(ws, "DebugTest")
 	m.addWorkspaceConfiguration(ws, "ReleaseTest")
 
@@ -166,14 +133,13 @@ func (m *MsDevTestGenerator) TestRun(ccoreAbsPath string, projectName string) er
 
 func (m *MsDevTestGenerator) createDefaultProjectConfiguration(p *axe.Project, configName string) *axe.Config {
 	config := p.GetOrCreateConfig(configName)
-
+	config.CppDefines.ValuesToAdd("TARGET_PC")
 	config.AddIncludeDir("source/main/include")
+
 	if strings.HasSuffix(configName, "Test") {
 		config.AddIncludeDir("source/test/include")
 		config.VisualStudioClCompile.AddOrSet("ExceptionHandling", "Sync")
 	}
-
-	config.CppDefines.ValuesToAdd("TARGET_PC")
 
 	p.Configs.Add(config)
 	return config
@@ -183,19 +149,28 @@ func (m *MsDevTestGenerator) addWorkspaceConfiguration(ws *axe.Workspace, config
 	config := axe.NewConfig(configName, ws, nil)
 
 	if config.IsDebug {
-		config.CppDefines.ValuesToAdd("DEBUG", "_DEBUG")
+		config.CppDefines.ValuesToAdd("TARGET_DEBUG", "TARGET_DEV", "_DEBUG")
 	} else {
-		config.CppDefines.ValuesToAdd("NDEBUG")
+		config.CppDefines.ValuesToAdd("TARGET_RELEASE", "TARGET_DEV", "NDEBUG")
 	}
-	config.CppDefines.ValuesToAdd("_UNICODE", "UNICODE", "TARGET_PC")
-	config.LinkFlags.ValuesToAdd("-ObjC", "-framework Foundation")
-	config.XcodeSettings.AddOrSet("MACOSX_DEPLOYMENT_TARGET", "10.11")
+
+	if ws.MakeTarget.OSIsWindows() {
+		config.CppDefines.ValuesToAdd("TARGET_PC")
+	} else if ws.MakeTarget.OSIsLinux() {
+		config.CppDefines.ValuesToAdd("TARGET_LINUX")
+	} else if ws.MakeTarget.OSIsMac() {
+		config.CppDefines.ValuesToAdd("TARGET_MAC")
+	}
+
+	config.CppDefines.ValuesToAdd("_UNICODE", "UNICODE")
 
 	// clang
-	config.CppFlags.ValuesToAdd("-std=c++11", "-Wall", "-Wfatal-errors", "-Werror", "-Wno-switch")
-	config.LinkFlags.ValuesToAdd("-lstdc++")
-	if config.IsDebug {
-		config.CppFlags.ValuesToAdd("-g")
+	if ws.MakeTarget.CompilerIsClang() {
+		config.CppFlags.ValuesToAdd("-std=c++11", "-Wall", "-Wfatal-errors", "-Werror", "-Wno-switch")
+		config.LinkFlags.ValuesToAdd("-lstdc++")
+		if config.IsDebug {
+			config.CppFlags.ValuesToAdd("-g")
+		}
 	}
 
 	ws.AddConfig(config)
