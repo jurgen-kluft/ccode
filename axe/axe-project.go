@@ -323,8 +323,10 @@ func (p *Project) resolveInternal() error {
 		return fmt.Errorf("unknown project type %q from project %q", p.Settings.Type, p.Name)
 	}
 
-	for _, c := range p.Workspace.Configs.Values {
-		c.inherit(c)
+	for _, pc := range p.Configs.Values {
+		if wc, ok := p.Workspace.Configs.Get(pc.Name); ok {
+			pc.inherit(wc)
+		}
 	}
 
 	for _, d := range p.Settings.Dependencies {
@@ -342,19 +344,20 @@ func (p *Project) resolveInternal() error {
 			return err
 		}
 
-		for pi, pc := range p.Configs.Values {
-			pc.inherit(dp.Configs.Values[pi])
+		for _, pc := range p.Configs.Values {
+			if dpc, ok := dp.Configs.Get(pc.Name); ok {
+				pc.inherit(dpc)
+			}
 		}
 
 		for _, dpdp := range dp.DependenciesInherit.Values {
 			p.DependenciesInherit.Add(dpdp)
 		}
-
 		p.DependenciesInherit.Add(dp)
 	}
 
-	for _, c := range p.Configs.Values {
-		c.finalize()
+	for _, pc := range p.Configs.Values {
+		pc.computeFinal()
 	}
 
 	return nil

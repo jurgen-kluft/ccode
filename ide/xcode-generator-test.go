@@ -18,14 +18,16 @@ func (x *XcodeTestGenerator) TestRun(ccoreAbsPath string, projectName string) er
 
 	visualStudioVersion := axe.VisualStudio2022
 
-	ws := axe.NewWorkspace(ccoreAbsPath, projectName)
+	wsc := axe.NewWorkspaceConfig(ccoreAbsPath, projectName)
+	wsc.StartupProject = "cbase_unittest"
+	wsc.MultiThreadedBuild = true
 
+	ws := axe.NewWorkspace(wsc)
 	ws.Generator = axe.GeneratorMsDev
 	ws.WorkspaceName = projectName
 	ws.WorkspaceAbsPath = ccoreAbsPath
 	ws.GenerateAbsPath = filepath.Join(ccoreAbsPath, projectName, "target", ws.Generator.String())
-	ws.Config.StartupProject = "cbase_unittest"
-	ws.Config.MultiThreadedBuild = true
+
 	x.addWorkspaceConfiguration(ws, "DebugTest")
 	x.addWorkspaceConfiguration(ws, "ReleaseTest")
 
@@ -125,7 +127,7 @@ func (x *XcodeTestGenerator) TestRun(ccoreAbsPath string, projectName string) er
 		x.createDefaultProjectConfiguration(cbase_unittest, "ReleaseTest")
 	}
 
-	if err := ws.Finalize(); err != nil {
+	if err := ws.Resolve(); err != nil {
 		return err
 	}
 

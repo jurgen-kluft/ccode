@@ -92,13 +92,13 @@ func (s *VarSettings) ValuesToAdd(values ...string) {
 }
 
 func (s *VarSettings) inherit(rhs *VarSettings) {
-	s.AddDict.Extend(rhs.AddDict)
+	s.InheritDict.Extend(rhs.InheritDict)
 }
 
 func (s *VarSettings) computeFinal() {
 	s.InheritDict.Extend(s.AddDict)
 	s.FinalDict.Extend(s.InheritDict)
-	s.FinalDict.Extend(s.LocalAddDict)
+	//s.FinalDict.Extend(s.LocalAddDict)
 }
 
 // ----------------------------------------------------------------------------------------------------------
@@ -150,11 +150,11 @@ func (s *PathSettings) ValuesToAdd(values ...string) {
 }
 
 func (s *PathSettings) inherit(rhs *PathSettings) {
-	s.AddDict.Extend(rhs.AddDict)
+	s.InheritDict.Extend(rhs.InheritDict)
 }
 
 func (s *PathSettings) computeFinal() {
 	s.InheritDict.Extend(s.AddDict)
 	s.FinalDict.Extend(s.InheritDict)
-	s.FinalDict.Extend(s.LocalAddDict)
+	//s.FinalDict.Extend(s.LocalAddDict)
 }

@@ -90,7 +90,7 @@ func (ws *Workspace) AddConfig(config *Config) {
 	ws.Configs.Add(config)
 }
 
-func (ws *Workspace) Finalize() error {
+func (ws *Workspace) Resolve() error {
 	if ws.StartupProject == nil {
 		if startupProject, ok := ws.ProjectList.Get(ws.Config.StartupProject); ok {
 			ws.StartupProject = startupProject
@@ -100,7 +100,7 @@ func (ws *Workspace) Finalize() error {
 	}
 
 	for _, c := range ws.Configs.Values {
-		c.finalize()
+		c.computeFinal()
 	}
 
 	for _, p := range ws.ProjectList.Values {

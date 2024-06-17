@@ -3,7 +3,6 @@ package axe
 import (
 	"os"
 	"path/filepath"
-	"runtime"
 	"strings"
 	"unicode/utf8"
 )
@@ -15,6 +14,18 @@ type PathParts struct {
 	Ext    string
 }
 
+func PathSlash() string {
+	return string(os.PathSeparator)
+}
+
+func PathOtherSlash() string {
+	slash := os.PathSeparator
+	if slash == '/' {
+		return "\\"
+	}
+	return "/"
+}
+
 func PathNormalize(path string) string {
 
 	// if the path is empty, return it
@@ -23,13 +34,7 @@ func PathNormalize(path string) string {
 	}
 
 	// For each OS, adjust for the forward and backward slashes
-	if runtime.GOOS == "windows" {
-		path = strings.ReplaceAll(path, "/", "\\")
-	} else if runtime.GOOS == "linux" || runtime.GOOS == "darwin" {
-		path = strings.ReplaceAll(path, "\\", "/")
-	} else {
-		path = strings.ReplaceAll(path, "\\", "/")
-	}
+	path = strings.ReplaceAll(path, PathSlash(), PathOtherSlash())
 
 	// remove any '..' and trailing slashes
 	// adjust for the platform we are on
@@ -114,12 +119,7 @@ func PathSplitRelativeFilePath(path string, splitFilenameAndExtension bool) []st
 	}
 
 	parts := []string{}
-
-	if runtime.GOOS == "windows" {
-		parts = strings.Split(path, "\\") // split the path into parts where the last part is the filename
-	} else {
-		parts = strings.Split(path, "/") // split the path into parts where the last part is the filename
-	}
+	parts = strings.Split(path, PathSlash()) // split the path into parts where the last part is the filename
 
 	if splitFilenameAndExtension { // do we keep the filename as it is or split it into filename and extension
 		filename := parts[len(parts)-1]                         // Get the filename

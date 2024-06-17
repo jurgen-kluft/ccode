@@ -291,28 +291,18 @@ func (g *MsDevGenerator) genProjectConfig(wr *XmlWriter, proj *Project, config *
 		tag := wr.TagScope("PropertyGroup")
 		wr.Attr("Condition", cond)
 
-		var outputTarget string
+		outDir := PathDirname(config.OutputTarget.Path)
 		if g.Workspace.MakeTarget.OSIsLinux() {
-			outputTarget = "../" + g.Workspace.MakeTarget.OSAsString() + "/"
+			outDir = filepath.Join(outDir, g.Workspace.MakeTarget.OSAsString())
 		}
-		outputTarget += PathDirname(config.OutputTarget.Path)
-		if outputTarget == "" {
-			outputTarget = "."
-		}
-		outputTarget += "/"
 
-		intermediaDir := config.BuildTmpDir.Path
-		if intermediaDir == "" {
-			intermediaDir = "."
-		}
-		intermediaDir += "/"
-
+		intDir := filepath.Join(g.Workspace.GenerateAbsPath, proj.Name, "obj", config.Name+"_"+g.Workspace.MakeTarget.ArchAsString()+"_"+g.Workspace.Config.MsDev.PlatformToolset+"\\")
 		targetName := PathBasename(config.OutputTarget.Path, false)
 		targetExt := PathExtension(config.OutputTarget.Path)
 
 		// Visual Studio wants the following paths to end with a backslash
-		wr.TagWithBody("OutDir", PathGetRel(outputTarget, proj.GenerateAbsPath)+"\\")
-		wr.TagWithBody("IntDir", PathGetRel(intermediaDir, proj.GenerateAbsPath)+"\\")
+		wr.TagWithBody("OutDir", PathNormalize(PathGetRel(outDir, proj.GenerateAbsPath)+"\\"))
+		wr.TagWithBody("IntDir", PathNormalize(PathGetRel(intDir, proj.GenerateAbsPath)+"\\"))
 		wr.TagWithBody("TargetName", targetName)
 		if targetExt != "" {
 			wr.TagWithBody("TargetExt", targetExt)

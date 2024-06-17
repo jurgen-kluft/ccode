@@ -337,7 +337,7 @@ func (c *Config) inherit(rhs *Config) {
 	c.VisualStudioLink.UniqueExtend(rhs.VisualStudioLink)
 }
 
-func (c *Config) finalize() {
+func (c *Config) computeFinal() {
 	c.resolve()
 
 	for _, p := range c.VarSettings {
@@ -354,42 +354,41 @@ func (c *Config) resolve() {
 	}
 	c.Resolved = true
 
-	if c.Project == nil {
-		return
-	}
+	if c.Project != nil {
+		c.CppDefines.FinalDict.AddOrSet("CCORE_GEN_CPU", "CCORE_GEN_CPU_"+strings.ToUpper(c.Workspace.MakeTarget.ArchAsString()))
+		c.CppDefines.FinalDict.AddOrSet("CCORE_GEN_OS", "CCORE_GEN_OS_"+strings.ToUpper(c.Workspace.MakeTarget.OSAsString()))
+		c.CppDefines.FinalDict.AddOrSet("CCORE_GEN_COMPILER", "CCORE_GEN_COMPILER_"+strings.ToUpper(c.Workspace.MakeTarget.CompilerAsString()))
+		c.CppDefines.FinalDict.AddOrSet("CCORE_GEN_GENERATOR", "CCORE_GEN_GENERATOR_"+strings.ToUpper(c.Workspace.Generator.String()))
+		c.CppDefines.FinalDict.AddOrSet("CCORE_GEN_CONFIG", "CCORE_GEN_CONFIG_"+strings.ToUpper(c.Name))
+		c.CppDefines.FinalDict.AddOrSet("CCORE_GEN_PLATFORM_NAME", "CCORE_GEN_PLATFORM_NAME=\""+strings.ToUpper(c.Workspace.MakeTarget.OSAsString()+"\""))
+		c.CppDefines.FinalDict.AddOrSet("CCORE_GEN_PROJECT", "CCORE_GEN_PROJECT_"+strings.ToUpper(c.Project.Name))
+		c.CppDefines.FinalDict.AddOrSet("CCORE_GEN_TYPE", "CCORE_GEN_TYPE_"+strings.ToUpper(c.Project.Settings.Type.String()))
 
-	c.CppDefines.FinalDict.AddOrSet("CCORE_GEN_CPU", "CCORE_GEN_CPU_"+strings.ToUpper(c.Workspace.MakeTarget.ArchAsString()))
-	c.CppDefines.FinalDict.AddOrSet("CCORE_GEN_OS", "CCORE_GEN_OS_"+strings.ToUpper(c.Workspace.MakeTarget.OSAsString()))
-	c.CppDefines.FinalDict.AddOrSet("CCORE_GEN_COMPILER", "CCORE_GEN_COMPILER_"+strings.ToUpper(c.Workspace.MakeTarget.CompilerAsString()))
-	c.CppDefines.FinalDict.AddOrSet("CCORE_GEN_GENERATOR", "CCORE_GEN_GENERATOR_"+strings.ToUpper(c.Workspace.Generator.String()))
-	c.CppDefines.FinalDict.AddOrSet("CCORE_GEN_CONFIG", "CCORE_GEN_CONFIG_"+strings.ToUpper(c.Name))
-	c.CppDefines.FinalDict.AddOrSet("CCORE_GEN_PLATFORM_NAME", "CCORE_GEN_PLATFORM_NAME=\""+strings.ToUpper(c.Workspace.MakeTarget.OSAsString()+"\""))
-	c.CppDefines.FinalDict.AddOrSet("CCORE_GEN_PROJECT", "CCORE_GEN_PROJECT_"+strings.ToUpper(c.Project.Name))
-	c.CppDefines.FinalDict.AddOrSet("CCORE_GEN_TYPE", "CCORE_GEN_TYPE_"+strings.ToUpper(c.Project.Settings.Type.String()))
+		BINDIR := filepath.Join(c.Workspace.GenerateAbsPath, c.Project.Name, "bin", c.Name+"_"+c.Workspace.MakeTarget.ArchAsString()+"_"+c.Workspace.Config.MsDev.PlatformToolset+PathSlash())
+		LIBDIR := filepath.Join(c.Workspace.GenerateAbsPath, c.Project.Name, "lib", c.Name+"_"+c.Workspace.MakeTarget.ArchAsString()+"_"+c.Workspace.Config.MsDev.PlatformToolset+PathSlash())
+		// INTDIR := filepath.Join(c.Workspace.WorkspaceAbsPath, "target", c.Project.Name, "obj", c.Name+"_"+c.Workspace.MakeTarget.ArchAsString()+"_"+c.Workspace.Config.MsDev.PlatformToolset+"\\")
 
-	// This needs to be cleaned up
-	// OUTDIR  := filepath.Join(c.Workspace.WorkspaceAbsPath, "target", p.Name, "bin", "$(Configuration)_$(Platform)_$(PlatformToolset)")+"\\")
-	// INTDIR  := filepath.Join(c.Workspace.WorkspaceAbsPath, "target", p.Name, "obj", "$(Configuration)_$(Platform)_$(PlatformToolset)")+"\\")
-	// OUTDIR := filepath.Join(c.Workspace.WorkspaceAbsPath, "target", c.Project.Name, "bin", c.Name+"_"+c.Workspace.MakeTarget.ArchAsString()+"_"+c.Workspace.Config.MsDev.PlatformToolset+"\\")
-	// LIBDIR := filepath.Join(c.Workspace.WorkspaceAbsPath, "target", c.Project.Name, "lib", c.Name+"_"+c.Workspace.MakeTarget.ArchAsString()+"_"+c.Workspace.Config.MsDev.PlatformToolset+"\\")
-	//	INTDIR := filepath.Join(c.Workspace.WorkspaceAbsPath, "target", c.Project.Name, "obj", c.Name+"_"+c.Workspace.MakeTarget.ArchAsString()+"_"+c.Workspace.Config.MsDev.PlatformToolset+"\\")
-
-	output_target := ""
-	if c.Project.TypeIsExe() {
-		output_target = filepath.Join(c.Workspace.GenerateAbsPath, "bin", c.Name, c.OutTargetDir, c.ExeTargetPrefix+c.Project.Name+c.ExeTargetSuffix)
-	} else if c.Project.TypeIsDll() {
-		output_target = filepath.Join(c.Workspace.GenerateAbsPath, "bin", c.Name, c.OutTargetDir, c.DllTargetPrefix+c.Project.Name+c.DllTargetSuffix)
-		if c.Workspace.MakeTarget.OSIsWindows() {
-			c.OutputLib = NewFileEntryInit(filepath.Join(c.Workspace.GenerateAbsPath, "lib", c.Name, c.OutTargetDir, c.LibTargetPrefix+c.Project.Name+c.LibTargetSuffix), false)
-		} else {
-			c.OutputLib = NewFileEntryInit(filepath.Join(c.Workspace.GenerateAbsPath, "bin", c.Name, c.OutTargetDir, c.DllTargetPrefix+c.Project.Name+c.DllTargetSuffix), false)
+		outputTarget := ""
+		if c.Project.TypeIsExe() {
+			executableFilename := c.Workspace.Config.ExeTargetPrefix + c.Project.Name + c.Workspace.Config.ExeTargetSuffix
+			outputTarget = filepath.Join(BINDIR, executableFilename)
+		} else if c.Project.TypeIsDll() {
+			dllFilename := c.Workspace.Config.DllTargetPrefix + c.Project.Name + c.Workspace.Config.DllTargetSuffix
+			outputTarget = filepath.Join(BINDIR, dllFilename)
+			if c.Workspace.MakeTarget.OSIsWindows() {
+				libFilename := c.Workspace.Config.LibTargetPrefix + c.Project.Name + c.Workspace.Config.LibTargetSuffix
+				c.OutputLib = NewFileEntryInit(filepath.Join(LIBDIR, libFilename), false)
+			} else {
+				c.OutputLib = NewFileEntryInit(filepath.Join(BINDIR, dllFilename), false)
+			}
+		} else if c.Project.TypeIsLib() {
+			libFilename := c.Workspace.Config.LibTargetPrefix + c.Project.Name + c.Workspace.Config.LibTargetSuffix
+			outputTarget = filepath.Join(LIBDIR, libFilename)
+			c.OutputLib = NewFileEntryInit(outputTarget, false)
 		}
-	} else if c.Project.TypeIsLib() {
-		output_target = filepath.Join(c.Workspace.GenerateAbsPath, "lib", c.Name, c.OutTargetDir, c.LibTargetPrefix+c.Project.Name+c.LibTargetSuffix)
-		c.OutputLib = NewFileEntryInit(output_target, false)
-	}
 
-	if len(output_target) > 0 {
-		c.OutputTarget = NewFileEntryInit(output_target, false)
+		if len(outputTarget) > 0 {
+			c.OutputTarget = NewFileEntryInit(outputTarget, false)
+		}
 	}
 }
