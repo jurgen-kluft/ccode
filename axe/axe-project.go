@@ -392,8 +392,9 @@ type ExclusionFilter struct {
 func (f *ExclusionFilter) IsExcluded(filepath string) bool {
 	parts := PathSplitRelativeFilePath(filepath, true)
 	for i := 0; i < len(parts)-1; i++ {
+		p := strings.ToLower(parts[i])
 		for _, exclusion := range f.Exclusions {
-			if strings.HasSuffix(parts[i], exclusion) {
+			if strings.HasSuffix(p, exclusion) {
 				return true
 			}
 		}
