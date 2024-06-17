@@ -104,8 +104,7 @@ func (m *MsDevTestGenerator) TestRun(ccoreAbsPath string, projectName string) er
 		cbase_lib.GlobFiles(filepath.Join(ccoreAbsPath, "cbase"), "source/main/include/^**/*.h")
 		cbase_lib.GlobFiles(filepath.Join(ccoreAbsPath, "cbase"), "source/main/include/^**/*.inl")
 
-		config := m.createDefaultProjectConfiguration(cbase_lib, "Debug")
-		config.CppDefines.ValuesToAdd("")
+		m.createDefaultProjectConfiguration(cbase_lib, "Debug")
 		m.createDefaultProjectConfiguration(cbase_lib, "Release")
 		m.createDefaultProjectConfiguration(cbase_lib, "DebugTest")
 		m.createDefaultProjectConfiguration(cbase_lib, "ReleaseTest")
@@ -148,7 +147,7 @@ func (m *MsDevTestGenerator) TestRun(ccoreAbsPath string, projectName string) er
 		cunittestProjectConfig.CppAsObjCpp = false
 
 		cunittest_lib = ws.NewProject("cunittest_lib", "cunittest", axe.ProjectTypeCppLib, cunittestProjectConfig)
-		cunittest_lib.ProjectFilename = "cunittest"
+		cunittest_lib.ProjectFilename = "cunittest_lib"
 		cunittest_lib.GlobFiles(filepath.Join(ccoreAbsPath, "cunittest"), "source/main/cpp/^**/*.cpp")
 		cunittest_lib.GlobFiles(filepath.Join(ccoreAbsPath, "cunittest"), "source/main/include/^**/*.h")
 
@@ -192,7 +191,10 @@ func (m *MsDevTestGenerator) createDefaultProjectConfiguration(p *axe.Project, c
 	config.AddIncludeDir("source/main/include")
 	if strings.HasSuffix(configName, "Test") {
 		config.AddIncludeDir("source/test/include")
+		config.VisualStudioClCompile.Add("ExceptionHandling", "Sync")
 	}
+
+	config.CppDefines.ValuesToAdd("TARGET_PC")
 
 	p.Configs[configName] = config
 	return config
@@ -206,7 +208,7 @@ func (m *MsDevTestGenerator) addWorkspaceConfiguration(ws *axe.Workspace, config
 	} else {
 		config.CppDefines.ValuesToAdd("NDEBUG")
 	}
-	config.CppDefines.ValuesToAdd("_UNICODE", "UNICODE")
+	config.CppDefines.ValuesToAdd("_UNICODE", "UNICODE", "TARGET_PC")
 	config.LinkFlags.ValuesToAdd("-ObjC", "-framework Foundation")
 	config.XcodeSettings.Add("MACOSX_DEPLOYMENT_TARGET", "10.11")
 

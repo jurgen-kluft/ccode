@@ -11,7 +11,6 @@ type Config struct {
 	Workspace    *Workspace
 	IsDebug      bool
 	CppStd       string
-	WarningLevel string
 	Project      *Project
 	OutputTarget *FileEntry
 	OutputLib    *FileEntry
@@ -255,7 +254,7 @@ func (c *Config) InitVisualStudioSettings() {
 
 	if c.IsDebug {
 		c.VisualStudioClCompile.Add("Optimization", "Disabled")
-		c.VisualStudioClCompile.Add("DebugInformationFormat", "FullDebug")
+		c.VisualStudioClCompile.Add("DebugInformationFormat", "ProgramDatabase")
 		c.VisualStudioClCompile.Add("OmitFramePointers", "false")
 	} else {
 		c.VisualStudioClCompile.Add("Optimization", "Full") // MinSpace, MaxSpeed

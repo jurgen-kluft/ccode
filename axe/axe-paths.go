@@ -3,6 +3,7 @@ package axe
 import (
 	"os"
 	"path/filepath"
+	"runtime"
 	"strings"
 	"unicode/utf8"
 )
@@ -21,14 +22,18 @@ func PathNormalize(path string) string {
 		return path
 	}
 
+	// For each OS, adjust for the forward and backward slashes
+	if runtime.GOOS == "windows" {
+		path = strings.ReplaceAll(path, "/", "\\")
+	} else if runtime.GOOS == "linux" || runtime.GOOS == "darwin" {
+		path = strings.ReplaceAll(path, "\\", "/")
+	} else {
+		path = strings.ReplaceAll(path, "\\", "/")
+	}
+
 	// remove any '..' and trailing slashes
 	// adjust for the platform we are on
 	path = filepath.Clean(path)
-
-	// if the path is absolute, normalize it
-	if !filepath.IsAbs(path) {
-		return filepath.Join(PathGetCurrentDir(), path)
-	}
 
 	return path
 }
@@ -42,6 +47,8 @@ func PathDirname(path string) string {
 }
 
 func PathBasename(path string, withExtension bool) string {
+
+	path = PathNormalize(path)
 
 	pivot := strings.LastIndexAny(path, "/\\")
 	if pivot < 0 {
@@ -64,17 +71,21 @@ func PathBasename(path string, withExtension bool) string {
 }
 
 func PathUp(path string) (parent, sub string) {
+	path = PathNormalize(path)
 	parent = filepath.Dir(path)
 	sub = filepath.Base(path)
 	return
 }
 
 func PathExtension(path string) string {
+	path = PathNormalize(path)
 	return filepath.Ext(path)
 }
 
 func PathSplit(path string) PathParts {
 	var parts PathParts
+
+	path = PathNormalize(path)
 
 	parts.Driver = filepath.VolumeName(path)
 	parts.Dir, parts.Name = filepath.Split(path)
@@ -95,13 +106,22 @@ func PathSplitRelativeFilePath(path string, splitFilenameAndExtension bool) []st
 	// e.g        /Documents/Books/Sci-fi/Asimov/IRobot.epub
 	// split into [Documents, Books, Sci-fi, Asimov, IRobot, epub]
 
+	path = PathNormalize(path)
+
 	// make sure the path is relative
 	if PathIsAbs(path) {
 		return nil
 	}
 
-	parts := strings.Split(path, "/") // split the path into parts where the last part is the filename
-	if splitFilenameAndExtension {    // do we keep the filename as it is or split it into filename and extension
+	parts := []string{}
+
+	if runtime.GOOS == "windows" {
+		parts = strings.Split(path, "\\") // split the path into parts where the last part is the filename
+	} else {
+		parts = strings.Split(path, "/") // split the path into parts where the last part is the filename
+	}
+
+	if splitFilenameAndExtension { // do we keep the filename as it is or split it into filename and extension
 		filename := parts[len(parts)-1]                         // Get the filename
 		ext := filepath.Ext(filename)                           // Get the extension of the filename
 		parts[len(parts)-1] = strings.TrimSuffix(filename, ext) // Remove the extension from the filename
@@ -111,6 +131,8 @@ func PathSplitRelativeFilePath(path string, splitFilenameAndExtension bool) []st
 }
 
 func PathMakeFullPath(dir, path string) string {
+	dir = PathNormalize(dir)
+	path = PathNormalize(path)
 	if !PathIsAbs(path) {
 		return PathGetAbs(path)
 	}
@@ -118,6 +140,8 @@ func PathMakeFullPath(dir, path string) string {
 }
 
 func PathGetAbs(path string) string {
+
+	path = PathNormalize(path)
 
 	// if the path is already absolute, return it
 	if PathIsAbs(path) {
@@ -127,7 +151,7 @@ func PathGetAbs(path string) string {
 	// if the path is relative, get the current directory
 	// and append the path to it
 	dir := PathGetCurrentDir()
-	return PathGetAbs(dir + "/" + path)
+	return filepath.Join(dir, path)
 }
 
 func PathGetRel(path, relativeTo string) string {

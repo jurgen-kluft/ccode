@@ -411,6 +411,7 @@ func NewExclusionFilter(target MakeTarget) *ExclusionFilter {
 }
 
 func (p *Project) GlobFiles(dir string, pattern string) {
+	pattern = PathNormalize(pattern)
 	pp := strings.Split(pattern, "^")
 	path := filepath.Join(dir, pp[0])
 	files, err := glob.GlobFiles(path, pp[1])

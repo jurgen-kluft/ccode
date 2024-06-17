@@ -310,8 +310,9 @@ func (g *MsDevGenerator) genProjectConfig(wr *XmlWriter, proj *Project, config *
 		targetName := PathBasename(config.OutputTarget.Path, false)
 		targetExt := PathExtension(config.OutputTarget.Path)
 
-		wr.TagWithBody("OutDir", PathGetRel(outputTarget, proj.GenerateAbsPath))
-		wr.TagWithBody("IntDir", PathGetRel(intermediaDir, proj.GenerateAbsPath))
+		// Visual Studio wants the following paths to end with a backslash
+		wr.TagWithBody("OutDir", PathGetRel(outputTarget, proj.GenerateAbsPath)+"\\")
+		wr.TagWithBody("IntDir", PathGetRel(intermediaDir, proj.GenerateAbsPath)+"\\")
 		wr.TagWithBody("TargetName", targetName)
 		if targetExt != "" {
 			wr.TagWithBody("TargetExt", targetExt)
@@ -547,7 +548,7 @@ func (g *MsDevGenerator) genProjectFilters(proj *Project) {
 		{
 			tag := wr.TagScope("ItemGroup")
 			for _, i := range proj.VirtualFolders.Folders {
-				if i.Path == "." {
+				if len(i.Path) == 0 || i.Path == "." {
 					continue
 				}
 				tag := wr.TagScope("Filter")
@@ -560,8 +561,8 @@ func (g *MsDevGenerator) genProjectFilters(proj *Project) {
 
 		{
 			tag := wr.TagScope("ItemGroup")
-			for _, i := range proj.VirtualFolders.Folders {
-				for _, f := range i.Files {
+			for _, vf := range proj.VirtualFolders.Folders {
+				for _, f := range vf.Files {
 					if f == nil {
 						continue
 					}
@@ -575,9 +576,10 @@ func (g *MsDevGenerator) genProjectFilters(proj *Project) {
 					}
 
 					tag := wr.TagScope(typeName)
-					wr.Attr("Include", f.Path)
-					if len(i.Path) > 0 {
-						winPath := PathWindowsPath(i.Path)
+					relPath := PathGetRel(filepath.Join(proj.VirtualFolders.DiskPath, f.Path), proj.Workspace.GenerateAbsPath)
+					wr.Attr("Include", relPath)
+					if len(vf.Path) > 0 {
+						winPath := PathWindowsPath(vf.Path)
 						wr.TagWithBody("Filter", winPath)
 					}
 					tag.Close()
