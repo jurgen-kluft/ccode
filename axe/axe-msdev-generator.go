@@ -354,10 +354,6 @@ func (g *MsDevGenerator) genProjectConfig(wr *XmlWriter, proj *Project, config *
 				wr.TagWithBody("PrecompiledHeader", "NotUsing")
 			}
 
-			if config.WarningLevel != "" {
-				wr.TagWithBody("WarningLevel", config.WarningLevel)
-			}
-
 			g.genConfigOption(wr, "DisableSpecificWarnings", config.DisableWarning.FinalDict)
 			g.genConfigOption(wr, "PreprocessorDefinitions", config.CppDefines.FinalDict)
 			g.genConfigOptionWithModifier(wr, "AdditionalIncludeDirectories", config.IncludeDirs.FinalDict, func(key string, value string) string {

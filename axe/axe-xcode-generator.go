@@ -20,26 +20,6 @@ func (g *XcodeGenerator) Generate() {
 	g.genWorkSpace()
 }
 
-func (g *XcodeGenerator) quoteString2(v string) string {
-	return g.quoteString(g.quoteString(v))
-}
-
-func (g *XcodeGenerator) quoteString(v string) string {
-	o := "\""
-	for _, ch := range v {
-		switch ch {
-		case '"':
-			o += "\\\""
-		case '\\':
-			o += "\\\\"
-		default:
-			o += string(ch)
-		}
-	}
-	o += "\""
-	return o
-}
-
 func (g *XcodeGenerator) genWorkSpace() {
 	xcodeWorkspace := filepath.Join(g.Workspace.GenerateAbsPath, g.Workspace.WorkspaceName+".xcworkspace")
 
@@ -128,8 +108,6 @@ func (g *XcodeGenerator) genProject(proj *Project) {
 	wr.write("// !$*UTF8*$!")
 	{
 		scope := wr.NewObjectScope("")
-		defer scope.Close()
-
 		wr.member("archiveVersion", "1")
 		{
 			scope := wr.NewObjectScope("classes")
@@ -138,8 +116,6 @@ func (g *XcodeGenerator) genProject(proj *Project) {
 		wr.member("objectVersion", "46")
 		{
 			scope := wr.NewObjectScope("objects")
-			defer scope.Close()
-
 			g.genProjectPBXBuildFile(wr, proj)
 			g.genProjectDependencies(wr, proj)
 			g.genProjectPBXGroup(wr, proj)
@@ -149,8 +125,10 @@ func (g *XcodeGenerator) genProject(proj *Project) {
 			g.genProjectPBXNativeTarget(wr, proj)
 			g.genProjectXCBuildConfiguration(wr, proj)
 			g.genProjectXCConfigurationList(wr, proj)
+			scope.Close()
 		}
 		wr.member("rootObject", proj.GenDataXcode.Uuid.String())
+		scope.Close()
 	}
 
 	filename := proj.GenDataXcode.PbxProj
@@ -633,7 +611,7 @@ func (g *XcodeGenerator) genProjectXCBuildConfiguration(wr *XcodeWriter, proj *P
 
 	for _, config := range proj.Configs {
 		wr.newline(0)
-		wr.commentBlock("Project Conifg [" + config.Name + "]")
+		wr.commentBlock("Project Config [" + config.Name + "]")
 		scope := wr.NewObjectScope(config.GenDataXcode.ProjectConfigUuid.String())
 		{
 			wr.member("isa", "XCBuildConfiguration")
@@ -653,12 +631,13 @@ func (g *XcodeGenerator) genProjectXCBuildConfiguration(wr *XcodeWriter, proj *P
 
 	for _, config := range proj.Configs {
 		wr.newline(0)
-		wr.commentBlock("Target Conifg [" + config.Name + "]")
+		wr.commentBlock("Target Config [" + config.Name + "]")
 		scope := wr.NewObjectScope(config.GenDataXcode.TargetConfigUuid.String())
 		{
 			wr.member("isa", "XCBuildConfiguration")
 			{
 				scope := wr.NewObjectScope("buildSettings")
+
 				//link_flags
 				outputTarget := config.OutputTarget.Path
 				targetDir := filepath.Dir(outputTarget)
@@ -860,6 +839,26 @@ func (g *XcodeGenerator) genInfoPlistMacOSX(proj *Project) {
 		tag.Close()
 	}
 
-	filename := g.Workspace.GenerateAbsPath + gd.InfoPlistFile
+	filename := filepath.Join(g.Workspace.GenerateAbsPath, gd.InfoPlistFile)
 	wr.WriteToFile(filename)
+}
+
+func (g *XcodeGenerator) quoteString2(v string) string {
+	return g.quoteString(g.quoteString(v))
+}
+
+func (g *XcodeGenerator) quoteString(v string) string {
+	o := "\""
+	for _, ch := range v {
+		switch ch {
+		case '"':
+			o += "\\\""
+		case '\\':
+			o += "\\\\"
+		default:
+			o += string(ch)
+		}
+	}
+	o += "\""
+	return o
 }

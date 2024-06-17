@@ -104,6 +104,21 @@ func (s *VarSettings) computeFinal() {
 // ----------------------------------------------------------------------------------------------------------
 // ----------------------------------------------------------------------------------------------------------
 
+/*
+NOTE At the moment, remove, local_add, and local_remove are not used. The purpose of these dictionaries is to
+provide a means to specify values that are not going to be inherited by other dictionaries.
+
+How 'inheritance' works:
+- The 'inherit' dictionary is the dictionary that is inherited from the parent dictionary.
+- The 'add' dictionary is the dictionary where the user can add values to the dictionary.
+- The 'remove' dictionary is the dictionary where the user can specify values to remove from the dictionary.
+- The 'local_add' dictionary is the dictionary where the user can add values that are not going to be inherited.
+- The 'local_remove' dictionary is the dictionary where the user can specify values to remove but that are not going to be inherited.
+- The 'final' dictionary is the dictionary that is computed from the 'inherit', 'add', 'local_add' dictionaries,
+  and the 'remove' and 'local_remove' dictionaries are applied to the 'final' dictionary.
+
+*/
+
 type PathSettings struct {
 	Name            string
 	Root            string

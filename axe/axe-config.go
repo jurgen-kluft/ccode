@@ -142,7 +142,6 @@ func (c *Config) init(source *Config) {
 
 	if source != nil {
 		c.CppStd = source.CppStd
-		c.WarningLevel = source.WarningLevel
 		c.XcodeSettings.Merge(source.XcodeSettings)
 		c.VisualStudioClCompile.Merge(source.VisualStudioClCompile)
 		c.VisualStudioLink.Merge(source.VisualStudioLink)
@@ -246,6 +245,7 @@ func (c *Config) InitVisualStudioSettings() {
 	c.VisualStudioClCompile.Add("CompileAs", "CompileAsCpp")
 	c.VisualStudioClCompile.Add("EnableModules", "false")
 	c.VisualStudioClCompile.Add("TreatWarningAsError", "true")
+	c.VisualStudioClCompile.Add("WarningLevel", "Level3") // Level0, Level1, Level2, Level3, Level4
 
 	if c.Workspace.MakeTarget.CompilerIsClang() {
 		c.VisualStudioClCompile.Add("DebugInformationFormat", "None")
