@@ -163,7 +163,7 @@ type Project struct {
 	VirtualFolders      *VirtualFolders
 	PchCpp              *FileEntry
 	ProjectFilename     string
-	Configs             map[string]*Config
+	Configs             *ConfigList
 	GeneratedFilesDir   string
 	Dependencies        *ProjectList
 	DependenciesInherit *ProjectList
@@ -187,7 +187,7 @@ func newProject(ws *Workspace, name string, subPath string, projectType ProjectT
 		FileEntries:         NewFileEntryDict(ws, projectAbsPath),
 		ResourceDirs:        NewFileEntryDict(ws, projectAbsPath),
 		HasOutputTarget:     false,
-		Configs:             map[string]*Config{},
+		Configs:             NewConfigList(),
 		Dependencies:        NewProjectList(),
 		DependenciesInherit: NewProjectList(),
 		GenDataXcode:        NewXcodeProjectConfig(),
@@ -198,10 +198,10 @@ func newProject(ws *Workspace, name string, subPath string, projectType ProjectT
 	p.Settings.MultiThreadedBuild = Boolean(ws.Config.MultiThreadedBuild)
 	p.Settings.Xcode.BundleIdentifier = "$(PROJECT_NAME)"
 
-	for _, srcConfig := range ws.Configs {
+	for _, srcConfig := range ws.Configs.Values {
 		dstConfig := NewConfig(srcConfig.Name, ws, p)
-		p.Configs[srcConfig.Name] = dstConfig
 		dstConfig.init(srcConfig)
+		p.Configs.Add(dstConfig)
 	}
 
 	return p
@@ -229,16 +229,11 @@ func (p *Project) TypeIsExeOrDll() bool {
 	return p.TypeIsExe() || p.TypeIsDll()
 }
 
-func (p *Project) GetDefaultConfig() *Config {
-	name := p.Workspace.Config.ConfigList[0]
-	return p.GetOrCreateConfig(name)
-}
-
 func (p *Project) GetOrCreateConfig(name string) *Config {
-	c := p.Configs[name]
-	if c == nil {
+	c, ok := p.Configs.Get(name)
+	if !ok {
 		c = NewConfig(name, p.Workspace, p)
-		p.Configs[name] = c
+		p.Configs.Add(c)
 	}
 	return c
 }
@@ -273,7 +268,7 @@ func (p *Project) GenProjectGenUuid() {
 		f.GenData_xcode.UUID = GenerateUUID()
 	}
 
-	for _, config := range p.Configs {
+	for _, config := range p.Configs.Values {
 		config.GenDataXcode.ProjectConfigUuid = GenerateUUID()
 		config.GenDataXcode.TargetUuid = GenerateUUID()
 		config.GenDataXcode.TargetConfigUuid = GenerateUUID()
@@ -328,7 +323,7 @@ func (p *Project) resolveInternal() error {
 		return fmt.Errorf("unknown project type %q from project %q", p.Settings.Type, p.Name)
 	}
 
-	for _, c := range p.Workspace.Configs {
+	for _, c := range p.Workspace.Configs.Values {
 		c.inherit(c)
 	}
 
@@ -347,8 +342,8 @@ func (p *Project) resolveInternal() error {
 			return err
 		}
 
-		for pcKey, pc := range p.Configs {
-			pc.inherit(dp.Configs[pcKey])
+		for pi, pc := range p.Configs.Values {
+			pc.inherit(dp.Configs.Values[pi])
 		}
 
 		for _, dpdp := range dp.DependenciesInherit.Values {
@@ -358,7 +353,7 @@ func (p *Project) resolveInternal() error {
 		p.DependenciesInherit.Add(dp)
 	}
 
-	for _, c := range p.Configs {
+	for _, c := range p.Configs.Values {
 		c.finalize()
 	}
 

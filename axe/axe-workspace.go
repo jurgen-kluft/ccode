@@ -9,7 +9,6 @@ import (
 // -----------------------------------------------------------------------------------------------------
 
 type WorkspaceConfig struct {
-	ConfigList         []string            // The list of configurations to generate (e.g. ["Debug", "Release", "DebugTest", "ReleaseTest"])
 	GenerateAbsPath    string              // The directory where the workspace and project files will be generated
 	StartupProject     string              // The name of the project that will be marked as the startup project
 	MultiThreadedBuild bool                // Whether to mark 'multi-threaded build' in the project files
@@ -17,9 +16,7 @@ type WorkspaceConfig struct {
 }
 
 func NewWorkspaceConfig(workspacePath string, projectName string) *WorkspaceConfig {
-	wsc := &WorkspaceConfig{
-		ConfigList: []string{"Debug", "Release", "DebugTest", "ReleaseTest"},
-	}
+	wsc := &WorkspaceConfig{}
 	wsc.GenerateAbsPath = filepath.Join(workspacePath, projectName, "target")
 	wsc.StartupProject = projectName
 	wsc.MultiThreadedBuild = true
@@ -36,7 +33,7 @@ type Workspace struct {
 	WorkspaceAbsPath string                     // The workspace directory is the path where all the projects and workspace are to be generated
 	GenerateAbsPath  string                     // Where to generate the workspace and project files
 	Generator        GeneratorType              // Name of the generator, ccore compiler define
-	Configs          map[string]*Config         // The configuration instances for the workspace
+	Configs          *ConfigList                // The configuration instances for the workspace
 	MakeTarget       MakeTarget                 // The make target for the workspace (e.g. contains details like OS, Compiler, Arch, etc.)
 	StartupProject   *Project                   // The project instance that will be marked as the startup project
 	ProjectList      *ProjectList               // The project list
@@ -48,7 +45,7 @@ type Workspace struct {
 func NewWorkspace(ccoreAbsPath string, projectRelPath string) *Workspace {
 	ws := &Workspace{
 		Config:          NewWorkspaceConfig(ccoreAbsPath, projectRelPath),
-		Configs:         make(map[string]*Config),
+		Configs:         NewConfigList(),
 		ProjectList:     NewProjectList(),
 		ProjectGroups:   NewProjectGroups(),
 		ExtraWorkspaces: make(map[string]*ExtraWorkspace),
@@ -64,13 +61,9 @@ func (ws *Workspace) NewProject(name string, subPath string, projectType Project
 	return p
 }
 
-func (ws *Workspace) DefaultConfigName() string {
-	return ws.Config.ConfigList[0]
-}
-
 func (ws *Workspace) AddConfig(config *Config) {
-	ws.Configs[config.Name] = config
 	config.init(nil)
+	ws.Configs.Add(config)
 }
 
 func (ws *Workspace) Finalize() error {
@@ -82,7 +75,7 @@ func (ws *Workspace) Finalize() error {
 		}
 	}
 
-	for _, c := range ws.Configs {
+	for _, c := range ws.Configs.Values {
 		c.finalize()
 	}
 

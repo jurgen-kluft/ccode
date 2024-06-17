@@ -88,7 +88,7 @@ func (g *XcodeGenerator) genProjectGenUuid(proj *Project) {
 		f.GenData_xcode.UUID = GenerateUUID()
 	}
 
-	for _, config := range proj.Configs {
+	for _, config := range proj.Configs.Values {
 		config.GenDataXcode.ProjectConfigUuid = GenerateUUID()
 		config.GenDataXcode.TargetUuid = GenerateUUID()
 		config.GenDataXcode.TargetConfigUuid = GenerateUUID()
@@ -560,7 +560,8 @@ func (g *XcodeGenerator) genProjectPBXNativeTarget(wr *XcodeWriter, proj *Projec
 			wr.member("explicitFileType", explicitFileType)
 			wr.member("includeInIndex", "0")
 
-			targetBasename := PathBasename(proj.GetDefaultConfig().OutputTarget.Path, true)
+			defaultConfig := proj.Configs.First()
+			targetBasename := PathBasename(defaultConfig.OutputTarget.Path, true)
 			wr.member("path", g.quoteString(targetBasename))
 			wr.member("sourceTree", "BUILT_PRODUCTS_DIR")
 		}
@@ -609,7 +610,7 @@ func (g *XcodeGenerator) genProjectXCBuildConfiguration(wr *XcodeWriter, proj *P
 	wr.commentBlock("----- XCBuildConfiguration ---------------")
 	wr.newline(0)
 
-	for _, config := range proj.Configs {
+	for _, config := range proj.Configs.Values {
 		wr.newline(0)
 		wr.commentBlock("Project Config [" + config.Name + "]")
 		scope := wr.NewObjectScope(config.GenDataXcode.ProjectConfigUuid.String(g.Workspace.Generator))
@@ -629,7 +630,7 @@ func (g *XcodeGenerator) genProjectXCBuildConfiguration(wr *XcodeWriter, proj *P
 		scope.Close()
 	}
 
-	for _, config := range proj.Configs {
+	for _, config := range proj.Configs.Values {
 		wr.newline(0)
 		wr.commentBlock("Target Config [" + config.Name + "]")
 		scope := wr.NewObjectScope(config.GenDataXcode.TargetConfigUuid.String(g.Workspace.Generator))
@@ -744,7 +745,7 @@ func (g *XcodeGenerator) genProjectXCConfigurationList(wr *XcodeWriter, proj *Pr
 			wr.member("isa", "XCConfigurationList")
 			{
 				scope := wr.NewArrayScope("buildConfigurations")
-				for _, config := range proj.Configs {
+				for _, config := range proj.Configs.Values {
 					wr.newline(0)
 					wr.commentBlock(config.Name)
 					wr.newline(0)
@@ -752,8 +753,11 @@ func (g *XcodeGenerator) genProjectXCConfigurationList(wr *XcodeWriter, proj *Pr
 				}
 				scope.Close()
 			}
+
 			wr.member("defaultConfigurationIsVisible", "0")
-			wr.member("defaultConfigurationName", g.Workspace.DefaultConfigName())
+
+			defaultConfig := g.Workspace.Configs.First()
+			wr.member("defaultConfigurationName", defaultConfig.Name)
 		}
 		scope.Close()
 	}
@@ -766,7 +770,7 @@ func (g *XcodeGenerator) genProjectXCConfigurationList(wr *XcodeWriter, proj *Pr
 			wr.member("isa", "XCConfigurationList")
 			{
 				scope := wr.NewArrayScope("buildConfigurations")
-				for _, config := range proj.Configs {
+				for _, config := range proj.Configs.Values {
 					wr.newline(0)
 					wr.commentBlock(config.Name)
 					wr.newline(0)
@@ -775,7 +779,8 @@ func (g *XcodeGenerator) genProjectXCConfigurationList(wr *XcodeWriter, proj *Pr
 				scope.Close()
 			}
 			wr.member("defaultConfigurationIsVisible", "0")
-			wr.member("defaultConfigurationName", g.Workspace.DefaultConfigName())
+			defaultConfig := g.Workspace.Configs.First()
+			wr.member("defaultConfigurationName", defaultConfig.Name)
 		}
 		scope.Close()
 	}

@@ -16,35 +16,18 @@ func NewXcodeTestGenerator() *XcodeTestGenerator {
 
 func (x *XcodeTestGenerator) TestRun(ccoreAbsPath string, projectName string) error {
 
-	ws := axe.NewWorkspace(ccoreAbsPath, projectName)
-
-	ws.Config.ConfigList = []string{"Debug", "Release", "DebugTest", "ReleaseTest"}
-	ws.GenerateAbsPath = "target"
-	ws.Config.StartupProject = "cbase_unittest"
-	ws.Config.MultiThreadedBuild = true
-
-	// Add the configurations
-	for _, name := range ws.Config.ConfigList {
-		x.addWorkspaceConfiguration(ws, name)
-	}
-
 	visualStudioVersion := axe.VisualStudio2022
 
-	ws.Generator = axe.GeneratorXcode
-	ws.MakeTarget = axe.NewDefaultMakeTarget()
+	ws := axe.NewWorkspace(ccoreAbsPath, projectName)
+
+	ws.Generator = axe.GeneratorMsDev
 	ws.WorkspaceName = projectName
 	ws.WorkspaceAbsPath = ccoreAbsPath
 	ws.GenerateAbsPath = filepath.Join(ccoreAbsPath, projectName, "target", ws.Generator.String())
-
-	debugConfig := axe.NewConfig("Debug", ws, nil)
-	releaseConfig := axe.NewConfig("Release", ws, nil)
-	debugTestConfig := axe.NewConfig("DebugTest", ws, nil)
-	releaseTestConfig := axe.NewConfig("ReleaseTest", ws, nil)
-
-	ws.AddConfig(debugConfig)
-	ws.AddConfig(releaseConfig)
-	ws.AddConfig(debugTestConfig)
-	ws.AddConfig(releaseTestConfig)
+	ws.Config.StartupProject = "cbase_unittest"
+	ws.Config.MultiThreadedBuild = true
+	x.addWorkspaceConfiguration(ws, "DebugTest")
+	x.addWorkspaceConfiguration(ws, "ReleaseTest")
 
 	var cbase_lib *axe.Project
 	var ccore_lib *axe.Project
@@ -160,7 +143,7 @@ func (x *XcodeTestGenerator) createDefaultProjectConfiguration(p *axe.Project, c
 		config.AddIncludeDir("source/test/include")
 	}
 
-	p.Configs[configName] = config
+	p.Configs.Add(config)
 	return config
 }
 
@@ -174,7 +157,7 @@ func (x *XcodeTestGenerator) addWorkspaceConfiguration(ws *axe.Workspace, config
 	}
 	config.CppDefines.ValuesToAdd("_UNICODE", "UNICODE")
 	config.LinkFlags.ValuesToAdd("-ObjC", "-framework Foundation")
-	config.XcodeSettings.Add("MACOSX_DEPLOYMENT_TARGET", "10.11")
+	config.XcodeSettings.AddOrSet("MACOSX_DEPLOYMENT_TARGET", "10.11")
 
 	// clang
 	config.CppFlags.ValuesToAdd("-std=c++11", "-Wall", "-Wfatal-errors", "-Werror", "-Wno-switch")

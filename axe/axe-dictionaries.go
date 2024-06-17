@@ -15,7 +15,7 @@ type KeyValueDict struct {
 
 func (d *KeyValueDict) Merge(other *KeyValueDict) {
 	for key, value := range other.Entries {
-		d.Add(key, other.Values[value])
+		d.AddOrSet(key, other.Values[value])
 	}
 }
 
@@ -29,7 +29,7 @@ func NewKeyValueDict() *KeyValueDict {
 
 func (d *KeyValueDict) Extend(rhs *KeyValueDict) {
 	for key, value := range rhs.Entries {
-		d.Add(key, rhs.Values[value])
+		d.AddOrSet(key, rhs.Values[value])
 	}
 }
 
@@ -41,7 +41,7 @@ func (d *KeyValueDict) UniqueExtend(rhs *KeyValueDict) {
 	}
 }
 
-func (d *KeyValueDict) Add(key string, value string) {
+func (d *KeyValueDict) AddOrSet(key string, value string) {
 	i, ok := d.Entries[key]
 	if !ok {
 		d.Entries[key] = len(d.Values)
@@ -87,7 +87,7 @@ func NewVarDict(name string) *VarSettings {
 
 func (s *VarSettings) ValuesToAdd(values ...string) {
 	for _, value := range values {
-		s.AddDict.Add(value, value)
+		s.AddDict.AddOrSet(value, value)
 	}
 }
 
@@ -145,7 +145,7 @@ func NewPathDict(name string, root string) *PathSettings {
 
 func (s *PathSettings) ValuesToAdd(values ...string) {
 	for _, value := range values {
-		s.AddDict.Add(filepath.Join(s.Root, value), value)
+		s.AddDict.AddOrSet(filepath.Join(s.Root, value), value)
 	}
 }
 

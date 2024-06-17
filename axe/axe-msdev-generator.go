@@ -84,7 +84,7 @@ func (g *MsDevGenerator) genProject(proj *Project) {
 			tag := wr.TagScope("ItemGroup")
 			wr.Attr("Label", "ProjectConfigurations")
 
-			for _, config := range proj.Configs {
+			for _, config := range proj.Configs.Values {
 				tag := wr.TagScope("ProjectConfiguration")
 				wr.Attr("Include", config.Name+"|"+g.VcxProjCpu)
 
@@ -197,7 +197,7 @@ func (g *MsDevGenerator) genProject(proj *Project) {
 		}
 
 		//-----------
-		for _, config := range proj.Configs {
+		for _, config := range proj.Configs.Values {
 			g.genProjectConfig(wr, proj, config)
 		}
 
