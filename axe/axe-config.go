@@ -143,9 +143,9 @@ func (c *Config) init(source *Config) {
 	if source != nil {
 		c.CppStd = source.CppStd
 		c.WarningLevel = source.WarningLevel
-		c.XcodeSettings = source.XcodeSettings.Copy()
-		c.VisualStudioClCompile = source.VisualStudioClCompile.Copy()
-		c.VisualStudioLink = source.VisualStudioLink.Copy()
+		c.XcodeSettings.Merge(source.XcodeSettings)
+		c.VisualStudioClCompile.Merge(source.VisualStudioClCompile)
+		c.VisualStudioLink.Merge(source.VisualStudioLink)
 	} else {
 		c.InitXcodeSettings()
 		c.InitVisualStudioSettings()

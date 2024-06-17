@@ -13,17 +13,10 @@ type KeyValueDict struct {
 	Values  []string
 }
 
-func (d *KeyValueDict) Copy() *KeyValueDict {
-	c := &KeyValueDict{}
-	c.Entries = make(map[string]int)
-	c.Keys = make([]string, len(d.Keys))
-	copy(c.Keys, d.Keys)
-	c.Values = make([]string, len(d.Values))
-	copy(c.Values, d.Values)
-	for key, value := range d.Entries {
-		c.Entries[key] = value
+func (d *KeyValueDict) Merge(other *KeyValueDict) {
+	for key, value := range other.Entries {
+		d.Add(key, other.Values[value])
 	}
-	return c
 }
 
 func NewKeyValueDict() *KeyValueDict {
@@ -58,14 +51,6 @@ func (d *KeyValueDict) Add(key string, value string) {
 		d.Values[i] = value
 	}
 }
-
-// func (d *KeyValueDict) Concatenated(prefix string, suffix string) string {
-// 	concat := ""
-// 	for _, value := range d.Values {
-// 		concat += prefix + value + suffix
-// 	}
-// 	return concat
-// }
 
 func (d *KeyValueDict) Concatenated(prefix string, suffix string, valueModifier func(string, string) string) string {
 	concat := ""
