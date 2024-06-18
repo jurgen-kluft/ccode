@@ -52,7 +52,7 @@ func (fe *FileEntry) Init(path string, isGenerated bool) {
 	fe.Path = path
 	fe.ExcludedFromBuild = false
 
-	ext := PathExtension(fe.Path)
+	ext := PathFileExtension(fe.Path)
 	switch ext {
 	case ".h", ".hpp", ".inl":
 		fe.Type = FileTypeCppHeader

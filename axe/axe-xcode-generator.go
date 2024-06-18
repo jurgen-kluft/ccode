@@ -46,7 +46,7 @@ func (g *XcodeGenerator) genWorkspaceGroup(wr *XmlWriter, group *ProjectGroup) {
 	for _, c := range group.Children {
 		tag := wr.TagScope("Group")
 		wr.Attr("location", "container:")
-		basename := PathBasename(c.Path, true)
+		basename := PathFilename(c.Path, true)
 		wr.Attr("name", basename)
 		g.genWorkspaceGroup(wr, c)
 		tag.Close()
@@ -151,7 +151,7 @@ func (g *XcodeGenerator) genFileReference(wr *XcodeWriter, proj *Project, f *Fil
 	wr.commentBlock(f.Path)
 
 	scope := wr.NewObjectScope(f.GenDataXcode.UUID.String(g.Workspace.Generator))
-	basename := PathBasename(f.Path, true)
+	basename := PathFilename(f.Path, true)
 	{
 		wr.member("isa", "PBXFileReference")
 		wr.member("name", g.quoteString(basename))
@@ -189,7 +189,7 @@ func (g *XcodeGenerator) genProjectDependencies(wr *XcodeWriter, proj *Project) 
 			continue
 		}
 
-		targetBasename := PathBasename(dp.GenDataXcode.XcodeProj.Path, true)
+		targetBasename := PathFilename(dp.GenDataXcode.XcodeProj.Path, true)
 
 		wr.newline(0)
 		wr.commentBlock(dp.Name)
@@ -317,7 +317,7 @@ func (g *XcodeGenerator) genProjectPBXBuildFile(wr *XcodeWriter, proj *Project) 
 		wr.commentBlock(f.Path)
 		scope := wr.NewObjectScope(f.GenDataXcode.UUID.String(g.Workspace.Generator))
 		{
-			basename := PathBasename(f.Path, true)
+			basename := PathFilename(f.Path, true)
 			relPath := PathGetRel(f.Path, g.Workspace.GenerateAbsPath)
 
 			wr.member("isa", "PBXFileReference")
@@ -391,7 +391,7 @@ func (g *XcodeGenerator) genProjectPBXGroup(wr *XcodeWriter, proj *Project) {
 			}
 			scope.Close()
 
-			basename := PathBasename(v.Path, true)
+			basename := PathFilename(v.Path, true)
 			wr.member("name", g.quoteString(basename))
 
 			if v.Parent == root {
@@ -561,7 +561,7 @@ func (g *XcodeGenerator) genProjectPBXNativeTarget(wr *XcodeWriter, proj *Projec
 			wr.member("includeInIndex", "0")
 
 			defaultConfig := proj.Configs.First()
-			targetBasename := PathBasename(defaultConfig.OutputTarget.Path, true)
+			targetBasename := PathFilename(defaultConfig.OutputTarget.Path, true)
 			wr.member("path", g.quoteString(targetBasename))
 			wr.member("sourceTree", "BUILT_PRODUCTS_DIR")
 		}
@@ -642,7 +642,7 @@ func (g *XcodeGenerator) genProjectXCBuildConfiguration(wr *XcodeWriter, proj *P
 				//link_flags
 				outputTarget := config.OutputTarget.Path
 				targetDir := filepath.Dir(outputTarget)
-				targetBasename := PathBasename(outputTarget, false)
+				targetBasename := PathFilename(outputTarget, false)
 				targetExt := filepath.Ext(outputTarget)
 
 				wr.member("PRODUCT_NAME", g.quoteString(targetBasename))

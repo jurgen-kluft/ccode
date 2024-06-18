@@ -7,17 +7,12 @@ import (
 	"unicode/utf8"
 )
 
-type PathParts struct {
-	Driver string
-	Dir    string
-	Name   string
-	Ext    string
-}
-
+// PathSlash returns the slash of the current OS
 func PathSlash() string {
 	return string(os.PathSeparator)
 }
 
+// PathOtherSlash returns the opposite slash of the current OS
 func PathOtherSlash() string {
 	slash := os.PathSeparator
 	if slash == '/' {
@@ -26,6 +21,7 @@ func PathOtherSlash() string {
 	return "/"
 }
 
+// PathNormalize returns a normalized path, fixing slashes and removing '..' and trailing slashes
 func PathNormalize(path string) string {
 
 	// if the path is empty, return it
@@ -43,19 +39,17 @@ func PathNormalize(path string) string {
 	return path
 }
 
-func PathIsAbs(path string) bool {
-	return filepath.IsAbs(path)
-}
-
+// PathDirname returns the directory from the path
 func PathDirname(path string) string {
 	return filepath.Dir(path)
 }
 
-func PathBasename(path string, withExtension bool) string {
+// PathFilename returns the filename from the path with or without the extension
+func PathFilename(path string, withExtension bool) string {
 
 	path = PathNormalize(path)
 
-	pivot := strings.LastIndexAny(path, "/\\")
+	pivot := strings.LastIndexAny(path, PathSlash())
 	if pivot < 0 {
 		pivot = 0
 	} else {
@@ -75,6 +69,13 @@ func PathBasename(path string, withExtension bool) string {
 	return path[pivot : pivot+dot]
 }
 
+// PathFileExtension returns the extension of the file in the path
+func PathFileExtension(path string) string {
+	path = PathNormalize(path)
+	return filepath.Ext(path)
+}
+
+// PathUp returns the parent directory and the sub directory
 func PathUp(path string) (parent, sub string) {
 	path = PathNormalize(path)
 	parent = filepath.Dir(path)
@@ -82,39 +83,17 @@ func PathUp(path string) (parent, sub string) {
 	return
 }
 
-func PathExtension(path string) string {
-	path = PathNormalize(path)
-	return filepath.Ext(path)
-}
-
-func PathSplit(path string) PathParts {
-	var parts PathParts
-
-	path = PathNormalize(path)
-
-	parts.Driver = filepath.VolumeName(path)
-	parts.Dir, parts.Name = filepath.Split(path)
-	parts.Ext = filepath.Ext(parts.Name)
-
-	if len(parts.Ext) == 0 {
-		parts.Dir = filepath.Join(parts.Dir, parts.Name)
-		parts.Name = ""
-	}
-
-	return parts
-}
-
 // PathSplitRelativeFilePath first makes sure the path is relative, then it splits
 //
 //	the path into each directory, filename and extension
 func PathSplitRelativeFilePath(path string, splitFilenameAndExtension bool) []string {
-	// e.g        /Documents/Books/Sci-fi/Asimov/IRobot.epub
+	// e.g        Documents/Books/Sci-fi/Asimov/IRobot.epub
 	// split into [Documents, Books, Sci-fi, Asimov, IRobot, epub]
 
 	path = PathNormalize(path)
 
 	// make sure the path is relative
-	if PathIsAbs(path) {
+	if filepath.IsAbs(path) {
 		return nil
 	}
 
@@ -128,30 +107,6 @@ func PathSplitRelativeFilePath(path string, splitFilenameAndExtension bool) []st
 		parts = append(parts, ext)                              // Add the extension to the parts
 	}
 	return parts
-}
-
-func PathMakeFullPath(dir, path string) string {
-	dir = PathNormalize(dir)
-	path = PathNormalize(path)
-	if !PathIsAbs(path) {
-		return PathGetAbs(path)
-	}
-	return PathGetAbs(filepath.Join(dir, path))
-}
-
-func PathGetAbs(path string) string {
-
-	path = PathNormalize(path)
-
-	// if the path is already absolute, return it
-	if PathIsAbs(path) {
-		return path
-	}
-
-	// if the path is relative, get the current directory
-	// and append the path to it
-	dir := PathGetCurrentDir()
-	return filepath.Join(dir, path)
 }
 
 func PathGetRel(path, relativeTo string) string {

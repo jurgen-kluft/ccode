@@ -1,6 +1,7 @@
 package axe
 
 import (
+	"runtime"
 	"testing"
 )
 
@@ -60,4 +61,30 @@ func TestMatchCharCaseInsensitive(t *testing.T) {
 			t.Errorf("MatchCharCaseInsensitive(%q, %q) = %v", test.a, test.b, output)
 		}
 	}
+}
+
+func TestPathNormalize(t *testing.T) {
+	win := runtime.GOOS == "windows"
+
+	tests := []struct {
+		path      string
+		expected  string
+		direction bool
+	}{
+		{"c:\\documents\\old", "c:/documents/old", win},
+	}
+
+	for _, test := range tests {
+		if test.direction {
+			if output := PathNormalize(test.path); output != test.expected {
+				t.Errorf("PathNormalize(%q) = %v", test.path, output)
+			}
+		} else {
+
+			if output := PathNormalize(test.expected); output != test.path {
+				t.Errorf("PathNormalize(%q) = %v", test.expected, output)
+			}
+		}
+	}
+
 }

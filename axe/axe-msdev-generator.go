@@ -297,8 +297,8 @@ func (g *MsDevGenerator) genProjectConfig(wr *XmlWriter, proj *Project, config *
 		}
 
 		intDir := filepath.Join(g.Workspace.GenerateAbsPath, proj.Name, "obj", config.Name+"_"+g.Workspace.MakeTarget.ArchAsString()+"_"+g.Workspace.Config.MsDev.PlatformToolset+"\\")
-		targetName := PathBasename(config.OutputTarget.Path, false)
-		targetExt := PathExtension(config.OutputTarget.Path)
+		targetName := PathFilename(config.OutputTarget.Path, false)
+		targetExt := PathFileExtension(config.OutputTarget.Path)
 
 		// Visual Studio wants the following paths to end with a backslash
 		wr.TagWithBody("OutDir", PathNormalize(PathGetRel(outDir, proj.GenerateAbsPath)+"\\"))
@@ -484,7 +484,7 @@ func (g *MsDevGenerator) genWorkspace(ws *ExtraWorkspace) {
 			}
 			c.MsDev.UUID = GenerateUUID()
 
-			catName := PathBasename(c.Path, true)
+			catName := PathFilename(c.Path, true)
 			// sb += "Project(\"{2150E333-8FDC-42A3-9474-1A3956D46DE8}\") = \""
 			// sb += catName + "\", \"" + catName + "\", \"" + c.MsDev.UUID.String() + "\"\n"
 			// sb += "EndProject\n"
