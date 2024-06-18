@@ -225,6 +225,7 @@ func GenerateBuildFiles(pkg *denv.Package) error {
 		src_files := ""
 		for _, src := range prj.SrcFiles.Files {
 			srcfile := filepath.Join(relpath, src)
+			srcfile = strings.Replace(srcfile, "\\", "/", -1)
 			src_files += `                "` + srcfile + `",` + "\n"
 		}
 
@@ -565,9 +566,9 @@ func GenerateBuildFiles(pkg *denv.Package) error {
 	tundra.WriteLn(``)
 	tundra.WriteLn(`        OBJCCOM = "meh",`)
 	tundra.WriteLn(`    },`)
-	tundra.WriteLn(`    ReplaceEnv = {`)
-	tundra.WriteLn(`        OBJECTROOT = "target",`)
-	tundra.WriteLn(`    },`)
+	tundra.WriteLn(`	ReplaceEnv = {`)
+	tundra.WriteLn(`		OBJECTROOT = "../../target",`)
+	tundra.WriteLn(`	},`)
 	tundra.WriteLn(`}`)
 	tundra.WriteLn(``)
 	tundra.WriteLn(`-----------------------------------------------------------------------------------------------------------------------`)
@@ -583,10 +584,10 @@ func GenerateBuildFiles(pkg *denv.Package) error {
 	tundra.WriteLn(`    },`)
 	tundra.WriteLn(``)
 	tundra.WriteLn(`    Configs = {`)
-	tundra.WriteLn(`        Config { Name = "macos-clang", DefaultOnHost = { "macosx" }, Inherit = macosx, Tools = { "clang-osx" } },`)
-	tundra.WriteLn(`        Config { Name = "win64-msvc", DefaultOnHost = { "windows" }, Inherit = win64, Tools = { "msvc-vs2019" } },`)
-	tundra.WriteLn(`        Config { Name = "linux-gcc", DefaultOnHost = { "linux" }, Inherit = linux, Tools = { "gcc" } },`)
-	tundra.WriteLn(`        Config { Name = "linux-clang", DefaultOnHost = { "linux" }, Inherit = linux, Tools = { "clang" } },`)
+	tundra.WriteLn(`        Config { Name = "macos-clang", DefaultOnHost =  "macosx" , Inherit = macosx, Tools = { "clang-osx" } },`)
+	tundra.WriteLn(`        Config { Name = "win64-msvc", DefaultOnHost =  "windows" , Inherit = win64, Tools = { "msvc-vs2022" } },`)
+	tundra.WriteLn(`        Config { Name = "linux-gcc", DefaultOnHost =  "linux" , Inherit = linux, Tools = { "gcc" } },`)
+	tundra.WriteLn(`        Config { Name = "linux-clang", DefaultOnHost =  "linux" , Inherit = linux, Tools = { "clang" } },`)
 	tundra.WriteLn(`    },`)
 	tundra.WriteLn(``)
 	tundra.WriteLn(`    -- Variants = { "debug", "test", "release" },`)
