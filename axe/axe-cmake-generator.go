@@ -1,8 +1,6 @@
 package axe
 
-import (
-	"path/filepath"
-)
+import ()
 
 type CMakeGenerator struct {
 	LastGenId  UUID
@@ -15,7 +13,7 @@ func NewCMakeGenerator(ws *Workspace) *CMakeGenerator {
 		LastGenId: GenerateUUID(),
 		Workspace: ws,
 	}
-	g.init(ws)
+
 	return g
 }
 

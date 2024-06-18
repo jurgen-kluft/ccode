@@ -2,6 +2,7 @@ package axe
 
 import (
 	"path/filepath"
+	"runtime"
 )
 
 type TundraGenerator struct {
@@ -15,7 +16,7 @@ func NewTundraGenerator(ws *Workspace) *TundraGenerator {
 		LastGenId: GenerateUUID(),
 		Workspace: ws,
 	}
-	g.init(ws)
+
 	return g
 }
 
