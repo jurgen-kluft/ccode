@@ -221,15 +221,13 @@ func PathIsFile(path string) bool {
 
 func MatchCharCaseInsensitive(a rune, b rune) bool {
 	if a >= 'A' && a <= 'Z' {
-		a += (a - 'A') + 'a'
+		a = (a - 'A') + 'a'
 	}
 	if b >= 'A' && b <= 'Z' {
-		b += (b - 'A') + 'a'
+		b = (b - 'A') + 'a'
 	}
 	return a == b
 }
-
-// Make this UTF-8 safe
 func PathMatchWildcard(path, wildcard string, ignoreCase bool) bool {
 	pb := 0
 	pe := len(path)
@@ -241,26 +239,6 @@ func PathMatchWildcard(path, wildcard string, ignoreCase bool) bool {
 
 		pc, ps := utf8.DecodeRuneInString(path[pb:])
 		wc, ws := utf8.DecodeRuneInString(wildcard[wb:])
-
-		if wc == '?' {
-			pb += ps
-			wb += ws
-			continue
-		}
-
-		if ignoreCase {
-			if MatchCharCaseInsensitive(wc, pc) {
-				pb += ps
-				wb += ws
-				continue
-			}
-		} else {
-			if wildcard[wb] == path[pb] {
-				pb += ps
-				wb += ws
-				continue
-			}
-		}
 
 		if wc == '*' {
 			w1 := wb + ws
@@ -283,6 +261,91 @@ func PathMatchWildcard(path, wildcard string, ignoreCase bool) bool {
 			}
 
 			continue
+		}
+
+		if ignoreCase {
+			if MatchCharCaseInsensitive(wc, pc) {
+				pb += ps
+				wb += ws
+				continue
+			}
+		} else {
+			if wc == pc {
+				pb += ps
+				wb += ws
+				continue
+			}
+		}
+
+		if wc == '?' {
+			pb += ps
+			wb += ws
+			continue
+		}
+
+		return false
+	}
+
+	if pb == pe && wb == we {
+		return true
+	}
+
+	return false
+}
+
+func PathMatchWildcardOptimized(path, wildcard string, ignoreCase bool) bool {
+	pb := 0
+	pe := len(path)
+
+	wb := 0
+	we := len(wildcard)
+
+	for pb < pe && wb < we {
+
+		pc, ps := utf8.DecodeRuneInString(path[pb:])
+		wc, ws := utf8.DecodeRuneInString(wildcard[wb:])
+
+		if wc == '*' {
+
+			w1 := wb + ws
+			if w1 >= we {
+				return true
+			}
+			wc, ws = utf8.DecodeRuneInString(wildcard[w1:])
+
+			pb = pb + ps
+			for pb < pe {
+				pc, ps = utf8.DecodeRuneInString(path[pb:])
+				if pc == wc {
+					goto next
+				}
+				pb += ps
+			}
+			return false
+
+		next:
+			wb = w1
+			continue
+		}
+
+		if wc == '?' {
+			pb += ps
+			wb += ws
+			continue
+		}
+
+		if ignoreCase {
+			if MatchCharCaseInsensitive(wc, pc) {
+				pb += ps
+				wb += ws
+				continue
+			}
+		} else {
+			if wc == pc {
+				pb += ps
+				wb += ws
+				continue
+			}
 		}
 
 		return false

@@ -111,8 +111,6 @@ func (ws *Workspace) Resolve() error {
 	}
 
 	ws.MasterWorkspace = NewExtraWorkspace(ws, ws.WorkspaceName)
-
-	ws.MasterWorkspace.ProjectList = NewProjectList()
 	for _, p := range ws.ProjectList.Values {
 		ws.MasterWorkspace.ProjectList.Add(p)
 	}
@@ -194,10 +192,11 @@ func (ew *ExtraWorkspace) resolve() {
 
 func NewExtraWorkspace(ws *Workspace, name string) *ExtraWorkspace {
 	ew := &ExtraWorkspace{
-		Workspace: ws,
-		Name:      name,
-		MsDev:     ws.Config.MsDev,
-		Config:    &ExtraWorkspaceConfig{},
+		Workspace:   ws,
+		Name:        name,
+		Config:      &ExtraWorkspaceConfig{},
+		ProjectList: NewProjectList(),
+		MsDev:       ws.Config.MsDev,
 	}
 	ew.MsDev = ws.Config.MsDev
 	return ew
