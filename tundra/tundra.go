@@ -261,21 +261,17 @@ func GenerateBuildFiles(pkg *denv.Package) error {
 		}
 		dependency = append(dependency, `++},`)
 		dependency = append(dependency, `++CPPDEFS = {`)
-		// dependency = append(dependency, `+++{ "TARGET_DEBUG", Config = "*-*-debug" },`)
-		// dependency = append(dependency, `+++{ "TARGET_RELEASE", Config = "*-*-release" },`)
 
 		for _, cfg := range dep.Platform.Configs {
 			dependency = append(dependency, `+++{`)
 			for _, def := range cfg.Defines.Items {
 				dependency = append(dependency, `++++"`+def+`",`)
 			}
-			dependency = append(dependency, `++++Config = "*-`+strings.ToLower(strings.ToLower(cfg.Config))+`-*" `)
+			dependency = append(dependency, `++++Config = "*-*-`+strings.ToLower(strings.ToLower(cfg.Config))+`-*" `)
 			dependency = append(dependency, `+++},`)
 		}
 
-		dependency = append(dependency, `+++{ "TARGET_MAC", Config = "macos-*-*" },`)
-		dependency = append(dependency, `+++{ "TARGET_PC", Config = "win64-*-*" },`)
-		dependency = append(dependency, `+++{ "TARGET_TEST", Config = "*-*-test" },`)
+		dependency = append(dependency, `+++{ "TARGET_TEST", Config = "*-*-*-test" },`)
 		dependency = append(dependency, `++},`)
 		dependency = append(dependency, `+},`)
 		dependency = append(dependency, `+Includes = {`)
@@ -285,7 +281,7 @@ func GenerateBuildFiles(pkg *denv.Package) error {
 		}
 		dependency = append(dependency, `+},`)
 		dependency = append(dependency, `+Sources = {`)
-		dependency = append(dependency, `++${${Name}:SOURCE_FILES}`)
+		dependency = append(dependency, `+${${Name}:SOURCE_FILES}`)
 		dependency = append(dependency, `+},`)
 		dependency = append(dependency, `}`)
 		dependency = append(dependency, "")
@@ -325,8 +321,6 @@ func GenerateBuildFiles(pkg *denv.Package) error {
 
 	program = append(program, `+Env = {`)
 	program = append(program, `++CPPPATH = {`)
-	//program = append(program, `+++"${${Name}:SOURCE_DIR}",`)
-	//program = append(program, `+++${${Name}:INCLUDE_DIRS},`)
 	for _, depDep := range mainprj.Dependencies {
 		program = append(program, `+++${`+depDep.Name+`:INCLUDE_DIRS},`)
 		program = append(program, `+++"${`+depDep.Name+`:SOURCE_DIR}",`)
@@ -334,32 +328,28 @@ func GenerateBuildFiles(pkg *denv.Package) error {
 	program = append(program, `++},`)
 
 	program = append(program, `++CPPDEFS = {`)
-	// program = append(program, `+++{ "TARGET_DEBUG", Config = "*-*-debug" },`)
-	// program = append(program, `+++{ "TARGET_RELEASE", Config = "*-*-release" },`)
 
 	for _, cfg := range mainprj.Platform.Configs {
 		program = append(program, `+++{`)
 		for _, def := range cfg.Defines.Items {
 			program = append(program, `++++"`+def+`",`)
 		}
-		program = append(program, `++++Config = "*-`+strings.ToLower(cfg.Config)+`-*" `)
+		program = append(program, `++++Config = "*-*-`+strings.ToLower(cfg.Config)+`-*" `)
 		program = append(program, `+++},`)
 	}
 
-	program = append(program, `+++{ "TARGET_MAC", Config = "macos-*-*" },`)
-	program = append(program, `+++{ "TARGET_PC", Config = "win64-*-*" },`)
-	program = append(program, `+++{ "TARGET_TEST", Config = "*-*-test" },`)
+	program = append(program, `+++{ "TARGET_TEST", Config = "*-*-*-test" },`)
 	program = append(program, `++},`)
 	program = append(program, `+},`)
 
 	program = append(program, `+Sources = {`)
-	program = append(program, `++${SOURCE_FILES}`)
+	program = append(program, `+${SOURCE_FILES}`)
 	program = append(program, `+},`)
 	program = append(program, `+Includes = {`)
-	program = append(program, `++${INCLUDE_DIRS}`)
+	program = append(program, `+${INCLUDE_DIRS}`)
 	program = append(program, `+},`)
 	program = append(program, `+Depends = {`)
-	program = append(program, `++${DEPENDS}`)
+	program = append(program, `+${DEPENDS}`)
 	program = append(program, `+},`)
 
 	// if the platform is Mac also write out the Frameworks we are using
