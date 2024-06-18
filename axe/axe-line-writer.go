@@ -20,6 +20,13 @@ func (w *LineWriter) Write(str string) {
 	w.line.WriteString(str)
 }
 
+func (w *LineWriter) WriteILine(str ...string) {
+	for _, s := range str {
+		w.line.WriteString(s)
+	}
+	w.NewLine()
+}
+
 func (w *LineWriter) WriteLine(str string) {
 	w.line.WriteString(str)
 	w.lines = append(w.lines, w.line.String())

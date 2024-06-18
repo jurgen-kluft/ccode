@@ -31,6 +31,95 @@ func (g *TundraGenerator) generateUnitsLua(ws *Workspace) {
 	units.WriteLine(`require "tundra.path"`)
 	units.WriteLine(`require "tundra.util"`)
 
+	// Get all the library projects and write them out
+
+}
+
+func (g *TundraGenerator) writeCppLibrary(units *LineWriter, p *Project) {
+
+	projectType := ""
+	switch p.Type {
+	case ProjectTypeCppLib, ProjectTypeCLib:
+		projectType = "StaticLibrary"
+	case ProjectTypeCppDll, ProjectTypeCDll:
+		projectType = "SharedLibrary"
+	case ProjectTypeCppExe, ProjectTypeCExe:
+		projectType = "Program"
+	}
+
+	units.NewLine()
+	units.WriteILine("local ", p.Name, "_unit = ", projectType)
+	units.WriteILine("+", "Name = ", p.Name, ",")
+	units.WriteILine("+", "Env = {")
+	units.WriteILine(`++`, `CPPPATH = {`)
+	units.WriteILine(`+++`, `${${Name}:SOURCE_DIR}",`)
+	units.WriteILine(`+++`, `${${Name}:INCLUDE_DIRS},`)
+
+	// for _, depDep := range dep.Dependencies {
+	// 	units.WriteLine(`+++${` + depDep.Name + `:INCLUDE_DIRS},`)
+	// 	units.WriteLine(`+++"${` + depDep.Name + `:SOURCE_DIR}",`)
+	// }
+
+	units.WriteLine(`++},`)
+	units.WriteLine(`++CPPDEFS = {`)
+	// units.WriteLine( `+++{ "TARGET_DEBUG", Config = "*-*-debug" },`)
+	// units.WriteLine( `+++{ "TARGET_RELEASE", Config = "*-*-release" },`)
+
+	// for _, cfg := range dep.Platform.Configs {
+	// 	units.WriteLine(`+++{`)
+	// 	for _, def := range cfg.Defines.Items {
+	// 		units.WriteLine(`++++"` + def + `",`)
+	// 	}
+	// 	units.WriteLine(`++++Config = "*-*-` + strings.ToLower(strings.ToLower(cfg.Config)) + `" `)
+	// 	units.WriteLine(`+++},`)
+	// }
+
+	units.WriteLine(`+++{ "TARGET_MAC", Config = "macos-*-*" },`)
+	units.WriteLine(`+++{ "TARGET_TEST", Config = "*-*-test" },`)
+	units.WriteLine(`++},`)
+	units.WriteLine(`+},`)
+	units.WriteLine(`+Includes = {`)
+	units.WriteLine(`++${${Name}:INCLUDE_DIRS},`)
+
+	// for _, depDep := range dep.Dependencies {
+	// 	units.WriteLine(`++${` + depDep.Name + `:INCLUDE_DIRS},`)
+	// }
+
+	units.WriteLine(`+},`)
+	units.WriteLine(`+Sources = {`)
+	units.WriteLine(`++${${Name}:SOURCE_FILES}`)
+	units.WriteLine(`+},`)
+	units.WriteLine(`}`)
+	units.WriteLine("")
+
+	// replacer.ReplaceInLines("${SOURCE_FILES}", "${"+dep.Name+":SOURCE_FILES}", dependency)
+	// replacer.ReplaceInLines("${SOURCE_DIR}", "${"+dep.Name+":SOURCE_DIR}", dependency)
+
+	// configitems := map[string]items.List{
+	// 	"INCLUDE_DIRS": items.NewList("${"+dep.Name+":INCLUDE_DIRS}", ",", ""),
+	// }
+
+	// for configitem, defaults := range configitems {
+	// 	varkeystr := fmt.Sprintf("${%s}", configitem)
+	// 	varlist := defaults.Copy()
+
+	// 	for _, depDep := range dep.Dependencies {
+	// 		varkey := fmt.Sprintf("%s:%s", depDep.Name, configitem)
+	// 		varitem := variables.GetVar(varkey)
+	// 		if len(varitem) > 0 {
+	// 			varlist = varlist.Add(varitem)
+	// 		}
+	// 	}
+	// 	varset := items.ListToSet(varlist)
+	// 	replacer.InsertInLines(varkeystr, varset.String(), "", dependency)
+	// 	replacer.ReplaceInLines(varkeystr, "", dependency)
+	// }
+
+	// replacer.ReplaceInLines("${Name}", dep.Name, dependency)
+	// variables.ReplaceInLines(replacer, dependency)
+
+	// units.WriteLns(dependency)
+
 }
 
 func (g *TundraGenerator) generateTundraLua(ws *Workspace) {
