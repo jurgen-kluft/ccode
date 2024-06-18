@@ -48,11 +48,11 @@ func (m *MsDevTestGenerator) TestRun(ccoreAbsPath string, projectName string) er
 
 		cbase_lib = ws.NewProject("cbase_lib", "cbase", axe.ProjectTypeCppLib, cbaseProjectConfig)
 		cbase_lib.ProjectFilename = "cbase_lib"
-		cbase_lib.GlobFiles(filepath.Join(ccoreAbsPath, "ccore"), filepath.Join("source", "main", "cpp", "^**", "*.cpp"))
-		cbase_lib.GlobFiles(filepath.Join(ccoreAbsPath, "ccore"), filepath.Join("source", "main", "cpp", "^**", "*.m"))
-		cbase_lib.GlobFiles(filepath.Join(ccoreAbsPath, "ccore"), filepath.Join("source", "main", "cpp", "^**", "*.mm"))
-		cbase_lib.GlobFiles(filepath.Join(ccoreAbsPath, "ccore"), filepath.Join("source", "main", "include", "^**", "*.h"))
-		cbase_lib.GlobFiles(filepath.Join(ccoreAbsPath, "ccore"), filepath.Join("source", "main", "include", "^**", "*.inl"))
+		cbase_lib.GlobFiles(filepath.Join(ccoreAbsPath, "cbase"), filepath.Join("source", "main", "cpp", "^**", "*.cpp"))
+		cbase_lib.GlobFiles(filepath.Join(ccoreAbsPath, "cbase"), filepath.Join("source", "main", "cpp", "^**", "*.m"))
+		cbase_lib.GlobFiles(filepath.Join(ccoreAbsPath, "cbase"), filepath.Join("source", "main", "cpp", "^**", "*.mm"))
+		cbase_lib.GlobFiles(filepath.Join(ccoreAbsPath, "cbase"), filepath.Join("source", "main", "include", "^**", "*.h"))
+		cbase_lib.GlobFiles(filepath.Join(ccoreAbsPath, "cbase"), filepath.Join("source", "main", "include", "^**", "*.inl"))
 
 		m.createDefaultProjectConfiguration(cbase_lib, "DebugTest")
 		m.createDefaultProjectConfiguration(cbase_lib, "ReleaseTest")

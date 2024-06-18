@@ -364,9 +364,8 @@ func (c *Config) resolve() {
 		c.CppDefines.FinalDict.AddOrSet("CCORE_GEN_PROJECT", "CCORE_GEN_PROJECT_"+strings.ToUpper(c.Project.Name))
 		c.CppDefines.FinalDict.AddOrSet("CCORE_GEN_TYPE", "CCORE_GEN_TYPE_"+strings.ToUpper(c.Project.Settings.Type.String()))
 
-		BINDIR := filepath.Join(c.Workspace.GenerateAbsPath, c.Project.Name, "bin", c.Name+"_"+c.Workspace.MakeTarget.ArchAsString()+"_"+c.Workspace.Config.MsDev.PlatformToolset+PathSlash())
-		LIBDIR := filepath.Join(c.Workspace.GenerateAbsPath, c.Project.Name, "lib", c.Name+"_"+c.Workspace.MakeTarget.ArchAsString()+"_"+c.Workspace.Config.MsDev.PlatformToolset+PathSlash())
-		// INTDIR := filepath.Join(c.Workspace.WorkspaceAbsPath, "target", c.Project.Name, "obj", c.Name+"_"+c.Workspace.MakeTarget.ArchAsString()+"_"+c.Workspace.Config.MsDev.PlatformToolset+"\\")
+		BINDIR := filepath.Join(c.Workspace.GenerateAbsPath, "bin", c.Project.Name, c.Name+"_"+c.Workspace.MakeTarget.ArchAsString()+"_"+c.Workspace.Config.MsDev.PlatformToolset)
+		LIBDIR := filepath.Join(c.Workspace.GenerateAbsPath, "lib", c.Project.Name, c.Name+"_"+c.Workspace.MakeTarget.ArchAsString()+"_"+c.Workspace.Config.MsDev.PlatformToolset)
 
 		outputTarget := ""
 		if c.Project.TypeIsExe() {

@@ -296,13 +296,13 @@ func (g *MsDevGenerator) genProjectConfig(wr *XmlWriter, proj *Project, config *
 			outDir = filepath.Join(outDir, g.Workspace.MakeTarget.OSAsString())
 		}
 
-		intDir := filepath.Join(g.Workspace.GenerateAbsPath, proj.Name, "obj", config.Name+"_"+g.Workspace.MakeTarget.ArchAsString()+"_"+g.Workspace.Config.MsDev.PlatformToolset+"\\")
+		intDir := filepath.Join(g.Workspace.GenerateAbsPath, "obj", proj.Name, config.Name+"_"+g.Workspace.MakeTarget.ArchAsString()+"_"+g.Workspace.Config.MsDev.PlatformToolset)
 		targetName := PathFilename(config.OutputTarget.Path, false)
 		targetExt := PathFileExtension(config.OutputTarget.Path)
 
 		// Visual Studio wants the following paths to end with a backslash
-		wr.TagWithBody("OutDir", PathNormalize(PathGetRel(outDir, proj.GenerateAbsPath)+"\\"))
-		wr.TagWithBody("IntDir", PathNormalize(PathGetRel(intDir, proj.GenerateAbsPath)+"\\"))
+		wr.TagWithBody("OutDir", PathNormalize(PathGetRel(outDir, proj.GenerateAbsPath))+PathSlash())
+		wr.TagWithBody("IntDir", PathNormalize(PathGetRel(intDir, proj.GenerateAbsPath))+PathSlash())
 		wr.TagWithBody("TargetName", targetName)
 		if targetExt != "" {
 			wr.TagWithBody("TargetExt", targetExt)
