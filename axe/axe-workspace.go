@@ -79,8 +79,8 @@ func NewWorkspace(wsc *WorkspaceConfig) *Workspace {
 	return ws
 }
 
-func (ws *Workspace) NewProject(name string, subPath string, projectType ProjectType, settings *ProjectConfig) *Project {
-	p := newProject(ws, name, subPath, projectType, settings)
+func (ws *Workspace) NewProject(name string, projectAbsPath string, projectType ProjectType, settings *ProjectConfig) *Project {
+	p := newProject(ws, name, projectAbsPath, projectType, settings)
 	ws.ProjectList.Add(p)
 	return p
 }

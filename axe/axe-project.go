@@ -175,8 +175,7 @@ type Project struct {
 	GenDataMsDev *MsDevProjectConfig
 }
 
-func newProject(ws *Workspace, name string, subPath string, projectType ProjectType, settings *ProjectConfig) *Project {
-	projectAbsPath := filepath.Join(ws.WorkspaceAbsPath, subPath)
+func newProject(ws *Workspace, name string, projectAbsPath string, projectType ProjectType, settings *ProjectConfig) *Project {
 	p := &Project{
 		Workspace:           ws,
 		Name:                name,

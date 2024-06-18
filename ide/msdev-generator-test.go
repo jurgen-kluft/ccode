@@ -14,19 +14,19 @@ func NewMsDevTestGenerator() *MsDevTestGenerator {
 	return &MsDevTestGenerator{}
 }
 
-func (m *MsDevTestGenerator) TestRun(ccoreAbsPath string, projectName string) error {
+func (m *MsDevTestGenerator) TestRun(rootAbsPath string, projectName string) error {
 
 	visualStudioVersion := axe.VisualStudio2022
 
-	wsc := axe.NewWorkspaceConfig(ccoreAbsPath, projectName)
+	wsc := axe.NewWorkspaceConfig(rootAbsPath, projectName)
 	wsc.StartupProject = "cbase_unittest"
 	wsc.MultiThreadedBuild = true
 
 	ws := axe.NewWorkspace(wsc)
 	ws.Generator = axe.GeneratorMsDev
 	ws.WorkspaceName = projectName
-	ws.WorkspaceAbsPath = ccoreAbsPath
-	ws.GenerateAbsPath = filepath.Join(ccoreAbsPath, projectName, "target", ws.Generator.String())
+	ws.WorkspaceAbsPath = rootAbsPath
+	ws.GenerateAbsPath = filepath.Join(rootAbsPath, projectName, "target", ws.Generator.String())
 	m.addWorkspaceConfiguration(ws, "DebugTest")
 	m.addWorkspaceConfiguration(ws, "ReleaseTest")
 
@@ -46,13 +46,14 @@ func (m *MsDevTestGenerator) TestRun(ccoreAbsPath string, projectName string) er
 		cbaseProjectConfig.MultiThreadedBuild = true
 		cbaseProjectConfig.CppAsObjCpp = false
 
-		cbase_lib = ws.NewProject("cbase_lib", "cbase", axe.ProjectTypeCppLib, cbaseProjectConfig)
+		cbaseAbsPath := filepath.Join(rootAbsPath, "cbase")
+		cbase_lib = ws.NewProject("cbase_lib", cbaseAbsPath, axe.ProjectTypeCppLib, cbaseProjectConfig)
 		cbase_lib.ProjectFilename = "cbase_lib"
-		cbase_lib.GlobFiles(filepath.Join(ccoreAbsPath, "cbase"), filepath.Join("source", "main", "cpp", "^**", "*.cpp"))
-		cbase_lib.GlobFiles(filepath.Join(ccoreAbsPath, "cbase"), filepath.Join("source", "main", "cpp", "^**", "*.m"))
-		cbase_lib.GlobFiles(filepath.Join(ccoreAbsPath, "cbase"), filepath.Join("source", "main", "cpp", "^**", "*.mm"))
-		cbase_lib.GlobFiles(filepath.Join(ccoreAbsPath, "cbase"), filepath.Join("source", "main", "include", "^**", "*.h"))
-		cbase_lib.GlobFiles(filepath.Join(ccoreAbsPath, "cbase"), filepath.Join("source", "main", "include", "^**", "*.inl"))
+		cbase_lib.GlobFiles(filepath.Join(rootAbsPath, "cbase"), filepath.Join("source", "main", "cpp", "^**", "*.cpp"))
+		cbase_lib.GlobFiles(filepath.Join(rootAbsPath, "cbase"), filepath.Join("source", "main", "cpp", "^**", "*.m"))
+		cbase_lib.GlobFiles(filepath.Join(rootAbsPath, "cbase"), filepath.Join("source", "main", "cpp", "^**", "*.mm"))
+		cbase_lib.GlobFiles(filepath.Join(rootAbsPath, "cbase"), filepath.Join("source", "main", "include", "^**", "*.h"))
+		cbase_lib.GlobFiles(filepath.Join(rootAbsPath, "cbase"), filepath.Join("source", "main", "include", "^**", "*.inl"))
 
 		m.createDefaultProjectConfiguration(cbase_lib, "DebugTest")
 		m.createDefaultProjectConfiguration(cbase_lib, "ReleaseTest")
@@ -69,13 +70,14 @@ func (m *MsDevTestGenerator) TestRun(ccoreAbsPath string, projectName string) er
 		ccoreProjectConfig.MultiThreadedBuild = true
 		ccoreProjectConfig.CppAsObjCpp = false
 
-		ccore_lib = ws.NewProject("ccore_lib", "ccore", axe.ProjectTypeCppLib, ccoreProjectConfig)
+		ccoreAbsPath := filepath.Join(rootAbsPath, "ccore")
+		ccore_lib = ws.NewProject("ccore_lib", ccoreAbsPath, axe.ProjectTypeCppLib, ccoreProjectConfig)
 		ccore_lib.ProjectFilename = "ccore_lib"
-		ccore_lib.GlobFiles(filepath.Join(ccoreAbsPath, "ccore"), filepath.Join("source", "main", "cpp", "^**", "*.cpp"))
-		ccore_lib.GlobFiles(filepath.Join(ccoreAbsPath, "ccore"), filepath.Join("source", "main", "cpp", "^**", "*.m"))
-		ccore_lib.GlobFiles(filepath.Join(ccoreAbsPath, "ccore"), filepath.Join("source", "main", "cpp", "^**", "*.mm"))
-		ccore_lib.GlobFiles(filepath.Join(ccoreAbsPath, "ccore"), filepath.Join("source", "main", "include", "^**", "*.h"))
-		ccore_lib.GlobFiles(filepath.Join(ccoreAbsPath, "ccore"), filepath.Join("source", "main", "include", "^**", "*.inl"))
+		ccore_lib.GlobFiles(filepath.Join(rootAbsPath, "ccore"), filepath.Join("source", "main", "cpp", "^**", "*.cpp"))
+		ccore_lib.GlobFiles(filepath.Join(rootAbsPath, "ccore"), filepath.Join("source", "main", "cpp", "^**", "*.m"))
+		ccore_lib.GlobFiles(filepath.Join(rootAbsPath, "ccore"), filepath.Join("source", "main", "cpp", "^**", "*.mm"))
+		ccore_lib.GlobFiles(filepath.Join(rootAbsPath, "ccore"), filepath.Join("source", "main", "include", "^**", "*.h"))
+		ccore_lib.GlobFiles(filepath.Join(rootAbsPath, "ccore"), filepath.Join("source", "main", "include", "^**", "*.inl"))
 
 		m.createDefaultProjectConfiguration(ccore_lib, "DebugTest")
 		m.createDefaultProjectConfiguration(ccore_lib, "ReleaseTest")
@@ -92,10 +94,11 @@ func (m *MsDevTestGenerator) TestRun(ccoreAbsPath string, projectName string) er
 		cunittestProjectConfig.MultiThreadedBuild = true
 		cunittestProjectConfig.CppAsObjCpp = false
 
-		cunittest_lib = ws.NewProject("cunittest_lib", "cunittest", axe.ProjectTypeCppLib, cunittestProjectConfig)
+		cunittestAbsPath := filepath.Join(rootAbsPath, "cunittest")
+		cunittest_lib = ws.NewProject("cunittest_lib", cunittestAbsPath, axe.ProjectTypeCppLib, cunittestProjectConfig)
 		cunittest_lib.ProjectFilename = "cunittest_lib"
-		cunittest_lib.GlobFiles(filepath.Join(ccoreAbsPath, "cunittest"), filepath.Join("source", "main", "cpp", "^**", "*.cpp"))
-		cunittest_lib.GlobFiles(filepath.Join(ccoreAbsPath, "cunittest"), filepath.Join("source", "main", "include", "^**", "*.h"))
+		cunittest_lib.GlobFiles(filepath.Join(rootAbsPath, "cunittest"), filepath.Join("source", "main", "cpp", "^**", "*.cpp"))
+		cunittest_lib.GlobFiles(filepath.Join(rootAbsPath, "cunittest"), filepath.Join("source", "main", "include", "^**", "*.h"))
 
 		m.createDefaultProjectConfiguration(cunittest_lib, "DebugTest")
 		m.createDefaultProjectConfiguration(cunittest_lib, "ReleaseTest")
@@ -112,10 +115,11 @@ func (m *MsDevTestGenerator) TestRun(ccoreAbsPath string, projectName string) er
 		cbaseTestProjectConfig.MultiThreadedBuild = true
 		cbaseTestProjectConfig.CppAsObjCpp = false
 
-		cbase_unittest = ws.NewProject("cbase_unittest", "cbase", axe.ProjectTypeCppExe, cbaseTestProjectConfig)
+		cbaseUnittestAbsPath := filepath.Join(rootAbsPath, "cbase")
+		cbase_unittest = ws.NewProject("cbase_unittest", cbaseUnittestAbsPath, axe.ProjectTypeCppExe, cbaseTestProjectConfig)
 		cbase_unittest.ProjectFilename = "cbase_unittest"
-		cbase_unittest.GlobFiles(filepath.Join(ccoreAbsPath, "cbase"), filepath.Join("source", "test", "cpp", "^**", "*.cpp"))
-		cbase_unittest.GlobFiles(filepath.Join(ccoreAbsPath, "cbase"), filepath.Join("source", "test", "include", "^**", "*.h"))
+		cbase_unittest.GlobFiles(filepath.Join(rootAbsPath, "cbase"), filepath.Join("source", "test", "cpp", "^**", "*.cpp"))
+		cbase_unittest.GlobFiles(filepath.Join(rootAbsPath, "cbase"), filepath.Join("source", "test", "include", "^**", "*.h"))
 
 		m.createDefaultProjectConfiguration(cbase_unittest, "DebugTest")
 		m.createDefaultProjectConfiguration(cbase_unittest, "ReleaseTest")

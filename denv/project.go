@@ -65,11 +65,6 @@ const (
 	CppLanguageToken string = "C++"
 )
 
-type CustomFiles struct {
-	Type  string // e.g. "ResourceCompile"
-	Files *Files
-}
-
 // Project is a structure that holds all the information that defines a project in an IDE
 type Project struct {
 	ProjectPath  string
@@ -85,7 +80,6 @@ type Project struct {
 	HdrFiles     *Files
 	SrcFiles     *Files
 	LibraryFiles items.List
-	CustomFiles  []*CustomFiles
 	Dependencies []*Project
 	Vars         vars.Variables
 }

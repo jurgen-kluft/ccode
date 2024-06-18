@@ -532,7 +532,15 @@ func WriteEmbedded() {
 	if err != nil {
 		log.Println(err)
 	}
-	embedded_dir := root_dir + "/embedded"
+
+	embedded_dir := filepath.Join(root_dir, "embedded")
+
+	// Does the embedded directory exist, if not then we're done
+	_, err = os.Stat(embedded_dir)
+	if err != nil {
+		return
+	}
+
 	err = filepath.WalkDir(embedded_dir,
 		func(path string, d fs.DirEntry, err error) error {
 			if err != nil {
