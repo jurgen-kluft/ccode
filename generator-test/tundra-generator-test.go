@@ -15,7 +15,7 @@ func NewTundraTestGenerator() *TundraTestGenerator {
 
 func (m *TundraTestGenerator) TestRun(rootAbsPath string, projectName string) error {
 
-	visualStudioVersion := axe.VisualStudio2022
+	devVersion := axe.TUNDRA
 
 	wsc := axe.NewWorkspaceConfig(rootAbsPath, projectName)
 	wsc.StartupProject = "cbase_unittest"
@@ -35,7 +35,7 @@ func (m *TundraTestGenerator) TestRun(rootAbsPath string, projectName string) er
 	var cbase_unittest *axe.Project
 
 	// cbase library project
-	cbaseProjectConfig := axe.NewVisualStudioProjectConfig(visualStudioVersion)
+	cbaseProjectConfig := axe.NewVisualStudioProjectConfig(devVersion)
 	{
 		cbaseProjectConfig.Group = "cpp-library"
 		cbaseProjectConfig.Type = axe.ProjectTypeCppLib
@@ -59,7 +59,7 @@ func (m *TundraTestGenerator) TestRun(rootAbsPath string, projectName string) er
 	}
 
 	// ccore library project
-	ccoreProjectConfig := axe.NewVisualStudioProjectConfig(visualStudioVersion)
+	ccoreProjectConfig := axe.NewVisualStudioProjectConfig(devVersion)
 	{
 		ccoreProjectConfig.Group = "cpp-library"
 		ccoreProjectConfig.Type = axe.ProjectTypeCppLib
@@ -83,7 +83,7 @@ func (m *TundraTestGenerator) TestRun(rootAbsPath string, projectName string) er
 	}
 
 	// cunittest library project
-	cunittestProjectConfig := axe.NewVisualStudioProjectConfig(visualStudioVersion)
+	cunittestProjectConfig := axe.NewVisualStudioProjectConfig(devVersion)
 	{
 		cunittestProjectConfig.Group = "unittest/cpp-library"
 		cunittestProjectConfig.Type = axe.ProjectTypeCppLib
@@ -104,7 +104,7 @@ func (m *TundraTestGenerator) TestRun(rootAbsPath string, projectName string) er
 	}
 
 	// cbase unittest project, this is an executable
-	cbaseTestProjectConfig := axe.NewVisualStudioProjectConfig(visualStudioVersion)
+	cbaseTestProjectConfig := axe.NewVisualStudioProjectConfig(devVersion)
 	{
 		cbaseTestProjectConfig.Group = "unittest/cpp-exe"
 		cbaseTestProjectConfig.Type = axe.ProjectTypeCppExe

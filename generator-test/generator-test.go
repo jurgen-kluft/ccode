@@ -29,7 +29,7 @@ func TestGenerateTundra() {
 	generator.TestRun(workspacePath, "cbase")
 }
 
-func TestGenerateXcodeIde() {
+func TestGenerateXcode() {
 	workspacePath := "$HOME/dev.go/src/github.com/jurgen-kluft"
 	workspacePath = os.ExpandEnv(workspacePath)
 	generator := NewXcodeTestGenerator()

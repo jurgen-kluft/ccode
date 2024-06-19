@@ -1,6 +1,7 @@
 package axe
 
 import (
+	"fmt"
 	"path/filepath"
 )
 
@@ -24,19 +25,25 @@ func (g *XcodeGenerator) genWorkSpace() {
 	xcodeWorkspace := filepath.Join(g.Workspace.GenerateAbsPath, g.Workspace.WorkspaceName+".xcworkspace")
 
 	for _, proj := range g.Workspace.ProjectList.Values {
+		fmt.Println("Project UUID generation: ", proj.Name)
 		g.genProjectGenUuid(proj)
 	}
 
 	for _, proj := range g.Workspace.ProjectList.Values {
-		g.genProject(proj)
+		fmt.Println("Project generation: ", proj.Name, " - ", proj.ProjectAbsPath)
+		if err := g.genProject(proj); err != nil {
+			fmt.Println("        Error : Project generation failed for ", proj.Name)
+		}
 	}
 
 	wr := NewXmlWriter()
 	{
 		tag := wr.TagScope("Workspace")
-		defer tag.Close()
 		wr.Attr("version", "1.0")
-		g.genWorkspaceGroup(wr, g.Workspace.ProjectGroups.Root)
+		{
+			g.genWorkspaceGroup(wr, g.Workspace.ProjectGroups.Root)
+		}
+		tag.Close()
 	}
 
 	wr.WriteToFile(filepath.Join(xcodeWorkspace, "contents.xcworkspacedata"))
@@ -45,23 +52,28 @@ func (g *XcodeGenerator) genWorkSpace() {
 func (g *XcodeGenerator) genWorkspaceGroup(wr *XmlWriter, group *ProjectGroup) {
 	for _, c := range group.Children {
 		tag := wr.TagScope("Group")
-		wr.Attr("location", "container:")
-		basename := PathFilename(c.Path, true)
-		wr.Attr("name", basename)
-		g.genWorkspaceGroup(wr, c)
+		{
+			wr.Attr("location", "container:")
+			wr.Attr("name", PathFilename(c.Path, true))
+			g.genWorkspaceGroup(wr, c)
+		}
 		tag.Close()
 	}
 
 	for _, proj := range group.Projects {
 		tag := wr.TagScope("FileRef")
-		wr.Attr("location", "container:"+proj.GenDataXcode.XcodeProj.Path)
+		{
+			wr.Attr("location", "container:"+proj.GenDataXcode.XcodeProj.Path)
+		}
 		tag.Close()
 	}
 }
 
 func (g *XcodeGenerator) genProjectGenUuid(proj *Project) {
-	gd := NewXcodeProjectConfig()
-	gd.XcodeProj.Init(g.Workspace.GenerateAbsPath+proj.Name+".xcodeproj", true)
+	proj.GenDataXcode = NewXcodeProjectConfig()
+
+	gd := proj.GenDataXcode
+	gd.XcodeProj.Init(filepath.Join(g.Workspace.GenerateAbsPath, proj.Name+".xcodeproj"), true)
 	gd.PbxProj = filepath.Join(gd.XcodeProj.Path, "project.pbxproj")
 	gd.Uuid = GenerateUUID()
 	gd.TargetUuid = GenerateUUID()
@@ -95,23 +107,26 @@ func (g *XcodeGenerator) genProjectGenUuid(proj *Project) {
 	}
 }
 
-func (g *XcodeGenerator) genProject(proj *Project) {
+func (g *XcodeGenerator) genProject(proj *Project) error {
 	if proj.TypeIsExeOrDll() {
 		if g.Workspace.MakeTarget.OSIsIos() {
 			//g.GenInfoPlistIOS(proj)
 		} else {
-			g.genInfoPlistMacOSX(proj)
+			if err := g.genInfoPlistMacOSX(proj); err != nil {
+				return err
+			}
 		}
 	}
 
 	wr := NewXcodeWriter()
 	wr.write("// !$*UTF8*$!")
+	wr.newline(0)
 	{
 		scope := wr.NewObjectScope("")
 		wr.member("archiveVersion", "1")
 		{
 			scope := wr.NewObjectScope("classes")
-			defer scope.Close()
+			scope.Close()
 		}
 		wr.member("objectVersion", "46")
 		{
@@ -132,7 +147,11 @@ func (g *XcodeGenerator) genProject(proj *Project) {
 	}
 
 	filename := proj.GenDataXcode.PbxProj
-	WriteTextFile(filename, wr.Buffer.String())
+	if err := wr.WriteToFile(filename); err != nil {
+		return err
+	}
+
+	return nil
 }
 
 func (g *XcodeGenerator) genBuildFileReference(wr *XcodeWriter, f *FileEntry) {
@@ -156,6 +175,12 @@ func (g *XcodeGenerator) genFileReference(wr *XcodeWriter, proj *Project, f *Fil
 		wr.member("isa", "PBXFileReference")
 		wr.member("name", g.quoteString(basename))
 		wr.member("path", g.quoteString(basename))
+		// if filepath.Ext(f.Path) == ".h" {
+		// 	wr.member("path", g.quoteString(PathGetRel(filepath.Join(proj.ProjectAbsPath, f.Path), proj.GenDataXcode.PbxProj)))
+		// } else {
+		// 	wr.member("path", g.quoteString(PathGetRel(filepath.Join(proj.ProjectAbsPath, f.Path), proj.GenDataXcode.XcodeProj.Path)))
+		// }
+
 		wr.member("sourceTree", XcodeKSourceTreeGroup)
 
 		explicitFileType := ""
@@ -318,11 +343,13 @@ func (g *XcodeGenerator) genProjectPBXBuildFile(wr *XcodeWriter, proj *Project) 
 		scope := wr.NewObjectScope(f.GenDataXcode.UUID.String(g.Workspace.Generator))
 		{
 			basename := PathFilename(f.Path, true)
-			relPath := PathGetRel(f.Path, g.Workspace.GenerateAbsPath)
-
+			relPath := PathGetRel(filepath.Join(proj.ProjectAbsPath, f.Path), proj.GenDataXcode.XcodeProj.Path)
+			if filepath.Ext(f.Path) == ".h" {
+				relPath = "../" + relPath
+			}
 			wr.member("isa", "PBXFileReference")
 			wr.member("name", g.quoteString(basename))
-			wr.member("path", relPath)
+			wr.member("path", g.quoteString(basename))
 			wr.member("sourceTree", XcodeKSourceTreeProject)
 		}
 		scope.Close()
@@ -786,7 +813,7 @@ func (g *XcodeGenerator) genProjectXCConfigurationList(wr *XcodeWriter, proj *Pr
 	}
 }
 
-func (g *XcodeGenerator) genInfoPlistMacOSX(proj *Project) {
+func (g *XcodeGenerator) genInfoPlistMacOSX(proj *Project) error {
 	gd := proj.GenDataXcode
 	gd.InfoPlistFile = proj.Name + "_info.plist"
 
@@ -845,7 +872,10 @@ func (g *XcodeGenerator) genInfoPlistMacOSX(proj *Project) {
 	}
 
 	filename := filepath.Join(g.Workspace.GenerateAbsPath, gd.InfoPlistFile)
-	wr.WriteToFile(filename)
+	if err := wr.WriteToFile(filename); err != nil {
+		return err
+	}
+	return nil
 }
 
 func (g *XcodeGenerator) quoteString2(v string) string {

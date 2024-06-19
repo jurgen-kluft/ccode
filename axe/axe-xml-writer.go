@@ -10,7 +10,13 @@ type XmlWriter struct {
 }
 
 func NewXmlWriter() *XmlWriter {
-	return &XmlWriter{writer: NewLineWriter()}
+	x := &XmlWriter{
+		writer:     NewLineWriter(),
+		Tags:       make([]string, 0, 16),
+		DoBeginTag: false,
+		NoNewLine:  false,
+	}
+	return x
 }
 
 func (xml *XmlWriter) WriteToFile(filename string) error {

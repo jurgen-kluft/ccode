@@ -6,5 +6,5 @@ import (
 
 // main
 func main() {
-	generator_test.TestGenerateTundra()
+	generator_test.TestGenerateXcode()
 }

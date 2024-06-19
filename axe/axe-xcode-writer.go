@@ -2,7 +2,6 @@ package axe
 
 import (
 	"fmt"
-	"strings"
 )
 
 type LevelType int8
@@ -13,21 +12,24 @@ const (
 )
 
 type XcodeWriter struct {
-	Buffer        strings.Builder
-	Levels        []int8
-	NewlineNeeded bool
+	buffer        *stringBuilder
+	lines         []string
+	levels        []int8
+	newlineNeeded bool
 }
 
 func NewXcodeWriter() *XcodeWriter {
 	w := &XcodeWriter{}
-	w.Buffer = strings.Builder{}
-	w.Levels = make([]int8, 0)
-	w.NewlineNeeded = true
+	w.buffer = NewStringBuilder()
+	w.lines = make([]string, 0, 2048)
+	w.levels = make([]int8, 0, 16)
+	w.newlineNeeded = true
 	return w
 }
 
-func (w *XcodeWriter) StringBuilder() *strings.Builder {
-	return &w.Buffer
+func (w *XcodeWriter) WriteToFile(filename string) error {
+	w.finalize()
+	return WriteLinesToFile(filename, w.lines)
 }
 
 // ------------------------------------------------------------------------------------------------
@@ -43,14 +45,13 @@ func (o *ObjectScope) Close() {
 	}
 }
 
-func (o *ObjectScope) NewObjectScope() *ObjectScope {
-	scope := &ObjectScope{o.W}
-	o.W = nil
-	return scope
-}
-
 func (w *XcodeWriter) NewObjectScope(name string) *ObjectScope {
-	w.beginObject(name)
+	if len(name) == 0 {
+		w.buffer.WriteString("{")
+		w.levels = append(w.levels, int8(Object))
+	} else {
+		w.beginObject(name)
+	}
 	return &ObjectScope{w}
 }
 
@@ -58,21 +59,21 @@ func (w *XcodeWriter) beginObject(name string) {
 	if len(name) > 0 {
 		w.memberName(name)
 	}
-	w.Buffer.WriteString("{")
-	w.Levels = append(w.Levels, int8(Object))
+	w.buffer.WriteString("{")
+	w.levels = append(w.levels, int8(Object))
 }
 
 func (w *XcodeWriter) endObject() {
 	w.newline(-1)
-	w.Buffer.WriteString("}")
+	w.buffer.WriteString("}")
 
-	if len(w.Levels) == 0 {
+	if len(w.levels) == 0 {
 		panic("XCode XcodeWriter error endObject level")
 	}
-	if w.Levels[len(w.Levels)-1] != int8(Object) {
+	if w.levels[len(w.levels)-1] != int8(Object) {
 		panic("XCode XcodeWriter error endObject")
 	}
-	w.Levels = w.Levels[:len(w.Levels)-1]
+	w.levels = w.levels[:len(w.levels)-1]
 	w.writeTail()
 }
 
@@ -104,20 +105,20 @@ func (w *XcodeWriter) beginArray(name string) {
 	if len(name) > 0 {
 		w.memberName(name)
 	}
-	w.Buffer.WriteString("(")
-	w.Levels = append(w.Levels, int8(Array))
+	w.buffer.WriteString("(")
+	w.levels = append(w.levels, int8(Array))
 }
 
 func (w *XcodeWriter) endArray() {
-	w.Buffer.WriteString(")")
+	w.buffer.WriteString(")")
 
-	if len(w.Levels) == 0 {
+	if len(w.levels) == 0 {
 		panic("XCode XcodeWriter error endArray level")
 	}
-	if w.Levels[len(w.Levels)-1] != int8(Array) {
+	if w.levels[len(w.levels)-1] != int8(Array) {
 		panic("XCode XcodeWriter error endArray")
 	}
-	w.Levels = w.Levels[:len(w.Levels)-1]
+	w.levels = w.levels[:len(w.levels)-1]
 	w.writeTail()
 }
 
@@ -125,19 +126,19 @@ func (w *XcodeWriter) endArray() {
 // ------------------------------------------------------------------------------------------------
 
 func (w *XcodeWriter) commentBlock(s string) {
-	w.Buffer.WriteString(" /* ")
-	w.Buffer.WriteString(s)
-	w.Buffer.WriteString(" */ ")
+	w.buffer.WriteString(" /* ")
+	w.buffer.WriteString(s)
+	w.buffer.WriteString(" */ ")
 }
 
 func (w *XcodeWriter) memberName(name string) {
-	if len(w.Levels) == 0 || w.Levels[len(w.Levels)-1] != int8(Object) {
+	if len(w.levels) == 0 || w.levels[len(w.levels)-1] != int8(Object) {
 		panic("XCode XcodeWriter member must inside object scope")
 	}
 
 	w.newline(0)
-	w.Buffer.WriteString(name)
-	w.Buffer.WriteString(" = ")
+	w.buffer.WriteString(name)
+	w.buffer.WriteString(" = ")
 }
 
 func (w *XcodeWriter) member(name, value string) {
@@ -146,29 +147,30 @@ func (w *XcodeWriter) member(name, value string) {
 }
 
 func (w *XcodeWriter) write(value string) {
-	w.Buffer.WriteString(value)
+	w.buffer.WriteString(value)
+	w.writeTail()
 }
 
 func (w *XcodeWriter) writeTail() {
-	if len(w.Levels) == 0 {
+	if len(w.levels) == 0 {
 		return
 	}
-	if w.Levels[len(w.Levels)-1] == int8(Array) {
-		w.Buffer.WriteString(",")
+	if w.levels[len(w.levels)-1] == int8(Array) {
+		w.buffer.WriteString(",")
 	}
 
-	if w.Levels[len(w.Levels)-1] == int8(Object) {
-		w.Buffer.WriteString(";")
+	if w.levels[len(w.levels)-1] == int8(Object) {
+		w.buffer.WriteString(";")
 	}
 }
 
 func (w *XcodeWriter) quoteString(v string) {
-	w.Buffer.WriteString("\"")
+	w.buffer.WriteString("\"")
 
 	for _, ch := range v {
 		if ch >= 0 && ch <= 0x1F {
 			tmp := fmt.Sprintf("\\u%04x", ch)
-			w.Buffer.WriteString(tmp)
+			w.buffer.WriteString(tmp)
 			continue
 		}
 
@@ -178,31 +180,39 @@ func (w *XcodeWriter) quoteString(v string) {
 		case '\\':
 			fallthrough
 		case '"':
-			w.Buffer.WriteString("\\")
-			w.Buffer.WriteRune(ch)
+			w.buffer.WriteString("\\")
+			w.buffer.WriteRune(ch)
 		case '\b':
-			w.Buffer.WriteString("\\b")
+			w.buffer.WriteString("\\b")
 		case '\f':
-			w.Buffer.WriteString("\\f")
+			w.buffer.WriteString("\\f")
 		case '\n':
-			w.Buffer.WriteString("\\n")
+			w.buffer.WriteString("\\n")
 		case '\r':
-			w.Buffer.WriteString("\\r")
+			w.buffer.WriteString("\\r")
 		case '\t':
-			w.Buffer.WriteString("\\t")
+			w.buffer.WriteString("\\t")
 		default:
-			w.Buffer.WriteRune(ch)
+			w.buffer.WriteRune(ch)
 		}
 	}
-	w.Buffer.WriteString("\"")
+	w.buffer.WriteString("\"")
+}
+
+func (w *XcodeWriter) finalize() {
+	w.newlineNeeded = true
+	w.newline(0)
 }
 
 func (w *XcodeWriter) newline(offset int) {
-	if w.NewlineNeeded {
-		w.Buffer.WriteString("\n")
-		n := len(w.Levels) + offset
+	if w.newlineNeeded {
+
+		w.lines = append(w.lines, w.buffer.String())
+		w.buffer.Reset()
+
+		n := len(w.levels) + offset
 		for i := 0; i < n; i++ {
-			w.Buffer.WriteString("  ")
+			w.buffer.WriteString("  ")
 		}
 	}
 }

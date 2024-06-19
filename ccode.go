@@ -10,10 +10,9 @@ import (
 	"github.com/jurgen-kluft/ccode/cli"
 	"github.com/jurgen-kluft/ccode/denv"
 	"github.com/jurgen-kluft/ccode/embedded"
-	"github.com/jurgen-kluft/ccode/vs"
 )
 
-var ccode_dev = "TUNDRA"
+var ccode_dev = "tundra"
 var ccode_os = runtime.GOOS
 var ccode_arch = runtime.GOARCH
 
@@ -26,18 +25,18 @@ func Init() error {
 
 	app.Flags = []cli.Flag{
 		cli.StringFlag{
-			Name:        "DEV",
-			Usage:       "The build system to generate projects for (vs2022, tundra, cmake, xcode))",
+			Name:        "dev",
+			Usage:       "the build system to generate projects for (vs2022, tundra, cmake, xcode))",
 			Destination: &ccode_dev,
 		},
 		cli.StringFlag{
-			Name:        "OS",
-			Usage:       "OS to include (windows, darwin, linux)",
+			Name:        "os",
+			Usage:       "os to include (windows, darwin, linux)",
 			Destination: &ccode_os,
 		},
 		cli.StringFlag{
-			Name:        "ARCH",
-			Usage:       "Architecture to include (aarch64, amd64)",
+			Name:        "arch",
+			Usage:       "architecture to include (aarch64, amd64)",
 			Destination: &ccode_arch,
 		},
 	}
@@ -63,20 +62,16 @@ func Init() error {
 // workspace and project files for a specified IDE.
 func Generate(pkg *denv.Package) error {
 	generator := axe.NewAxeGenerator(ccode_dev, ccode_os, ccode_arch)
-	if generator.IsVisualStudio(ccode_dev, ccode_os, ccode_arch) {
-		//return vs.GenerateBuildFiles(vs.GetVisualStudio(ccode_dev), pkg)
-		return generator.GenerateMsDev(vs.GetVisualStudio(ccode_dev), pkg)
-	} else if generator.IsTundra(ccode_dev, ccode_os, ccode_arch) {
-		//return tundra.GenerateBuildFiles(pkg)
+	if generator.IsVisualStudio() {
+		return generator.GenerateMsDev(pkg)
+	} else if generator.IsTundra() {
 		return generator.GenerateTundra(pkg)
-	} else if generator.IsCMake(ccode_dev, ccode_os, ccode_arch) {
-		//return cmake.GenerateBuildFiles(pkg)
+	} else if generator.IsCMake() {
 		return generator.GenerateCMake(pkg)
-	} else if generator.IsXCode(ccode_dev, ccode_os, ccode_arch) {
-		//return cmake.GenerateBuildFiles(pkg)
-		return generator.GenerateCMake(pkg)
+	} else if generator.IsXCode() {
+		return generator.GenerateXcode(pkg)
 	}
-	return fmt.Errorf("Unknown DEV '%s'", ccode_dev)
+	return fmt.Errorf("unknown dev '%s', should be one of tundra, cmake, xcode or vs2022", ccode_dev)
 }
 
 // DEV is an enumeration for all possible IDE's that are supported

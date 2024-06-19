@@ -64,6 +64,7 @@ func (t ProjectType) String() string {
 // -----------------------------------------------------------------------------------------------------
 
 type ProjectConfig struct {
+	Dev                DevEnum
 	Group              string
 	Type               ProjectType // ccore compiler define (CCORE_GEN_TYPE_{Type})
 	IsGuiApp           bool
@@ -80,8 +81,9 @@ func NewProjectConfig() *ProjectConfig {
 	return &ProjectConfig{}
 }
 
-func NewVisualStudioProjectConfig(version EnumVisualStudio) *ProjectConfig {
+func NewVisualStudioProjectConfig(dev DevEnum) *ProjectConfig {
 	config := &ProjectConfig{}
+	config.Dev = dev
 	config.Dependencies = make([]string, 0)
 	return config
 }

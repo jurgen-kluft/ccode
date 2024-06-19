@@ -15,7 +15,7 @@ func NewMsDevTestGenerator() *MsDevTestGenerator {
 
 func (m *MsDevTestGenerator) TestRun(rootAbsPath string, projectName string) error {
 
-	visualStudioVersion := axe.VisualStudio2022
+	visualStudioVersion := axe.VS2022
 
 	wsc := axe.NewWorkspaceConfig(rootAbsPath, projectName)
 	wsc.StartupProject = "cbase_unittest"

@@ -13,22 +13,21 @@ func NewXcodeTestGenerator() *XcodeTestGenerator {
 	return &XcodeTestGenerator{}
 }
 
-func (x *XcodeTestGenerator) TestRun(ccoreAbsPath string, projectName string) error {
+func (m *XcodeTestGenerator) TestRun(rootAbsPath string, projectName string) error {
 
-	visualStudioVersion := axe.VisualStudio2022
+	devVersion := axe.XCODE
 
-	wsc := axe.NewWorkspaceConfig(ccoreAbsPath, projectName)
+	wsc := axe.NewWorkspaceConfig(rootAbsPath, projectName)
 	wsc.StartupProject = "cbase_unittest"
 	wsc.MultiThreadedBuild = true
 
 	ws := axe.NewWorkspace(wsc)
-	ws.Generator = axe.GeneratorMsDev
+	ws.Generator = axe.GeneratorXcode
 	ws.WorkspaceName = projectName
-	ws.WorkspaceAbsPath = ccoreAbsPath
-	ws.GenerateAbsPath = filepath.Join(ccoreAbsPath, projectName, "target", ws.Generator.String())
-
-	x.addWorkspaceConfiguration(ws, axe.ConfigTypeDebug|axe.ConfigTypeTest)
-	x.addWorkspaceConfiguration(ws, axe.ConfigTypeRelease|axe.ConfigTypeTest)
+	ws.WorkspaceAbsPath = rootAbsPath
+	ws.GenerateAbsPath = filepath.Join(rootAbsPath, projectName, "target", ws.Generator.String())
+	m.addWorkspaceConfiguration(ws, axe.ConfigTypeDebug|axe.ConfigTypeTest)
+	m.addWorkspaceConfiguration(ws, axe.ConfigTypeRelease|axe.ConfigTypeTest)
 
 	var cbase_lib *axe.Project
 	var ccore_lib *axe.Project
@@ -36,7 +35,7 @@ func (x *XcodeTestGenerator) TestRun(ccoreAbsPath string, projectName string) er
 	var cbase_unittest *axe.Project
 
 	// cbase library project
-	cbaseProjectConfig := axe.NewVisualStudioProjectConfig(visualStudioVersion)
+	cbaseProjectConfig := axe.NewVisualStudioProjectConfig(devVersion)
 	{
 		cbaseProjectConfig.Group = "cpp-library"
 		cbaseProjectConfig.Type = axe.ProjectTypeCppLib
@@ -46,23 +45,21 @@ func (x *XcodeTestGenerator) TestRun(ccoreAbsPath string, projectName string) er
 		cbaseProjectConfig.MultiThreadedBuild = true
 		cbaseProjectConfig.CppAsObjCpp = false
 
-		cbase_lib = ws.NewProject("cbase_lib", "cbase", axe.ProjectTypeCppLib, cbaseProjectConfig)
+		cbaseAbsPath := filepath.Join(rootAbsPath, "cbase")
+		cbase_lib = ws.NewProject("cbase_lib", cbaseAbsPath, axe.ProjectTypeCppLib, cbaseProjectConfig)
 		cbase_lib.ProjectFilename = "cbase_lib"
-		cbase_lib.GlobFiles(filepath.Join(ccoreAbsPath, "cbase"), "source/main/cpp/^**/*.cpp")
-		cbase_lib.GlobFiles(filepath.Join(ccoreAbsPath, "cbase"), "source/main/cpp/^**/*.m")
-		cbase_lib.GlobFiles(filepath.Join(ccoreAbsPath, "cbase"), "source/main/cpp/^**/*.mm")
-		cbase_lib.GlobFiles(filepath.Join(ccoreAbsPath, "cbase"), "source/main/include/^**/*.h")
-		cbase_lib.GlobFiles(filepath.Join(ccoreAbsPath, "cbase"), "source/main/include/^**/*.inl")
+		cbase_lib.GlobFiles(filepath.Join(rootAbsPath, "cbase"), filepath.Join("source", "main", "cpp", "^**", "*.cpp"))
+		cbase_lib.GlobFiles(filepath.Join(rootAbsPath, "cbase"), filepath.Join("source", "main", "cpp", "^**", "*.m"))
+		cbase_lib.GlobFiles(filepath.Join(rootAbsPath, "cbase"), filepath.Join("source", "main", "cpp", "^**", "*.mm"))
+		cbase_lib.GlobFiles(filepath.Join(rootAbsPath, "cbase"), filepath.Join("source", "main", "include", "^**", "*.h"))
+		cbase_lib.GlobFiles(filepath.Join(rootAbsPath, "cbase"), filepath.Join("source", "main", "include", "^**", "*.inl"))
 
-		config := x.createDefaultProjectConfiguration(cbase_lib, axe.ConfigTypeDebug)
-		config.CppDefines.ValuesToAdd("")
-		x.createDefaultProjectConfiguration(cbase_lib, axe.ConfigTypeRelease)
-		x.createDefaultProjectConfiguration(cbase_lib, axe.ConfigTypeDebug|axe.ConfigTypeTest)
-		x.createDefaultProjectConfiguration(cbase_lib, axe.ConfigTypeRelease|axe.ConfigTypeTest)
+		m.createDefaultProjectConfiguration(cbase_lib, axe.ConfigTypeDebug|axe.ConfigTypeTest)
+		m.createDefaultProjectConfiguration(cbase_lib, axe.ConfigTypeRelease|axe.ConfigTypeTest)
 	}
 
 	// ccore library project
-	ccoreProjectConfig := axe.NewVisualStudioProjectConfig(visualStudioVersion)
+	ccoreProjectConfig := axe.NewVisualStudioProjectConfig(devVersion)
 	{
 		ccoreProjectConfig.Group = "cpp-library"
 		ccoreProjectConfig.Type = axe.ProjectTypeCppLib
@@ -72,22 +69,21 @@ func (x *XcodeTestGenerator) TestRun(ccoreAbsPath string, projectName string) er
 		ccoreProjectConfig.MultiThreadedBuild = true
 		ccoreProjectConfig.CppAsObjCpp = false
 
-		ccore_lib = ws.NewProject("ccore_lib", "ccore", axe.ProjectTypeCppLib, ccoreProjectConfig)
+		ccoreAbsPath := filepath.Join(rootAbsPath, "ccore")
+		ccore_lib = ws.NewProject("ccore_lib", ccoreAbsPath, axe.ProjectTypeCppLib, ccoreProjectConfig)
 		ccore_lib.ProjectFilename = "ccore_lib"
-		ccore_lib.GlobFiles(filepath.Join(ccoreAbsPath, "ccore"), "source/main/cpp/^**/*.cpp")
-		ccore_lib.GlobFiles(filepath.Join(ccoreAbsPath, "ccore"), "source/main/cpp/^**/*.m")
-		ccore_lib.GlobFiles(filepath.Join(ccoreAbsPath, "ccore"), "source/main/cpp/^**/*.mm")
-		ccore_lib.GlobFiles(filepath.Join(ccoreAbsPath, "ccore"), "source/main/include/^**/*.h")
-		ccore_lib.GlobFiles(filepath.Join(ccoreAbsPath, "ccore"), "source/main/include/^**/*.inl")
+		ccore_lib.GlobFiles(filepath.Join(rootAbsPath, "ccore"), filepath.Join("source", "main", "cpp", "^**", "*.cpp"))
+		ccore_lib.GlobFiles(filepath.Join(rootAbsPath, "ccore"), filepath.Join("source", "main", "cpp", "^**", "*.m"))
+		ccore_lib.GlobFiles(filepath.Join(rootAbsPath, "ccore"), filepath.Join("source", "main", "cpp", "^**", "*.mm"))
+		ccore_lib.GlobFiles(filepath.Join(rootAbsPath, "ccore"), filepath.Join("source", "main", "include", "^**", "*.h"))
+		ccore_lib.GlobFiles(filepath.Join(rootAbsPath, "ccore"), filepath.Join("source", "main", "include", "^**", "*.inl"))
 
-		x.createDefaultProjectConfiguration(ccore_lib, axe.ConfigTypeDebug)
-		x.createDefaultProjectConfiguration(ccore_lib, axe.ConfigTypeRelease)
-		x.createDefaultProjectConfiguration(ccore_lib, axe.ConfigTypeDebug|axe.ConfigTypeTest)
-		x.createDefaultProjectConfiguration(ccore_lib, axe.ConfigTypeRelease|axe.ConfigTypeTest)
+		m.createDefaultProjectConfiguration(ccore_lib, axe.ConfigTypeDebug|axe.ConfigTypeTest)
+		m.createDefaultProjectConfiguration(ccore_lib, axe.ConfigTypeRelease|axe.ConfigTypeTest)
 	}
 
 	// cunittest library project
-	cunittestProjectConfig := axe.NewVisualStudioProjectConfig(visualStudioVersion)
+	cunittestProjectConfig := axe.NewVisualStudioProjectConfig(devVersion)
 	{
 		cunittestProjectConfig.Group = "unittest/cpp-library"
 		cunittestProjectConfig.Type = axe.ProjectTypeCppLib
@@ -97,17 +93,18 @@ func (x *XcodeTestGenerator) TestRun(ccoreAbsPath string, projectName string) er
 		cunittestProjectConfig.MultiThreadedBuild = true
 		cunittestProjectConfig.CppAsObjCpp = false
 
-		cunittest_lib = ws.NewProject("cunittest_lib", "cunittest", axe.ProjectTypeCppLib, cunittestProjectConfig)
-		cunittest_lib.ProjectFilename = "cunittest"
-		cunittest_lib.GlobFiles(filepath.Join(ccoreAbsPath, "cunittest"), "source/main/cpp/^**/*.cpp")
-		cunittest_lib.GlobFiles(filepath.Join(ccoreAbsPath, "cunittest"), "source/main/include/^**/*.h")
+		cunittestAbsPath := filepath.Join(rootAbsPath, "cunittest")
+		cunittest_lib = ws.NewProject("cunittest_lib", cunittestAbsPath, axe.ProjectTypeCppLib, cunittestProjectConfig)
+		cunittest_lib.ProjectFilename = "cunittest_lib"
+		cunittest_lib.GlobFiles(filepath.Join(rootAbsPath, "cunittest"), filepath.Join("source", "main", "cpp", "^**", "*.cpp"))
+		cunittest_lib.GlobFiles(filepath.Join(rootAbsPath, "cunittest"), filepath.Join("source", "main", "include", "^**", "*.h"))
 
-		x.createDefaultProjectConfiguration(cunittest_lib, axe.ConfigTypeDebug|axe.ConfigTypeTest)
-		x.createDefaultProjectConfiguration(cunittest_lib, axe.ConfigTypeRelease|axe.ConfigTypeTest)
+		m.createDefaultProjectConfiguration(cunittest_lib, axe.ConfigTypeDebug|axe.ConfigTypeTest)
+		m.createDefaultProjectConfiguration(cunittest_lib, axe.ConfigTypeRelease|axe.ConfigTypeTest)
 	}
 
 	// cbase unittest project, this is an executable
-	cbaseTestProjectConfig := axe.NewVisualStudioProjectConfig(visualStudioVersion)
+	cbaseTestProjectConfig := axe.NewVisualStudioProjectConfig(devVersion)
 	{
 		cbaseTestProjectConfig.Group = "unittest/cpp-exe"
 		cbaseTestProjectConfig.Type = axe.ProjectTypeCppExe
@@ -117,13 +114,14 @@ func (x *XcodeTestGenerator) TestRun(ccoreAbsPath string, projectName string) er
 		cbaseTestProjectConfig.MultiThreadedBuild = true
 		cbaseTestProjectConfig.CppAsObjCpp = false
 
-		cbase_unittest = ws.NewProject("cbase_unittest", "cbase", axe.ProjectTypeCppExe, cbaseTestProjectConfig)
+		cbaseUnittestAbsPath := filepath.Join(rootAbsPath, "cbase")
+		cbase_unittest = ws.NewProject("cbase_unittest", cbaseUnittestAbsPath, axe.ProjectTypeCppExe, cbaseTestProjectConfig)
 		cbase_unittest.ProjectFilename = "cbase_unittest"
-		cbase_unittest.GlobFiles(filepath.Join(ccoreAbsPath, "cbase"), "source/test/cpp/^**/*.cpp")
-		cbase_unittest.GlobFiles(filepath.Join(ccoreAbsPath, "cbase"), "source/test/include/^**/*.h")
+		cbase_unittest.GlobFiles(filepath.Join(rootAbsPath, "cbase"), filepath.Join("source", "test", "cpp", "^**", "*.cpp"))
+		cbase_unittest.GlobFiles(filepath.Join(rootAbsPath, "cbase"), filepath.Join("source", "test", "include", "^**", "*.h"))
 
-		x.createDefaultProjectConfiguration(cbase_unittest, axe.ConfigTypeDebug|axe.ConfigTypeTest)
-		x.createDefaultProjectConfiguration(cbase_unittest, axe.ConfigTypeRelease|axe.ConfigTypeTest)
+		m.createDefaultProjectConfiguration(cbase_unittest, axe.ConfigTypeDebug|axe.ConfigTypeTest)
+		m.createDefaultProjectConfiguration(cbase_unittest, axe.ConfigTypeRelease|axe.ConfigTypeTest)
 	}
 
 	if err := ws.Resolve(); err != nil {

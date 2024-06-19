@@ -121,17 +121,17 @@ func (t ConfigType) String() string {
 	case ConfigTypeFinal:
 		return "Final"
 	case ConfigTypeDebug | ConfigTypeTest:
-		return "Debug-Test"
+		return "DebugTest"
 	case ConfigTypeRelease | ConfigTypeTest:
-		return "Release-Test"
+		return "ReleaseTest"
 	case ConfigTypeFinal | ConfigTypeTest:
-		return "Final-Test"
+		return "FinalTest"
 	case ConfigTypeDebug | ConfigTypeProfile:
-		return "Debug-Profile"
+		return "DebugProfile"
 	case ConfigTypeRelease | ConfigTypeProfile:
-		return "Release-Profile"
+		return "ReleaseProfile"
 	case ConfigTypeFinal | ConfigTypeProfile:
-		return "Final-Profile"
+		return "FinalProfile"
 	}
 	return "Debug"
 }
@@ -273,7 +273,7 @@ func (c *Config) InitXcodeSettings() {
 	} else if c.Workspace.MakeTarget.OSIsMac() {
 		settings["SDKROOT"] = "macosx"
 		settings["SUPPORTED_PLATFORMS"] = "macosx"
-		settings["MACOSX_DEPLOYMENT_TARGET"] = "10.10" // c++11 require 10.10+
+		settings["MACOSX_DEPLOYMENT_TARGET"] = "10.14" // c++11 require 10.10+
 	}
 
 	if c.Type.IsDebug() {
