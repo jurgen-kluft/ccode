@@ -257,7 +257,6 @@ func GenerateBuildFiles(pkg *denv.Package) error {
 		dependency = append(dependency, `+++${${Name}:INCLUDE_DIRS},`)
 		for _, depDep := range dep.Dependencies {
 			dependency = append(dependency, `+++${`+depDep.Name+`:INCLUDE_DIRS},`)
-			dependency = append(dependency, `+++"${`+depDep.Name+`:SOURCE_DIR}",`)
 		}
 		dependency = append(dependency, `++},`)
 		dependency = append(dependency, `++CPPDEFS = {`)

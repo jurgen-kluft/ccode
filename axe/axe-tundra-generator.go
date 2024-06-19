@@ -3,6 +3,7 @@ package axe
 import (
 	"path/filepath"
 	"runtime"
+	"strings"
 )
 
 type TundraGenerator struct {
@@ -21,7 +22,8 @@ func NewTundraGenerator(ws *Workspace) *TundraGenerator {
 }
 
 func (g *TundraGenerator) Generate() {
-
+	g.generateUnitsLua(g.Workspace)
+	g.generateTundraLua(g.Workspace)
 }
 
 func (g *TundraGenerator) generateUnitsLua(ws *Workspace) {
@@ -31,95 +33,130 @@ func (g *TundraGenerator) generateUnitsLua(ws *Workspace) {
 	units.WriteLine(`require "tundra.path"`)
 	units.WriteLine(`require "tundra.util"`)
 
-	// Get all the library projects and write them out
+	// Get all the projects and write them out
+	for _, p := range ws.ProjectList.Values {
+		switch p.Type {
+		case ProjectTypeCppLib, ProjectTypeCLib:
+			units.NewLine()
+			units.WriteILine("", "local ", p.Name, "_staticlib = ", "StaticLibrary", "{")
+		case ProjectTypeCppDll, ProjectTypeCDll:
+			units.NewLine()
+			units.WriteILine("", "local ", p.Name, "_sharedlib = ", "SharedLibrary", "{")
+		case ProjectTypeCppExe, ProjectTypeCExe:
+			continue
+		}
+		g.writeUnit(units, p)
+		units.WriteLine("}")
+	}
 
-}
+	for _, p := range ws.ProjectList.Values {
+		switch p.Type {
+		case ProjectTypeCppLib, ProjectTypeCLib:
+			continue
+		case ProjectTypeCppDll, ProjectTypeCDll:
+			continue
+		case ProjectTypeCppExe, ProjectTypeCExe:
+			units.NewLine()
+			units.WriteILine("", "local ", p.Name, "_program = ", "Program", "{")
+		}
+		g.writeUnit(units, p)
+		units.WriteLine("}")
 
-func (g *TundraGenerator) writeCppLibrary(units *LineWriter, p *Project) {
-
-	projectType := ""
-	switch p.Type {
-	case ProjectTypeCppLib, ProjectTypeCLib:
-		projectType = "StaticLibrary"
-	case ProjectTypeCppDll, ProjectTypeCDll:
-		projectType = "SharedLibrary"
-	case ProjectTypeCppExe, ProjectTypeCExe:
-		projectType = "Program"
+		units.WriteILine("", "Default(", p.Name, "_program)")
 	}
 
 	units.NewLine()
-	units.WriteILine("local ", p.Name, "_unit = ", projectType)
-	units.WriteILine("+", "Name = ", p.Name, ",")
+	units.WriteToFile(filepath.Join(ws.GenerateAbsPath, "units.lua"))
+}
+
+func (g *TundraGenerator) escapeString(s string) string {
+	s = strings.Replace(s, "\\", "\\\\", -1)
+	s = strings.Replace(s, "\"", "\\\"", -1)
+	s = strings.Replace(s, "-", "_", -1)
+	return s
+}
+
+func (g *TundraGenerator) writeUnit(units *LineWriter, p *Project) {
+	units.WriteILine("+", "Name = ", `"`, p.Name, `",`)
 	units.WriteILine("+", "Env = {")
-	units.WriteILine(`++`, `CPPPATH = {`)
-	units.WriteILine(`+++`, `${${Name}:SOURCE_DIR}",`)
-	units.WriteILine(`+++`, `${${Name}:INCLUDE_DIRS},`)
 
-	// for _, depDep := range dep.Dependencies {
-	// 	units.WriteLine(`+++${` + depDep.Name + `:INCLUDE_DIRS},`)
-	// 	units.WriteLine(`+++"${` + depDep.Name + `:SOURCE_DIR}",`)
-	// }
+	units.WriteILine("++", `CPPPATH = {`)
+	//	units.WriteILine("+++", `${${Name}:SOURCE_DIR}",`)
+	//	units.WriteILine("+++", `${${Name}:INCLUDE_DIRS},`)
+	units.WriteILine("++", `},`)
 
-	units.WriteLine(`++},`)
-	units.WriteLine(`++CPPDEFS = {`)
-	// units.WriteLine( `+++{ "TARGET_DEBUG", Config = "*-*-debug" },`)
-	// units.WriteLine( `+++{ "TARGET_RELEASE", Config = "*-*-release" },`)
+	units.WriteILine("++", `CPPDEFS = {`)
+	for _, cfg := range p.Configs.Values {
+		units.WriteILine("+++", `{`)
+		for _, def := range cfg.CppDefines.FinalDict.Values {
+			escapedDef := g.escapeString(def)
+			units.WriteILine("++++", `"`, escapedDef, `",`)
+		}
+		units.WriteILine("++++", `Config = "`, cfg.Type.Tundra(), `"`)
+		units.WriteILine("+++", `},`)
+	}
+	units.WriteILine("+++", `{ "TARGET_PC", Config = "win64-*-*-*" },`)
+	units.WriteILine("+++", `{ "TARGET_MAC", Config = "macos-*-*-*" },`)
+	units.WriteILine("+++", `{ "TARGET_TEST", Config = "*-*-*-test" },`)
+	units.WriteILine("++", `},`)
+	units.WriteILine("+", `},`)
 
-	// for _, cfg := range dep.Platform.Configs {
-	// 	units.WriteLine(`+++{`)
-	// 	for _, def := range cfg.Defines.Items {
-	// 		units.WriteLine(`++++"` + def + `",`)
-	// 	}
-	// 	units.WriteLine(`++++Config = "*-*-` + strings.ToLower(strings.ToLower(cfg.Config)) + `" `)
-	// 	units.WriteLine(`+++},`)
-	// }
+	units.WriteILine("+", `Includes = {`)
+	history := make(map[string]int)
+	for _, pcfg := range p.Configs.Values {
+		for _, inc := range pcfg.IncludeDirs.FinalDict.Values {
+			path := PathGetRel(filepath.Join(p.ProjectAbsPath, inc), p.Workspace.GenerateAbsPath)
+			signature := path + " | " + pcfg.Type.Tundra()
+			if _, ok := history[signature]; !ok {
+				units.WriteILine("++", `{"`, path, `", Config = "`, pcfg.Type.Tundra(), `"},`)
+				history[signature] = 1
+			}
+		}
+	}
+	for _, dp := range p.Dependencies.Values {
+		for _, dpcfg := range dp.Configs.Values {
+			for _, inc := range dpcfg.IncludeDirs.FinalDict.Values {
+				path := PathGetRel(filepath.Join(dp.ProjectAbsPath, inc), p.Workspace.GenerateAbsPath)
+				signature := path + " | " + dpcfg.Type.Tundra()
+				if _, ok := history[signature]; !ok {
+					units.WriteILine("++", `{"`, path, `", Config = "`, dpcfg.Type.Tundra(), `"},`)
+					history[signature] = 1
+				}
+			}
+		}
+	}
+	units.WriteILine("+", `},`)
 
-	units.WriteLine(`+++{ "TARGET_MAC", Config = "macos-*-*" },`)
-	units.WriteLine(`+++{ "TARGET_TEST", Config = "*-*-test" },`)
-	units.WriteLine(`++},`)
-	units.WriteLine(`+},`)
-	units.WriteLine(`+Includes = {`)
-	units.WriteLine(`++${${Name}:INCLUDE_DIRS},`)
+	units.WriteILine("+", `Sources = {`)
+	for _, src := range p.FileEntries.Values {
+		path := p.FileEntries.GetRelativePath(src, p.Workspace.GenerateAbsPath)
+		units.WriteILine("++", `"`, path, `",`)
+	}
+	units.WriteILine("+", "},")
 
-	// for _, depDep := range dep.Dependencies {
-	// 	units.WriteLine(`++${` + depDep.Name + `:INCLUDE_DIRS},`)
-	// }
+	units.WriteILine("+", "Depends = {")
+	for _, dp := range p.Dependencies.Values {
+		switch dp.Type {
+		case ProjectTypeCppLib, ProjectTypeCLib:
+			units.WriteILine("++", dp.Name, "_staticlib,")
+		case ProjectTypeCppDll, ProjectTypeCDll:
+			units.WriteILine("++", dp.Name, "_sharedlib,")
+		}
+	}
+	units.WriteILine("+", "},")
 
-	units.WriteLine(`+},`)
-	units.WriteLine(`+Sources = {`)
-	units.WriteLine(`++${${Name}:SOURCE_FILES}`)
-	units.WriteLine(`+},`)
-	units.WriteLine(`}`)
-	units.WriteLine("")
-
-	// replacer.ReplaceInLines("${SOURCE_FILES}", "${"+dep.Name+":SOURCE_FILES}", dependency)
-	// replacer.ReplaceInLines("${SOURCE_DIR}", "${"+dep.Name+":SOURCE_DIR}", dependency)
-
-	// configitems := map[string]items.List{
-	// 	"INCLUDE_DIRS": items.NewList("${"+dep.Name+":INCLUDE_DIRS}", ",", ""),
-	// }
-
-	// for configitem, defaults := range configitems {
-	// 	varkeystr := fmt.Sprintf("${%s}", configitem)
-	// 	varlist := defaults.Copy()
-
-	// 	for _, depDep := range dep.Dependencies {
-	// 		varkey := fmt.Sprintf("%s:%s", depDep.Name, configitem)
-	// 		varitem := variables.GetVar(varkey)
-	// 		if len(varitem) > 0 {
-	// 			varlist = varlist.Add(varitem)
-	// 		}
-	// 	}
-	// 	varset := items.ListToSet(varlist)
-	// 	replacer.InsertInLines(varkeystr, varset.String(), "", dependency)
-	// 	replacer.ReplaceInLines(varkeystr, "", dependency)
-	// }
-
-	// replacer.ReplaceInLines("${Name}", dep.Name, dependency)
-	// variables.ReplaceInLines(replacer, dependency)
-
-	// units.WriteLns(dependency)
-
+	// if the platform is Mac also write out the Frameworks we are using
+	if p.Workspace.MakeTarget.OSIsMac() {
+		units.WriteILine("+", `Frameworks = {`)
+		units.WriteILine("++", `{ "Cocoa" },`)
+		units.WriteILine("++", `{ "Metal" },`)
+		units.WriteILine("++", `{ "OpenGL" },`)
+		units.WriteILine("++", `{ "IOKit" },`)
+		units.WriteILine("++", `{ "Carbon" },`)
+		units.WriteILine("++", `{ "CoreVideo" },`)
+		units.WriteILine("++", `{ "QuartzCore" },`)
+		units.WriteILine("+", `},`)
+	}
 }
 
 func (g *TundraGenerator) generateTundraLua(ws *Workspace) {
@@ -245,8 +282,8 @@ func (g *TundraGenerator) generateTundraLua(ws *Workspace) {
 	tundra.WriteLine(`local win64_opts = {`)
 	tundra.WriteLine(`    "/EHsc", "/FS", "/MD", "/W3", "/I.", "/DUNICODE", "/D_UNICODE", "/DWIN32", "/D_CRT_SECURE_NO_WARNINGS",`)
 	tundra.WriteLine(`    "\"/DOBJECT_DIR=$(OBJECTDIR:#)\"",`)
-	tundra.WriteLine(`    { "/Od"; Config = "*-*-debug" },`)
-	tundra.WriteLine(`    { "/O2"; Config = "*-*-release" },`)
+	tundra.WriteLine(`    { "/Od"; Config = "*-debug-*" },`)
+	tundra.WriteLine(`    { "/O2"; Config = "*-release-*" },`)
 	tundra.WriteLine(`}`)
 	tundra.WriteLine(``)
 	tundra.WriteLine(`local win64 = {`)
@@ -263,9 +300,9 @@ func (g *TundraGenerator) generateTundraLua(ws *Workspace) {
 	tundra.WriteLine(``)
 	tundra.WriteLine(`        OBJCCOM = "meh",`)
 	tundra.WriteLine(`    },`)
-	tundra.WriteLine(`    ReplaceEnv = {`)
-	tundra.WriteLine(`        OBJECTROOT = "target",`)
-	tundra.WriteLine(`    },`)
+	tundra.WriteLine(`	  ReplaceEnv = {`)
+	tundra.WriteLine(`	      OBJECTROOT = "../../target",`)
+	tundra.WriteLine(`	  },`)
 	tundra.WriteLine(`}`)
 	tundra.WriteLine(``)
 	tundra.WriteLine(`-----------------------------------------------------------------------------------------------------------------------`)
@@ -281,17 +318,16 @@ func (g *TundraGenerator) generateTundraLua(ws *Workspace) {
 	tundra.WriteLine(`    },`)
 	tundra.WriteLine(``)
 	tundra.WriteLine(`    Configs = {`)
-	tundra.WriteLine(`        Config { Name = "macos-clang", DefaultOnHost = { "macosx" }, Inherit = macosx, Tools = { "clang-osx" } },`)
-	tundra.WriteLine(`        Config { Name = "win64-msvc", DefaultOnHost = { "windows" }, Inherit = win64, Tools = { "msvc-vs2019" } },`)
-	tundra.WriteLine(`        Config { Name = "linux-gcc", DefaultOnHost = { "linux" }, Inherit = linux, Tools = { "gcc" } },`)
-	tundra.WriteLine(`        Config { Name = "linux-clang", DefaultOnHost = { "linux" }, Inherit = linux, Tools = { "clang" } },`)
+	tundra.WriteLine(`        Config { Name = "macos-clang", DefaultOnHost = "macosx", Inherit = macosx, Tools = { "clang-osx" } },`)
+	tundra.WriteLine(`        Config { Name = "win64-msvc", DefaultOnHost = "windows", Inherit = win64, Tools = { "msvc-vs2022" } },`)
+	tundra.WriteLine(`        Config { Name = "linux-gcc", DefaultOnHost = "linux", Inherit = linux, Tools = { "gcc" } },`)
+	tundra.WriteLine(`        Config { Name = "linux-clang", DefaultOnHost = "linux", Inherit = linux, Tools = { "clang" } },`)
 	tundra.WriteLine(`    },`)
 	tundra.WriteLine(``)
-	tundra.WriteLine(`    -- Variants = { "debug", "test", "release" },`)
 	tundra.WriteLine(`    Variants = { "debug", "release" },`)
-	tundra.WriteLine(`    SubVariants = { "default", "test" },`)
+	tundra.WriteLine(`    SubVariants = { "test" },`)
 	tundra.WriteLine(`}`)
 
-	tundrafilepath := filepath.Join(ws.GenerateAbsPath, "tundra", "tundra.lua")
+	tundrafilepath := filepath.Join(ws.GenerateAbsPath, "tundra.lua")
 	tundra.WriteToFile(tundrafilepath)
 }

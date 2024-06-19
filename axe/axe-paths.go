@@ -30,7 +30,7 @@ func PathNormalize(path string) string {
 	}
 
 	// For each OS, adjust for the forward and backward slashes
-	path = strings.ReplaceAll(path, PathSlash(), PathOtherSlash())
+	path = strings.Replace(path, PathOtherSlash(), PathSlash(), -1)
 
 	// remove any '..' and trailing slashes
 	// adjust for the platform we are on

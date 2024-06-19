@@ -144,25 +144,25 @@ func (prj *Project) ReplaceVars(v vars.Variables, r vars.Replacer) {
 	v.DelVar("${Name}")
 }
 
-var defaultMainSourcePaths = []string{Path("source\\main\\^**\\*.cpp"), Path("source\\main\\^**\\*.c")}
-var defaultTestSourcePaths = []string{Path("source\\test\\^**\\*.cpp"), Path("source\\main\\^**\\*.c")}
-var defaultMainIncludePaths = []string{Path("source\\main\\include\\^**\\*.h"), Path("source\\main\\include\\^**\\*.hpp"), Path("source\\main\\include\\^**\\*.inl")}
-var defaultTestIncludePaths = []string{Path("source\\test\\include\\^**\\*.h"), Path("source\\main\\include\\^**\\*.h")}
+var defaultMainSourcePaths = []string{Path("source/main/^**/*.cpp"), Path("source/main/^**/*.c")}
+var defaultTestSourcePaths = []string{Path("source/test/^**/*.cpp"), Path("source/main/^**/*.c")}
+var defaultMainIncludePaths = []string{Path("source/main/include/^**/*.h"), Path("source/main/include/^**/*.hpp"), Path("source/main/include/^**/*.inl")}
+var defaultTestIncludePaths = []string{Path("source/test/include/^**/*.h"), Path("source/main/include/^**/*.h")}
 
-var defaultCocoaMainSourcePaths = []string{Path("source\\main\\^**\\*.m"), Path("source\\main\\^**\\*.mm")}
+var defaultCocoaMainSourcePaths = []string{Path("source/main/^**/*.m"), Path("source/main/^**/*.mm")}
 
 // SetupDefaultCppLibProject returns a default C++ project
 // Example:
 //
-//	SetupDefaultCppLibProject("cbase", "github.com\\jurgen-kluft")
+//	SetupDefaultCppLibProject("cbase", "github.com/jurgen-kluft")
 func SetupDefaultCppLibProject(name string, URL string) *Project {
 	project := &Project{Name: name}
 	project.GUID = uid.GetGUID(project.Name)
-	project.PackageURL = URL
+	project.PackageURL = Path(URL)
 	project.Language = CppLanguageToken
 	project.Type = StaticLibrary
 
-	project.SrcPath = Path("source\\main\\cpp")
+	project.SrcPath = Path("source/main/cpp")
 	project.SrcFiles = &Files{GlobPaths: defaultMainSourcePaths, VirtualPaths: []string{}, Files: []string{}}
 	project.HdrFiles = &Files{GlobPaths: defaultMainIncludePaths, VirtualPaths: []string{}, Files: []string{}}
 	project.LibraryFiles = items.NewList("", ";", "")
@@ -188,11 +188,11 @@ func SetupDefaultCppLibProject(name string, URL string) *Project {
 func SetupDefaultCppTestProject(name string, URL string) *Project {
 	project := &Project{Name: name}
 	project.GUID = uid.GetGUID(project.Name)
-	project.PackageURL = URL
+	project.PackageURL = Path(URL)
 	project.Language = CppLanguageToken
 	project.Type = Executable
 
-	project.SrcPath = Path("source\\test\\cpp")
+	project.SrcPath = Path("source/test/cpp")
 	project.SrcFiles = &Files{GlobPaths: defaultTestSourcePaths, VirtualPaths: []string{}, Files: []string{}}
 	project.HdrFiles = &Files{GlobPaths: defaultTestIncludePaths, VirtualPaths: []string{}, Files: []string{}}
 	project.LibraryFiles = items.NewList("", ";", "")
@@ -208,7 +208,7 @@ func SetupDefaultCppTestProject(name string, URL string) *Project {
 	project.AddVar("EXCEPTIONS", "Sync")
 	project.AddVar("COMPILE_AS", "CompileAsCpp")
 
-	project.Platform.AddIncludeDir(Path("source\\test\\include"))
+	project.Platform.AddIncludeDir(Path("source/test/include"))
 	return project
 }
 
@@ -219,11 +219,11 @@ func SetupDefaultCppTestProject(name string, URL string) *Project {
 func SetupDefaultCppAppProject(name string, URL string) *Project {
 	project := &Project{Name: name}
 	project.GUID = uid.GetGUID(project.Name)
-	project.PackageURL = URL
+	project.PackageURL = Path(URL)
 	project.Language = CppLanguageToken
 	project.Type = Executable
 
-	project.SrcPath = Path("source\\main\\cpp")
+	project.SrcPath = Path("source/main/cpp")
 	project.SrcFiles = &Files{GlobPaths: defaultMainSourcePaths, VirtualPaths: []string{}, Files: []string{}}
 	project.HdrFiles = &Files{GlobPaths: defaultMainIncludePaths, VirtualPaths: []string{}, Files: []string{}}
 	project.LibraryFiles = items.NewList("", ";", "")

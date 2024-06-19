@@ -64,12 +64,13 @@ func Init() error {
 // Generate is the main function that requires 'arguments' to then generate
 // workspace and project files for a specified IDE.
 func Generate(pkg *denv.Package) error {
+	generator := ide.NewAxeGenerator()
 	if vs.IsVisualStudio(denv.DEV, denv.OS, denv.ARCH) {
 		//return vs.GenerateBuildFiles(vs.GetVisualStudio(denv.DEV), pkg)
-		generator := ide.NewAxeGenerator()
 		return generator.GenerateMsDev(vs.GetVisualStudio(denv.DEV), pkg)
 	} else if tundra.IsTundra(denv.DEV, denv.OS, denv.ARCH) {
-		return tundra.GenerateBuildFiles(pkg)
+		//return tundra.GenerateBuildFiles(pkg)
+		return generator.GenerateTundra(pkg)
 	} else if cmake.IsCMake(denv.DEV, denv.OS, denv.ARCH) {
 		return cmake.GenerateBuildFiles(pkg)
 	}

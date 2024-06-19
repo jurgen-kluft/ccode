@@ -28,10 +28,10 @@ func NewConfigList() *ConfigList {
 }
 
 func (p *ConfigList) Add(config *Config) {
-	if _, ok := p.Dict[config.Name]; !ok {
-		p.Dict[config.Name] = len(p.Values)
+	if _, ok := p.Dict[config.Type.String()]; !ok {
+		p.Dict[config.Type.String()] = len(p.Values)
 		p.Values = append(p.Values, config)
-		p.Keys = append(p.Keys, config.Name)
+		p.Keys = append(p.Keys, config.Type.String())
 	}
 }
 
@@ -42,8 +42,8 @@ func (p *ConfigList) First() *Config {
 	return nil
 }
 
-func (p *ConfigList) Get(name string) (*Config, bool) {
-	if i, ok := p.Dict[name]; ok {
+func (p *ConfigList) Get(t ConfigType) (*Config, bool) {
+	if i, ok := p.Dict[t.String()]; ok {
 		return p.Values[i], true
 	}
 	return nil, false
@@ -51,7 +51,7 @@ func (p *ConfigList) Get(name string) (*Config, bool) {
 
 func (p *ConfigList) CollectByWildcard(name string, list *ConfigList) {
 	for _, p := range p.Values {
-		if PathMatchWildcard(p.Name, name, true) {
+		if PathMatchWildcard(p.Type.String(), name, true) {
 			list.Add(p)
 		}
 	}
@@ -64,22 +64,86 @@ func (p *ConfigList) CollectByWildcard(name string, list *ConfigList) {
 type ConfigType int
 
 const (
-	configTypeUnknown ConfigType = 0
-	configTypeDebug   ConfigType = 1
-	configTypeRelease ConfigType = 2
-	configTypeTest    ConfigType = 4
-	configTypeGuiApp  ConfigType = 8
-	configTypeConsole ConfigType = 16
+	ConfigTypeNone    ConfigType = 0
+	ConfigTypeDebug   ConfigType = 1
+	ConfigTypeRelease ConfigType = 2
+	ConfigTypeFinal   ConfigType = 4
+	ConfigTypeTest    ConfigType = 8
+	ConfigTypeProfile ConfigType = 16
 )
+
+func (t ConfigType) IsDebug() bool {
+	return t&ConfigTypeDebug != 0
+}
+
+func (t ConfigType) IsRelease() bool {
+	return t&ConfigTypeRelease != 0
+}
+
+func (t ConfigType) IsProfile() bool {
+	return t&ConfigTypeTest != 0
+}
+
+func (t ConfigType) IsTest() bool {
+	return t&ConfigTypeTest != 0
+}
+
+func (t ConfigType) Tundra() string {
+	switch t {
+	case ConfigTypeDebug:
+		return "*-*-debug-*"
+	case ConfigTypeRelease:
+		return "*-*-release-*"
+	case ConfigTypeFinal:
+		return "*-*-final-*"
+	case ConfigTypeDebug | ConfigTypeTest:
+		return "*-*-debug-test"
+	case ConfigTypeRelease | ConfigTypeTest:
+		return "*-*-release-test"
+	case ConfigTypeFinal | ConfigTypeTest:
+		return "*-*-final-test"
+	case ConfigTypeDebug | ConfigTypeProfile:
+		return "*-*-debug-profile"
+	case ConfigTypeRelease | ConfigTypeProfile:
+		return "*-*-release-profile"
+	case ConfigTypeFinal | ConfigTypeProfile:
+		return "*-*-final-profile"
+	}
+	return "*-*-debug-*"
+}
+
+func (t ConfigType) String() string {
+	switch t {
+	case ConfigTypeDebug:
+		return "Debug"
+	case ConfigTypeRelease:
+		return "Release"
+	case ConfigTypeFinal:
+		return "Final"
+	case ConfigTypeDebug | ConfigTypeTest:
+		return "Debug-Test"
+	case ConfigTypeRelease | ConfigTypeTest:
+		return "Release-Test"
+	case ConfigTypeFinal | ConfigTypeTest:
+		return "Final-Test"
+	case ConfigTypeDebug | ConfigTypeProfile:
+		return "Debug-Profile"
+	case ConfigTypeRelease | ConfigTypeProfile:
+		return "Release-Profile"
+	case ConfigTypeFinal | ConfigTypeProfile:
+		return "Final-Profile"
+	}
+	return "Debug"
+}
 
 // -----------------------------------------------------------------------------------------------------
 // Config
 // -----------------------------------------------------------------------------------------------------
 
 type Config struct {
-	Name         string
+	//Name         string
+	Type         ConfigType
 	Workspace    *Workspace
-	IsDebug      bool
 	CppStd       string
 	Project      *Project
 	OutputTarget *FileEntry
@@ -118,12 +182,12 @@ type Config struct {
 	}
 }
 
-func NewConfig(name string, ws *Workspace, p *Project) *Config {
+func NewConfig(t ConfigType, ws *Workspace, p *Project) *Config {
 	c := &Config{}
-	c.Name = name
+	//c.Name = name
+	c.Type = t
 	c.Workspace = ws
 	c.Project = p
-	c.IsDebug = strings.Contains(strings.ToLower(name), "debug")
 	c.CppStd = "c++14"
 
 	proot := ""
@@ -164,7 +228,7 @@ func NewConfig(name string, ws *Workspace, p *Project) *Config {
 	c.VisualStudioClCompile = NewKeyValueDict()
 	c.VisualStudioLink = NewKeyValueDict()
 
-	c.GenDataMakefile.CppObjDir = filepath.Join(c.Workspace.GenerateAbsPath, "build_tmp", name)
+	c.GenDataMakefile.CppObjDir = filepath.Join(c.Workspace.GenerateAbsPath, "build_tmp", c.Type.String())
 	c.GenDataXcode.ProjectConfigUuid = GenerateUUID()
 	c.GenDataXcode.TargetUuid = GenerateUUID()
 	c.GenDataXcode.TargetConfigUuid = GenerateUUID()
@@ -181,10 +245,9 @@ func (c *Config) init(source *Config) {
 	if c.Workspace == nil {
 		log.Panic("Config hasn't been created with a valid Workspace")
 	}
-	c.IsDebug = strings.Contains(strings.ToLower(c.Name), "debug")
 
 	if c.Project != nil {
-		path := filepath.Join(c.Workspace.GenerateAbsPath, "build_tmp", c.Name, c.Project.Name)
+		path := filepath.Join(c.Workspace.GenerateAbsPath, "build_tmp", c.Type.String(), c.Project.Name)
 		c.BuildTmpDir = NewFileEntryInit(path, true)
 	}
 
@@ -213,7 +276,7 @@ func (c *Config) InitXcodeSettings() {
 		settings["MACOSX_DEPLOYMENT_TARGET"] = "10.10" // c++11 require 10.10+
 	}
 
-	if c.IsDebug {
+	if c.Type.IsDebug() {
 		settings["DEBUG_INFORMATION_FORMAT"] = "dwarf"
 		settings["GCC_GENERATE_DEBUGGING_SYMBOLS"] = "YES"
 
@@ -301,7 +364,7 @@ func (c *Config) InitVisualStudioSettings() {
 		c.VisualStudioClCompile.AddOrSet("DebugInformationFormat", "ProgramDatabase")
 	}
 
-	if c.IsDebug {
+	if c.Type.IsDebug() {
 		c.VisualStudioClCompile.AddOrSet("Optimization", "Disabled")
 		c.VisualStudioClCompile.AddOrSet("DebugInformationFormat", "ProgramDatabase")
 		c.VisualStudioClCompile.AddOrSet("OmitFramePointers", "false")
@@ -315,7 +378,7 @@ func (c *Config) InitVisualStudioSettings() {
 		c.VisualStudioClCompile.AddOrSet("BasicRuntimeChecks", "Default")
 	}
 
-	c.VisualStudioClCompile.AddOrSet("RuntimeLibrary", c.Workspace.Config.MsDev.RuntimeLibrary.String(c.IsDebug))
+	c.VisualStudioClCompile.AddOrSet("RuntimeLibrary", c.Workspace.Config.MsDev.RuntimeLibrary.String(c.Type.IsDebug()))
 }
 
 func (c *Config) inherit(rhs *Config) {
@@ -359,13 +422,13 @@ func (c *Config) resolve() {
 		c.CppDefines.FinalDict.AddOrSet("CCORE_GEN_OS", "CCORE_GEN_OS_"+strings.ToUpper(c.Workspace.MakeTarget.OSAsString()))
 		c.CppDefines.FinalDict.AddOrSet("CCORE_GEN_COMPILER", "CCORE_GEN_COMPILER_"+strings.ToUpper(c.Workspace.MakeTarget.CompilerAsString()))
 		c.CppDefines.FinalDict.AddOrSet("CCORE_GEN_GENERATOR", "CCORE_GEN_GENERATOR_"+strings.ToUpper(c.Workspace.Generator.String()))
-		c.CppDefines.FinalDict.AddOrSet("CCORE_GEN_CONFIG", "CCORE_GEN_CONFIG_"+strings.ToUpper(c.Name))
+		c.CppDefines.FinalDict.AddOrSet("CCORE_GEN_CONFIG", "CCORE_GEN_CONFIG_"+strings.ToUpper(c.Type.String()))
 		c.CppDefines.FinalDict.AddOrSet("CCORE_GEN_PLATFORM_NAME", "CCORE_GEN_PLATFORM_NAME=\""+strings.ToUpper(c.Workspace.MakeTarget.OSAsString()+"\""))
 		c.CppDefines.FinalDict.AddOrSet("CCORE_GEN_PROJECT", "CCORE_GEN_PROJECT_"+strings.ToUpper(c.Project.Name))
 		c.CppDefines.FinalDict.AddOrSet("CCORE_GEN_TYPE", "CCORE_GEN_TYPE_"+strings.ToUpper(c.Project.Settings.Type.String()))
 
-		BINDIR := filepath.Join(c.Workspace.GenerateAbsPath, "bin", c.Project.Name, c.Name+"_"+c.Workspace.MakeTarget.ArchAsString()+"_"+c.Workspace.Config.MsDev.PlatformToolset)
-		LIBDIR := filepath.Join(c.Workspace.GenerateAbsPath, "lib", c.Project.Name, c.Name+"_"+c.Workspace.MakeTarget.ArchAsString()+"_"+c.Workspace.Config.MsDev.PlatformToolset)
+		BINDIR := filepath.Join(c.Workspace.GenerateAbsPath, "bin", c.Project.Name, c.Type.String()+"_"+c.Workspace.MakeTarget.ArchAsString()+"_"+c.Workspace.Config.MsDev.PlatformToolset)
+		LIBDIR := filepath.Join(c.Workspace.GenerateAbsPath, "lib", c.Project.Name, c.Type.String()+"_"+c.Workspace.MakeTarget.ArchAsString()+"_"+c.Workspace.Config.MsDev.PlatformToolset)
 
 		outputTarget := ""
 		if c.Project.TypeIsExe() {

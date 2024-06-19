@@ -6,14 +6,14 @@ import (
 	"github.com/jurgen-kluft/ccode/axe"
 )
 
-type MsDevTestGenerator struct {
+type TundraTestGenerator struct {
 }
 
-func NewMsDevTestGenerator() *MsDevTestGenerator {
-	return &MsDevTestGenerator{}
+func NewTundraTestGenerator() *TundraTestGenerator {
+	return &TundraTestGenerator{}
 }
 
-func (m *MsDevTestGenerator) TestRun(rootAbsPath string, projectName string) error {
+func (m *TundraTestGenerator) TestRun(rootAbsPath string, projectName string) error {
 
 	visualStudioVersion := axe.VisualStudio2022
 
@@ -22,7 +22,7 @@ func (m *MsDevTestGenerator) TestRun(rootAbsPath string, projectName string) err
 	wsc.MultiThreadedBuild = true
 
 	ws := axe.NewWorkspace(wsc)
-	ws.Generator = axe.GeneratorMsDev
+	ws.Generator = axe.GeneratorTundra
 	ws.WorkspaceName = projectName
 	ws.WorkspaceAbsPath = rootAbsPath
 	ws.GenerateAbsPath = filepath.Join(rootAbsPath, projectName, "target", ws.Generator.String())
@@ -128,13 +128,13 @@ func (m *MsDevTestGenerator) TestRun(rootAbsPath string, projectName string) err
 		return err
 	}
 
-	g := axe.NewMsDevGenerator(ws)
+	g := axe.NewTundraGenerator(ws)
 	g.Generate()
 
 	return nil
 }
 
-func (m *MsDevTestGenerator) createDefaultProjectConfiguration(p *axe.Project, configType axe.ConfigType) *axe.Config {
+func (m *TundraTestGenerator) createDefaultProjectConfiguration(p *axe.Project, configType axe.ConfigType) *axe.Config {
 	config := p.GetOrCreateConfig(configType)
 
 	config.AddIncludeDir("source/main/include")
@@ -148,7 +148,7 @@ func (m *MsDevTestGenerator) createDefaultProjectConfiguration(p *axe.Project, c
 	return config
 }
 
-func (m *MsDevTestGenerator) addWorkspaceConfiguration(ws *axe.Workspace, configType axe.ConfigType) {
+func (m *TundraTestGenerator) addWorkspaceConfiguration(ws *axe.Workspace, configType axe.ConfigType) {
 	config := axe.NewConfig(configType, ws, nil)
 
 	if configType.IsDebug() {

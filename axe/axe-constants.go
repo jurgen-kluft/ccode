@@ -3,8 +3,9 @@ package axe
 type GeneratorType string
 
 const (
-	GeneratorMsDev GeneratorType = "msdev"
-	GeneratorXcode GeneratorType = "xcode"
+	GeneratorMsDev  GeneratorType = "msdev"
+	GeneratorTundra GeneratorType = "tundra"
+	GeneratorXcode  GeneratorType = "xcode"
 )
 
 func (g GeneratorType) String() string {

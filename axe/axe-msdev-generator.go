@@ -86,9 +86,9 @@ func (g *MsDevGenerator) genProject(proj *Project) {
 
 			for _, config := range proj.Configs.Values {
 				tag := wr.TagScope("ProjectConfiguration")
-				wr.Attr("Include", config.Name+"|"+g.VcxProjCpu)
+				wr.Attr("Include", config.Type.String()+"|"+g.VcxProjCpu)
 
-				wr.TagWithBody("Configuration", config.Name)
+				wr.TagWithBody("Configuration", config.Type.String())
 				wr.TagWithBody("Platform", g.VcxProjCpu)
 				tag.Close()
 			}
@@ -286,7 +286,7 @@ func (g *MsDevGenerator) genProjectPch(wr *XmlWriter, proj *Project) {
 }
 
 func (g *MsDevGenerator) genProjectConfig(wr *XmlWriter, proj *Project, config *Config) {
-	cond := "'$(Configuration)|$(Platform)'=='" + config.Name + "|" + g.VcxProjCpu + "'"
+	cond := "'$(Configuration)|$(Platform)'=='" + config.Type.String() + "|" + g.VcxProjCpu + "'"
 	{
 		tag := wr.TagScope("PropertyGroup")
 		wr.Attr("Condition", cond)
@@ -296,7 +296,7 @@ func (g *MsDevGenerator) genProjectConfig(wr *XmlWriter, proj *Project, config *
 			outDir = filepath.Join(outDir, g.Workspace.MakeTarget.OSAsString())
 		}
 
-		intDir := filepath.Join(g.Workspace.GenerateAbsPath, "obj", proj.Name, config.Name+"_"+g.Workspace.MakeTarget.ArchAsString()+"_"+g.Workspace.Config.MsDev.PlatformToolset)
+		intDir := filepath.Join(g.Workspace.GenerateAbsPath, "obj", proj.Name, config.Type.String()+"_"+g.Workspace.MakeTarget.ArchAsString()+"_"+g.Workspace.Config.MsDev.PlatformToolset)
 		targetName := PathFilename(config.OutputTarget.Path, false)
 		targetExt := PathFileExtension(config.OutputTarget.Path)
 
@@ -388,7 +388,7 @@ func (g *MsDevGenerator) genProjectConfig(wr *XmlWriter, proj *Project, config *
 				tmp := config.LinkFlags.FinalDict.Concatenated(" -Wl,", "", func(string, s string) string { return s })
 				wr.TagWithBody("AdditionalOptions", tmp)
 
-				if config.IsDebug {
+				if config.Type.IsDebug() {
 					wr.TagWithBody("DebuggerSymbolInformation", "true")
 				} else {
 					wr.TagWithBody("DebuggerSymbolInformation", "OmitAllSymbolInformation")
@@ -401,7 +401,7 @@ func (g *MsDevGenerator) genProjectConfig(wr *XmlWriter, proj *Project, config *
 				tmp := config.LinkFlags.FinalDict.Concatenated(" ", "", func(string, s string) string { return s })
 				wr.TagWithBody("AdditionalOptions", tmp)
 
-				if !config.IsDebug {
+				if !config.Type.IsDebug() {
 					wr.TagWithBodyBool("EnableCOMDATFolding", true)
 					wr.TagWithBodyBool("OptimizeReferences", true)
 				}

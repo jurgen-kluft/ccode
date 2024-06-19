@@ -35,3 +35,4 @@ vendor/
 !*.bat
 
 #except the following folders
+.vscode/settings.json

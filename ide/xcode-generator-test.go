@@ -2,7 +2,6 @@ package ide
 
 import (
 	"path/filepath"
-	"strings"
 
 	"github.com/jurgen-kluft/ccode/axe"
 )
@@ -28,8 +27,8 @@ func (x *XcodeTestGenerator) TestRun(ccoreAbsPath string, projectName string) er
 	ws.WorkspaceAbsPath = ccoreAbsPath
 	ws.GenerateAbsPath = filepath.Join(ccoreAbsPath, projectName, "target", ws.Generator.String())
 
-	x.addWorkspaceConfiguration(ws, "DebugTest")
-	x.addWorkspaceConfiguration(ws, "ReleaseTest")
+	x.addWorkspaceConfiguration(ws, axe.ConfigTypeDebug|axe.ConfigTypeTest)
+	x.addWorkspaceConfiguration(ws, axe.ConfigTypeRelease|axe.ConfigTypeTest)
 
 	var cbase_lib *axe.Project
 	var ccore_lib *axe.Project
@@ -55,11 +54,11 @@ func (x *XcodeTestGenerator) TestRun(ccoreAbsPath string, projectName string) er
 		cbase_lib.GlobFiles(filepath.Join(ccoreAbsPath, "cbase"), "source/main/include/^**/*.h")
 		cbase_lib.GlobFiles(filepath.Join(ccoreAbsPath, "cbase"), "source/main/include/^**/*.inl")
 
-		config := x.createDefaultProjectConfiguration(cbase_lib, "Debug")
+		config := x.createDefaultProjectConfiguration(cbase_lib, axe.ConfigTypeDebug)
 		config.CppDefines.ValuesToAdd("")
-		x.createDefaultProjectConfiguration(cbase_lib, "Release")
-		x.createDefaultProjectConfiguration(cbase_lib, "DebugTest")
-		x.createDefaultProjectConfiguration(cbase_lib, "ReleaseTest")
+		x.createDefaultProjectConfiguration(cbase_lib, axe.ConfigTypeRelease)
+		x.createDefaultProjectConfiguration(cbase_lib, axe.ConfigTypeDebug|axe.ConfigTypeTest)
+		x.createDefaultProjectConfiguration(cbase_lib, axe.ConfigTypeRelease|axe.ConfigTypeTest)
 	}
 
 	// ccore library project
@@ -81,10 +80,10 @@ func (x *XcodeTestGenerator) TestRun(ccoreAbsPath string, projectName string) er
 		ccore_lib.GlobFiles(filepath.Join(ccoreAbsPath, "ccore"), "source/main/include/^**/*.h")
 		ccore_lib.GlobFiles(filepath.Join(ccoreAbsPath, "ccore"), "source/main/include/^**/*.inl")
 
-		x.createDefaultProjectConfiguration(ccore_lib, "Debug")
-		x.createDefaultProjectConfiguration(ccore_lib, "Release")
-		x.createDefaultProjectConfiguration(ccore_lib, "DebugTest")
-		x.createDefaultProjectConfiguration(ccore_lib, "ReleaseTest")
+		x.createDefaultProjectConfiguration(ccore_lib, axe.ConfigTypeDebug)
+		x.createDefaultProjectConfiguration(ccore_lib, axe.ConfigTypeRelease)
+		x.createDefaultProjectConfiguration(ccore_lib, axe.ConfigTypeDebug|axe.ConfigTypeTest)
+		x.createDefaultProjectConfiguration(ccore_lib, axe.ConfigTypeRelease|axe.ConfigTypeTest)
 	}
 
 	// cunittest library project
@@ -103,8 +102,8 @@ func (x *XcodeTestGenerator) TestRun(ccoreAbsPath string, projectName string) er
 		cunittest_lib.GlobFiles(filepath.Join(ccoreAbsPath, "cunittest"), "source/main/cpp/^**/*.cpp")
 		cunittest_lib.GlobFiles(filepath.Join(ccoreAbsPath, "cunittest"), "source/main/include/^**/*.h")
 
-		x.createDefaultProjectConfiguration(cunittest_lib, "DebugTest")
-		x.createDefaultProjectConfiguration(cunittest_lib, "ReleaseTest")
+		x.createDefaultProjectConfiguration(cunittest_lib, axe.ConfigTypeDebug|axe.ConfigTypeTest)
+		x.createDefaultProjectConfiguration(cunittest_lib, axe.ConfigTypeRelease|axe.ConfigTypeTest)
 	}
 
 	// cbase unittest project, this is an executable
@@ -123,8 +122,8 @@ func (x *XcodeTestGenerator) TestRun(ccoreAbsPath string, projectName string) er
 		cbase_unittest.GlobFiles(filepath.Join(ccoreAbsPath, "cbase"), "source/test/cpp/^**/*.cpp")
 		cbase_unittest.GlobFiles(filepath.Join(ccoreAbsPath, "cbase"), "source/test/include/^**/*.h")
 
-		x.createDefaultProjectConfiguration(cbase_unittest, "DebugTest")
-		x.createDefaultProjectConfiguration(cbase_unittest, "ReleaseTest")
+		x.createDefaultProjectConfiguration(cbase_unittest, axe.ConfigTypeDebug|axe.ConfigTypeTest)
+		x.createDefaultProjectConfiguration(cbase_unittest, axe.ConfigTypeRelease|axe.ConfigTypeTest)
 	}
 
 	if err := ws.Resolve(); err != nil {
@@ -137,11 +136,11 @@ func (x *XcodeTestGenerator) TestRun(ccoreAbsPath string, projectName string) er
 	return nil
 }
 
-func (x *XcodeTestGenerator) createDefaultProjectConfiguration(p *axe.Project, configName string) *axe.Config {
-	config := p.GetOrCreateConfig(configName)
+func (x *XcodeTestGenerator) createDefaultProjectConfiguration(p *axe.Project, configType axe.ConfigType) *axe.Config {
+	config := p.GetOrCreateConfig(configType)
 
 	config.AddIncludeDir("source/main/include")
-	if strings.HasSuffix(configName, "Test") {
+	if configType.IsTest() {
 		config.AddIncludeDir("source/test/include")
 	}
 
@@ -149,10 +148,10 @@ func (x *XcodeTestGenerator) createDefaultProjectConfiguration(p *axe.Project, c
 	return config
 }
 
-func (x *XcodeTestGenerator) addWorkspaceConfiguration(ws *axe.Workspace, configName string) {
-	config := axe.NewConfig(configName, ws, nil)
+func (x *XcodeTestGenerator) addWorkspaceConfiguration(ws *axe.Workspace, configType axe.ConfigType) {
+	config := axe.NewConfig(configType, ws, nil)
 
-	if config.IsDebug {
+	if configType.IsDebug() {
 		config.CppDefines.ValuesToAdd("DEBUG", "_DEBUG")
 	} else {
 		config.CppDefines.ValuesToAdd("NDEBUG")
@@ -164,7 +163,7 @@ func (x *XcodeTestGenerator) addWorkspaceConfiguration(ws *axe.Workspace, config
 	// clang
 	config.CppFlags.ValuesToAdd("-std=c++11", "-Wall", "-Wfatal-errors", "-Werror", "-Wno-switch")
 	config.LinkFlags.ValuesToAdd("-lstdc++")
-	if config.IsDebug {
+	if configType.IsDebug() {
 		config.CppFlags.ValuesToAdd("-g")
 	}
 

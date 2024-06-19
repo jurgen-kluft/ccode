@@ -612,7 +612,7 @@ func (g *XcodeGenerator) genProjectXCBuildConfiguration(wr *XcodeWriter, proj *P
 
 	for _, config := range proj.Configs.Values {
 		wr.newline(0)
-		wr.commentBlock("Project Config [" + config.Name + "]")
+		wr.commentBlock("Project Config [" + config.Type.String() + "]")
 		scope := wr.NewObjectScope(config.GenDataXcode.ProjectConfigUuid.String(g.Workspace.Generator))
 		{
 			wr.member("isa", "XCBuildConfiguration")
@@ -625,14 +625,14 @@ func (g *XcodeGenerator) genProjectXCBuildConfiguration(wr *XcodeWriter, proj *P
 				wr.member("CLANG_CXX_LANGUAGE_STANDARD", g.quoteString(config.CppStd))
 				scope.Close()
 			}
-			wr.member("name", config.Name)
+			wr.member("name", config.Type.String())
 		}
 		scope.Close()
 	}
 
 	for _, config := range proj.Configs.Values {
 		wr.newline(0)
-		wr.commentBlock("Target Config [" + config.Name + "]")
+		wr.commentBlock("Target Config [" + config.Type.String() + "]")
 		scope := wr.NewObjectScope(config.GenDataXcode.TargetConfigUuid.String(g.Workspace.Generator))
 		{
 			wr.member("isa", "XCBuildConfiguration")
@@ -726,7 +726,7 @@ func (g *XcodeGenerator) genProjectXCBuildConfiguration(wr *XcodeWriter, proj *P
 
 				scope.Close()
 			}
-			wr.member("name", config.Name)
+			wr.member("name", config.Type.String())
 			scope.Close()
 		}
 	}
@@ -747,7 +747,7 @@ func (g *XcodeGenerator) genProjectXCConfigurationList(wr *XcodeWriter, proj *Pr
 				scope := wr.NewArrayScope("buildConfigurations")
 				for _, config := range proj.Configs.Values {
 					wr.newline(0)
-					wr.commentBlock(config.Name)
+					wr.commentBlock(config.Type.String())
 					wr.newline(0)
 					wr.write(config.GenDataXcode.ProjectConfigUuid.String(g.Workspace.Generator))
 				}
@@ -757,7 +757,7 @@ func (g *XcodeGenerator) genProjectXCConfigurationList(wr *XcodeWriter, proj *Pr
 			wr.member("defaultConfigurationIsVisible", "0")
 
 			defaultConfig := g.Workspace.Configs.First()
-			wr.member("defaultConfigurationName", defaultConfig.Name)
+			wr.member("defaultConfigurationName", defaultConfig.Type.String())
 		}
 		scope.Close()
 	}
@@ -772,7 +772,7 @@ func (g *XcodeGenerator) genProjectXCConfigurationList(wr *XcodeWriter, proj *Pr
 				scope := wr.NewArrayScope("buildConfigurations")
 				for _, config := range proj.Configs.Values {
 					wr.newline(0)
-					wr.commentBlock(config.Name)
+					wr.commentBlock(config.Type.String())
 					wr.newline(0)
 					wr.write(config.GenDataXcode.TargetConfigUuid.String(g.Workspace.Generator))
 				}
@@ -780,7 +780,7 @@ func (g *XcodeGenerator) genProjectXCConfigurationList(wr *XcodeWriter, proj *Pr
 			}
 			wr.member("defaultConfigurationIsVisible", "0")
 			defaultConfig := g.Workspace.Configs.First()
-			wr.member("defaultConfigurationName", defaultConfig.Name)
+			wr.member("defaultConfigurationName", defaultConfig.Type.String())
 		}
 		scope.Close()
 	}

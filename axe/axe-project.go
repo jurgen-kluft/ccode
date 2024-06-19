@@ -198,7 +198,7 @@ func newProject(ws *Workspace, name string, projectAbsPath string, projectType P
 	p.Settings.Xcode.BundleIdentifier = "$(PROJECT_NAME)"
 
 	for _, srcConfig := range ws.Configs.Values {
-		dstConfig := NewConfig(srcConfig.Name, ws, p)
+		dstConfig := NewConfig(srcConfig.Type, ws, p)
 		dstConfig.init(srcConfig)
 		p.Configs.Add(dstConfig)
 	}
@@ -228,10 +228,10 @@ func (p *Project) TypeIsExeOrDll() bool {
 	return p.TypeIsExe() || p.TypeIsDll()
 }
 
-func (p *Project) GetOrCreateConfig(name string) *Config {
-	c, ok := p.Configs.Get(name)
+func (p *Project) GetOrCreateConfig(t ConfigType) *Config {
+	c, ok := p.Configs.Get(t)
 	if !ok {
-		c = NewConfig(name, p.Workspace, p)
+		c = NewConfig(t, p.Workspace, p)
 		p.Configs.Add(c)
 	}
 	return c
@@ -323,7 +323,7 @@ func (p *Project) resolveInternal() error {
 	}
 
 	for _, pc := range p.Configs.Values {
-		if wc, ok := p.Workspace.Configs.Get(pc.Name); ok {
+		if wc, ok := p.Workspace.Configs.Get(pc.Type); ok {
 			pc.inherit(wc)
 		}
 	}
@@ -344,7 +344,7 @@ func (p *Project) resolveInternal() error {
 		}
 
 		for _, pc := range p.Configs.Values {
-			if dpc, ok := dp.Configs.Get(pc.Name); ok {
+			if dpc, ok := dp.Configs.Get(pc.Type); ok {
 				pc.inherit(dpc)
 			}
 		}
@@ -411,6 +411,7 @@ func NewExclusionFilter(target MakeTarget) *ExclusionFilter {
 }
 
 func (p *Project) GlobFiles(dir string, pattern string) {
+	dir = PathNormalize(dir)
 	pattern = PathNormalize(pattern)
 	pp := strings.Split(pattern, "^")
 	path := filepath.Join(dir, pp[0])

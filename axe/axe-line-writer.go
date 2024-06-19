@@ -20,7 +20,20 @@ func (w *LineWriter) Write(str string) {
 	w.line.WriteString(str)
 }
 
-func (w *LineWriter) WriteILine(str ...string) {
+var indentationMap = map[string]string{
+	"":         "",
+	"+":        "    ",
+	"++":       "        ",
+	"+++":      "            ",
+	"++++":     "                ",
+	"+++++":    "                    ",
+	"++++++":   "                        ",
+	"+++++++":  "                            ",
+	"++++++++": "                                ",
+}
+
+func (w *LineWriter) WriteILine(indent string, str ...string) {
+	w.line.WriteString(indentationMap[indent])
 	for _, s := range str {
 		w.line.WriteString(s)
 	}
