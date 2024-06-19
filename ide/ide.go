@@ -10,7 +10,11 @@ import (
 	"github.com/jurgen-kluft/ccode/denv"
 )
 
-func GenerateMsDevIde() {
+// ----------------------------------------------------------------------------------------------
+// IDE generator tests
+// ----------------------------------------------------------------------------------------------
+
+func TestGenerateMsDevIde() {
 	workspacePath := "$HOME/dev.go/src/github.com/jurgen-kluft"
 	if runtime.GOOS == "windows" {
 		workspacePath = "d:\\Dev.Go\\src\\github.com\\jurgen-kluft"
@@ -20,7 +24,7 @@ func GenerateMsDevIde() {
 	generator.TestRun(workspacePath, "cbase")
 }
 
-func GenerateTundra() {
+func TestGenerateTundra() {
 	workspacePath := "$HOME/dev.go/src/github.com/jurgen-kluft"
 	if runtime.GOOS == "windows" {
 		workspacePath = "d:\\Dev.Go\\src\\github.com\\jurgen-kluft"
@@ -30,7 +34,7 @@ func GenerateTundra() {
 	generator.TestRun(workspacePath, "cbase")
 }
 
-func GenerateXcodeIde() {
+func TestGenerateXcodeIde() {
 	workspacePath := "$HOME/dev.go/src/github.com/jurgen-kluft"
 	workspacePath = os.ExpandEnv(workspacePath)
 	generator := NewXcodeTestGenerator()
