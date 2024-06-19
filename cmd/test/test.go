@@ -1,10 +1,10 @@
 package main
 
 import (
-	"github.com/jurgen-kluft/ccode/ide"
+	generator_test "github.com/jurgen-kluft/ccode/generator-test"
 )
 
 // main
 func main() {
-	ide.TestGenerateTundra()
+	generator_test.TestGenerateTundra()
 }

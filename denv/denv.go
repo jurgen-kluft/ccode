@@ -6,15 +6,14 @@ import (
 )
 
 // DEV is an enumeration for all possible IDE's that are supported
-type DevEnum int
+type DevEnum uint
 
 // All development environment
 const (
-	TUNDRA       DevEnum = 0x20000
-	CMAKE        DevEnum = 0x40000
-	VISUALSTUDIO DevEnum = 0x80000
-	VS2012       DevEnum = VISUALSTUDIO | 2012
-	VS2013       DevEnum = VISUALSTUDIO | 2013
+	TUNDRA       DevEnum = 0x020000
+	CMAKE        DevEnum = 0x040000
+	XCODE        DevEnum = 0x080000
+	VISUALSTUDIO DevEnum = 0x100000
 	VS2015       DevEnum = VISUALSTUDIO | 2015
 	VS2017       DevEnum = VISUALSTUDIO | 2017
 	VS2019       DevEnum = VISUALSTUDIO | 2019
@@ -27,6 +26,8 @@ func GetDevEnum(dev string) DevEnum {
 		return TUNDRA
 	} else if dev == "CMAKE" {
 		return CMAKE
+	} else if dev == "XCODE" {
+		return XCODE
 	} else if dev == "VS2022" {
 		return VS2022
 	} else if dev == "VS2019" {
@@ -35,10 +36,6 @@ func GetDevEnum(dev string) DevEnum {
 		return VS2017
 	} else if dev == "VS2015" {
 		return VS2015
-	} else if dev == "VS2013" {
-		return VS2013
-	} else if dev == "VS2012" {
-		return VS2012
 	}
 	return INVALID
 }

@@ -1,4 +1,4 @@
-package ide
+package generator_test
 
 import (
 	"path/filepath"

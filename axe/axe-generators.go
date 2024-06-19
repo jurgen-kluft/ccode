@@ -1,44 +1,54 @@
-package ide
+package axe
 
 import (
 	"fmt"
 	"os"
 	"path/filepath"
-	"runtime"
+	"strings"
 
-	"github.com/jurgen-kluft/ccode/axe"
 	"github.com/jurgen-kluft/ccode/denv"
 )
 
-// ----------------------------------------------------------------------------------------------
-// IDE generator tests
-// ----------------------------------------------------------------------------------------------
+type DevEnum uint
 
-func TestGenerateMsDevIde() {
-	workspacePath := "$HOME/dev.go/src/github.com/jurgen-kluft"
-	if runtime.GOOS == "windows" {
-		workspacePath = "d:\\Dev.Go\\src\\github.com\\jurgen-kluft"
+// All development environment
+const (
+	TUNDRA       DevEnum = 0x020000
+	CMAKE        DevEnum = 0x040000
+	XCODE        DevEnum = 0x080000
+	VISUALSTUDIO DevEnum = 0x100000
+	VS2015       DevEnum = VISUALSTUDIO | 2015
+	VS2017       DevEnum = VISUALSTUDIO | 2017
+	VS2019       DevEnum = VISUALSTUDIO | 2019
+	VS2022       DevEnum = VISUALSTUDIO | 2022
+	INVALID      DevEnum = 0xFFFFFFFF
+)
+
+func GetDevEnum(dev string) DevEnum {
+	dev = strings.ToLower(dev)
+	if dev == "tundra" {
+		return TUNDRA
+	} else if dev == "cmake" {
+		return CMAKE
+	} else if dev == "xcode" {
+		return XCODE
 	}
-	workspacePath = os.ExpandEnv(workspacePath)
-	generator := NewMsDevTestGenerator()
-	generator.TestRun(workspacePath, "cbase")
+	return ParseVisualStudio(dev)
 }
 
-func TestGenerateTundra() {
-	workspacePath := "$HOME/dev.go/src/github.com/jurgen-kluft"
-	if runtime.GOOS == "windows" {
-		workspacePath = "d:\\Dev.Go\\src\\github.com\\jurgen-kluft"
+// ParseVisualStudio returns a value for type IDE deduced from the incoming string @dev
+func ParseVisualStudio(dev string) DevEnum {
+	dev = strings.ToLower(dev)
+	if dev == "vs2022" {
+		return VS2022
+	} else if dev == "vs2019" {
+		return VS2019
+	} else if dev == "vs2017" {
+		return VS2017
+	} else if dev == "vs2015" {
+		return VS2015
 	}
-	workspacePath = os.ExpandEnv(workspacePath)
-	generator := NewTundraTestGenerator()
-	generator.TestRun(workspacePath, "cbase")
-}
-
-func TestGenerateXcodeIde() {
-	workspacePath := "$HOME/dev.go/src/github.com/jurgen-kluft"
-	workspacePath = os.ExpandEnv(workspacePath)
-	generator := NewXcodeTestGenerator()
-	generator.TestRun(workspacePath, "cbase")
+	return INVALID
 }
 
 // ----------------------------------------------------------------------------------------------
@@ -47,57 +57,73 @@ func TestGenerateXcodeIde() {
 
 type AxeGenerator struct {
 	RootAbsPath         string
-	VisualStudioVersion axe.EnumVisualStudio
+	VisualStudioVersion EnumVisualStudio
 }
 
-func NewAxeGenerator() *AxeGenerator {
+func NewAxeGenerator(dev string, os string, arch string) *AxeGenerator {
 	return &AxeGenerator{}
 }
 
-func (a *AxeGenerator) GenerateMsDev(msdev denv.DevEnum, pkg *denv.Package) error {
-	var ws *axe.Workspace
+func (a *AxeGenerator) IsVisualStudio(dev string, os string, arch string) bool {
+	return ParseVisualStudio(dev) != INVALID
+}
+func (a *AxeGenerator) IsTundra(dev string, os string, arch string) bool {
+	dev = strings.ToLower(dev)
+	return dev == "tundra"
+}
+func (a *AxeGenerator) IsCMake(dev string, os string, arch string) bool {
+	dev = strings.ToLower(dev)
+	return dev == "cmake"
+}
+func (a *AxeGenerator) IsXCode(dev string, os string, arch string) bool {
+	dev = strings.ToLower(dev)
+	return dev == "xcode"
+}
+
+func (a *AxeGenerator) GenerateMsDev(msdev DevEnum, pkg *denv.Package) error {
+	var ws *Workspace
 	var err error
 
-	a.VisualStudioVersion = axe.VisualStudio2022
-	if ws, err = a.GenerateWorkspace(pkg, axe.GeneratorMsDev); err != nil {
+	a.VisualStudioVersion = VisualStudio2022
+	if ws, err = a.GenerateWorkspace(pkg, GeneratorMsDev); err != nil {
 		return err
 	}
 
-	g := axe.NewMsDevGenerator(ws)
+	g := NewMsDevGenerator(ws)
 	g.Generate()
 
 	return nil
 }
 
 func (a *AxeGenerator) GenerateTundra(pkg *denv.Package) error {
-	var ws *axe.Workspace
+	var ws *Workspace
 	var err error
 
-	if ws, err = a.GenerateWorkspace(pkg, axe.GeneratorTundra); err != nil {
+	if ws, err = a.GenerateWorkspace(pkg, GeneratorTundra); err != nil {
 		return err
 	}
 
-	g := axe.NewTundraGenerator(ws)
+	g := NewTundraGenerator(ws)
 	g.Generate()
 
 	return nil
 }
 
 func (a *AxeGenerator) GenerateCMake(pkg *denv.Package) error {
-	var ws *axe.Workspace
+	var ws *Workspace
 	var err error
 
-	if ws, err = a.GenerateWorkspace(pkg, axe.GeneratorCMake); err != nil {
+	if ws, err = a.GenerateWorkspace(pkg, GeneratorCMake); err != nil {
 		return err
 	}
 
-	g := axe.NewCMakeGenerator(ws)
+	g := NewCMakeGenerator(ws)
 	g.Generate()
 
 	return nil
 }
 
-func (a *AxeGenerator) GenerateWorkspace(pkg *denv.Package, generatorType axe.GeneratorType) (*axe.Workspace, error) {
+func (a *AxeGenerator) GenerateWorkspace(pkg *denv.Package, generatorType GeneratorType) (*Workspace, error) {
 	a.RootAbsPath = filepath.Join(os.Getenv("GOPATH"), "src")
 
 	mainApp := pkg.GetMainApp()
@@ -112,21 +138,21 @@ func (a *AxeGenerator) GenerateWorkspace(pkg *denv.Package, generatorType axe.Ge
 		app = mainApp
 	}
 
-	wsc := axe.NewWorkspaceConfig(a.RootAbsPath, app.Name)
+	wsc := NewWorkspaceConfig(a.RootAbsPath, app.Name)
 	wsc.StartupProject = app.Name
 	wsc.MultiThreadedBuild = true
 
-	ws := axe.NewWorkspace(wsc)
+	ws := NewWorkspace(wsc)
 	ws.Generator = generatorType
 	ws.WorkspaceName = app.Name
 	ws.WorkspaceAbsPath = a.RootAbsPath
 	ws.GenerateAbsPath = filepath.Join(a.RootAbsPath, app.PackageURL, "target", ws.Generator.String())
 	if unittestApp != nil {
-		a.addWorkspaceConfiguration(ws, axe.ConfigTypeDebug|axe.ConfigTypeTest)
-		a.addWorkspaceConfiguration(ws, axe.ConfigTypeRelease|axe.ConfigTypeTest)
+		a.addWorkspaceConfiguration(ws, ConfigTypeDebug|ConfigTypeTest)
+		a.addWorkspaceConfiguration(ws, ConfigTypeRelease|ConfigTypeTest)
 	} else {
-		a.addWorkspaceConfiguration(ws, axe.ConfigTypeDebug)
-		a.addWorkspaceConfiguration(ws, axe.ConfigTypeRelease)
+		a.addWorkspaceConfiguration(ws, ConfigTypeDebug)
+		a.addWorkspaceConfiguration(ws, ConfigTypeRelease)
 	}
 
 	projectMap := map[string]int{}
@@ -175,8 +201,8 @@ func (a *AxeGenerator) GenerateWorkspace(pkg *denv.Package, generatorType axe.Ge
 	return ws, nil
 }
 
-func (a *AxeGenerator) createProject(proj *denv.Project, ws *axe.Workspace, unittest bool) {
-	projectConfig := axe.NewVisualStudioProjectConfig(a.VisualStudioVersion)
+func (a *AxeGenerator) createProject(proj *denv.Project, ws *Workspace, unittest bool) {
+	projectConfig := NewVisualStudioProjectConfig(a.VisualStudioVersion)
 	{
 		executable := proj.Type == denv.Executable
 		if !executable {
@@ -185,14 +211,14 @@ func (a *AxeGenerator) createProject(proj *denv.Project, ws *axe.Workspace, unit
 			} else {
 				projectConfig.Group = "mainapp/cpp-library"
 			}
-			projectConfig.Type = axe.ProjectTypeCppLib
+			projectConfig.Type = ProjectTypeCppLib
 		} else {
 			if unittest {
 				projectConfig.Group = "unittest/cpp-exe"
 			} else {
 				projectConfig.Group = "mainapp/cpp-exe"
 			}
-			projectConfig.Type = axe.ProjectTypeCppExe
+			projectConfig.Type = ProjectTypeCppExe
 		}
 		projectConfig.IsGuiApp = false
 		projectConfig.PchHeader = ""
@@ -205,7 +231,7 @@ func (a *AxeGenerator) createProject(proj *denv.Project, ws *axe.Workspace, unit
 		}
 
 		projAbsPath := filepath.Join(a.RootAbsPath, proj.PackageURL)
-		lib := ws.NewProject(proj.Name, projAbsPath, axe.ProjectTypeCppLib, projectConfig)
+		lib := ws.NewProject(proj.Name, projAbsPath, ProjectTypeCppLib, projectConfig)
 		lib.ProjectFilename = proj.Name
 
 		if unittest && executable {
@@ -216,8 +242,8 @@ func (a *AxeGenerator) createProject(proj *denv.Project, ws *axe.Workspace, unit
 			lib.GlobFiles(projAbsPath, filepath.Join("source", "test", "include", "^**", "*.h"))
 			lib.GlobFiles(projAbsPath, filepath.Join("source", "test", "include", "^**", "*.inl"))
 
-			a.createDefaultProjectConfiguration(lib, axe.ConfigTypeDebug|axe.ConfigTypeTest, true)
-			a.createDefaultProjectConfiguration(lib, axe.ConfigTypeRelease|axe.ConfigTypeTest, true)
+			a.createDefaultProjectConfiguration(lib, ConfigTypeDebug|ConfigTypeTest, true)
+			a.createDefaultProjectConfiguration(lib, ConfigTypeRelease|ConfigTypeTest, true)
 		} else if unittest && !executable {
 			lib.GlobFiles(projAbsPath, filepath.Join("source", "main", "include", "^**", "*.h"))
 			lib.GlobFiles(projAbsPath, filepath.Join("source", "main", "include", "^**", "*.inl"))
@@ -227,8 +253,8 @@ func (a *AxeGenerator) createProject(proj *denv.Project, ws *axe.Workspace, unit
 				lib.GlobFiles(projAbsPath, filepath.Join("source", "main", "cpp", "^**", "*.mm"))
 			}
 
-			a.createDefaultProjectConfiguration(lib, axe.ConfigTypeDebug|axe.ConfigTypeTest, true)
-			a.createDefaultProjectConfiguration(lib, axe.ConfigTypeRelease|axe.ConfigTypeTest, true)
+			a.createDefaultProjectConfiguration(lib, ConfigTypeDebug|ConfigTypeTest, true)
+			a.createDefaultProjectConfiguration(lib, ConfigTypeRelease|ConfigTypeTest, true)
 		} else if !unittest && executable {
 			lib.GlobFiles(projAbsPath, filepath.Join("source", "main", "include", "^**", "*.h"))
 			lib.GlobFiles(projAbsPath, filepath.Join("source", "main", "include", "^**", "*.inl"))
@@ -238,8 +264,8 @@ func (a *AxeGenerator) createProject(proj *denv.Project, ws *axe.Workspace, unit
 				lib.GlobFiles(projAbsPath, filepath.Join("source", "main", "cpp", "^**", "*.mm"))
 			}
 
-			a.createDefaultProjectConfiguration(lib, axe.ConfigTypeDebug, false)
-			a.createDefaultProjectConfiguration(lib, axe.ConfigTypeDebug, false)
+			a.createDefaultProjectConfiguration(lib, ConfigTypeDebug, false)
+			a.createDefaultProjectConfiguration(lib, ConfigTypeDebug, false)
 		} else {
 			lib.GlobFiles(projAbsPath, filepath.Join("source", "main", "cpp", "^**", "*.cpp"))
 			lib.GlobFiles(projAbsPath, filepath.Join("source", "main", "include", "^**", "*.inl"))
@@ -248,13 +274,13 @@ func (a *AxeGenerator) createProject(proj *denv.Project, ws *axe.Workspace, unit
 				lib.GlobFiles(projAbsPath, filepath.Join("source", "main", "cpp", "^**", "*.m"))
 				lib.GlobFiles(projAbsPath, filepath.Join("source", "main", "cpp", "^**", "*.mm"))
 			}
-			a.createDefaultProjectConfiguration(lib, axe.ConfigTypeDebug, false)
-			a.createDefaultProjectConfiguration(lib, axe.ConfigTypeDebug, false)
+			a.createDefaultProjectConfiguration(lib, ConfigTypeDebug, false)
+			a.createDefaultProjectConfiguration(lib, ConfigTypeDebug, false)
 		}
 	}
 }
 
-func (a *AxeGenerator) createDefaultProjectConfiguration(p *axe.Project, configType axe.ConfigType, unittest bool) *axe.Config {
+func (a *AxeGenerator) createDefaultProjectConfiguration(p *Project, configType ConfigType, unittest bool) *Config {
 	config := p.GetOrCreateConfig(configType)
 
 	config.AddIncludeDir("source/main/include")
@@ -268,8 +294,8 @@ func (a *AxeGenerator) createDefaultProjectConfiguration(p *axe.Project, configT
 	return config
 }
 
-func (a *AxeGenerator) addWorkspaceConfiguration(ws *axe.Workspace, configType axe.ConfigType) {
-	config := axe.NewConfig(configType, ws, nil)
+func (a *AxeGenerator) addWorkspaceConfiguration(ws *Workspace, configType ConfigType) {
+	config := NewConfig(configType, ws, nil)
 
 	if configType.IsDebug() {
 		config.CppDefines.ValuesToAdd("TARGET_DEBUG", "TARGET_DEV", "_DEBUG")

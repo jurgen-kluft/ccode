@@ -6,10 +6,10 @@ import (
 	"github.com/jurgen-kluft/ccode/denv"
 )
 
-// IsVisualStudio returns true if the incoming string @ide is equal to any of
+// IsVisualStudio returns true if the incoming string @dev is equal to any of
 // the Visual Studio formats that xcode supports.
 func IsVisualStudio(dev string, os string, arch string) bool {
-	return GetVisualStudio(dev) != -1
+	return GetVisualStudio(dev) != denv.INVALID
 }
 
 // GetVisualStudio returns a value for type IDE deduced from the incoming string @ide
@@ -22,12 +22,8 @@ func GetVisualStudio(dev string) denv.DevEnum {
 		return denv.VS2017
 	} else if dev == "VS2015" {
 		return denv.VS2015
-	} else if dev == "VS2013" {
-		return denv.VS2013
-	} else if dev == "VS2012" {
-		return denv.VS2012
 	}
-	return -1
+	return denv.INVALID
 }
 
 // GenerateBuildFiles will generate the Solution and Project files for the incoming project
