@@ -72,7 +72,8 @@ func Generate(pkg *denv.Package) error {
 		//return tundra.GenerateBuildFiles(pkg)
 		return generator.GenerateTundra(pkg)
 	} else if cmake.IsCMake(denv.DEV, denv.OS, denv.ARCH) {
-		return cmake.GenerateBuildFiles(pkg)
+		//return cmake.GenerateBuildFiles(pkg)
+		return generator.GenerateCMake(pkg)
 	}
 
 	return fmt.Errorf("Unknown DEV '%s'", denv.DEV)

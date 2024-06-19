@@ -25,6 +25,18 @@ const (
 	ProjectTypeCppExe
 )
 
+func (t ProjectType) IsExecutable() bool {
+	return t == ProjectTypeCppExe || t == ProjectTypeCExe
+}
+
+func (t ProjectType) IsStaticLibrary() bool {
+	return t == ProjectTypeCppLib || t == ProjectTypeCLib
+}
+
+func (t ProjectType) IsSharedLibrary() bool {
+	return t == ProjectTypeCppDll || t == ProjectTypeCDll
+}
+
 func (t ProjectType) String() string {
 	switch t {
 	case ProjectTypeCHeaders:

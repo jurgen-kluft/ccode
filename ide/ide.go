@@ -83,6 +83,20 @@ func (a *AxeGenerator) GenerateTundra(pkg *denv.Package) error {
 	return nil
 }
 
+func (a *AxeGenerator) GenerateCMake(pkg *denv.Package) error {
+	var ws *axe.Workspace
+	var err error
+
+	if ws, err = a.GenerateWorkspace(pkg, axe.GeneratorCMake); err != nil {
+		return err
+	}
+
+	g := axe.NewCMakeGenerator(ws)
+	g.Generate()
+
+	return nil
+}
+
 func (a *AxeGenerator) GenerateWorkspace(pkg *denv.Package, generatorType axe.GeneratorType) (*axe.Workspace, error) {
 	a.RootAbsPath = filepath.Join(os.Getenv("GOPATH"), "src")
 

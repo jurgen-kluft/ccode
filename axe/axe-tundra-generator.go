@@ -69,21 +69,11 @@ func (g *TundraGenerator) generateUnitsLua(ws *Workspace) {
 	units.WriteToFile(filepath.Join(ws.GenerateAbsPath, "units.lua"))
 }
 
-func (g *TundraGenerator) escapeString(s string) string {
-	s = strings.Replace(s, "\\", "\\\\", -1)
-	s = strings.Replace(s, "\"", "\\\"", -1)
-	s = strings.Replace(s, "-", "_", -1)
-	return s
-}
-
 func (g *TundraGenerator) writeUnit(units *LineWriter, p *Project) {
 	units.WriteILine("+", "Name = ", `"`, p.Name, `",`)
 	units.WriteILine("+", "Env = {")
 
-	units.WriteILine("++", `CPPPATH = {`)
-	//	units.WriteILine("+++", `${${Name}:SOURCE_DIR}",`)
-	//	units.WriteILine("+++", `${${Name}:INCLUDE_DIRS},`)
-	units.WriteILine("++", `},`)
+	// Compiler Defines
 
 	units.WriteILine("++", `CPPDEFS = {`)
 	for _, cfg := range p.Configs.Values {
@@ -100,6 +90,8 @@ func (g *TundraGenerator) writeUnit(units *LineWriter, p *Project) {
 	units.WriteILine("+++", `{ "TARGET_TEST", Config = "*-*-*-test" },`)
 	units.WriteILine("++", `},`)
 	units.WriteILine("+", `},`)
+
+	// Include Directories
 
 	units.WriteILine("+", `Includes = {`)
 	history := make(map[string]int)
@@ -127,12 +119,16 @@ func (g *TundraGenerator) writeUnit(units *LineWriter, p *Project) {
 	}
 	units.WriteILine("+", `},`)
 
+	// Source Files
+
 	units.WriteILine("+", `Sources = {`)
 	for _, src := range p.FileEntries.Values {
 		path := p.FileEntries.GetRelativePath(src, p.Workspace.GenerateAbsPath)
 		units.WriteILine("++", `"`, path, `",`)
 	}
 	units.WriteILine("+", "},")
+
+	// Library Dependencies
 
 	units.WriteILine("+", "Depends = {")
 	for _, dp := range p.Dependencies.Values {
@@ -144,6 +140,8 @@ func (g *TundraGenerator) writeUnit(units *LineWriter, p *Project) {
 		}
 	}
 	units.WriteILine("+", "},")
+
+	// Framework Dependencies
 
 	// if the platform is Mac also write out the Frameworks we are using
 	if p.Workspace.MakeTarget.OSIsMac() {
@@ -330,4 +328,11 @@ func (g *TundraGenerator) generateTundraLua(ws *Workspace) {
 
 	tundrafilepath := filepath.Join(ws.GenerateAbsPath, "tundra.lua")
 	tundra.WriteToFile(tundrafilepath)
+}
+
+func (g *TundraGenerator) escapeString(s string) string {
+	s = strings.Replace(s, "\\", "\\\\", -1)
+	s = strings.Replace(s, "\"", "\\\"", -1)
+	s = strings.Replace(s, "-", "_", -1)
+	return s
 }
