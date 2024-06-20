@@ -171,42 +171,32 @@ func (g *AxeGenerator) GenerateWorkspace(pkg *denv.Package, generatorType Genera
 		g.addWorkspaceConfiguration(ws, ConfigTypeRelease)
 	}
 
-	projectMap := map[string]int{}
-	projectList := []*denv.Project{}
-	projectIdx := 0
-	for _, dp := range app.Dependencies {
-		if _, ok := projectMap[dp.Name]; !ok {
-			projectMap[dp.Name] = len(projectList)
-			projectList = append(projectList, dp)
+	// Create the main and dependency projects and also setup the list of dependencies of each project
+	if app == mainApp {
+		mainAppDependencies := g.collectProjectDependencies(mainApp)
+		mainAppProject := g.createProject(mainApp, ws, false)
+		for _, dp := range mainAppDependencies {
+			mainAppProject.Settings.Dependencies = append(mainAppProject.Settings.Dependencies, dp.Name)
 		}
-	}
-
-	// Traverse and collect all dependencies
-	for {
-		cp := projectList[projectIdx]
-		projectIdx++
-
-		for _, dp := range cp.Dependencies {
-			if _, ok := projectMap[dp.Name]; !ok {
-				projectMap[dp.Name] = len(projectList)
-				projectList = append(projectList, dp)
+		for _, dp := range mainAppDependencies {
+			depProjectDependencies := g.collectProjectDependencies(dp)
+			depProject := g.createProject(dp, ws, false)
+			for _, ddp := range depProjectDependencies {
+				depProject.Settings.Dependencies = append(depProject.Settings.Dependencies, ddp.Name)
 			}
 		}
-		if projectIdx == len(projectList) {
-			break
+	} else if app == unittestApp {
+		unittestDependencies := g.collectProjectDependencies(unittestApp)
+		unittestProject := g.createProject(unittestApp, ws, true)
+		for _, dp := range unittestDependencies {
+			unittestProject.Settings.Dependencies = append(unittestProject.Settings.Dependencies, dp.Name)
 		}
-	}
-
-	// Create the main project
-	if app == mainApp {
-		g.createProject(mainApp, ws, false)
-		for _, dp := range projectList {
-			g.createProject(dp, ws, false)
-		}
-	} else {
-		g.createProject(unittestApp, ws, true)
-		for _, dp := range projectList {
-			g.createProject(dp, ws, true)
+		for _, dp := range unittestDependencies {
+			depProjectDependencies := g.collectProjectDependencies(dp)
+			depProject := g.createProject(dp, ws, true)
+			for _, ddp := range depProjectDependencies {
+				depProject.Settings.Dependencies = append(depProject.Settings.Dependencies, ddp.Name)
+			}
 		}
 	}
 
@@ -217,7 +207,35 @@ func (g *AxeGenerator) GenerateWorkspace(pkg *denv.Package, generatorType Genera
 	return ws, nil
 }
 
-func (g *AxeGenerator) createProject(proj *denv.Project, ws *Workspace, unittest bool) {
+func (g *AxeGenerator) collectProjectDependencies(proj *denv.Project) []*denv.Project {
+
+	// Traverse and collect all dependencies
+
+	projectMap := map[string]int{}
+	projectList := []*denv.Project{}
+	for _, dp := range proj.Dependencies {
+		if _, ok := projectMap[dp.Name]; !ok {
+			projectMap[dp.Name] = len(projectList)
+			projectList = append(projectList, dp)
+		}
+	}
+
+	projectIdx := 0
+	for projectIdx < len(projectList) {
+		cp := projectList[projectIdx]
+		projectIdx++
+
+		for _, dp := range cp.Dependencies {
+			if _, ok := projectMap[dp.Name]; !ok {
+				projectMap[dp.Name] = len(projectList)
+				projectList = append(projectList, dp)
+			}
+		}
+	}
+	return projectList
+}
+
+func (g *AxeGenerator) createProject(proj *denv.Project, ws *Workspace, unittest bool) *Project {
 	projectConfig := NewVisualStudioProjectConfig(g.Dev)
 	{
 		executable := proj.Type == denv.Executable
@@ -247,52 +265,54 @@ func (g *AxeGenerator) createProject(proj *denv.Project, ws *Workspace, unittest
 		}
 
 		projAbsPath := filepath.Join(g.RootAbsPath, proj.PackageURL)
-		lib := ws.NewProject(proj.Name, projAbsPath, ProjectTypeCppLib, projectConfig)
-		lib.ProjectFilename = proj.Name
+		newProject := ws.NewProject(proj.Name, projAbsPath, ProjectTypeCppLib, projectConfig)
+		newProject.ProjectFilename = proj.Name
 
 		if unittest && executable {
-			lib.GlobFiles(projAbsPath, filepath.Join("source", "main", "include", "^**", "*.h"))
-			lib.GlobFiles(projAbsPath, filepath.Join("source", "main", "include", "^**", "*.inl"))
+			newProject.GlobFiles(projAbsPath, filepath.Join("source", "main", "include", "^**", "*.h"))
+			newProject.GlobFiles(projAbsPath, filepath.Join("source", "main", "include", "^**", "*.inl"))
 
-			lib.GlobFiles(projAbsPath, filepath.Join("source", "test", "cpp", "^**", "*.cpp"))
-			lib.GlobFiles(projAbsPath, filepath.Join("source", "test", "include", "^**", "*.h"))
-			lib.GlobFiles(projAbsPath, filepath.Join("source", "test", "include", "^**", "*.inl"))
+			newProject.GlobFiles(projAbsPath, filepath.Join("source", "test", "cpp", "^**", "*.cpp"))
+			newProject.GlobFiles(projAbsPath, filepath.Join("source", "test", "include", "^**", "*.h"))
+			newProject.GlobFiles(projAbsPath, filepath.Join("source", "test", "include", "^**", "*.inl"))
 
-			g.createDefaultProjectConfiguration(lib, ConfigTypeDebug|ConfigTypeTest, true)
-			g.createDefaultProjectConfiguration(lib, ConfigTypeRelease|ConfigTypeTest, true)
+			g.createDefaultProjectConfiguration(newProject, ConfigTypeDebug|ConfigTypeTest, true)
+			g.createDefaultProjectConfiguration(newProject, ConfigTypeRelease|ConfigTypeTest, true)
 		} else if unittest && !executable {
-			lib.GlobFiles(projAbsPath, filepath.Join("source", "main", "include", "^**", "*.h"))
-			lib.GlobFiles(projAbsPath, filepath.Join("source", "main", "include", "^**", "*.inl"))
-			lib.GlobFiles(projAbsPath, filepath.Join("source", "main", "cpp", "^**", "*.cpp"))
+			newProject.GlobFiles(projAbsPath, filepath.Join("source", "main", "include", "^**", "*.h"))
+			newProject.GlobFiles(projAbsPath, filepath.Join("source", "main", "include", "^**", "*.inl"))
+			newProject.GlobFiles(projAbsPath, filepath.Join("source", "main", "cpp", "^**", "*.cpp"))
 			if ws.MakeTarget.OSIsMac() {
-				lib.GlobFiles(projAbsPath, filepath.Join("source", "main", "cpp", "^**", "*.m"))
-				lib.GlobFiles(projAbsPath, filepath.Join("source", "main", "cpp", "^**", "*.mm"))
+				newProject.GlobFiles(projAbsPath, filepath.Join("source", "main", "cpp", "^**", "*.m"))
+				newProject.GlobFiles(projAbsPath, filepath.Join("source", "main", "cpp", "^**", "*.mm"))
 			}
 
-			g.createDefaultProjectConfiguration(lib, ConfigTypeDebug|ConfigTypeTest, true)
-			g.createDefaultProjectConfiguration(lib, ConfigTypeRelease|ConfigTypeTest, true)
+			g.createDefaultProjectConfiguration(newProject, ConfigTypeDebug|ConfigTypeTest, true)
+			g.createDefaultProjectConfiguration(newProject, ConfigTypeRelease|ConfigTypeTest, true)
 		} else if !unittest && executable {
-			lib.GlobFiles(projAbsPath, filepath.Join("source", "main", "include", "^**", "*.h"))
-			lib.GlobFiles(projAbsPath, filepath.Join("source", "main", "include", "^**", "*.inl"))
-			lib.GlobFiles(projAbsPath, filepath.Join("source", "main", "cpp", "^**", "*.cpp"))
+			newProject.GlobFiles(projAbsPath, filepath.Join("source", "main", "include", "^**", "*.h"))
+			newProject.GlobFiles(projAbsPath, filepath.Join("source", "main", "include", "^**", "*.inl"))
+			newProject.GlobFiles(projAbsPath, filepath.Join("source", "main", "cpp", "^**", "*.cpp"))
 			if ws.MakeTarget.OSIsMac() {
-				lib.GlobFiles(projAbsPath, filepath.Join("source", "main", "cpp", "^**", "*.m"))
-				lib.GlobFiles(projAbsPath, filepath.Join("source", "main", "cpp", "^**", "*.mm"))
+				newProject.GlobFiles(projAbsPath, filepath.Join("source", "main", "cpp", "^**", "*.m"))
+				newProject.GlobFiles(projAbsPath, filepath.Join("source", "main", "cpp", "^**", "*.mm"))
 			}
 
-			g.createDefaultProjectConfiguration(lib, ConfigTypeDebug, false)
-			g.createDefaultProjectConfiguration(lib, ConfigTypeDebug, false)
+			g.createDefaultProjectConfiguration(newProject, ConfigTypeDebug, false)
+			g.createDefaultProjectConfiguration(newProject, ConfigTypeDebug, false)
 		} else {
-			lib.GlobFiles(projAbsPath, filepath.Join("source", "main", "cpp", "^**", "*.cpp"))
-			lib.GlobFiles(projAbsPath, filepath.Join("source", "main", "include", "^**", "*.inl"))
-			lib.GlobFiles(projAbsPath, filepath.Join("source", "main", "cpp", "^**", "*.cpp"))
+			newProject.GlobFiles(projAbsPath, filepath.Join("source", "main", "cpp", "^**", "*.cpp"))
+			newProject.GlobFiles(projAbsPath, filepath.Join("source", "main", "include", "^**", "*.inl"))
+			newProject.GlobFiles(projAbsPath, filepath.Join("source", "main", "cpp", "^**", "*.cpp"))
 			if ws.MakeTarget.OSIsMac() {
-				lib.GlobFiles(projAbsPath, filepath.Join("source", "main", "cpp", "^**", "*.m"))
-				lib.GlobFiles(projAbsPath, filepath.Join("source", "main", "cpp", "^**", "*.mm"))
+				newProject.GlobFiles(projAbsPath, filepath.Join("source", "main", "cpp", "^**", "*.m"))
+				newProject.GlobFiles(projAbsPath, filepath.Join("source", "main", "cpp", "^**", "*.mm"))
 			}
-			g.createDefaultProjectConfiguration(lib, ConfigTypeDebug, false)
-			g.createDefaultProjectConfiguration(lib, ConfigTypeDebug, false)
+			g.createDefaultProjectConfiguration(newProject, ConfigTypeDebug, false)
+			g.createDefaultProjectConfiguration(newProject, ConfigTypeDebug, false)
 		}
+
+		return newProject
 	}
 }
 

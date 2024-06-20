@@ -688,12 +688,14 @@ func (g *XcodeGenerator) genProjectXCBuildConfiguration(wr *XcodeWriter, proj *P
 				}
 				{
 					scope := wr.NewArrayScope("HEADER_SEARCH_PATHS")
-					for _, q := range config.IncludeDirs.FinalDict.Values {
+					for qk, _ := range config.IncludeDirs.FinalDict.Entries {
 						wr.newline(0)
-						if filepath.IsAbs(q) {
-							wr.write(g.quoteString2(q))
+						if filepath.IsAbs(qk) {
+							wr.write(g.quoteString2(qk))
 						} else {
-							wr.write(g.quoteString2(filepath.Join("$(PROJECT_DIR)/", q)))
+							//relq := PathGetRel(filepath.Join(proj.ProjectAbsPath, q), g.Workspace.GenerateAbsPath)
+							//wr.write(g.quoteString2(filepath.Join("$(PROJECT_DIR)/", q)))
+							wr.write(g.quoteString2(qk))
 						}
 					}
 					scope.Close()
