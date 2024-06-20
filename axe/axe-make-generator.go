@@ -411,8 +411,8 @@ func (g *MakeGenerator) generateProjectConfig(makefile *LineWriter, project *Pro
 
 	makefile.WriteILine(config.Type.String(), "__PCH_CC_FLAGS      = ")
 	makefile.Append(pch_cc_flags)
-	
-	makefile.WriteILine(config.Type.String(), "__CPP_INCLUDE_DIRS  = ") 
+
+	makefile.WriteILine(config.Type.String(), "__CPP_INCLUDE_DIRS  = ")
 	makefile.Append(include_dirs)
 
 	makefile.WriteILine(config.Type.String(), "__CPP_INCLUDE_FILES = ")
@@ -485,61 +485,6 @@ func (g *MakeGenerator) generateProjectConfig(makefile *LineWriter, project *Pro
 	}
 	makefile.NewLine()
 
-	// //-------------------------------
-	// o.append("#----- ", config.name, " output target ----------\n");
-
-	// auto& outputTarget = config.outputTarget.path();
-	// String outputTargetDir = Path::dirname(outputTarget);
-
-	// if (proj.type == ProjectType::cpp_exe || proj.type == ProjectType::c_exe) {
-	// 	o.append(escapeString(outputTarget), ": $(LINK_FILES)\n");
-	// 	o.append("\t@echo \"-------------------------------------------------------------\"\n");
-	// 	o.append("\t@echo \"[cpp_exe] $@\"\n");
-	// 	o.append("\t$(cmd_mkdir) ", quotePath(outputTargetDir), "\n"); //gmake cannot handle path contain 'space' in function $(@D)
-	// 	o.append("\t$(cmd_link) -o \"$@\" $(CPP_OBJ_FILES) -lstdc++ -Wl,--start-group $(LINK_FILES) $(LINK_LIBS) -Wl,--end-group $(LINK_FLAGS)\n");
-	// 	o.append("\n");
-	// 	o.append(config.name, "__run: ", escapeString(outputTarget), "\n");
-	// 	o.append("\t", quotePath(outputTarget), "\n");
-	// 	o.append("\n");
-	//  } else if (proj.type == ProjectType::cpp_dll || proj.type == ProjectType::c_dll) {
-	// 	o.append(escapeString(outputTarget), ": $(LINK_FILES)\n");
-	// 	o.append("\t@echo \"-------------------------------------------------------------\"\n");
-	// 	o.append("\t@echo \"[cpp_dll] $@\"\n");
-	// 	o.append("\t$(cmd_mkdir) ", quotePath(outputTargetDir), "\n"); //gmake cannot handle path contain 'space' in function $(@D)
-	// 	o.append("\t$(cmd_link) -shared -fPIC -o \"$@\" $(CPP_OBJ_FILES) -lstdc++ -Wl,--start-group $(LINK_FILES) $(LINK_LIBS) -Wl,--end-group $(LINK_FLAGS)\n");
-	// 	o.append("\n");
-	// 	o.append(config.name, "__run: ", escapeString(outputTarget), "\n");
-	// 	o.append("\t", quotePath(outputTarget), "\n");
-	// 	o.append("\n");
-	// } else if (proj.type == ProjectType::cpp_lib || proj.type == ProjectType::c_lib) {
-	// 	o.append(escapeString(outputTarget), ": $(LINK_FILES)\n");
-	// 	o.append("\t@echo \"-------------------------------------------------------------\"\n");
-	// 	o.append("\t@echo \"[cpp_lib] $@\"\n");
-	// 	o.append("\t$(cmd_mkdir) ", quotePath(outputTargetDir), "\n"); // gmake cannot handle path contain 'space' in function $(@D)
-	// 	o.append("\t$(cmd_ar) \"$@\" $(CPP_OBJ_FILES)\n");
-	// 	o.append("\n");
-	// 	o.append("run_", config.name, ": ", escapeString(outputTarget), "\n");
-	// 	o.append("\t @echo cannot run cpp_lib ", quotePath(outputTarget), "\n");
-	// 	o.append("\n");
-	// }else if (proj.type == ProjectType::cpp_headers || proj.type == ProjectType::c_headers) {
-	// 	//nothing build is needed
-	// }else{
-	// 	throw Error("unknown project.type ", proj.input.type, "\n");
-	// }
-
-	// o.append("#----- ", config.name, " output target dependencies ----------\n");
-	// o.append(escapeString(outputTarget), ":\\\n");
-
-	// for (auto& f : proj.fileEntries) {
-	// 	if (f.excludedFromBuild) continue;
-	// 	o.append("\t", escapeString(get_obj_file(config, f)), "\\\n");
-	// }
-	// for (auto& f : config.link_files._final) {
-	// 	o.append("\t", escapeString(f.path()), "\\\n" );
-	// }
-
-	// o.append("\n");
-
 	//-------------------------------
 	makefile.WriteLine("#----- ", config.Type.String(), " output target ----------")
 
@@ -577,9 +522,23 @@ func (g *MakeGenerator) generateProjectConfig(makefile *LineWriter, project *Pro
 		makefile.WriteILine("+", "@echo cannot run cpp_lib ", g.quotePath(outputTarget))
 		makefile.NewLine()
 	} else if project.Type.IsExecutable() {
-		//nothing build is needed
+		// nothing to build
 	} else {
 		fmt.Printf("unknown project.type " + project.Type.String() + "\n")
 	}
 
+	makefile.WriteLine("#----- ", config.Type.String(), " output target dependencies ----------")
+	makefile.WriteILine(g.escapeString(outputTarget), ":")
+
+	for _, f := range project.FileEntries.Values {
+		if f.ExcludedFromBuild {
+			continue
+		}
+		makefile.WriteILine("+", g.escapeString(g.getObjFile(config, f)))
+	}
+	for _, f := range config.LinkFiles.FinalDict.Values {
+		makefile.WriteILine("+", g.quotePath(f))
+	}
+
+	makefile.NewLine()
 }
