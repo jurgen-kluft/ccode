@@ -182,9 +182,13 @@ type Project struct {
 	Dependencies        *ProjectList
 	DependenciesInherit *ProjectList
 	PchHeader           *FileEntry
+	PchSuffix           string
 	Resolved            bool
 	Resolving           bool
 
+	GenDataMake struct {
+		Makefile string
+	}
 	GenDataXcode *XcodeProjectConfig
 	GenDataMsDev *MsDevProjectConfig
 }

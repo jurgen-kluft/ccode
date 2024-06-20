@@ -40,8 +40,10 @@ func (w *LineWriter) WriteILine(indent string, str ...string) {
 	w.NewLine()
 }
 
-func (w *LineWriter) WriteLine(str string) {
-	w.line.WriteString(str)
+func (w *LineWriter) WriteLine(strs ...string) {
+	for _, str := range strs {
+		w.line.WriteString(str)
+	}
 	w.lines = append(w.lines, w.line.String())
 	w.line.Reset()
 }

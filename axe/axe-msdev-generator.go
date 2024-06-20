@@ -317,7 +317,7 @@ func (g *MsDevGenerator) genProjectConfig(wr *XmlWriter, proj *Project, config *
 			tag := wr.TagScope("ClCompile")
 
 			cppStd := "stdcpp14"
-			switch config.CppStd {
+			switch g.Workspace.Config.CppStd {
 			case "c++11", "c++14":
 				cppStd = "stdcpp14"
 			case "c++17":

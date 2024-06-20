@@ -35,6 +35,13 @@ func (p *ConfigList) Add(config *Config) {
 	}
 }
 
+func (p *ConfigList) DefaultConfigName() string {
+	if len(p.Values) > 0 {
+		return p.Values[0].Type.String()
+	}
+	return "Debug"
+}
+
 func (p *ConfigList) First() *Config {
 	if len(p.Values) > 0 {
 		return p.Values[0]
@@ -144,7 +151,6 @@ type Config struct {
 	//Name         string
 	Type         ConfigType
 	Workspace    *Workspace
-	CppStd       string
 	Project      *Project
 	OutputTarget *FileEntry
 	OutputLib    *FileEntry
@@ -188,7 +194,6 @@ func NewConfig(t ConfigType, ws *Workspace, p *Project) *Config {
 	c.Type = t
 	c.Workspace = ws
 	c.Project = p
-	c.CppStd = "c++14"
 
 	proot := ""
 	if p != nil {
@@ -252,7 +257,6 @@ func (c *Config) init(source *Config) {
 	}
 
 	if source != nil {
-		c.CppStd = source.CppStd
 		c.XcodeSettings.Merge(source.XcodeSettings)
 		c.VisualStudioClCompile.Merge(source.VisualStudioClCompile)
 		c.VisualStudioLink.Merge(source.VisualStudioLink)

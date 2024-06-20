@@ -11,6 +11,7 @@ import (
 type WorkspaceConfig struct {
 	GenerateAbsPath    string              // The directory where the workspace and project files will be generated
 	StartupProject     string              // The name of the project that will be marked as the startup project
+	CppStd             string              // The C++ standard to use for this workspace and all projects
 	MultiThreadedBuild bool                // Whether to mark 'multi-threaded build' in the project files
 	MsDev              *VisualStudioConfig // The project configuration to use for msdev
 
@@ -26,6 +27,7 @@ func NewWorkspaceConfig(workspacePath string, projectName string) *WorkspaceConf
 	wsc := &WorkspaceConfig{}
 	wsc.GenerateAbsPath = filepath.Join(workspacePath, projectName, "target")
 	wsc.StartupProject = projectName
+	wsc.CppStd = "c++17"
 	wsc.MultiThreadedBuild = true
 	wsc.MsDev = NewVisualStudioConfig(VisualStudio2022)
 

@@ -649,7 +649,7 @@ func (g *XcodeGenerator) genProjectXCBuildConfiguration(wr *XcodeWriter, proj *P
 				for key, i := range config.XcodeSettings.Entries {
 					wr.member(key, g.quoteString(config.XcodeSettings.Values[i]))
 				}
-				wr.member("CLANG_CXX_LANGUAGE_STANDARD", g.quoteString(config.CppStd))
+				wr.member("CLANG_CXX_LANGUAGE_STANDARD", g.quoteString(g.Workspace.Config.CppStd))
 				scope.Close()
 			}
 			wr.member("name", config.Type.String())
