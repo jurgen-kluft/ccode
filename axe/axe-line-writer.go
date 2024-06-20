@@ -20,6 +20,12 @@ func (w *LineWriter) Write(str string) {
 	w.line.WriteString(str)
 }
 
+func (w *LineWriter) Append(other *LineWriter) {
+	other.finalize()
+	w.lines = append(w.lines, other.lines...)
+}
+
+
 var indentationMap = map[string]string{
 	"":         "",
 	"+":        "    ",

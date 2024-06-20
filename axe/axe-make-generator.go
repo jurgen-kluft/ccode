@@ -245,6 +245,13 @@ func (g *MakeGenerator) quotePath(v string) string {
 	return o
 }
 
+//	String Generator_makefile::get_obj_file(Config& config, FileEntry& f) {
+//		return String(config.genData_makefile.cpp_obj_dir, Path::basename(f.path(), true), "_obj");
+//	}
+func (g *MakeGenerator) getObjFile(config *Config, f *FileEntry) string {
+	return filepath.Join(config.GenDataMakefile.CppObjDir, PathFilename(f.Path, true)+".o")
+}
+
 func (g *MakeGenerator) generateProjectConfig(makefile *LineWriter, project *Project, config *Config) {
 
 	makefile.NewLine()
@@ -275,33 +282,6 @@ func (g *MakeGenerator) generateProjectConfig(makefile *LineWriter, project *Pro
 	pch_basename := ""
 	pch_cc_flags := NewLineWriter()
 
-	// //------- pre-compiled header
-	// if (proj.pch_header) {
-	// 	pch_basename = Path::basename(proj.pch_header->absPath(), true);
-
-	// 	pch_header_pch.set(config._build_tmp_dir.path(), "/cpp_pch/", pch_basename, pch_suffix);
-	// 	pch_header_dep.set(pch_header_pch, ".d");
-
-	// 	pch_header_pch_dir = Path::dirname(pch_header_pch);
-	// 	pch_cc_flags.append("\\\n\t", "-I", quotePath(pch_header_pch_dir));
-	// 	pch_cc_flags.append("\\\n\t", "-include ", quotePath(proj.pch_header->path()));
-
-	// 	//makefile optional include cpp_dep
-	// 	o.append("-include ", escapeString(pch_header_dep), "\n");
-	// 	//---------
-	// 	o.append("#--- pch_header dependencies ------\n");
-	// 	o.append(escapeString(pch_header_pch), ": ", escapeString(proj.pch_header->path()), "\n");
-	// 	o.append("\t@echo \"-------------------------------------------------------------\"\n");
-	// 	o.append("\t@echo \"[precompiled header] $< => $@\"\n");
-	// 	o.append("\t$(cmd_mkdir) ", quotePath(pch_header_pch_dir), "\n");
-	// 	o.append("\t$(cmd_cpp) -x $(pch_header_compiler_language) $(CPP_DEFINES) $(CPP_FLAGS) $(CPP_INCLUDE_DIRS) \\\n");
-	// 	o.append("\t\t-o \"$@\" -c ", quotePath(proj.pch_header->path()), " \\\n");
-	// 	o.append("\t\t-MMD -MQ \"$@\" -MF ", quotePath(pch_header_dep), " \\\n");
-	// 	o.append("\n");
-
-	// 	o.append("\n\n");
-	// }
-
 	//------- pre-compiled header
 
 	if project.PchHeader != nil {
@@ -318,7 +298,288 @@ func (g *MakeGenerator) generateProjectConfig(makefile *LineWriter, project *Pro
 		// makefile optional include cpp_dep
 		makefile.WriteLine("-include", g.escapeString(pch_header_dep))
 		// --------
+		makefile.WriteLine("#--- pch_header dependencies ------")
+		makefile.WriteILine("+", g.escapeString(pch_header_pch), ":", g.escapeString(project.PchHeader.Path))
+		makefile.WriteILine("+", "@echo \"-------------------------------------------------------------\"")
+		makefile.WriteILine("+", "@echo \"[precompiled header] $< => $@\"")
+		makefile.WriteILine("+", "$(cmd_mkdir)", g.quotePath(pch_header_pch_dir))
+		makefile.WriteILine("+", "$(cmd_cpp) -x $(pch_header_compiler_language) $(CPP_DEFINES) $(CPP_FLAGS) $(CPP_INCLUDE_DIRS) \\")
+		makefile.WriteILine("+", "-o \"$@\" -c", g.quotePath(project.PchHeader.Path), " \\")
+		makefile.WriteILine("+", "-MMD -MQ \"$@\" -MF", g.quotePath(pch_header_dep), " \\")
+		makefile.NewLine()
+		makefile.NewLine()
+	}
 
+	// o.append("\n");
+	// o.append("#-------------------\n");
+
+	// String cpp_defines;
+	// String cpp_flags;
+	// String link_flags;
+	// String link_libs;
+	// String link_files;
+	// String include_files;
+	// String include_dirs;
+	// String cpp_obj_files;
+
+	// for (auto& q : config.cpp_defines._final) {
+	// 	cpp_defines.append("\\\n\t-D", q.path());
+	// }
+	// for (auto& q : config.cpp_flags._final) {
+	// 	cpp_flags.append("\\\n\t", q.path());
+	// }
+	// for (auto& q : config.link_flags._final) {
+	// 	link_flags.append("\\\n\t", q.path());
+	// }
+	// for (auto& q : config.link_dirs._final) {
+	// 	link_libs.append("\\\n\t-L", quotePath(q.path()));
+	// }
+	// for (auto& q : config.link_libs._final) {
+	// 	link_libs.append("\\\n\t-l", q.path());
+	// }
+	// for (auto& q : config.link_files._final) {
+	// 	link_files.append("\\\n\t", quotePath(q.path()));
+	// }
+	// for (auto& q : config.include_files._final) {
+	// 	include_files.append("\\\n\t-include ", quotePath(q.path()));
+	// }
+	// for (auto& q : config.include_dirs._final) {
+	// 	include_dirs.append("\\\n\t-I", quotePath(q.path()));
+	// }
+
+	// for (auto q : proj.fileEntries) {
+	// 	if (q.excludedFromBuild) continue;
+	// 	cpp_obj_files.append("\\\n\t", escapeString(get_obj_file(config, q)));
+	// }
+
+	makefile.WriteLine("#-----------------------")
+
+	cpp_defines := NewLineWriter()
+	cpp_flags := NewLineWriter()
+	link_flags := NewLineWriter()
+	link_libs := NewLineWriter()
+	link_files := NewLineWriter()
+	include_files := NewLineWriter()
+	include_dirs := NewLineWriter()
+	cpp_obj_files := NewLineWriter()
+
+	for _, q := range config.CppDefines.FinalDict.Values {
+		cpp_defines.WriteILine("+", "-D", q)
+	}
+
+	for _, q := range config.CppFlags.FinalDict.Values {
+		cpp_flags.WriteILine("+", q)
+	}
+
+	for _, q := range config.LinkFlags.FinalDict.Values {
+		link_flags.WriteILine("+", q)
+	}
+
+	for _, q := range config.LinkDirs.FinalDict.Values {
+		link_libs.WriteILine("+", "-L", g.quotePath(q))
+	}
+
+	for _, q := range config.LinkLibs.FinalDict.Values {
+		link_libs.WriteILine("+", "-l", q)
+	}
+
+	for _, q := range config.LinkFiles.FinalDict.Values {
+		link_files.WriteILine("+", g.quotePath(q))
+	}
+
+	for _, q := range config.IncludeFiles.FinalDict.Values {
+		include_files.WriteILine("+", "-include", g.quotePath(q))
+	}
+
+	for _, q := range config.IncludeDirs.FinalDict.Values {
+		include_dirs.WriteILine("+", "-I", g.quotePath(q))
+	}
+
+	for _, q := range project.FileEntries.Values {
+		if q.ExcludedFromBuild {
+			continue
+		}
+		cpp_obj_files.WriteILine("+", g.escapeString(g.getObjFile(config, q)))
+	}
+
+	makefile.WriteILine(config.Type.String(), "__BUILD_TMP_DIR  = ", g.escapeString(config.BuildTmpDir.Path))
+	if project.PchHeader != nil {
+		makefile.WriteILine(config.Type.String(), "__PCH_HEADER        = ", g.quotePath(project.PchHeader.Path))
+		makefile.WriteILine(config.Type.String(), "__PCH_HEADER_PCH    = ", g.quotePath(pch_header_pch))
+		makefile.WriteILine(config.Type.String(), "__PCH_HEADER_DEP    = ", g.quotePath(pch_header_dep))
+	}
+
+	makefile.WriteILine(config.Type.String(), "__PCH_CC_FLAGS      = ")
+	makefile.Append(pch_cc_flags)
+	
+	makefile.WriteILine(config.Type.String(), "__CPP_INCLUDE_DIRS  = ") 
+	makefile.Append(include_dirs)
+
+	makefile.WriteILine(config.Type.String(), "__CPP_INCLUDE_FILES = ")
+	makefile.Append(include_files)
+
+	makefile.WriteILine(config.Type.String(), "__CPP_FLAGS         = ")
+	makefile.Append(cpp_flags)
+
+	makefile.WriteILine(config.Type.String(), "__CPP_DEFINES       = ")
+	makefile.Append(cpp_defines)
+
+	makefile.WriteILine(config.Type.String(), "__LINK_FLAGS        = ")
+	makefile.Append(link_flags)
+
+	makefile.WriteILine(config.Type.String(), "__LINK_LIBS         = ")
+	makefile.Append(link_libs)
+
+	makefile.WriteILine(config.Type.String(), "__LINK_FILES        = ")
+	makefile.Append(link_files)
+
+	makefile.WriteILine(config.Type.String(), "__CPP_OBJ_FILES     = ")
+	makefile.Append(cpp_obj_files)
+
+	makefile.NewLine()
+	makefile.WriteLine("#--- ", config.Type.String(), " cpp_obj dependencies ------")
+
+	for _, f := range project.FileEntries.Values {
+		if f.ExcludedFromBuild {
+			continue
+		}
+
+		cpp_obj := g.getObjFile(config, f)
+		cpp_dep := cpp_obj + ".d"
+		cpp_src := f.Path
+
+		if f.Is_C() {
+			makefile.WriteLine("-include", g.escapeString(cpp_dep))
+			makefile.WriteILine("+", g.escapeString(cpp_obj), ":", g.escapeString(cpp_src))
+			makefile.WriteILine("+", "@echo \"-------------------------------------------------------------\"")
+			makefile.WriteILine("+", "@echo \"[compile c] => $@\"")
+			makefile.WriteILine("+", "$(cmd_mkdir)", g.quotePath(PathDirname(cpp_obj)))
+			makefile.WriteILine("+", "$(cmd_c) -x $(c_source_compiler_language) $(CPP_DEFINES) $(CPP_FLAGS) $(CPP_INCLUDE_DIRS) $(CPP_INCLUDE_FILES) \\")
+			makefile.WriteILine("+", "-o \"$@\" -c", g.quotePath(cpp_src), " \\")
+			makefile.WriteILine("+", "-MMD -MQ \"$@\" -MF", g.quotePath(cpp_dep), " \\")
+			makefile.NewLine()
+		} else if f.Is_CPP() {
+			if project.PchHeader != nil {
+				makefile.WriteILine("+", g.escapeString(cpp_obj), ":", g.escapeString(pch_header_pch))
+			}
+
+			makefile.WriteLine("-include", g.escapeString(cpp_dep))
+			makefile.WriteILine("+", g.escapeString(cpp_obj), ":", g.escapeString(cpp_src))
+			makefile.WriteILine("+", "@echo \"-------------------------------------------------------------\"")
+			makefile.WriteILine("+", "@echo \"[compile cpp] => $@\"")
+			makefile.WriteILine("+", "$(cmd_mkdir)", g.quotePath(PathDirname(cpp_obj)))
+			makefile.WriteILine("+", "$(cmd_cpp) -x $(cpp_source_compiler_language) $(PCH_CC_FLAGS) $(CPP_DEFINES) $(CPP_FLAGS) $(CPP_INCLUDE_DIRS) $(CPP_INCLUDE_FILES) \\")
+			makefile.WriteILine("+", "-o \"$@\" -c", g.quotePath(cpp_src), " \\")
+			makefile.WriteILine("+", "-MMD -MQ \"$@\" -MF", g.quotePath(cpp_dep), " \\")
+			makefile.NewLine()
+		} else if f.Is_IXX() {
+			makefile.WriteILine("+", g.escapeString(cpp_obj), ":", g.escapeString(cpp_src))
+			makefile.WriteILine("+", "@echo \"-------------------------------------------------------------\"")
+			makefile.WriteILine("+", "@echo \"[compile ixx] => $@\"")
+			makefile.WriteILine("+", "$(cmd_mkdir)", g.quotePath(PathDirname(cpp_obj)))
+			makefile.WriteILine("+", "$(cmd_c) -x $(cpp_source_compiler_language) $(CPP_DEFINES) $(CPP_FLAGS) $(CPP_INCLUDE_DIRS) $(CPP_INCLUDE_FILES) \\")
+			makefile.WriteILine("+", "-o \"$@\" --precompile", g.quotePath(cpp_src), " \\")
+			makefile.WriteILine("+", "-MMD -MQ \"$@\" -MF", g.quotePath(cpp_dep), " \\")
+			makefile.NewLine()
+		}
+	}
+	makefile.NewLine()
+
+	// //-------------------------------
+	// o.append("#----- ", config.name, " output target ----------\n");
+
+	// auto& outputTarget = config.outputTarget.path();
+	// String outputTargetDir = Path::dirname(outputTarget);
+
+	// if (proj.type == ProjectType::cpp_exe || proj.type == ProjectType::c_exe) {
+	// 	o.append(escapeString(outputTarget), ": $(LINK_FILES)\n");
+	// 	o.append("\t@echo \"-------------------------------------------------------------\"\n");
+	// 	o.append("\t@echo \"[cpp_exe] $@\"\n");
+	// 	o.append("\t$(cmd_mkdir) ", quotePath(outputTargetDir), "\n"); //gmake cannot handle path contain 'space' in function $(@D)
+	// 	o.append("\t$(cmd_link) -o \"$@\" $(CPP_OBJ_FILES) -lstdc++ -Wl,--start-group $(LINK_FILES) $(LINK_LIBS) -Wl,--end-group $(LINK_FLAGS)\n");
+	// 	o.append("\n");
+	// 	o.append(config.name, "__run: ", escapeString(outputTarget), "\n");
+	// 	o.append("\t", quotePath(outputTarget), "\n");
+	// 	o.append("\n");
+	//  } else if (proj.type == ProjectType::cpp_dll || proj.type == ProjectType::c_dll) {
+	// 	o.append(escapeString(outputTarget), ": $(LINK_FILES)\n");
+	// 	o.append("\t@echo \"-------------------------------------------------------------\"\n");
+	// 	o.append("\t@echo \"[cpp_dll] $@\"\n");
+	// 	o.append("\t$(cmd_mkdir) ", quotePath(outputTargetDir), "\n"); //gmake cannot handle path contain 'space' in function $(@D)
+	// 	o.append("\t$(cmd_link) -shared -fPIC -o \"$@\" $(CPP_OBJ_FILES) -lstdc++ -Wl,--start-group $(LINK_FILES) $(LINK_LIBS) -Wl,--end-group $(LINK_FLAGS)\n");
+	// 	o.append("\n");
+	// 	o.append(config.name, "__run: ", escapeString(outputTarget), "\n");
+	// 	o.append("\t", quotePath(outputTarget), "\n");
+	// 	o.append("\n");
+	// } else if (proj.type == ProjectType::cpp_lib || proj.type == ProjectType::c_lib) {
+	// 	o.append(escapeString(outputTarget), ": $(LINK_FILES)\n");
+	// 	o.append("\t@echo \"-------------------------------------------------------------\"\n");
+	// 	o.append("\t@echo \"[cpp_lib] $@\"\n");
+	// 	o.append("\t$(cmd_mkdir) ", quotePath(outputTargetDir), "\n"); // gmake cannot handle path contain 'space' in function $(@D)
+	// 	o.append("\t$(cmd_ar) \"$@\" $(CPP_OBJ_FILES)\n");
+	// 	o.append("\n");
+	// 	o.append("run_", config.name, ": ", escapeString(outputTarget), "\n");
+	// 	o.append("\t @echo cannot run cpp_lib ", quotePath(outputTarget), "\n");
+	// 	o.append("\n");
+	// }else if (proj.type == ProjectType::cpp_headers || proj.type == ProjectType::c_headers) {
+	// 	//nothing build is needed
+	// }else{
+	// 	throw Error("unknown project.type ", proj.input.type, "\n");
+	// }
+
+	// o.append("#----- ", config.name, " output target dependencies ----------\n");
+	// o.append(escapeString(outputTarget), ":\\\n");
+
+	// for (auto& f : proj.fileEntries) {
+	// 	if (f.excludedFromBuild) continue;
+	// 	o.append("\t", escapeString(get_obj_file(config, f)), "\\\n");
+	// }
+	// for (auto& f : config.link_files._final) {
+	// 	o.append("\t", escapeString(f.path()), "\\\n" );
+	// }
+
+	// o.append("\n");
+
+	//-------------------------------
+	makefile.WriteLine("#----- ", config.Type.String(), " output target ----------")
+
+	outputTarget := config.OutputTarget.Path
+	outputTargetDir := PathDirname(outputTarget)
+
+	if project.Type.IsExecutable() {
+		makefile.WriteILine("+", g.escapeString(outputTarget), ": $(LINK_FILES)")
+		makefile.WriteILine("+", "@echo \"-------------------------------------------------------------\"")
+		makefile.WriteILine("+", "@echo \"[cpp_exe] $@\"")
+		makefile.WriteILine("+", "$(cmd_mkdir)", g.quotePath(outputTargetDir))
+		makefile.WriteILine("+", "$(cmd_link) -o \"$@\" $(CPP_OBJ_FILES) -lstdc++ -Wl,--start-group $(LINK_FILES) $(LINK_LIB) -Wl,--end-group $(LINK_FLAGS)")
+		makefile.NewLine()
+		makefile.WriteILine(config.Type.String(), "__run: ", g.escapeString(outputTarget))
+		makefile.WriteILine("+", g.quotePath(outputTarget))
+		makefile.NewLine()
+	} else if project.Type.IsSharedLibrary() {
+		makefile.WriteILine("+", g.escapeString(outputTarget), ": $(LINK_FILES)")
+		makefile.WriteILine("+", "@echo \"-------------------------------------------------------------\"")
+		makefile.WriteILine("+", "@echo \"[cpp_dll] $@\"")
+		makefile.WriteILine("+", "$(cmd_mkdir)", g.quotePath(outputTargetDir))
+		makefile.WriteILine("+", "$(cmd_link) -shared -fPIC -o \"$@\" $(CPP_OBJ_FILES) -lstdc++ -Wl,--start-group $(LINK_FILES) $(LINK_LIB) -Wl,--end-group $(LINK_FLAGS)")
+		makefile.NewLine()
+		makefile.WriteILine(config.Type.String(), "__run: ", g.escapeString(outputTarget))
+		makefile.WriteILine("+", g.quotePath(outputTarget))
+		makefile.NewLine()
+	} else if project.Type.IsStaticLibrary() {
+		makefile.WriteILine("+", g.escapeString(outputTarget), ": $(LINK_FILES)")
+		makefile.WriteILine("+", "@echo \"-------------------------------------------------------------\"")
+		makefile.WriteILine("+", "@echo \"[cpp_lib] $@\"")
+		makefile.WriteILine("+", "$(cmd_mkdir)", g.quotePath(outputTargetDir))
+		makefile.WriteILine("+", "$(cmd_ar) \"$@\" $(CPP_OBJ_FILES)")
+		makefile.NewLine()
+		makefile.WriteILine("run_", config.Type.String(), ": ", g.escapeString(outputTarget))
+		makefile.WriteILine("+", "@echo cannot run cpp_lib ", g.quotePath(outputTarget))
+		makefile.NewLine()
+	} else if project.Type.IsExecutable() {
+		//nothing build is needed
+	} else {
+		fmt.Printf("unknown project.type " + project.Type.String() + "\n")
 	}
 
 }

@@ -37,6 +37,10 @@ func (t ProjectType) IsSharedLibrary() bool {
 	return t == ProjectTypeCppDll || t == ProjectTypeCDll
 }
 
+func (t ProjectType) IsHeaders() bool {
+	return t == ProjectTypeCHeaders || t == ProjectTypeCppHeaders
+}
+
 func (t ProjectType) String() string {
 	switch t {
 	case ProjectTypeCHeaders:
