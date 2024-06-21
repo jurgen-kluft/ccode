@@ -1,16 +1,15 @@
 # CCODE - Package Manager + Project Generator
 
-Note: v2.0, WIP package axe, new IDE files generator package, currently Visual Studio and Xcode.
-
 This is a project generator that uses Go and its package management for C++ packages. 
 The structure of packages are defined in Go and files can be generated for Visual Studio (.sln, .vcxproj and .filters), Make, CMake, Xcode as well as Tundra. Work in progress for also supporting Zig as a build system.
 
 Any C++ external dependency like Boost, DirectX or whatnot should be wrapped in a package (github or other git server).
-There are a couple of notable features that are triggered when generating the project files:
+There are a couple of notable features that can be triggered when generating the project files:
 
-* generating `.clang-format` and `.gitignore`
+* generating `.clang-format` and/or `.gitignore`
 * generating `source/test/cpp/test_main.cpp`
 * converting any file in `embedded` (following the directory structure) to C style array's so as to embed those files into your library/app
+* code generation of C++ enum from `.json` file
 
 Also this project is a personal project and thus is not perfect but it serves my needs, feel free to post issues/requests if you want to see additional features.
 
