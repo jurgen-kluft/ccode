@@ -23,6 +23,7 @@ vendor/
 
 !*.go
 !*.json
+!*.mk
 
 !*.hlsl
 !*.fragment
