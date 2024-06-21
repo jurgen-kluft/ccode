@@ -29,6 +29,16 @@ func TestGenerateTundra() {
 	generator.TestRun(workspacePath, "cbase")
 }
 
+func TestGenerateMake() {
+	workspacePath := "$HOME/dev.go/src/github.com/jurgen-kluft"
+	if runtime.GOOS == "windows" {
+		workspacePath = "d:\\Dev.Go\\src\\github.com\\jurgen-kluft"
+	}
+	workspacePath = os.ExpandEnv(workspacePath)
+	generator := NewMakeTestGenerator()
+	generator.TestRun(workspacePath, "cbase")
+}
+
 func TestGenerateXcode() {
 	workspacePath := "$HOME/dev.go/src/github.com/jurgen-kluft"
 	workspacePath = os.ExpandEnv(workspacePath)

@@ -15,8 +15,9 @@ type DevEnum uint
 const (
 	TUNDRA       DevEnum = 0x020000
 	CMAKE        DevEnum = 0x040000
-	XCODE        DevEnum = 0x080000
-	VISUALSTUDIO DevEnum = 0x100000
+	MAKE         DevEnum = 0x080000
+	XCODE        DevEnum = 0x100000
+	VISUALSTUDIO DevEnum = 0x200000
 	VS2015       DevEnum = VISUALSTUDIO | 2015
 	VS2017       DevEnum = VISUALSTUDIO | 2017
 	VS2019       DevEnum = VISUALSTUDIO | 2019
@@ -28,6 +29,8 @@ func GetDevEnum(dev string) DevEnum {
 	dev = strings.ToLower(dev)
 	if dev == "tundra" {
 		return TUNDRA
+	} else if dev == "make" {
+		return MAKE
 	} else if dev == "cmake" {
 		return CMAKE
 	} else if dev == "xcode" {
@@ -76,6 +79,9 @@ func (g *AxeGenerator) IsVisualStudio() bool {
 func (g *AxeGenerator) IsTundra() bool {
 	return g.Dev == TUNDRA
 }
+func (g *AxeGenerator) IsMake() bool {
+	return g.Dev == MAKE
+}
 func (g *AxeGenerator) IsCMake() bool {
 	return g.Dev == CMAKE
 }
@@ -106,6 +112,20 @@ func (g *AxeGenerator) GenerateTundra(pkg *denv.Package) error {
 	}
 
 	gg := NewTundraGenerator(ws)
+	gg.Generate()
+
+	return nil
+}
+
+func (g *AxeGenerator) GenerateMake(pkg *denv.Package) error {
+	var ws *Workspace
+	var err error
+
+	if ws, err = g.GenerateWorkspace(pkg, GeneratorMake); err != nil {
+		return err
+	}
+
+	gg := NewMakeGenerator(ws)
 	gg.Generate()
 
 	return nil
@@ -351,7 +371,9 @@ func (g *AxeGenerator) addWorkspaceConfiguration(ws *Workspace, configType Confi
 
 	// clang
 	if ws.MakeTarget.CompilerIsClang() {
-		config.CppFlags.ValuesToAdd("-std=c++11", "-Wall", "-Wfatal-errors", "-Werror", "-Wno-switch")
+		config.CppFlags.ValuesToAdd("-std=c++11", "-Wall", "-Wno-switch")
+		config.CppFlags.ValuesToAdd("-Wno-unused-variable", "-Wno-unused-function", "-Wno-unused-private-field")
+		//config.CppFlags.ValuesToAdd("-Wfatal-errors", "-Werror")
 		config.LinkFlags.ValuesToAdd("-lstdc++")
 		if configType.IsDebug() {
 			config.CppFlags.ValuesToAdd("-g")

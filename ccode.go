@@ -66,6 +66,8 @@ func Generate(pkg *denv.Package) error {
 		return generator.GenerateMsDev(pkg)
 	} else if generator.IsTundra() {
 		return generator.GenerateTundra(pkg)
+	} else if generator.IsMake() {
+		return generator.GenerateMake(pkg)
 	} else if generator.IsCMake() {
 		return generator.GenerateCMake(pkg)
 	} else if generator.IsXCode() {

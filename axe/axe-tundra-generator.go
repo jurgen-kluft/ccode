@@ -27,7 +27,7 @@ func (g *TundraGenerator) Generate() {
 }
 
 func (g *TundraGenerator) generateUnitsLua(ws *Workspace) {
-	units := NewLineWriter()
+	units := NewLineWriter(IndentModeTabs)
 
 	units.WriteLine(`require "tundra.syntax.glob"`)
 	units.WriteLine(`require "tundra.path"`)
@@ -158,7 +158,7 @@ func (g *TundraGenerator) writeUnit(units *LineWriter, p *Project) {
 }
 
 func (g *TundraGenerator) generateTundraLua(ws *Workspace) {
-	tundra := NewLineWriter()
+	tundra := NewLineWriter(IndentModeTabs)
 	tundra.WriteLine(`local native = require('tundra.native')`)
 	tundra.WriteLine(``)
 	tundra.WriteLine(`-----------------------------------------------------------------------------------------------------------------------`)

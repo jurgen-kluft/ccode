@@ -459,7 +459,7 @@ func (g *MsDevGenerator) writeSolutionProject(proj *Project, sb *LineWriter) {
 func (g *MsDevGenerator) genWorkspace(ws *ExtraWorkspace) {
 	visualStudioSolutionFilepath := filepath.Join(g.Workspace.GenerateAbsPath, ws.Workspace.WorkspaceName+".sln")
 
-	sb := NewLineWriter()
+	sb := NewLineWriter(IndentModeSpaces)
 
 	sb.WriteManyLines(ws.MsDev.SlnHeader)
 

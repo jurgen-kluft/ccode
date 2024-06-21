@@ -24,7 +24,7 @@ func NewCMakeGenerator(ws *Workspace) *CMakeGenerator {
 
 func (g *CMakeGenerator) Generate() {
 
-	makefile := NewLineWriter()
+	makefile := NewLineWriter(IndentModeSpaces)
 
 	mainprj := g.Workspace.StartupProject
 	dependencies := g.Workspace.StartupProject.Dependencies

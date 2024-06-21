@@ -11,7 +11,7 @@ type XmlWriter struct {
 
 func NewXmlWriter() *XmlWriter {
 	x := &XmlWriter{
-		writer:     NewLineWriter(),
+		writer:     NewLineWriter(IndentModeSpaces),
 		Tags:       make([]string, 0, 16),
 		DoBeginTag: false,
 		NoNewLine:  false,

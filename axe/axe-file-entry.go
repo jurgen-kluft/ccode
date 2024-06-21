@@ -144,3 +144,29 @@ func (d *FileEntryDict) SortByKey() {
 		d.Dict[k] = i
 	}
 }
+
+func (d *FileEntryDict) EnumerateBuildFiles(enumerator func(i int, key string, value *FileEntry, last int)) {
+	// first calculate the number of files that are not excluded from build
+	n := 0
+	for _, key := range d.Keys {
+		value := d.Values[d.Dict[key]]
+		if !value.ExcludedFromBuild {
+			n++
+		}
+	}
+
+	// then enumerate them
+	for i, key := range d.Keys {
+		value := d.Values[d.Dict[key]]
+		if value.ExcludedFromBuild {
+			continue
+		}
+
+		last := 0
+		if i == n-1 {
+			last = 1
+		}
+
+		enumerator(i, key, value, last)
+	}
+}

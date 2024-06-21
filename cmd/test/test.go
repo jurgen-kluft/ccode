@@ -6,5 +6,6 @@ import (
 
 // main
 func main() {
-	generator_test.TestGenerateXcode()
+	//	generator_test.TestGenerateXcode()
+	generator_test.TestGenerateMake()
 }
