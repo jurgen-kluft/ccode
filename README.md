@@ -3,7 +3,7 @@
 Note: v2.0, WIP package axe, new IDE files generator package, currently Visual Studio and Xcode.
 
 This is a project generator that uses Go and its package management for C++ packages. 
-The structure of packages are defined in Go and files can be generated for Visual Studio (.sln, .vcxproj and .filters), CMake as well as Tundra. Work in progress for also supporting Zig as a build system.
+The structure of packages are defined in Go and files can be generated for Visual Studio (.sln, .vcxproj and .filters), Make, CMake, Xcode as well as Tundra. Work in progress for also supporting Zig as a build system.
 
 Any C++ external dependency like Boost, DirectX or whatnot should be wrapped in a package (github or other git server).
 There are a couple of notable features that are triggered when generating the project files:
@@ -17,15 +17,17 @@ Also this project is a personal project and thus is not perfect but it serves my
 This allows me to write packages (C++ libraries) and use them in another C++ package by defining a dependency on them. Using the go package management solution you can 'get' these packages and then by running 'go run $name.go' you can generate VS projects files. The goal is to support the following IDE's and/or build-systems:
 
 * [Visual Studio](https://visualstudio.microsoft.com) (supported)
+* [Xcode](https://developer.apple.com/xcode/) (supported)
 * [Tundra](https://github.com/deplinenoise/tundra) (supported)
 * [CMake](https://cmake.org/) (supported)
+* [Make](https://www.gnu.org/software/make/manual/make.html) (supported)
 * [Zig](https://ziglang.org/learn/build-system/) (WIP)
 
 Currently the design is quite set and the goal is to keep creating and maintaining packages to a minimum.
 
 If you have repository/package that uses ccode, you can do the following to generate the CMake build files, this example uses the `cbase` repository:
 
-1. `go run cbase.go --DEV=cmake`
+1. `go run cbase.go --dev=cmake`
 2. cd into `target/cmake`
 3. `cmake -DCMAKE_BUILD_TYPE=DEBUG`
 4. `make`
@@ -37,7 +39,7 @@ For Visual Studio build files (on Windows):
 
 For Tundra:
 
-1. `go run cbase.go --DEV=tundra`
+1. `go run cbase.go --dev=tundra`
 2. cd into `target/tundra`
 3. run `tundra2 debug` or `tundra2 release`
 
