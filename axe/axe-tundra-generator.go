@@ -7,14 +7,12 @@ import (
 )
 
 type TundraGenerator struct {
-	LastGenId  UUID
 	Workspace  *Workspace
 	VcxProjCpu string
 }
 
 func NewTundraGenerator(ws *Workspace) *TundraGenerator {
 	g := &TundraGenerator{
-		LastGenId: GenerateUUID(),
 		Workspace: ws,
 	}
 
@@ -32,6 +30,9 @@ func (g *TundraGenerator) generateUnitsLua(ws *Workspace) {
 	units.WriteLine(`require "tundra.syntax.glob"`)
 	units.WriteLine(`require "tundra.path"`)
 	units.WriteLine(`require "tundra.util"`)
+
+	// Sort the projects by their dependencies using topological sort
+	ws.ProjectList.TopoSort()
 
 	// Get all the projects and write them out
 	for _, p := range ws.ProjectList.Values {

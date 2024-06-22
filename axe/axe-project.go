@@ -164,6 +164,38 @@ func (p *ProjectList) CollectByWildcard(name string, list *ProjectList) {
 	}
 }
 
+func (p *ProjectList) TopoSort() error {
+	edges := []Edge{}
+
+	// Sort the projects by dependencies
+	for i, project := range p.Values {
+		for _, dep := range project.Dependencies.Values {
+			edges = append(edges, Edge{S: Vertex(i), D: Vertex(p.Dict[dep.Name])})
+		}
+	}
+
+	sorted, err := Toposort(edges)
+	if err != nil {
+		return err
+	}
+
+	sortedProjects := []*Project{}
+	for i := len(sorted) - 1; i >= 0; i-- {
+		sortedProjects = append(sortedProjects, p.Values[sorted[i]])
+	}
+
+	p.Dict = map[string]int{}
+	p.Values = sortedProjects
+	p.Keys = []string{}
+
+	for i, project := range sortedProjects {
+		p.Dict[project.Name] = i
+		p.Keys = append(p.Keys, project.Name)
+	}
+
+	return nil
+}
+
 // -----------------------------------------------------------------------------------------------------
 // -----------------------------------------------------------------------------------------------------
 
@@ -439,7 +471,7 @@ func (p *Project) GlobFiles(dir string, pattern string) {
 	path := filepath.Join(dir, pp[0])
 	files, err := glob.GlobFiles(path, pp[1])
 	if err != nil {
-		panic(err)
+		return
 	}
 
 	exclusionFilter := NewExclusionFilter(p.Workspace.MakeTarget)
