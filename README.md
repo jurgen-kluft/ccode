@@ -13,7 +13,7 @@ There are a couple of notable features that can be triggered when generating the
 
 Also this project is a personal project and thus is not perfect but it serves my needs, feel free to post issues/requests if you want to see additional features.
 
-This allows me to write packages (C++ libraries) and use them in another C++ package by defining a dependency on them. Using the go package management solution you can 'get' these packages and then by running 'go run $name.go' you can generate VS projects files. The goal is to support the following IDE's and/or build-systems:
+This allows me to write packages (C++ libraries) and use them in another C++ package by defining a dependency on them. Using the go package management solution you can 'get' these packages and then by running `go run %name%.go` you can generate solution and project files. The goal is to support the following IDE's and/or build-systems:
 
 * [Visual Studio](https://visualstudio.microsoft.com) (supported)
 * [Xcode](https://developer.apple.com/xcode/) (supported)
@@ -31,12 +31,13 @@ If you have repository/package that uses ccode, you can do the following to gene
 3. `cmake -DCMAKE_BUILD_TYPE=DEBUG`
 4. `make`
 
-For Visual Studio build files (on Windows):
+For Visual Studio build files (on Windows, Visual Studio is the default generator):
 
-1. `go run cbase.go`
-2. In the root of your package you now should have a `cbase_test.sln` solution file
+1. `go run cbase.go --dev=vs2022`
+2. cd into `target/msdev`
+3. You now should have Visual Studio solution and project files
 
-For Tundra:
+For Tundra build files (on Mac and Linux, Tundra is the default generator):
 
 1. `go run cbase.go --dev=tundra`
 2. cd into `target/tundra`
@@ -44,16 +45,16 @@ For Tundra:
 
 These are the steps to make a new package:
 
-1. Create a new Github repository like ``mylibrary``
-2. In the root create a ``mylibrary.go`` file
-3. In the root create a folder called ``package`` with a file in it called ``package.go``
+1. Create a new Github repository like `mylibrary`
+2. In the root create a `mylibrary.go` file
+3. In the root create a folder called `package` with a file in it called `package.go`
 4. Once you have specified everything in package.go:
    * In the root 'go get' (this will get all your specified dependencies in GO_PATH)
-   * To generate the VS solution (default on Windows) and projects just run: ``go run mylibrary.go``  
-   * To generate the Tundra build file (default on MacOS) run: ``go run mylibrary.go``
+   * To generate the VS solution (default on Windows) and projects just run: `go run mylibrary.go`  
+   * To generate the Tundra build file (default on MacOS) run: `go run mylibrary.go`
 
 Example:
-The content of the ```mylibrary.go``` file:
+The content of the `mylibrary.go` file:
 
 ```go
 package main
