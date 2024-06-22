@@ -15,11 +15,11 @@ Also this project is a personal project and thus is not perfect but it serves my
 
 This allows me to write packages (C++ libraries) and use them in another C++ package by defining a dependency on them. Using the go package management solution you can 'get' these packages and then by running `go run %name%.go` you can generate solution and project files. The goal is to support the following IDE's and/or build-systems:
 
-* [Visual Studio](https://visualstudio.microsoft.com) (supported)
-* [Xcode](https://developer.apple.com/xcode/) (supported)
-* [Tundra](https://github.com/deplinenoise/tundra) (supported)
-* [CMake](https://cmake.org/) (supported)
-* [Make](https://www.gnu.org/software/make/manual/make.html) (supported)
+* [Visual Studio](https://visualstudio.microsoft.com) (supported, Windows)
+* [Xcode](https://developer.apple.com/xcode/) (supported, Mac)
+* [Tundra](https://github.com/deplinenoise/tundra) (supported, Mac, Linux and Windows)
+* [CMake](https://cmake.org/) (supported, Mac, Linux and Windows)
+* [Make](https://www.gnu.org/software/make/manual/make.html) (supported, Mac and Linux, untested on Windows)
 * [Zig](https://ziglang.org/learn/build-system/) (WIP)
 
 Currently the design is quite set and the goal is to keep creating and maintaining packages to a minimum.
