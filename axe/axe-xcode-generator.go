@@ -6,13 +6,11 @@ import (
 )
 
 type XcodeGenerator struct {
-	LastGenId UUID
 	Workspace *Workspace
 }
 
 func NewXcodeGenerator(ws *Workspace) *XcodeGenerator {
 	return &XcodeGenerator{
-		LastGenId: GenerateUUID(),
 		Workspace: ws,
 	}
 }

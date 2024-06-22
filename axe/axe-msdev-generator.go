@@ -5,14 +5,12 @@ import (
 )
 
 type MsDevGenerator struct {
-	LastGenId  UUID
 	Workspace  *Workspace
 	VcxProjCpu string
 }
 
 func NewMsDevGenerator(ws *Workspace) *MsDevGenerator {
 	g := &MsDevGenerator{
-		LastGenId: GenerateUUID(),
 		Workspace: ws,
 	}
 	g.init(ws)

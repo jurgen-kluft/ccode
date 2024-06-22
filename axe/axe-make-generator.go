@@ -6,14 +6,12 @@ import (
 )
 
 type MakeGenerator struct {
-	LastGenId  UUID
 	Workspace  *Workspace
 	VcxProjCpu string
 }
 
 func NewMakeGenerator(ws *Workspace) *MakeGenerator {
 	g := &MakeGenerator{
-		LastGenId: GenerateUUID(),
 		Workspace: ws,
 	}
 
