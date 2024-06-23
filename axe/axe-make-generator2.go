@@ -115,6 +115,7 @@ func (g *MakeGenerator2) generateMainMakefile() error {
 			for _, dep := range lib.Dependencies.Values {
 				mk.Write(` $(library_`, dep.Name, `)`)
 			}
+			mk.NewLine()
 		}
 	}
 
@@ -254,11 +255,11 @@ func (g *MakeGenerator2) generateProjectTargets(project *Project, isMain bool, m
 
 	for _, cfg := range g.Product.Configs.Values {
 		mk.WriteLine(strings.ToLower(cfg.Type.String()), `: \`)
-		mk.WriteILine(`+`, `$(PRODUCT)_prepare \`)
+		mk.WriteILine(`+`, `_prepare_build_directories \`)
 		if isMain {
 			mk.WriteILine(`+`, `$(PRODUCT_LIB)$(EXT_LIB) \`)
 			mk.WriteILine(`+`, `$(PRODUCT_DYLIB)$(EXT_DYLIB) \`)
-			mk.WriteILine(`+`, `$(PRODUCT_FRAMEWORK)$(EXT_FRAMEWORK) \`)
+			mk.WriteILine(`+`, `$(PRODUCT_FRAMEWORK)$(EXT_FRAMEWORK)`)
 		} else {
 			mk.WriteILine(`+`, `$(PRODUCT_LIB)$(EXT_LIB)`)
 		}
@@ -280,14 +281,16 @@ func (g *MakeGenerator2) generateProjectTargets(project *Project, isMain bool, m
 	mk.WriteILine(`+`, `@rm -rf $(DIR_BUILD_PRODUCTS)`)
 	mk.NewLine()
 
+	mk.WriteLine(`# Generate all the output directories once`)
+	mk.WriteLine(`_prepare_build_directories:`)
+	mk.WriteILine(`+`, `@echo -e $(call PRINT,preparing directories for,$(PRODUCT))`)
+	mk.WriteILine(`+`, `@mkdir -p $(DIR_BUILD_PRODUCTS)`)
+	mk.NewLine()
+
 	mk.WriteLine(`#-------------------------------------------------------------------------------`)
 	mk.WriteLine(`# Targets`)
 	mk.WriteLine(`#-------------------------------------------------------------------------------`)
 	mk.NewLine()
-
-	mk.WriteLine(`$(PRODUCT)_prepare:`)
-	mk.WriteILine(`+`, `@echo -e $(call PRINT,preparing directories for,$(PRODUCT))`)
-	mk.WriteILine(`+`, `@mkdir -p $(DIR_BUILD_PRODUCTS)`)
 
 	// We need to collect the directories that are needed for the source file compilation
 	// Example: @mkdir -p $(DIR_BUILD_TEMP)ccore/source/main/cpp/
@@ -308,17 +311,16 @@ func (g *MakeGenerator2) generateProjectTargets(project *Project, isMain bool, m
 	mk.WriteLine(`# Framework target`)
 	mk.WriteLine(`$(PRODUCT_FRAMEWORK)$(EXT_FRAMEWORK):     \`)
 
-	// Example: $(DIR_BUILD_TEMP)ccore/source/test/cpp/test_main.cpp.o     \
-	for _, f := range project.FileEntries.Values {
-		if f.Is_C_or_CPP() {
-			path := PathGetRel(filepath.Join(project.ProjectAbsPath, f.Path), PathParent(project.ProjectAbsPath))
-			mk.WriteILine(`+`, `$(DIR_BUILD_TEMP)`, path, `$(EXT_O) \`)
-		}
-	}
+	lineEnds := []string{"  \\", ""}
+	partOfBuildFilter := func(f *FileEntry) bool { return (f.Is_C_or_CPP() || f.Is_ObjC()) && !f.ExcludedFromBuild }
+	project.FileEntries.Enumerate(partOfBuildFilter, func(i int, key string, value *FileEntry, last int) {
+		path := PathGetRel(filepath.Join(project.ProjectAbsPath, value.Path), PathParent(project.ProjectAbsPath))
+		mk.WriteILine(`+`, `$(DIR_BUILD_TEMP)`, path, `$(EXT_O)`, lineEnds[last])
+	})
 
 	mk.WriteILine(`+`, `@rm -rf $@`)
-	mk.WriteILine(`+`, `@echo -e $(call PRINT,$(notdir $@),$(HOST_ARCH),Linking the $(HOST_ARCH) binary)`)
-	mk.WriteILine(`+`, `@$(_CC) $(LIBS_$(CONFIG)) $(CC_FLAGS_FRAMEWORK_$(HOST_ARCH)) $(CC_FLAGS_$(HOST_ARCH)) -o $(DIR_BUILD_PRODUCTS)$@ $^`)
+	mk.WriteILine(`+`, `@echo -e $(call PRINT,$(notdir $@),$(TARGET_ARCH),Linking the $(TARGET_ARCH) binary)`)
+	mk.WriteILine(`+`, `@$(_CC) $(LIBS_$(CONFIG)) $(CC_FLAGS_FRAMEWORK_$(TARGET_ARCH)) $(CC_FLAGS_$(TARGET_ARCH)) -o $(DIR_BUILD_PRODUCTS)$@ $^`)
 	mk.WriteLine(``)
 
 	// ---------- Dynamic Library -------------------------------------------------------------------------
@@ -327,16 +329,14 @@ func (g *MakeGenerator2) generateProjectTargets(project *Project, isMain bool, m
 	mk.WriteLine(`$(PRODUCT_DYLIB)$(EXT_DYLIB):     \`)
 
 	// Example: $(DIR_BUILD_TEMP)ccore/source/main/cpp/c_allocator.cpp.o     \
-	for _, f := range project.FileEntries.Values {
-		if f.Is_C_or_CPP() {
-			path := PathGetRel(filepath.Join(project.ProjectAbsPath, f.Path), PathParent(project.ProjectAbsPath))
-			mk.WriteILine(`+`, `$(DIR_BUILD_TEMP)`, path, `$(EXT_O) \`)
-		}
-	}
+	project.FileEntries.Enumerate(partOfBuildFilter, func(i int, key string, value *FileEntry, last int) {
+		path := PathGetRel(filepath.Join(project.ProjectAbsPath, value.Path), PathParent(project.ProjectAbsPath))
+		mk.WriteILine(`+`, `$(DIR_BUILD_TEMP)`, path, `$(EXT_O)`, lineEnds[last])
+	})
 
-	mk.WriteILine(`+`, `@echo -e $(call PRINT,$(notdir $@),$(HOST_ARCH),Linking the $(HOST_ARCH) dynamic binary)`)
+	mk.WriteILine(`+`, `@echo -e $(call PRINT,$(notdir $@),$(TARGET_ARCH),Linking the $(TARGET_ARCH) dynamic binary)`)
 	mk.WriteILine(`+`, `@mkdir -p $(DIR_BUILD_PRODUCTS)`)
-	mk.WriteILine(`+`, `@$(CC) $(LIBS_$(CONFIG)) $(CC_FLAGS_DYLIB_$(HOST_ARCH)) $(CC_FLAGS_$(HOST_ARCH)) -o $(DIR_BUILD_PRODUCTS)$@ $^`)
+	mk.WriteILine(`+`, `@$(CC) $(LIBS_$(CONFIG)) $(CC_FLAGS_DYLIB_$(TARGET_ARCH)) $(CC_FLAGS_$(TARGET_ARCH)) -o $(DIR_BUILD_PRODUCTS)$@ $^`)
 	mk.WriteLine(``)
 
 	// ---------- Static Library -------------------------------------------------------------------------
@@ -345,14 +345,12 @@ func (g *MakeGenerator2) generateProjectTargets(project *Project, isMain bool, m
 	mk.WriteLine(`$(PRODUCT_LIB)$(EXT_LIB):    \`)
 
 	// Example: $(DIR_BUILD_TEMP)ccore/source/main/cpp/c_allocator.cpp.o     \
-	for _, f := range project.FileEntries.Values {
-		if f.Is_C_or_CPP() {
-			path := PathGetRel(filepath.Join(project.ProjectAbsPath, f.Path), PathParent(project.ProjectAbsPath))
-			mk.WriteILine(`+`, `$(DIR_BUILD_TEMP)`, path, `$(EXT_O) \`)
-		}
-	}
+	project.FileEntries.Enumerate(partOfBuildFilter, func(i int, key string, value *FileEntry, last int) {
+		path := PathGetRel(filepath.Join(project.ProjectAbsPath, value.Path), PathParent(project.ProjectAbsPath))
+		mk.WriteILine(`+`, `$(DIR_BUILD_TEMP)`, path, `$(EXT_O)`, lineEnds[last])
+	})
 
-	mk.WriteILine(`+`, `@echo -e $(call PRINT,$(notdir $@),$(HOST_ARCH),Linking the $(HOST_ARCH) static binary)`)
+	mk.WriteILine(`+`, `@echo -e $(call PRINT,$(notdir $@),$(TARGET_ARCH),Linking the $(TARGET_ARCH) static binary)`)
 	mk.WriteILine(`+`, `@mkdir -p $(DIR_BUILD_PRODUCTS)`)
 	mk.WriteILine(`+`, `@$(AR) $(AR_FLAGS_arm64) $(DIR_BUILD_PRODUCTS)$@ $^`)
 	mk.WriteLine(``)
@@ -367,17 +365,15 @@ func (g *MakeGenerator2) generateProjectTargets(project *Project, isMain bool, m
 	// 	   @echo -e $(call PRINT,compiling,test_main.cpp)
 	// 	   @$(_CC) -c -o $@ $< $(FLAGS_CPP_$(CONFIG)) $(FLAGS_OTHER_$(CONFIG)) $(FLAGS_WARN_$(CONFIG)) $(FLAGS_M) $(FLAGS_MM) $(INCLUDES_CPP_$(CONFIG)) -MT $@ -MMD -MP
 
-	for _, f := range project.FileEntries.Values {
-		if f.Is_CPP() {
-			srcfile := PathGetRel(filepath.Join(project.ProjectAbsPath, f.Path), filepath.Join(g.TargetAbsPath, project.Name))
-			buildfile := PathGetRel(filepath.Join(project.ProjectAbsPath, f.Path), PathParent(project.ProjectAbsPath))
-			mk.WriteLine(`-include $(DIR_BUILD_TEMP)`, buildfile+`.d`)
-			mk.WriteLine(`$(DIR_BUILD_TEMP)`, buildfile+`.o: `, srcfile)
-			mk.WriteILine(`+`, `@echo -e $(call PRINT,compiling,`, buildfile, `)`)
-			mk.WriteILine(`+`, `@$(_CC) -c -o $@ $< $(FLAGS_CPP_$(CONFIG)) $(FLAGS_OTHER_$(CONFIG)) $(FLAGS_WARN_$(CONFIG)) $(FLAGS_M) $(FLAGS_MM) $(INCLUDES_CPP_$(CONFIG)) -MT $@ -MMD -MP`)
-			mk.NewLine()
-		}
-	}
+	project.FileEntries.Enumerate(partOfBuildFilter, func(i int, key string, f *FileEntry, last int) {
+		srcfile := PathGetRel(filepath.Join(project.ProjectAbsPath, f.Path), filepath.Join(g.TargetAbsPath, project.Name))
+		buildfile := PathGetRel(filepath.Join(project.ProjectAbsPath, f.Path), PathParent(project.ProjectAbsPath))
+		mk.WriteLine(`-include $(DIR_BUILD_TEMP)`, buildfile+`.d`)
+		mk.WriteLine(`$(DIR_BUILD_TEMP)`, buildfile+`.o: `, srcfile)
+		mk.WriteILine(`+`, `@echo -e $(call PRINT,compiling,`, buildfile, `)`)
+		mk.WriteILine(`+`, `@$(_CC) -c -o $@ $< $(FLAGS_CPP_$(CONFIG)) $(FLAGS_OTHER_$(CONFIG)) $(FLAGS_WARN_$(CONFIG)) $(FLAGS_M) $(FLAGS_MM) $(INCLUDES_CPP_$(CONFIG)) -MT $@ -MMD -MP`)
+		mk.NewLine()
+	})
 
 	mk.NewLine()
 }
@@ -439,8 +435,8 @@ func (g *MakeGenerator2) generateLibMakeCommonMk() error {
 
 	mk.NewLine()
 	mk.WriteLine(`# Relative build directories`)
-	mk.WriteLine(`DIR_BUILD_PRODUCTS  := $(DIR_BUILD)products/$(HOST_ARCH)/`)
-	mk.WriteLine(`DIR_BUILD_TEMP      := $(DIR_BUILD)intermediates/$(HOST_ARCH)/`)
+	mk.WriteLine(`DIR_BUILD_PRODUCTS  := $(DIR_BUILD)products/$(TARGET_ARCH)/`)
+	mk.WriteLine(`DIR_BUILD_TEMP      := $(DIR_BUILD)intermediates/$(TARGET_ARCH)/`)
 	mk.NewLine()
 	mk.WriteLine(`# Erases implicit rules`)
 	mk.WriteLine(`.SUFFIXES:`)
@@ -566,16 +562,16 @@ func (g *MakeGenerator2) generateLibMakePlatformLinux() error {
 	mk.WriteLine(`#-------------------------------------------------------------------------------`)
 	mk.NewLine()
 	mk.WriteLine(`# Architecture specific flags for ld`)
-	mk.WriteLine(`LD_FLAGS_$(HOST_ARCH)       := -m elf_$(HOST_ARCH)`)
+	mk.WriteLine(`LD_FLAGS_$(TARGET_ARCH)       := -m elf_$(TARGET_ARCH)`)
 	mk.NewLine()
 	mk.WriteLine(`# Architecture specific flags for ar`)
-	mk.WriteLine(`AR_FLAGS_$(HOST_ARCH)       := rcs`)
+	mk.WriteLine(`AR_FLAGS_$(TARGET_ARCH)       := rcs`)
 	mk.NewLine()
 	mk.WriteLine(`# Architecture specific flags for the C compiler`)
-	mk.WriteLine(`CC_FLAGS_$(HOST_ARCH)       :=`)
+	mk.WriteLine(`CC_FLAGS_$(TARGET_ARCH)       :=`)
 	mk.NewLine()
 	mk.WriteLine(`# Architecture specific flags for the C compiler when creating a dynamic library`)
-	mk.WriteLine(`CC_FLAGS_DYLIB_$(HOST_ARCH) = -shared -Wl,-soname,$(PRODUCT_DYLIB)$(EXT_DYLIB)`)
+	mk.WriteLine(`CC_FLAGS_DYLIB_$(TARGET_ARCH) = -shared -Wl,-soname,$(PRODUCT_DYLIB)$(EXT_DYLIB)`)
 	mk.NewLine()
 	if err := mk.WriteToFile(filepath.Join(g.TargetAbsPath, "makelib", "platform", "linux.mk")); err != nil {
 		return err

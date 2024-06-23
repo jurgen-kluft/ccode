@@ -373,6 +373,7 @@ func (g *AxeGenerator) addWorkspaceConfiguration(ws *Workspace, configType Confi
 	if ws.MakeTarget.CompilerIsClang() {
 		config.CppFlags.ValuesToAdd("-std=c++11", "-Wall")
 		config.CppFlags.ValuesToAdd("-Wno-switch", "-Wno-unused-variable", "-Wno-unused-function", "-Wno-unused-private-field")
+		config.CppFlags.ValuesToAdd("-Wno-unused-but-set-variable")
 		//config.CppFlags.ValuesToAdd("-Wfatal-errors", "-Werror")
 		config.LinkFlags.ValuesToAdd("-lstdc++")
 		if configType.IsDebug() {

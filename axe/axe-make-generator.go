@@ -377,7 +377,8 @@ func (g *MakeGenerator) generateProjectConfig(makefile *LineWriter, project *Pro
 		include_dirs.WriteILine("+", "-I", g.quotePath(path), lineEnd[last])
 	})
 
-	project.FileEntries.EnumerateBuildFiles(func(i int, key string, value *FileEntry, last int) {
+	excludedFromBuildFilter := func(f *FileEntry) bool { return !f.ExcludedFromBuild }
+	project.FileEntries.Enumerate(excludedFromBuildFilter, func(i int, key string, value *FileEntry, last int) {
 		cpp_obj_files.WriteILine("+", g.escapeString(g.getObjFile(config, value)), lineEnd[last])
 	})
 
@@ -537,7 +538,7 @@ func (g *MakeGenerator) generateProjectConfig(makefile *LineWriter, project *Pro
 
 	// Collect all the link files and output them in the makefile
 	linkfiles := []string{}
-	project.FileEntries.EnumerateBuildFiles(func(i int, key string, value *FileEntry, last int) {
+	project.FileEntries.Enumerate(excludedFromBuildFilter, func(i int, key string, value *FileEntry, last int) {
 		linkfiles = append(linkfiles, g.escapeString(g.getObjFile(config, value)))
 	})
 	config.LinkFiles.FinalDict.Enumerate(func(i int, key string, value string, last int) {

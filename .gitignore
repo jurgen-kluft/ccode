@@ -16,6 +16,7 @@ vendor/
 !*.vcxproj
 
 !*.txt
+!*.md
 
 !*.cs
 !*.csproj
@@ -24,13 +25,6 @@ vendor/
 !*.go
 !*.json
 !*.mk
-
-!*.hlsl
-!*.fragment
-
-!*.mold
-!*.sc
-!*.diagram
 
 !*.ini
 !*.bat
