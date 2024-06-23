@@ -6,16 +6,16 @@ import (
 	"strings"
 )
 
-type ProjectWriter interface {
+type ProjectWriterr interface {
 	WriteLn(string) error
 	WriteLns([]string) error
 }
 
-type ProjectTextWriter struct {
+type ProjectTextWriterr struct {
 	fhnd *os.File
 }
 
-func (writer *ProjectTextWriter) Open(filepath string) (err error) {
+func (writer *ProjectTextWriterr) Open(filepath string) (err error) {
 	writer.fhnd, err = os.OpenFile(filepath, os.O_CREATE|os.O_TRUNC|os.O_WRONLY, 0666)
 	if err != nil {
 		fmt.Printf("Error opening file: '%s' with error ''%s'\n", filepath, err.Error())
@@ -23,7 +23,7 @@ func (writer *ProjectTextWriter) Open(filepath string) (err error) {
 	}
 	return nil
 }
-func (writer *ProjectTextWriter) Close() (err error) {
+func (writer *ProjectTextWriterr) Close() (err error) {
 	err = writer.fhnd.Close()
 	return err
 }
@@ -33,7 +33,7 @@ const (
 	cNewLineChar = "\n"
 )
 
-func (writer *ProjectTextWriter) WriteLn(line string) (err error) {
+func (writer *ProjectTextWriterr) WriteLn(line string) (err error) {
 	if len(line) == 0 {
 		_, err = writer.fhnd.WriteString(cNewLineChar)
 	} else {
@@ -58,7 +58,7 @@ func (writer *ProjectTextWriter) WriteLn(line string) (err error) {
 	return err
 }
 
-func (writer *ProjectTextWriter) WriteLns(lines []string) (err error) {
+func (writer *ProjectTextWriterr) WriteLns(lines []string) (err error) {
 	for _, line := range lines {
 		line = strings.Trim(line, " ")
 		err = writer.WriteLn(line)

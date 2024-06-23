@@ -2,10 +2,7 @@ package denv
 
 import (
 	"fmt"
-	"path/filepath"
-	"strings"
 
-	"github.com/jurgen-kluft/ccode/glob"
 	"github.com/jurgen-kluft/ccode/items"
 	"github.com/jurgen-kluft/ccode/vars"
 )
@@ -20,31 +17,6 @@ type Files struct {
 
 func (f *Files) AddGlobPath(dirpath string) {
 	f.GlobPaths = append(f.GlobPaths, dirpath)
-}
-
-// GlobFiles will collect files that can be found in @dirpath that matches
-// any of the Files.GlobPaths into Files.Files
-// Also it will ignore files that contain certain incoming patterns
-func (f *Files) GlobFiles(dirpath string, file_patterns_to_ignore []string) {
-	// Glob all the on-disk files
-	for _, g := range f.GlobPaths {
-		pp := strings.Split(g, "^")
-		ppath := filepath.Join(dirpath, pp[0])
-
-		globbedfiles, _ := glob.GlobFiles(ppath, pp[1])
-		for _, file := range globbedfiles {
-			globbedfile := filepath.Join(pp[0], file)
-			ignored := 0
-			for _, ignore := range file_patterns_to_ignore {
-				if strings.Contains(globbedfile, ignore) {
-					ignored++
-				}
-			}
-			if ignored == 0 {
-				f.Files = append(f.Files, globbedfile)
-			}
-		}
-	}
 }
 
 // ProjectType defines the type of project, like 'StaticLibrary'
