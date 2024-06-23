@@ -1,4 +1,4 @@
-package generator_test
+package main
 
 import (
 	"path/filepath"
