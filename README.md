@@ -22,14 +22,17 @@ This allows me to write packages (C++ libraries) and use them in another C++ pac
 * [Make](https://www.gnu.org/software/make/manual/make.html) (supported, Mac and Linux, untested on Windows)
 * [Zig](https://ziglang.org/learn/build-system/) (WIP)
 
+Note: Not happy with CMake, there must be a better way of doing this, if you know how please let me know.
+
 Currently the design is quite set and the goal is to keep creating and maintaining packages to a minimum.
 
 If you have repository/package that uses ccode, you can do the following to generate the CMake build files, this example uses the `cbase` repository:
 
-1. `go run cbase.go --dev=cmake`
-2. cd into `target/cmake`
-3. `cmake -DCMAKE_BUILD_TYPE=DEBUG`
-4. `make`
+1. `go run cbase.go --dev=make`
+2. cd into `target/make`
+3. `make` (will build all configuration, e.g. debug and release)
+4. `make clean` (will clean all artifacts)
+5. `make debugtest` (will build only `debugtest` configuration)
 
 For Visual Studio build files (on Windows, Visual Studio is the default generator):
 
