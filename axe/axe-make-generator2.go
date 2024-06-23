@@ -306,21 +306,27 @@ func (g *MakeGenerator2) generateProjectTargets(project *Project, isMain bool, m
 	}
 	mk.NewLine()
 
+	lineEnds := []string{"  \\", ""}
+
+	isObjCFileNotExcluded := func(f *FileEntry) bool { return f.Is_ObjC() && !f.ExcludedFromBuild }
+	isObjCppFileNotExcluded := func(f *FileEntry) bool { return f.Is_ObjCpp() && !f.ExcludedFromBuild }
+	isCFileNotExcluded := func(f *FileEntry) bool { return f.Is_C() && !f.ExcludedFromBuild }
+	isCppFileNotExcluded := func(f *FileEntry) bool { return f.Is_CPP() && !f.ExcludedFromBuild }
+
 	// ---------- Framework       -------------------------------------------------------------------------
 
 	mk.WriteLine(`# Framework target`)
 	mk.WriteLine(`$(PRODUCT_FRAMEWORK)$(EXT_FRAMEWORK):     \`)
 
-	lineEnds := []string{"  \\", ""}
-	partOfBuildFilter := func(f *FileEntry) bool { return (f.Is_C_or_CPP() || f.Is_ObjC()) && !f.ExcludedFromBuild }
-	project.FileEntries.Enumerate(partOfBuildFilter, func(i int, key string, value *FileEntry, last int) {
+	project.FileEntries.Enumerate(isCppFileNotExcluded, func(i int, key string, value *FileEntry, last int) {
 		path := PathGetRel(filepath.Join(project.ProjectAbsPath, value.Path), PathParent(project.ProjectAbsPath))
 		mk.WriteILine(`+`, `$(DIR_BUILD_TEMP)`, path, `$(EXT_O)`, lineEnds[last])
 	})
 
 	mk.WriteILine(`+`, `@rm -rf $@`)
 	mk.WriteILine(`+`, `@echo -e $(call PRINT,$(notdir $@),$(TARGET_ARCH),Linking the $(TARGET_ARCH) binary)`)
-	mk.WriteILine(`+`, `@$(_CC) $(LIBS_$(CONFIG)) $(CC_FLAGS_FRAMEWORK_$(TARGET_ARCH)) $(CC_FLAGS_$(TARGET_ARCH)) -o $(DIR_BUILD_PRODUCTS)$@ $^`)
+	mk.WriteILine(`+`, `@$(CC) $(LIBS_$(CONFIG)) $(CC_FLAGS_FRAMEWORK_$(TARGET_ARCH)) $(CC_FLAGS_$(TARGET_ARCH)) $(FLAGS_WARN_$(CONFIG)) -fPIC $(FLAGS_OTHER_$(CONFIG)) $(INCLUDES_CPP_$(CONFIG)) $(DEFINES_CPP_$(CONFIG)) -o $(DIR_BUILD_PRODUCTS)$@ $^`)
+
 	mk.WriteLine(``)
 
 	// ---------- Dynamic Library -------------------------------------------------------------------------
@@ -329,7 +335,7 @@ func (g *MakeGenerator2) generateProjectTargets(project *Project, isMain bool, m
 	mk.WriteLine(`$(PRODUCT_DYLIB)$(EXT_DYLIB):     \`)
 
 	// Example: $(DIR_BUILD_TEMP)ccore/source/main/cpp/c_allocator.cpp.o     \
-	project.FileEntries.Enumerate(partOfBuildFilter, func(i int, key string, value *FileEntry, last int) {
+	project.FileEntries.Enumerate(isCppFileNotExcluded, func(i int, key string, value *FileEntry, last int) {
 		path := PathGetRel(filepath.Join(project.ProjectAbsPath, value.Path), PathParent(project.ProjectAbsPath))
 		mk.WriteILine(`+`, `$(DIR_BUILD_TEMP)`, path, `$(EXT_O)`, lineEnds[last])
 	})
@@ -345,7 +351,7 @@ func (g *MakeGenerator2) generateProjectTargets(project *Project, isMain bool, m
 	mk.WriteLine(`$(PRODUCT_LIB)$(EXT_LIB):    \`)
 
 	// Example: $(DIR_BUILD_TEMP)ccore/source/main/cpp/c_allocator.cpp.o     \
-	project.FileEntries.Enumerate(partOfBuildFilter, func(i int, key string, value *FileEntry, last int) {
+	project.FileEntries.Enumerate(isCppFileNotExcluded, func(i int, key string, value *FileEntry, last int) {
 		path := PathGetRel(filepath.Join(project.ProjectAbsPath, value.Path), PathParent(project.ProjectAbsPath))
 		mk.WriteILine(`+`, `$(DIR_BUILD_TEMP)`, path, `$(EXT_O)`, lineEnds[last])
 	})
@@ -359,19 +365,51 @@ func (g *MakeGenerator2) generateProjectTargets(project *Project, isMain bool, m
 
 	mk.WriteLine(`# All the source file, object file and dependency file generation`)
 
-	// Example:
-	// -include $(DIR_BUILD_TEMP)ccore/source/test/cpp/test_main.cpp.d
-	// $(DIR_BUILD_TEMP)ccore/source/test/cpp/test_main.cpp.o: ../../../source/test/cpp/test_main.cpp
-	// 	   @echo -e $(call PRINT,compiling,test_main.cpp)
-	// 	   @$(_CC) -c -o $@ $< $(FLAGS_CPP_$(CONFIG)) $(FLAGS_OTHER_$(CONFIG)) $(FLAGS_WARN_$(CONFIG)) $(FLAGS_M) $(FLAGS_MM) $(INCLUDES_CPP_$(CONFIG)) -MT $@ -MMD -MP
+	// ----- C
 
-	project.FileEntries.Enumerate(partOfBuildFilter, func(i int, key string, f *FileEntry, last int) {
+	project.FileEntries.Enumerate(isCFileNotExcluded, func(i int, key string, f *FileEntry, last int) {
 		srcfile := PathGetRel(filepath.Join(project.ProjectAbsPath, f.Path), filepath.Join(g.TargetAbsPath, project.Name))
 		buildfile := PathGetRel(filepath.Join(project.ProjectAbsPath, f.Path), PathParent(project.ProjectAbsPath))
 		mk.WriteLine(`-include $(DIR_BUILD_TEMP)`, buildfile+`.d`)
 		mk.WriteLine(`$(DIR_BUILD_TEMP)`, buildfile+`.o: `, srcfile)
-		mk.WriteILine(`+`, `@echo -e $(call PRINT,compiling,`, buildfile, `)`)
-		mk.WriteILine(`+`, `@$(_CC) -c -o $@ $< $(FLAGS_CPP_$(CONFIG)) $(FLAGS_OTHER_$(CONFIG)) $(FLAGS_WARN_$(CONFIG)) $(FLAGS_M) $(FLAGS_MM) $(INCLUDES_CPP_$(CONFIG)) -MT $@ -MMD -MP`)
+		mk.WriteILine(`+`, `@echo -e $(call PRINT,compiling C,`, buildfile, `)`)
+		mk.WriteILine(`+`, `@$(CC) $(CC_FLAGS_$(_ARCH)) -fPIC -std=$(FLAGS_STD_C) $(FLAGS_C) $(FLAGS_WARN_$(CONFIG)) $(FLAGS_OTHER_$(CONFIG)) $(INCLUDES_CPP_$(CONFIG)) $(DEFINES_CPP_$(CONFIG)) -o $@ -c $< -MT $@ -MMD -MP`)
+		mk.NewLine()
+	})
+
+	// ----- C++
+
+	project.FileEntries.Enumerate(isCppFileNotExcluded, func(i int, key string, f *FileEntry, last int) {
+		srcfile := PathGetRel(filepath.Join(project.ProjectAbsPath, f.Path), filepath.Join(g.TargetAbsPath, project.Name))
+		buildfile := PathGetRel(filepath.Join(project.ProjectAbsPath, f.Path), PathParent(project.ProjectAbsPath))
+		mk.WriteLine(`-include $(DIR_BUILD_TEMP)`, buildfile+`.d`)
+		mk.WriteLine(`$(DIR_BUILD_TEMP)`, buildfile+`.o: `, srcfile)
+		mk.WriteILine(`+`, `@echo -e $(call PRINT,compiling C++,`, buildfile, `)`)
+		mk.WriteILine(`+`, `@$(CC) $(CC_FLAGS_$(_ARCH)) -fPIC -std=$(FLAGS_STD_CPP) $(FLAGS_CPP) $(FLAGS_WARN_$(CONFIG)) $(FLAGS_OTHER_$(CONFIG)) $(INCLUDES_CPP_$(CONFIG)) $(DEFINES_CPP_$(CONFIG)) -o $@ -c $< -MT $@ -MMD -MP`)
+		mk.NewLine()
+	})
+
+	// ----- Objective-C
+
+	project.FileEntries.Enumerate(isObjCFileNotExcluded, func(i int, key string, f *FileEntry, last int) {
+		srcfile := PathGetRel(filepath.Join(project.ProjectAbsPath, f.Path), filepath.Join(g.TargetAbsPath, project.Name))
+		buildfile := PathGetRel(filepath.Join(project.ProjectAbsPath, f.Path), PathParent(project.ProjectAbsPath))
+		mk.WriteLine(`-include $(DIR_BUILD_TEMP)`, buildfile+`.d`)
+		mk.WriteLine(`$(DIR_BUILD_TEMP)`, buildfile+`.o: `, srcfile)
+		mk.WriteILine(`+`, `@echo -e $(call PRINT,compiling objective-c,`, buildfile, `)`)
+		mk.WriteILine(`+`, `@$(CC) $(CC_FLAGS_$(_ARCH)) -fPIC -std=$(FLAGS_STD_C) $(FLAGS_M) $(FLAGS_WARN_$(CONFIG)) $(FLAGS_OTHER_$(CONFIG)) $(INCLUDES_CPP_$(CONFIG)) $(DEFINES_CPP_$(CONFIG)) -o $@ -c $< -MT $@ -MMD -MP`)
+		mk.NewLine()
+	})
+
+	// ----- Objective-C++
+
+	project.FileEntries.Enumerate(isObjCppFileNotExcluded, func(i int, key string, f *FileEntry, last int) {
+		srcfile := PathGetRel(filepath.Join(project.ProjectAbsPath, f.Path), filepath.Join(g.TargetAbsPath, project.Name))
+		buildfile := PathGetRel(filepath.Join(project.ProjectAbsPath, f.Path), PathParent(project.ProjectAbsPath))
+		mk.WriteLine(`-include $(DIR_BUILD_TEMP)`, buildfile+`.d`)
+		mk.WriteLine(`$(DIR_BUILD_TEMP)`, buildfile+`.o: `, srcfile)
+		mk.WriteILine(`+`, `@echo -e $(call PRINT,compiling objective-c++,`, buildfile, `)`)
+		mk.WriteILine(`+`, `@$(CC) $(CC_FLAGS_$(_ARCH)) -fPIC -std=$(FLAGS_STD_CPP) $(FLAGS_MM) $(FLAGS_WARN_$(CONFIG)) $(FLAGS_OTHER_$(CONFIG)) $(INCLUDES_CPP_$(CONFIG)) $(DEFINES_CPP_$(CONFIG)) -o $@ -c $< -MT $@ -MMD -MP`)
 		mk.NewLine()
 	})
 
@@ -414,16 +452,8 @@ func (g *MakeGenerator2) generateLibMakeCommonMk() error {
 	mk.WriteLine(`# Commands`)
 	mk.WriteLine(`#-------------------------------------------------------------------------------`)
 	mk.NewLine()
-	// make or gmake
-	mk.WriteLine(`MAKE    := make -s`)
+	mk.WriteLine(`MAKE    := make -s`) // make or gmake
 	mk.WriteLine(`SHELL   := /bin/bash`)
-	mk.NewLine()
-
-	mk.WriteLine(`# C/C++ compiler - Debug or Release`)
-	mk.WriteLine(`_CC      = $(CC) $(FLAGS_WARN_$(CONFIG)) -fPIC $(FLAGS_OTHER_$(CONFIG)) $(INCLUDES_CPP_$(CONFIG)) $(DEFINES_CPP_$(CONFIG))`)
-
-	mk.WriteLine(`# Linker - Debug and Release`)
-	mk.WriteLine(`_LD      = $(LD) $(LIBS_$(CONFIG))`)
 	mk.NewLine()
 
 	mk.WriteLine(`#-------------------------------------------------------------------------------`)

@@ -15,6 +15,7 @@ const (
 	FileTypeCuHeader
 	FileTypeCuSource
 	FileTypeObjC
+	FileTypeObjCpp
 	FileTypeIxx
 	FileTypeMxx
 )
@@ -67,8 +68,10 @@ func (fe *FileEntry) Init(path string, isGenerated bool) {
 		fe.Type = FileTypeCuSource
 	case ".ixx":
 		fe.Type = FileTypeIxx
-	case ".m", ".mm":
+	case ".m":
 		fe.Type = FileTypeObjC
+	case ".mm":
+		fe.Type = FileTypeObjCpp
 	case ".mxx":
 		fe.Type = FileTypeMxx
 	}
@@ -88,6 +91,10 @@ func (f *FileEntry) Is_C_or_CPP() bool {
 
 func (f *FileEntry) Is_ObjC() bool {
 	return f.Type == FileTypeObjC
+}
+
+func (f *FileEntry) Is_ObjCpp() bool {
+	return f.Type == FileTypeObjCpp
 }
 
 func (f *FileEntry) Is_IXX() bool {
