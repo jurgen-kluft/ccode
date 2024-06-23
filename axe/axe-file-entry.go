@@ -32,7 +32,7 @@ type FileEntry struct {
 	Path              string
 	Type              FileType
 	GenDataXcode      FileEntryXcodeConfig
-	Parent            *VirtualFolder
+	Parent            *VirtualDirectory
 	ExcludedFromBuild bool
 	Generated         bool
 }

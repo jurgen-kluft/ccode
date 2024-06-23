@@ -5,33 +5,42 @@ import (
 	"sort"
 )
 
-type VirtualFolder struct {
-	DiskPath      string
-	Path          string
-	Children      []*VirtualFolder
-	Files         []*FileEntry
-	Parent        *VirtualFolder
-	GenData_xcode struct {
-		UUID UUID
-	}
+type VirtualDirectory struct {
+	DiskPath string
+	Path     string
+	Children []*VirtualDirectory
+	Files    []*FileEntry
+	Parent   *VirtualDirectory
+	UUID     UUID
 }
 
-type VirtualFolders struct {
+type VirtualDirectories struct {
 	DiskPath string
 	Map      map[string]int
-	Folders  []*VirtualFolder
-	Root     *VirtualFolder
+	Folders  []*VirtualDirectory
+	Root     *VirtualDirectory
 }
 
-func NewVirtualFolder() *VirtualFolder {
-	c := &VirtualFolder{}
-	c.Children = make([]*VirtualFolder, 0)
+func NewVirtualFolder() *VirtualDirectory {
+	c := &VirtualDirectory{}
+	c.Children = make([]*VirtualDirectory, 0)
 	c.Files = make([]*FileEntry, 0)
-	c.GenData_xcode.UUID = GenerateUUID()
+	c.UUID = GenerateUUID()
 	return c
 }
 
-func (f *VirtualFolders) getOrAddParent(filePath string) *VirtualFolder {
+func (f *VirtualDirectories) GetAllLeafDirectories() []*VirtualDirectory {
+	var result []*VirtualDirectory
+	for _, v := range f.Folders {
+		if len(v.Children) == 0 && len(v.Files) > 0 {
+			result = append(result, v)
+		}
+	}
+
+	return result
+}
+
+func (f *VirtualDirectories) getOrAddParent(filePath string) *VirtualDirectory {
 	dir, _ := PathUp(filePath)
 	if len(dir) == 0 || dir == "." {
 		return f.Root
@@ -49,7 +58,7 @@ func (f *VirtualFolders) getOrAddParent(filePath string) *VirtualFolder {
 	return v
 }
 
-func (c *VirtualFolder) SortByKey() {
+func (c *VirtualDirectory) SortByKey() {
 	sort.Slice(c.Children, func(i, j int) bool {
 		return c.Children[i].Path < c.Children[j].Path
 	})
@@ -62,18 +71,18 @@ func (c *VirtualFolder) SortByKey() {
 	}
 }
 
-func NewVirtualFolders(diskPath string) *VirtualFolders {
-	v := &VirtualFolders{
+func NewVirtualFolders(diskPath string) *VirtualDirectories {
+	v := &VirtualDirectories{
 		DiskPath: diskPath,
 		Map:      make(map[string]int),
 	}
 	v.Root = NewVirtualFolder()
 	v.Map["."] = len(v.Folders)
-	v.Folders = []*VirtualFolder{v.Root}
+	v.Folders = []*VirtualDirectory{v.Root}
 	return v
 }
 
-func (f *VirtualFolders) getOrCreateFolder(key string) (*VirtualFolder, bool) {
+func (f *VirtualDirectories) getOrCreateFolder(key string) (*VirtualDirectory, bool) {
 	if v, ok := f.Map[key]; ok {
 		return f.Folders[v], false
 	}
@@ -83,13 +92,13 @@ func (f *VirtualFolders) getOrCreateFolder(key string) (*VirtualFolder, bool) {
 	return v, true
 }
 
-func (f *VirtualFolders) AddFile(file *FileEntry) {
+func (f *VirtualDirectories) AddFile(file *FileEntry) {
 	p := f.getOrAddParent(file.Path)
 	file.Parent = p
 	p.Files = append(p.Files, file)
 }
 
-func (f *VirtualFolders) SortByKey() {
+func (f *VirtualDirectories) SortByKey() {
 
 	if f.Root != nil {
 		f.Root.SortByKey()

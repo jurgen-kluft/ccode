@@ -14,8 +14,8 @@ type KeyValueDict struct {
 }
 
 func (d *KeyValueDict) Merge(other *KeyValueDict) {
-	for key, value := range other.Entries {
-		d.AddOrSet(key, other.Values[value])
+	for i, value := range other.Values {
+		d.AddOrSet(other.Keys[i], value)
 	}
 }
 
@@ -28,15 +28,15 @@ func NewKeyValueDict() *KeyValueDict {
 }
 
 func (d *KeyValueDict) Extend(rhs *KeyValueDict) {
-	for key, value := range rhs.Entries {
-		d.AddOrSet(key, rhs.Values[value])
+	for i, value := range rhs.Values {
+		d.AddOrSet(rhs.Keys[i], value)
 	}
 }
 
 func (d *KeyValueDict) UniqueExtend(rhs *KeyValueDict) {
-	for key, value := range rhs.Entries {
+	for i, key := range rhs.Keys {
 		if _, ok := d.Entries[key]; !ok {
-			d.Entries[key] = value
+			d.AddOrSet(key, rhs.Values[i])
 		}
 	}
 }

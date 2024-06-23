@@ -1,35 +1,17 @@
 package axe
 
-// --------------------------------------------------------------------------------------------
-// --------------------------------------------------------------------------------------------
-var spaceIndentationMap = map[string]string{
-	"":         "",
-	"+":        "    ",
-	"++":       "        ",
-	"+++":      "            ",
-	"++++":     "                ",
-	"+++++":    "                    ",
-	"++++++":   "                        ",
-	"+++++++":  "                            ",
-	"++++++++": "                                ",
-}
+import "unicode/utf8"
 
-var tabsIndentationMap = map[string]string{
-	"":         "",
-	"+":        "\t",
-	"++":       "\t\t",
-	"+++":      "\t\t\t",
-	"++++":     "\t\t\t\t",
-	"+++++":    "\t\t\t\t\t",
-	"++++++":   "\t\t\t\t\t\t",
-	"+++++++":  "\t\t\t\t\t\t\t",
-	"++++++++": "\t\t\t\t\t\t\t\t",
-}
+// --------------------------------------------------------------------------------------------
+// --------------------------------------------------------------------------------------------
 
 type LineWriter struct {
-	line   *stringBuilder
-	lines  []string
-	indent map[string]string
+	line           *stringBuilder
+	lineLen        int
+	lines          []string
+	tabstops       []int
+	indent         map[string]string
+	indentNumChars int
 }
 
 type IndentMode int
@@ -45,9 +27,31 @@ func NewLineWriter(mode IndentMode) *LineWriter {
 		lines: make([]string, 0, 8192),
 	}
 	if mode == IndentModeSpaces {
-		l.indent = spaceIndentationMap
+		l.indentNumChars = 4
+		l.indent = map[string]string{
+			"":         "    ",
+			"+":        "        ",
+			"++":       "            ",
+			"+++":      "                ",
+			"++++":     "                    ",
+			"+++++":    "                        ",
+			"++++++":   "                            ",
+			"+++++++":  "                                ",
+			"++++++++": "                                    ",
+		}
 	} else {
-		l.indent = tabsIndentationMap
+		l.indentNumChars = 4
+		l.indent = map[string]string{
+			"":         "",
+			"+":        "\t",
+			"++":       "\t\t",
+			"+++":      "\t\t\t",
+			"++++":     "\t\t\t\t",
+			"+++++":    "\t\t\t\t\t",
+			"++++++":   "\t\t\t\t\t\t",
+			"+++++++":  "\t\t\t\t\t\t\t",
+			"++++++++": "\t\t\t\t\t\t\t\t",
+		}
 	}
 	l.line.Grow(8192)
 	return l
@@ -79,6 +83,7 @@ func (w *LineWriter) IsEmpty() bool {
 
 func (w *LineWriter) Write(strs ...string) {
 	for _, str := range strs {
+		w.lineLen += utf8.RuneCountInString(str)
 		w.line.WriteString(str)
 	}
 }
@@ -88,19 +93,71 @@ func (w *LineWriter) Append(other *LineWriter) {
 	w.lines = append(w.lines, other.lines...)
 }
 
-func (w *LineWriter) WriteILine(indent string, str ...string) {
+func (w *LineWriter) WriteILine(indent string, strs ...string) {
 	w.line.WriteString(w.indent[indent])
-	for _, s := range str {
-		w.line.WriteString(s)
+	for _, str := range strs {
+		w.lineLen += utf8.RuneCountInString(str)
+		w.line.WriteString(str)
 	}
+	w.NewLine()
+}
+
+type TabStop int
+type EndOfLine int
+
+func (w *LineWriter) SetTabStops(stops ...int) {
+	tabstop := 0
+	for _, stop := range stops {
+		if stop > tabstop {
+			tabstop = stop
+			w.tabstops = append(w.tabstops, stop)
+		}
+	}
+}
+
+func (w *LineWriter) WriteAligned(strs ...interface{}) {
+	// Example:
+	//           linewriter.SetTabStops(32, 64, 96)
+	//           linewriter.WriteAligned("PRODUCT_FRAMEWORK", 0, `:= `, project.Name)
+	// Output: "PRODUCT_FRAMEWORK               := project.Name"
+
+	tabstop := 0
+	for _, s := range strs {
+		switch s.(type) {
+		case EndOfLine:
+			w.NewLine()
+			continue
+		case TabStop:
+			i := int(s.(TabStop))
+			if i < len(w.tabstops) {
+				if w.tabstops[i] > tabstop {
+					tabstop = w.tabstops[i]
+				}
+			}
+		case string:
+			// Move the carrot to the tabstop position if it's not already there
+			for w.lineLen < tabstop {
+				w.line.WriteString(" ")
+				w.lineLen += 1 // Currently every indentation is 4 'characters'
+			}
+			w.lineLen += utf8.RuneCountInString(s.(string))
+			w.line.WriteString(s.(string))
+		}
+	}
+}
+
+func (w *LineWriter) WriteAlignedLine(strs ...interface{}) {
+	w.WriteAligned(strs...)
 	w.NewLine()
 }
 
 func (w *LineWriter) WriteLine(strs ...string) {
 	for _, str := range strs {
+		w.lineLen += utf8.RuneCountInString(str)
 		w.line.WriteString(str)
 	}
 	w.lines = append(w.lines, w.line.String())
+	w.lineLen = 0
 	w.line.Reset()
 }
 
@@ -118,6 +175,7 @@ func (w *LineWriter) WriteManyLines(str []string) {
 
 func (w *LineWriter) NewLine() {
 	w.lines = append(w.lines, w.line.String())
+	w.lineLen = 0
 	w.line.Reset()
 }
 

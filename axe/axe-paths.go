@@ -83,6 +83,12 @@ func PathUp(path string) (parent, sub string) {
 	return
 }
 
+// PathParent returns the parent directory
+func PathParent(path string) string {
+	path = PathNormalize(path)
+	return filepath.Dir(path)
+}
+
 // PathSplitRelativeFilePath first makes sure the path is relative, then it splits
 //
 //	the path into each directory, filename and extension

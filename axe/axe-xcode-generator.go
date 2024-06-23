@@ -95,7 +95,7 @@ func (g *XcodeGenerator) genProjectGenUuid(proj *Project) {
 	}
 
 	for _, f := range proj.VirtualFolders.Folders {
-		f.GenData_xcode.UUID = GenerateUUID()
+		f.UUID = GenerateUUID()
 	}
 
 	for _, config := range proj.Configs.Values {
@@ -404,12 +404,12 @@ func (g *XcodeGenerator) genProjectPBXGroup(wr *XcodeWriter, proj *Project) {
 
 		wr.newline(0)
 		wr.commentBlock(v.Path)
-		scope := wr.NewObjectScope(v.GenData_xcode.UUID.String(g.Workspace.Generator))
+		scope := wr.NewObjectScope(v.UUID.String(g.Workspace.Generator))
 		{
 			wr.member("isa", "PBXGroup")
 			scope := wr.NewArrayScope("children")
 			for _, c := range v.Children {
-				wr.write(c.GenData_xcode.UUID.String(g.Workspace.Generator))
+				wr.write(c.UUID.String(g.Workspace.Generator))
 			}
 			for _, f := range v.Files {
 				wr.write(f.GenDataXcode.UUID.String(g.Workspace.Generator))
@@ -440,7 +440,7 @@ func (g *XcodeGenerator) genProjectPBXGroup(wr *XcodeWriter, proj *Project) {
 			wr.write(XcodeDependenciesGroupUUID)
 			wr.write(XcodeResourcesGroupUUID)
 			for _, c := range root.Children {
-				wr.write(c.GenData_xcode.UUID.String(g.Workspace.Generator))
+				wr.write(c.UUID.String(g.Workspace.Generator))
 			}
 			for _, f := range root.Files {
 				wr.write(f.GenDataXcode.UUID.String(g.Workspace.Generator))
@@ -644,8 +644,8 @@ func (g *XcodeGenerator) genProjectXCBuildConfiguration(wr *XcodeWriter, proj *P
 			{
 				scope := wr.NewObjectScope("buildSettings")
 				//cc_flags
-				for key, i := range config.XcodeSettings.Entries {
-					wr.member(key, g.quoteString(config.XcodeSettings.Values[i]))
+				for i, value := range config.XcodeSettings.Values {
+					wr.member(config.XcodeSettings.Keys[i], g.quoteString(value))
 				}
 				wr.member("CLANG_CXX_LANGUAGE_STANDARD", g.quoteString(g.Workspace.Config.CppStd))
 				scope.Close()
@@ -745,8 +745,8 @@ func (g *XcodeGenerator) genProjectXCBuildConfiguration(wr *XcodeWriter, proj *P
 					wr.member("GCC_PRECOMPILE_PREFIX_HEADER", "YES")
 				}
 
-				for key, value := range config.XcodeSettings.Entries {
-					wr.member(key, g.quoteString(config.XcodeSettings.Values[value]))
+				for i, value := range config.XcodeSettings.Values {
+					wr.member(config.XcodeSettings.Keys[i], g.quoteString(value))
 				}
 
 				scope.Close()

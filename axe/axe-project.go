@@ -141,6 +141,10 @@ func NewProjectList() *ProjectList {
 	}
 }
 
+func (p *ProjectList) IsEmpty() bool {
+	return len(p.Values) == 0
+}
+
 func (p *ProjectList) Add(project *Project) {
 	if _, ok := p.Dict[project.Name]; !ok {
 		p.Dict[project.Name] = len(p.Values)
@@ -210,7 +214,7 @@ type Project struct {
 	FileEntries         *FileEntryDict
 	ResourceDirs        *FileEntryDict
 	HasOutputTarget     bool
-	VirtualFolders      *VirtualFolders
+	VirtualFolders      *VirtualDirectories
 	PchCpp              *FileEntry
 	ProjectFilename     string
 	Configs             *ConfigList
@@ -318,7 +322,7 @@ func (p *Project) GenProjectGenUuid() {
 	}
 
 	for _, f := range p.VirtualFolders.Folders {
-		f.GenData_xcode.UUID = GenerateUUID()
+		f.UUID = GenerateUUID()
 	}
 
 	for _, config := range p.Configs.Values {

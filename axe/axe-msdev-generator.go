@@ -350,8 +350,8 @@ func (g *MsDevGenerator) genProjectConfig(wr *XmlWriter, proj *Project, config *
 				return path
 			})
 
-			for key, i := range config.VisualStudioClCompile.Entries {
-				wr.TagWithBody(key, config.VisualStudioClCompile.Values[i])
+			for i, value := range config.VisualStudioClCompile.Values {
+				wr.TagWithBody(config.VisualStudioClCompile.Keys[i], value)
 			}
 
 			tag.Close()
@@ -405,8 +405,8 @@ func (g *MsDevGenerator) genProjectConfig(wr *XmlWriter, proj *Project, config *
 				}
 			}
 
-			for key, i := range config.VisualStudioLink.Entries {
-				wr.TagWithBody(key, config.VisualStudioLink.Values[i])
+			for i, value := range config.VisualStudioLink.Values {
+				wr.TagWithBody(config.VisualStudioLink.Keys[i], value)
 			}
 
 			tag.Close()

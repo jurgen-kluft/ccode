@@ -125,7 +125,7 @@ func (g *AxeGenerator) GenerateMake(pkg *denv.Package) error {
 		return err
 	}
 
-	gg := NewMakeGenerator(ws)
+	gg := NewMakeGenerator2(ws)
 	gg.Generate()
 
 	return nil
@@ -371,8 +371,8 @@ func (g *AxeGenerator) addWorkspaceConfiguration(ws *Workspace, configType Confi
 
 	// clang
 	if ws.MakeTarget.CompilerIsClang() {
-		config.CppFlags.ValuesToAdd("-std=c++11", "-Wall", "-Wno-switch")
-		config.CppFlags.ValuesToAdd("-Wno-unused-variable", "-Wno-unused-function", "-Wno-unused-private-field")
+		config.CppFlags.ValuesToAdd("-std=c++11", "-Wall")
+		config.CppFlags.ValuesToAdd("-Wno-switch", "-Wno-unused-variable", "-Wno-unused-function", "-Wno-unused-private-field")
 		//config.CppFlags.ValuesToAdd("-Wfatal-errors", "-Werror")
 		config.LinkFlags.ValuesToAdd("-lstdc++")
 		if configType.IsDebug() {
