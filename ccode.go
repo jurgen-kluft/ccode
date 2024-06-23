@@ -1,13 +1,12 @@
 package ccode
 
 import (
+	"flag"
 	"fmt"
-	"os"
 	"runtime"
 	"strings"
 
 	"github.com/jurgen-kluft/ccode/axe"
-	"github.com/jurgen-kluft/ccode/cli"
 	"github.com/jurgen-kluft/ccode/denv"
 	"github.com/jurgen-kluft/ccode/embedded"
 )
@@ -17,45 +16,40 @@ var ccode_os = runtime.GOOS
 var ccode_arch = runtime.GOARCH
 
 // Init will initialize ccode before anything else is run
-func Init() error {
-	// Parse command-line
-	app := cli.NewApp()
-	app.Name = "ccode, a tool to generate C/C++ workspace and project files"
-	app.Usage = "ccode --dev=vs2022"
+func Init() bool {
+	flag.StringVar(&ccode_dev, "dev", "tundra", "the build system to generate projects for (vs2022, tundra, make, cmake, xcode)")
+	flag.Parse()
 
-	app.Flags = []cli.Flag{
-		cli.StringFlag{
-			Name:        "dev",
-			Usage:       "the build system to generate projects for (vs2022, tundra, cmake, xcode))",
-			Destination: &ccode_dev,
-		},
-		cli.StringFlag{
-			Name:        "os",
-			Usage:       "os to include (windows, darwin, linux)",
-			Destination: &ccode_os,
-		},
-		cli.StringFlag{
-			Name:        "arch",
-			Usage:       "architecture to include (aarch64, amd64)",
-			Destination: &ccode_arch,
-		},
+	if ccode_os == "" {
+		ccode_os = strings.ToLower(runtime.GOOS)
 	}
-	app.Action = func(c *cli.Context) {
-		if ccode_os == "" {
-			ccode_os = strings.ToLower(runtime.GOOS)
-		}
-		if ccode_arch == "" {
-			ccode_arch = strings.ToLower(runtime.GOARCH)
-		}
-		if ccode_dev == "" {
-			ccode_dev = "tundra"
-			if ccode_os == "windows" {
-				ccode_dev = "vs2022"
-			}
-		}
-		fmt.Printf("ccode (dev:%s, os:%s, arch:%s)\n", ccode_dev, ccode_os, ccode_arch)
+	if ccode_arch == "" {
+		ccode_arch = strings.ToLower(runtime.GOARCH)
 	}
-	return app.Run(os.Args)
+	if ccode_dev == "" {
+		ccode_dev = "tundra"
+		if ccode_os == "windows" {
+			ccode_dev = "vs2022"
+		}
+	}
+
+	fmt.Println("ccode, a tool to generate C/C++ workspace and project files")
+
+	if denv.GetDevEnum(ccode_dev) == denv.INVALID {
+		fmt.Println()
+		fmt.Println("Error, wrong parameter for '-dev', '", ccode_dev, "' is not recognized")
+		fmt.Println()
+		fmt.Println("Examples:")
+		fmt.Println("    -> Usage: ccode -dev=vs2022/vs2019/vs2015")
+		fmt.Println("    -> Usage: ccode -dev=tundra")
+		fmt.Println("    -> Usage: ccode -dev=make")
+		fmt.Println("    -> Usage: ccode -dev=xcode")
+		return false
+	}
+
+	fmt.Printf("finished generating %s for os:%s, arch:%s\n", ccode_dev, ccode_os, ccode_arch)
+
+	return true
 }
 
 // Generate is the main function that requires 'arguments' to then generate

@@ -101,8 +101,8 @@ var defaultWinPlatform = Platform{
 	FilePatternsToIgnore: []string{"_darwin", "_mac", "_linux", "_nob"},
 	Defines:              items.NewList("TARGET_PC", ";", ""),
 	Configs: ConfigSet{
-		"DevDebugStatic":   DevDebugStatic.Copy(),
-		"DevReleaseStatic": DevReleaseStatic.Copy(),
+		"Debug":   DevDebugStatic.Copy(),
+		"Release": DevReleaseStatic.Copy(),
 	},
 }
 
@@ -112,8 +112,8 @@ var defaultDarwinPlatform = Platform{
 	FilePatternsToIgnore: []string{"_win32", "_pc", "_linux", "_nob"},
 	Defines:              items.NewList("TARGET_MAC", ";", ""),
 	Configs: ConfigSet{
-		"DevDebugStatic":   DevDebugStatic.Copy(),
-		"DevReleaseStatic": DevReleaseStatic.Copy(),
+		"Debug":   DevDebugStatic.Copy(),
+		"Release": DevReleaseStatic.Copy(),
 	},
 }
 
@@ -123,8 +123,8 @@ var defaultLinuxPlatform = Platform{
 	FilePatternsToIgnore: []string{"_win32", "_pc", "_darwin", "_mac", "_nob"},
 	Defines:              items.NewList("TARGET_LINUX", ";", ""),
 	Configs: ConfigSet{
-		"DevDebugStatic":   DevDebugStatic.Copy(),
-		"DevReleaseStatic": DevReleaseStatic.Copy(),
+		"Debug":   DevDebugStatic.Copy(),
+		"Release": DevReleaseStatic.Copy(),
 	},
 }
 

@@ -14,37 +14,32 @@ type Config struct {
 	Tundra       string // Tundra specific config string
 	Defines      items.List
 	IncludeDirs  items.List
-	LibraryDirs  items.List
 	LibraryFiles items.List
 	LibraryFile  string
 	Vars         vars.Variables
 }
 
 var DevDebugStatic = &Config{
-	Name:         "DevDebugStatic",
+	Name:         "Debug",
 	Type:         "Static",
 	Config:       "Debug",
 	Build:        "Dev",
 	Tundra:       "*-*-debug",
 	Defines:      items.NewList("TARGET_DEBUG;TARGET_DEV;_DEBUG", ";", ""),
 	IncludeDirs:  items.NewList(Path("source/main/include"), ";", ""),
-	LibraryDirs:  items.NewList(Path("target/${Name}/bin/$(PackageSignature)"), ";", ""),
 	LibraryFiles: items.NewList("", ";", ""),
-	LibraryFile:  "${Name}_$(PackageSignature).lib",
 	Vars:         vars.NewVars(),
 }
 
 var DevReleaseStatic = &Config{
-	Name:         "DevReleaseStatic",
+	Name:         "Release",
 	Type:         "Static",
 	Config:       "Release",
 	Build:        "Dev",
 	Tundra:       "*-*-release",
 	Defines:      items.NewList("TARGET_RELEASE;TARGET_DEV;NDEBUG", ";", ""),
 	IncludeDirs:  items.NewList(Path("source/main/include"), ";", ""),
-	LibraryDirs:  items.NewList(Path("target/${Name}/bin/$(PackageSignature)"), ";", ""),
 	LibraryFiles: items.NewList("", ";", ""),
-	LibraryFile:  "${Name}_$(PackageSignature).lib",
 	Vars:         vars.NewVars(),
 }
 
@@ -91,7 +86,6 @@ func CopyConfig(config *Config) *Config {
 	newconfig.Config = config.Config
 	newconfig.Defines = items.CopyList(config.Defines)
 	newconfig.IncludeDirs = items.CopyList(config.IncludeDirs)
-	newconfig.LibraryDirs = items.CopyList(config.LibraryDirs)
 	newconfig.LibraryFiles = items.CopyList(config.LibraryFiles)
 	newconfig.LibraryFile = config.LibraryFile
 	newconfig.Vars = config.Vars.Copy()
@@ -102,7 +96,6 @@ func CopyConfig(config *Config) *Config {
 func (c *Config) ReplaceVars(v vars.Variables, r vars.Replacer) {
 	v.ReplaceInLines(r, c.Defines.Items)
 	v.ReplaceInLines(r, c.IncludeDirs.Items)
-	v.ReplaceInLines(r, c.LibraryDirs.Items)
 	v.ReplaceInLines(r, c.LibraryFiles.Items)
 	c.LibraryFile = v.ReplaceInLine(r, c.LibraryFile)
 }

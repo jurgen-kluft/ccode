@@ -10,7 +10,8 @@ type DevEnum uint
 
 // All development environment
 const (
-	TUNDRA       DevEnum = 0x020000
+	TUNDRA       DevEnum = 0x010000
+	MAKE         DevEnum = 0x020000
 	CMAKE        DevEnum = 0x040000
 	XCODE        DevEnum = 0x080000
 	VISUALSTUDIO DevEnum = 0x100000
@@ -22,19 +23,22 @@ const (
 )
 
 func GetDevEnum(dev string) DevEnum {
-	if dev == "TUNDRA" {
+	dev = strings.ToLower(dev)
+	if dev == "tundra" {
 		return TUNDRA
-	} else if dev == "CMAKE" {
+	} else if dev == "make" {
+		return MAKE
+	} else if dev == "cmake" {
 		return CMAKE
-	} else if dev == "XCODE" {
+	} else if dev == "xcode" {
 		return XCODE
-	} else if dev == "VS2022" {
+	} else if dev == "vs2022" {
 		return VS2022
-	} else if dev == "VS2019" {
+	} else if dev == "vs2019" {
 		return VS2019
-	} else if dev == "VS2017" {
+	} else if dev == "vs2017" {
 		return VS2017
-	} else if dev == "VS2015" {
+	} else if dev == "vs2015" {
 		return VS2015
 	}
 	return INVALID

@@ -7,7 +7,6 @@ import (
 
 	"github.com/jurgen-kluft/ccode/glob"
 	"github.com/jurgen-kluft/ccode/items"
-	"github.com/jurgen-kluft/ccode/uid"
 	"github.com/jurgen-kluft/ccode/vars"
 )
 
@@ -73,12 +72,9 @@ type Project struct {
 	Name         string
 	Type         ProjectType
 	Author       string
-	GUID         string
 	Language     string
 	Platform     *Platform
 	SrcPath      string
-	HdrFiles     *Files
-	SrcFiles     *Files
 	LibraryFiles items.List
 	Dependencies []*Project
 	Vars         vars.Variables
@@ -149,28 +145,18 @@ var defaultTestSourcePaths = []string{Path("source/test/^**/*.cpp"), Path("sourc
 var defaultMainIncludePaths = []string{Path("source/main/include/^**/*.h"), Path("source/main/include/^**/*.hpp"), Path("source/main/include/^**/*.inl")}
 var defaultTestIncludePaths = []string{Path("source/test/include/^**/*.h"), Path("source/main/include/^**/*.h")}
 
-var defaultCocoaMainSourcePaths = []string{Path("source/main/^**/*.m"), Path("source/main/^**/*.mm")}
-
 // SetupDefaultCppLibProject returns a default C++ project
 // Example:
 //
 //	SetupDefaultCppLibProject("cbase", "github.com/jurgen-kluft")
 func SetupDefaultCppLibProject(name string, URL string) *Project {
 	project := &Project{Name: name}
-	project.GUID = uid.GetGUID(project.Name)
 	project.PackageURL = Path(URL)
 	project.Language = CppLanguageToken
 	project.Type = StaticLibrary
 
 	project.SrcPath = Path("source/main/cpp")
-	project.SrcFiles = &Files{GlobPaths: defaultMainSourcePaths, VirtualPaths: []string{}, Files: []string{}}
-	project.HdrFiles = &Files{GlobPaths: defaultMainIncludePaths, VirtualPaths: []string{}, Files: []string{}}
 	project.LibraryFiles = items.NewList("", ";", "")
-
-	if OS == "darwin" {
-		project.SrcFiles.GlobPaths = append(project.SrcFiles.GlobPaths, defaultCocoaMainSourcePaths...)
-	}
-
 	project.Platform = GetDefaultPlatform()
 	project.Dependencies = []*Project{}
 	project.Vars = vars.NewVars()
@@ -187,20 +173,12 @@ func SetupDefaultCppLibProject(name string, URL string) *Project {
 //	SetupDefaultCppTestProject("cbase", "github.com\\jurgen-kluft")
 func SetupDefaultCppTestProject(name string, URL string) *Project {
 	project := &Project{Name: name}
-	project.GUID = uid.GetGUID(project.Name)
 	project.PackageURL = Path(URL)
 	project.Language = CppLanguageToken
 	project.Type = Executable
 
 	project.SrcPath = Path("source/test/cpp")
-	project.SrcFiles = &Files{GlobPaths: defaultTestSourcePaths, VirtualPaths: []string{}, Files: []string{}}
-	project.HdrFiles = &Files{GlobPaths: defaultTestIncludePaths, VirtualPaths: []string{}, Files: []string{}}
 	project.LibraryFiles = items.NewList("", ";", "")
-
-	if OS == "darwin" {
-		project.SrcFiles.GlobPaths = append(project.SrcFiles.GlobPaths, defaultCocoaMainSourcePaths...)
-	}
-
 	project.Platform = GetDefaultPlatform()
 	project.Dependencies = []*Project{}
 	project.Vars = vars.NewVars()
@@ -218,20 +196,12 @@ func SetupDefaultCppTestProject(name string, URL string) *Project {
 //	SetupDefaultCppAppProject("cbase", "github.com\\jurgen-kluft")
 func SetupDefaultCppAppProject(name string, URL string) *Project {
 	project := &Project{Name: name}
-	project.GUID = uid.GetGUID(project.Name)
 	project.PackageURL = Path(URL)
 	project.Language = CppLanguageToken
 	project.Type = Executable
 
 	project.SrcPath = Path("source/main/cpp")
-	project.SrcFiles = &Files{GlobPaths: defaultMainSourcePaths, VirtualPaths: []string{}, Files: []string{}}
-	project.HdrFiles = &Files{GlobPaths: defaultMainIncludePaths, VirtualPaths: []string{}, Files: []string{}}
 	project.LibraryFiles = items.NewList("", ";", "")
-
-	if OS == "darwin" {
-		project.SrcFiles.GlobPaths = append(project.SrcFiles.GlobPaths, defaultCocoaMainSourcePaths...)
-	}
-
 	project.Platform = GetDefaultPlatform()
 	project.Dependencies = []*Project{}
 	project.Vars = vars.NewVars()
