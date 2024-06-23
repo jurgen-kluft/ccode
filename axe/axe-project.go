@@ -4,8 +4,6 @@ import (
 	"fmt"
 	"path/filepath"
 	"strings"
-
-	"github.com/jurgen-kluft/ccode/glob"
 )
 
 // -----------------------------------------------------------------------------------------------------
@@ -473,7 +471,7 @@ func (p *Project) GlobFiles(dir string, pattern string) {
 	pattern = PathNormalize(pattern)
 	pp := strings.Split(pattern, "^")
 	path := filepath.Join(dir, pp[0])
-	files, err := glob.GlobFiles(path, pp[1])
+	files, err := GlobFiles(path, pp[1])
 	if err != nil {
 		return
 	}
