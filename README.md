@@ -26,7 +26,7 @@ Note: Not happy with CMake, there must be a better way of doing this, if you kno
 
 Currently the design is quite set and the goal is to keep creating and maintaining packages to a minimum.
 
-If you have repository/package that uses ccode, you can do the following to generate the CMake build files, this example uses the `cbase` repository:
+If you have repository/package that uses ccode, you can do the following to generate the make build files, this example uses the `cbase` repository:
 
 1. `go run cbase.go --dev=make`
 2. cd into `target/make`
@@ -46,7 +46,8 @@ For Tundra build files (on Mac and Linux, Tundra is the default generator):
 2. cd into `target/tundra`
 3. run `tundra2 debug` or `tundra2 release`
 
-These are the steps to make a new package:
+These are the steps to make a new package, or take a peek at one of my libraries, 
+like `github.com/jurgen-kluft/cbase`:
 
 1. Create a new Github repository like `mylibrary`
 2. In the root create a `mylibrary.go` file
@@ -76,16 +77,15 @@ func main() {
     // - ./source/test/cpp/test_main.cpp    
     ccode.GenerateFiles()
     
-    // This will generate the Visual Studio solution and projects, CMakeLists.txt, 
-    // Tundra build files or Zig build files
+    // This will generate the Visual Studio solution and projects, makefile, or tundra build files
     ccode.Generate(mylibrary.GetPackage())
 
-    // You can also insert generated C++ enums with ToString functions, the my_enums.h
+    // You can also insert generated C++ enums with ToString and other functions, the my_enums.h
     // file should already exist and have 2 delimiter lines that you can configure as 
-    // 'between'. 
+    // 'between' (take a peek inside the `embedded/my_enums.h.json` file)
     ccode.GenerateCppEnums("embedded/my_enums.h.json", "main/include/cbase/my_enums.h")
 
-    // Or if you are up to it, even generating structs is possible
+    // Or if you are up to it, even generating structs is (wip) possible
     ccode.GenerateCppStructs("embedded/my_structs.h.json", "main/include/cbase/my_structs.h")
 }
 ```
@@ -122,9 +122,11 @@ func GetPackage() *denv.Package {
 }
 ```
 
-There are some requirements for the layout of folders inside of your repository to hold the library and unittest files, this is the layout:
+There are some requirements for the layout of folders inside of your repository to hold the 
+library and unittest files, this is the layout:
 
-1. `source\main\cpp`: the cpp files of your library. Header files should be included as ```#include "mylibrary/header.h"```
+1. `source\main\cpp`: the cpp files of your library. Header files should be 
+   included as ```#include "mylibrary/header.h"```
 2. `source\main\include\mylibrary`: the header files of your library
 3. `source\test\cpp`: the cpp files of your unittest app
 4. `source\test\include`: the header files of your unittest app
