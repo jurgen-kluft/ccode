@@ -190,7 +190,6 @@ type Config struct {
 
 func NewConfig(t ConfigType, ws *Workspace, p *Project) *Config {
 	c := &Config{}
-	//c.Name = name
 	c.Type = t
 	c.Workspace = ws
 	c.Project = p
@@ -277,7 +276,7 @@ func (c *Config) InitXcodeSettings() {
 	} else if c.Workspace.MakeTarget.OSIsMac() {
 		settings["SDKROOT"] = "macosx"
 		settings["SUPPORTED_PLATFORMS"] = "macosx"
-		settings["MACOSX_DEPLOYMENT_TARGET"] = "10.14" // c++11 require 10.10+
+		settings["MACOSX_DEPLOYMENT_TARGET"] = "10.15" // c++11 require 10.10+
 	}
 
 	if c.Type.IsDebug() {
@@ -305,7 +304,7 @@ func (c *Config) InitXcodeSettings() {
 
 	settings["CODE_SIGN_IDENTITY"] = "-"
 	settings["ALWAYS_SEARCH_USER_PATHS"] = "NO"
-	settings["CLANG_ENABLE_OBJC_ARC"] = "YES"
+	//	settings["CLANG_ENABLE_OBJC_ARC"] = "YES"
 	settings["GCC_SYMBOLS_PRIVATE_EXTERN"] = "YES"
 	settings["ENABLE_STRICT_OBJC_MSGSEND"] = "YES"
 
