@@ -72,6 +72,7 @@ func NewWorkspace(wsc *WorkspaceConfig) *Workspace {
 	}
 
 	if ws.MakeTarget.CompilerIsVc() {
+		wsc.LibTargetPrefix = ""
 		wsc.LibTargetSuffix = ".lib"
 	} else {
 		wsc.LibTargetPrefix = "lib"
