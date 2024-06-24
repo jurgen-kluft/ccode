@@ -84,7 +84,6 @@ func SetupDefaultCppTestProject(name string, URL string) *Project {
 	project.Platform = GetDefaultPlatform()
 	project.Dependencies = []*Project{}
 
-	project.Platform.AddIncludeDir(Path("source/test/include"))
 	return project
 }
 
