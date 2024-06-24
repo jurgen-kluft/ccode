@@ -183,12 +183,15 @@ func (g *AxeGenerator) GenerateWorkspace(pkg *denv.Package, generatorType Genera
 	ws.WorkspaceName = app.Name
 	ws.WorkspaceAbsPath = g.RootAbsPath
 	ws.GenerateAbsPath = filepath.Join(g.RootAbsPath, app.PackageURL, "target", ws.Generator.String())
+
 	if unittestApp != nil {
-		g.addWorkspaceConfiguration(ws, ConfigTypeDebug|ConfigTypeTest)
-		g.addWorkspaceConfiguration(ws, ConfigTypeRelease|ConfigTypeTest)
+		for _, cfgItem := range unittestApp.Platform.Configs {
+			g.addWorkspaceConfiguration(ws, cfgItem, true)
+		}
 	} else {
-		g.addWorkspaceConfiguration(ws, ConfigTypeDebug)
-		g.addWorkspaceConfiguration(ws, ConfigTypeRelease)
+		for _, cfgItem := range mainApp.Platform.Configs {
+			g.addWorkspaceConfiguration(ws, cfgItem, false)
+		}
 	}
 
 	// Create the main and dependency projects and also setup the list of dependencies of each project
@@ -255,10 +258,10 @@ func (g *AxeGenerator) collectProjectDependencies(proj *denv.Project) []*denv.Pr
 	return projectList
 }
 
-func (g *AxeGenerator) createProject(proj *denv.Project, ws *Workspace, unittest bool) *Project {
+func (g *AxeGenerator) createProject(devProj *denv.Project, ws *Workspace, unittest bool) *Project {
 	projectConfig := NewVisualStudioProjectConfig(g.Dev)
 	{
-		executable := proj.Type == denv.Executable
+		executable := devProj.Type == denv.Executable
 		if !executable {
 			if unittest {
 				projectConfig.Group = "unittest/cpp-library"
@@ -280,67 +283,60 @@ func (g *AxeGenerator) createProject(proj *denv.Project, ws *Workspace, unittest
 		projectConfig.MultiThreadedBuild = true
 		projectConfig.CppAsObjCpp = false
 
-		for _, dp := range proj.Dependencies {
+		for _, dp := range devProj.Dependencies {
 			projectConfig.Dependencies = append(projectConfig.Dependencies, dp.Name)
 		}
 
-		projAbsPath := filepath.Join(g.RootAbsPath, proj.PackageURL)
-		newProject := ws.NewProject(proj.Name, projAbsPath, ProjectTypeCppLib, projectConfig)
-		newProject.ProjectFilename = proj.Name
+		projAbsPath := filepath.Join(g.RootAbsPath, devProj.PackageURL)
+		newProject := ws.NewProject(devProj.Name, projAbsPath, ProjectTypeCppLib, projectConfig)
+		newProject.ProjectFilename = devProj.Name
+
+		newProject.GlobFiles(projAbsPath, filepath.Join("source", "main", "cpp", "^**", "*.cpp"))
+		newProject.GlobFiles(projAbsPath, filepath.Join("source", "main", "include", "^**", "*.h"))
+		newProject.GlobFiles(projAbsPath, filepath.Join("source", "main", "include", "^**", "*.hpp"))
+		newProject.GlobFiles(projAbsPath, filepath.Join("source", "main", "include", "^**", "*.inl"))
+
+		if ws.MakeTarget.OSIsMac() {
+			newProject.GlobFiles(projAbsPath, filepath.Join("source", "main", "cpp", "^**", "*.m"))
+			newProject.GlobFiles(projAbsPath, filepath.Join("source", "main", "cpp", "^**", "*.mm"))
+		}
 
 		if unittest && executable {
-			newProject.GlobFiles(projAbsPath, filepath.Join("source", "main", "include", "^**", "*.h"))
-			newProject.GlobFiles(projAbsPath, filepath.Join("source", "main", "include", "^**", "*.inl"))
-
 			newProject.GlobFiles(projAbsPath, filepath.Join("source", "test", "cpp", "^**", "*.cpp"))
 			newProject.GlobFiles(projAbsPath, filepath.Join("source", "test", "include", "^**", "*.h"))
+			newProject.GlobFiles(projAbsPath, filepath.Join("source", "test", "include", "^**", "*.hpp"))
 			newProject.GlobFiles(projAbsPath, filepath.Join("source", "test", "include", "^**", "*.inl"))
+		}
 
-			g.createDefaultProjectConfiguration(newProject, ConfigTypeDebug|ConfigTypeTest, true)
-			g.createDefaultProjectConfiguration(newProject, ConfigTypeRelease|ConfigTypeTest, true)
-		} else if unittest && !executable {
-			newProject.GlobFiles(projAbsPath, filepath.Join("source", "main", "include", "^**", "*.h"))
-			newProject.GlobFiles(projAbsPath, filepath.Join("source", "main", "include", "^**", "*.inl"))
-			newProject.GlobFiles(projAbsPath, filepath.Join("source", "main", "cpp", "^**", "*.cpp"))
-			if ws.MakeTarget.OSIsMac() {
-				newProject.GlobFiles(projAbsPath, filepath.Join("source", "main", "cpp", "^**", "*.m"))
-				newProject.GlobFiles(projAbsPath, filepath.Join("source", "main", "cpp", "^**", "*.mm"))
-			}
-
-			g.createDefaultProjectConfiguration(newProject, ConfigTypeDebug|ConfigTypeTest, true)
-			g.createDefaultProjectConfiguration(newProject, ConfigTypeRelease|ConfigTypeTest, true)
-		} else if !unittest && executable {
-			newProject.GlobFiles(projAbsPath, filepath.Join("source", "main", "include", "^**", "*.h"))
-			newProject.GlobFiles(projAbsPath, filepath.Join("source", "main", "include", "^**", "*.inl"))
-			newProject.GlobFiles(projAbsPath, filepath.Join("source", "main", "cpp", "^**", "*.cpp"))
-			if ws.MakeTarget.OSIsMac() {
-				newProject.GlobFiles(projAbsPath, filepath.Join("source", "main", "cpp", "^**", "*.m"))
-				newProject.GlobFiles(projAbsPath, filepath.Join("source", "main", "cpp", "^**", "*.mm"))
-			}
-
-			g.createDefaultProjectConfiguration(newProject, ConfigTypeDebug, false)
-			g.createDefaultProjectConfiguration(newProject, ConfigTypeDebug, false)
-		} else {
-			newProject.GlobFiles(projAbsPath, filepath.Join("source", "main", "cpp", "^**", "*.cpp"))
-			newProject.GlobFiles(projAbsPath, filepath.Join("source", "main", "include", "^**", "*.inl"))
-			newProject.GlobFiles(projAbsPath, filepath.Join("source", "main", "cpp", "^**", "*.cpp"))
-			if ws.MakeTarget.OSIsMac() {
-				newProject.GlobFiles(projAbsPath, filepath.Join("source", "main", "cpp", "^**", "*.m"))
-				newProject.GlobFiles(projAbsPath, filepath.Join("source", "main", "cpp", "^**", "*.mm"))
-			}
-			g.createDefaultProjectConfiguration(newProject, ConfigTypeDebug, false)
-			g.createDefaultProjectConfiguration(newProject, ConfigTypeDebug, false)
+		for _, cfgItem := range devProj.Platform.Configs {
+			g.createProjectConfiguration(newProject, cfgItem, unittest)
 		}
 
 		return newProject
 	}
 }
 
-func (g *AxeGenerator) createDefaultProjectConfiguration(p *Project, configType ConfigType, unittest bool) *Config {
+func (g *AxeGenerator) createProjectConfiguration(p *Project, cfg *denv.Config, unittest bool) *Config {
+	configType := ConfigTypeNone
+	if cfg.Config == "Debug" {
+		configType = ConfigTypeDebug
+	} else if cfg.Config == "Release" {
+		configType = ConfigTypeRelease
+	}
+	if unittest {
+		configType |= ConfigTypeTest
+	}
+
 	config := p.GetOrCreateConfig(configType)
 
-	config.AddIncludeDir("source/main/include")
+	for _, define := range cfg.Defines {
+		config.CppDefines.ValuesToAdd(define)
+	}
+	for _, include := range cfg.IncludeDirs {
+		config.AddIncludeDir(include)
+	}
 
+	config.AddIncludeDir("source/main/include")
 	if unittest {
 		config.AddIncludeDir("source/test/include")
 		config.VisualStudioClCompile.AddOrSet("ExceptionHandling", "Sync")
@@ -350,7 +346,17 @@ func (g *AxeGenerator) createDefaultProjectConfiguration(p *Project, configType 
 	return config
 }
 
-func (g *AxeGenerator) addWorkspaceConfiguration(ws *Workspace, configType ConfigType) {
+func (g *AxeGenerator) addWorkspaceConfiguration(ws *Workspace, cfg *denv.Config, unittest bool) {
+	configType := ConfigTypeNone
+	if cfg.Config == "Debug" {
+		configType = ConfigTypeDebug
+	} else if cfg.Config == "Release" {
+		configType = ConfigTypeRelease
+	}
+	if unittest {
+		configType |= ConfigTypeTest
+	}
+
 	config := NewConfig(configType, ws, nil)
 
 	if configType.IsDebug() {

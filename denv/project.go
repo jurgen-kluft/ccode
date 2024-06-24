@@ -1,24 +1,5 @@
 package denv
 
-import (
-	"fmt"
-
-	"github.com/jurgen-kluft/ccode/items"
-	"github.com/jurgen-kluft/ccode/vars"
-)
-
-// Files helps to collect source and header files as well as virtual files as they
-// can be presented in an IDE
-type Files struct {
-	GlobPaths    []string
-	VirtualPaths []string
-	Files        []string
-}
-
-func (f *Files) AddGlobPath(dirpath string) {
-	f.GlobPaths = append(f.GlobPaths, dirpath)
-}
-
 // ProjectType defines the type of project, like 'StaticLibrary'
 type ProjectType int
 
@@ -46,10 +27,7 @@ type Project struct {
 	Author       string
 	Language     string
 	Platform     *Platform
-	SrcPath      string
-	LibraryFiles items.List
 	Dependencies []*Project
-	Vars         vars.Variables
 }
 
 // HasPlatform returns true if the project is configured for that platform
@@ -77,46 +55,6 @@ func (prj *Project) AddDefine(define string) {
 	prj.Platform.AddDefine(define)
 }
 
-// AddDefine adds a library or libraries
-func (prj *Project) AddLibrary(library string) {
-	prj.LibraryFiles = prj.LibraryFiles.Add(library)
-}
-
-// AddVar adds a variable to this project
-func (prj *Project) AddVar(name, value string) {
-	prj.Vars.AddVar(name, value)
-}
-
-// MergeVars merges  any variable that exists in objects of Project
-func (prj *Project) MergeVars(v vars.Variables) {
-
-	// Merge in the project level variables
-	prjmerger := func(key, value string, vv vars.Variables) {
-		vv.AddVar(prj.Name+":"+key, value)
-	}
-	vars.MergeVars(v, prj.Vars, prjmerger)
-
-	// Merge in the project\platform\config variables
-	for _, config := range prj.Platform.Configs {
-		pcmerger := func(key, value string, vv vars.Variables) {
-			vv.AddVar(fmt.Sprintf("%s:%s[%s][%s]", prj.Name, key, prj.Platform.Name, config.Name), value)
-		}
-		vars.MergeVars(v, config.Vars, pcmerger)
-	}
-}
-
-// ReplaceVars replaces any variable that exists in members of Project
-func (prj *Project) ReplaceVars(v vars.Variables, r vars.Replacer) {
-	v.AddVar("${Name}", prj.Name)
-	prj.Platform.ReplaceVars(v, r)
-	v.DelVar("${Name}")
-}
-
-var defaultMainSourcePaths = []string{Path("source/main/^**/*.cpp"), Path("source/main/^**/*.c")}
-var defaultTestSourcePaths = []string{Path("source/test/^**/*.cpp"), Path("source/main/^**/*.c")}
-var defaultMainIncludePaths = []string{Path("source/main/include/^**/*.h"), Path("source/main/include/^**/*.hpp"), Path("source/main/include/^**/*.inl")}
-var defaultTestIncludePaths = []string{Path("source/test/include/^**/*.h"), Path("source/main/include/^**/*.h")}
-
 // SetupDefaultCppLibProject returns a default C++ project
 // Example:
 //
@@ -127,14 +65,8 @@ func SetupDefaultCppLibProject(name string, URL string) *Project {
 	project.Language = CppLanguageToken
 	project.Type = StaticLibrary
 
-	project.SrcPath = Path("source/main/cpp")
-	project.LibraryFiles = items.NewList("", ";", "")
 	project.Platform = GetDefaultPlatform()
 	project.Dependencies = []*Project{}
-	project.Vars = vars.NewVars()
-
-	project.AddVar("EXCEPTIONS", "false")
-	project.AddVar("COMPILE_AS", "CompileAsCpp")
 
 	return project
 }
@@ -149,14 +81,8 @@ func SetupDefaultCppTestProject(name string, URL string) *Project {
 	project.Language = CppLanguageToken
 	project.Type = Executable
 
-	project.SrcPath = Path("source/test/cpp")
-	project.LibraryFiles = items.NewList("", ";", "")
 	project.Platform = GetDefaultPlatform()
 	project.Dependencies = []*Project{}
-	project.Vars = vars.NewVars()
-
-	project.AddVar("EXCEPTIONS", "Sync")
-	project.AddVar("COMPILE_AS", "CompileAsCpp")
 
 	project.Platform.AddIncludeDir(Path("source/test/include"))
 	return project
@@ -172,14 +98,8 @@ func SetupDefaultCppAppProject(name string, URL string) *Project {
 	project.Language = CppLanguageToken
 	project.Type = Executable
 
-	project.SrcPath = Path("source/main/cpp")
-	project.LibraryFiles = items.NewList("", ";", "")
 	project.Platform = GetDefaultPlatform()
 	project.Dependencies = []*Project{}
-	project.Vars = vars.NewVars()
-
-	project.AddVar("EXCEPTIONS", "false")
-	project.AddVar("COMPILE_AS", "CompileAsCpp")
 
 	return project
 }

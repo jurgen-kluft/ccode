@@ -1,46 +1,37 @@
 package denv
 
-import (
-	"github.com/jurgen-kluft/ccode/items"
-	"github.com/jurgen-kluft/ccode/vars"
-)
-
 // Config represents a project build configuration, like 'Debug' or 'Release'
 type Config struct {
 	Name         string
 	Type         string // Static, Dynamic, Executable
 	Config       string // Debug, Release, Final
-	Build        string // Dev, Test, Retail
+	Build        string // Development, Unittest, Profile, Shipping
 	Tundra       string // Tundra specific config string
-	Defines      items.List
-	IncludeDirs  items.List
-	LibraryFiles items.List
-	LibraryFile  string
-	Vars         vars.Variables
+	Defines      []string
+	IncludeDirs  []string
+	LibraryFiles []string
 }
 
-var DevDebugStatic = &Config{
+var DebugConfig = &Config{
 	Name:         "Debug",
 	Type:         "Static",
 	Config:       "Debug",
 	Build:        "Dev",
 	Tundra:       "*-*-debug",
-	Defines:      items.NewList("TARGET_DEBUG;TARGET_DEV;_DEBUG", ";", ""),
-	IncludeDirs:  items.NewList(Path("source/main/include"), ";", ""),
-	LibraryFiles: items.NewList("", ";", ""),
-	Vars:         vars.NewVars(),
+	Defines:      []string{},
+	IncludeDirs:  []string{},
+	LibraryFiles: []string{},
 }
 
-var DevReleaseStatic = &Config{
+var ReleaseConfig = &Config{
 	Name:         "Release",
 	Type:         "Static",
 	Config:       "Release",
 	Build:        "Dev",
 	Tundra:       "*-*-release",
-	Defines:      items.NewList("TARGET_RELEASE;TARGET_DEV;NDEBUG", ";", ""),
-	IncludeDirs:  items.NewList(Path("source/main/include"), ";", ""),
-	LibraryFiles: items.NewList("", ";", ""),
-	Vars:         vars.NewVars(),
+	Defines:      []string{},
+	IncludeDirs:  []string{},
+	LibraryFiles: []string{},
 }
 
 // ConfigSet type for mapping a config-name to a config-object
@@ -84,18 +75,8 @@ func (c *Config) Copy() *Config {
 func CopyConfig(config *Config) *Config {
 	newconfig := &Config{Name: config.Name, Config: config.Config}
 	newconfig.Config = config.Config
-	newconfig.Defines = items.CopyList(config.Defines)
-	newconfig.IncludeDirs = items.CopyList(config.IncludeDirs)
-	newconfig.LibraryFiles = items.CopyList(config.LibraryFiles)
-	newconfig.LibraryFile = config.LibraryFile
-	newconfig.Vars = config.Vars.Copy()
+	newconfig.Defines = append(newconfig.Defines, config.Defines...)
+	newconfig.IncludeDirs = append(newconfig.IncludeDirs, config.IncludeDirs...)
+	newconfig.LibraryFiles = append(newconfig.LibraryFiles, config.LibraryFiles...)
 	return newconfig
-}
-
-// ReplaceVars replaces variables that are present in members of the Config
-func (c *Config) ReplaceVars(v vars.Variables, r vars.Replacer) {
-	v.ReplaceInLines(r, c.Defines.Items)
-	v.ReplaceInLines(r, c.IncludeDirs.Items)
-	v.ReplaceInLines(r, c.LibraryFiles.Items)
-	c.LibraryFile = v.ReplaceInLine(r, c.LibraryFile)
 }

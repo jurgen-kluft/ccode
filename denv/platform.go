@@ -1,10 +1,5 @@
 package denv
 
-import (
-	"github.com/jurgen-kluft/ccode/items"
-	"github.com/jurgen-kluft/ccode/vars"
-)
-
 const (
 	// PlatformWin32 OS is Windows, 32-bit
 	PlatformWin32 = "Win32"
@@ -21,7 +16,7 @@ type Platform struct {
 	Name                 string
 	OS                   string
 	FilePatternsToIgnore []string
-	Defines              items.List
+	Defines              []string
 	Configs              ConfigSet
 }
 
@@ -45,30 +40,17 @@ func (p *Platform) GetConfig(configname string) *Config {
 	return nil
 }
 
-func (p *Platform) ReplaceVars(v vars.Variables, r vars.Replacer) {
-	for _, config := range p.Configs {
-		config.ReplaceVars(v, r)
-	}
-}
-
 func (p *Platform) AddIncludeDir(includeDir string) {
 	var platform = p
 	for _, config := range platform.Configs {
-		config.IncludeDirs = config.IncludeDirs.Add(includeDir)
+		config.IncludeDirs = append(config.IncludeDirs, includeDir)
 	}
 }
 
 func (p *Platform) AddDefine(define string) {
 	var platform = p
 	for _, config := range platform.Configs {
-		config.Defines = config.Defines.Add(define)
-	}
-}
-
-func (p *Platform) AddVar(varname, varvalue string) {
-	var platform = p
-	for _, config := range platform.Configs {
-		config.Vars.AddVar(varname, varvalue)
+		config.Defines = append(config.Defines, define)
 	}
 }
 
@@ -85,24 +67,15 @@ func (pset PlatformSet) HasPlatform(platformname string) bool {
 	return false
 }
 
-// ReplaceVars replaces any variable that exists in members of Project
-func (pset PlatformSet) ReplaceVars(v vars.Variables, r vars.Replacer) {
-	for _, platform := range pset {
-		for _, config := range platform.Configs {
-			config.ReplaceVars(v, r)
-		}
-	}
-}
-
 // DefaultPlatforms defines a set of supported platforms
 var defaultWinPlatform = Platform{
 	Name:                 PlatformWin64,
 	OS:                   "windows",
 	FilePatternsToIgnore: []string{"_darwin", "_mac", "_linux", "_nob"},
-	Defines:              items.NewList("TARGET_PC", ";", ""),
+	Defines:              []string{},
 	Configs: ConfigSet{
-		"Debug":   DevDebugStatic.Copy(),
-		"Release": DevReleaseStatic.Copy(),
+		"Debug":   DebugConfig.Copy(),
+		"Release": ReleaseConfig.Copy(),
 	},
 }
 
@@ -110,10 +83,10 @@ var defaultDarwinPlatform = Platform{
 	Name:                 PlatformDarwin64,
 	OS:                   "darwin",
 	FilePatternsToIgnore: []string{"_win32", "_pc", "_linux", "_nob"},
-	Defines:              items.NewList("TARGET_MAC", ";", ""),
+	Defines:              []string{},
 	Configs: ConfigSet{
-		"Debug":   DevDebugStatic.Copy(),
-		"Release": DevReleaseStatic.Copy(),
+		"Debug":   DebugConfig.Copy(),
+		"Release": ReleaseConfig.Copy(),
 	},
 }
 
@@ -121,10 +94,10 @@ var defaultLinuxPlatform = Platform{
 	Name:                 PlatformLinux64,
 	OS:                   "linux",
 	FilePatternsToIgnore: []string{"_win32", "_pc", "_darwin", "_mac", "_nob"},
-	Defines:              items.NewList("TARGET_LINUX", ";", ""),
+	Defines:              []string{},
 	Configs: ConfigSet{
-		"Debug":   DevDebugStatic.Copy(),
-		"Release": DevReleaseStatic.Copy(),
+		"Debug":   DebugConfig.Copy(),
+		"Release": ReleaseConfig.Copy(),
 	},
 }
 
@@ -133,8 +106,8 @@ func (pset PlatformSet) Copy() PlatformSet {
 	set := PlatformSet{}
 	for pn, p := range pset {
 		platform := &Platform{Name: pn}
-		platform.Defines = p.Defines.Copy()
-		platform.Configs = p.Configs.Copy()
+		platform.Defines = p.Defines
+		platform.Configs = p.Configs
 		set[platform.Name] = platform
 	}
 	return set
@@ -142,36 +115,33 @@ func (pset PlatformSet) Copy() PlatformSet {
 
 // GetDefaultPlatforms returns the default platform according to the OS we are running on at the moment
 func GetDefaultPlatform() *Platform {
-
-	//dev := GetDevEnum(DEV)
-
 	platform := &Platform{}
 	if OS == "windows" {
 		var p = defaultWinPlatform
 		platform.Name = p.Name
 		platform.OS = p.OS
-		platform.Defines = p.Defines.Copy()
-		platform.Configs = p.Configs.Copy()
+		platform.Defines = p.Defines
+		platform.Configs = p.Configs
 		platform.FilePatternsToIgnore = p.FilePatternsToIgnore
 	} else if OS == "linux" {
 		var p = defaultLinuxPlatform
 		platform.Name = p.Name
 		platform.OS = p.OS
-		platform.Defines = p.Defines.Copy()
-		platform.Configs = p.Configs.Copy()
+		platform.Defines = p.Defines
+		platform.Configs = p.Configs
 		platform.FilePatternsToIgnore = p.FilePatternsToIgnore
 	} else {
 		var p = defaultDarwinPlatform
 		platform.Name = p.Name
 		platform.OS = p.OS
-		platform.Defines = p.Defines.Copy()
-		platform.Configs = p.Configs.Copy()
+		platform.Defines = p.Defines
+		platform.Configs = p.Configs
 		platform.FilePatternsToIgnore = p.FilePatternsToIgnore
 	}
 
 	// Merge the platform defines into the configurations
 	for _, config := range platform.Configs {
-		config.Defines = config.Defines.Merge(platform.Defines)
+		config.Defines = append(config.Defines, platform.Defines...)
 	}
 
 	return platform
@@ -180,7 +150,7 @@ func GetDefaultPlatform() *Platform {
 func (pset PlatformSet) AddIncludeDir(includeDir string) {
 	for _, platform := range pset {
 		for _, config := range platform.Configs {
-			config.IncludeDirs = config.IncludeDirs.Add(includeDir)
+			config.IncludeDirs = append(config.IncludeDirs, includeDir)
 		}
 	}
 }
@@ -188,15 +158,7 @@ func (pset PlatformSet) AddIncludeDir(includeDir string) {
 func (pset PlatformSet) AddDefine(define string) {
 	for _, platform := range pset {
 		for _, config := range platform.Configs {
-			config.Defines = config.Defines.Add(define)
-		}
-	}
-}
-
-func (pset PlatformSet) AddVar(varname, varvalue string) {
-	for _, platform := range pset {
-		for _, config := range platform.Configs {
-			config.Vars.AddVar(varname, varvalue)
+			config.Defines = append(config.Defines, define)
 		}
 	}
 }
