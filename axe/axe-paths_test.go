@@ -71,7 +71,7 @@ func TestPathNormalize(t *testing.T) {
 		expected  string
 		direction bool
 	}{
-		{"c:\\documents\\old", "c:/documents/old", win},
+		{"c:\\documents\\old", "c:/documents/old", !win},
 	}
 
 	for _, test := range tests {
