@@ -39,6 +39,10 @@ func GetDevEnum(dev string) DevEnum {
 	return ParseVisualStudio(dev)
 }
 
+func (d DevEnum) IsXCode() bool {
+	return d == XCODE
+}
+
 // ParseVisualStudio returns a value for type IDE deduced from the incoming string @dev
 func ParseVisualStudio(dev string) DevEnum {
 	dev = strings.ToLower(dev)
@@ -196,8 +200,8 @@ func (g *AxeGenerator) GenerateWorkspace(pkg *denv.Package, generatorType Genera
 
 	// Create the main and dependency projects and also setup the list of dependencies of each project
 	if app == mainApp {
-		mainAppDependencies := g.collectProjectDependencies(mainApp)
-		mainAppProject := g.createProject(mainApp, ws, false)
+		mainAppDependencies := g.collectProjectDependencies(app)
+		mainAppProject := g.createProject(app, ws, false)
 		for _, dp := range mainAppDependencies {
 			mainAppProject.Settings.Dependencies = append(mainAppProject.Settings.Dependencies, dp.Name)
 		}
@@ -209,8 +213,8 @@ func (g *AxeGenerator) GenerateWorkspace(pkg *denv.Package, generatorType Genera
 			}
 		}
 	} else if app == unittestApp {
-		unittestDependencies := g.collectProjectDependencies(unittestApp)
-		unittestProject := g.createProject(unittestApp, ws, true)
+		unittestDependencies := g.collectProjectDependencies(app)
+		unittestProject := g.createProject(app, ws, true)
 		for _, dp := range unittestDependencies {
 			unittestProject.Settings.Dependencies = append(unittestProject.Settings.Dependencies, dp.Name)
 		}
@@ -291,32 +295,42 @@ func (g *AxeGenerator) createProject(devProj *denv.Project, ws *Workspace, unitt
 		newProject := ws.NewProject(devProj.Name, projAbsPath, ProjectTypeCppLib, projectConfig)
 		newProject.ProjectFilename = devProj.Name
 
-		newProject.GlobFiles(projAbsPath, filepath.Join("source", "main", "cpp", "^**", "*.cpp"))
-		newProject.GlobFiles(projAbsPath, filepath.Join("source", "main", "include", "^**", "*.h"))
-		newProject.GlobFiles(projAbsPath, filepath.Join("source", "main", "include", "^**", "*.hpp"))
-		newProject.GlobFiles(projAbsPath, filepath.Join("source", "main", "include", "^**", "*.inl"))
-
-		if ws.MakeTarget.OSIsMac() {
-			newProject.GlobFiles(projAbsPath, filepath.Join("source", "main", "cpp", "^**", "*.m"))
-			newProject.GlobFiles(projAbsPath, filepath.Join("source", "main", "cpp", "^**", "*.mm"))
-		}
-
-		if unittest && executable {
+		if executable && unittest {
+			// Unittest executable
 			newProject.GlobFiles(projAbsPath, filepath.Join("source", "test", "cpp", "^**", "*.cpp"))
 			newProject.GlobFiles(projAbsPath, filepath.Join("source", "test", "include", "^**", "*.h"))
 			newProject.GlobFiles(projAbsPath, filepath.Join("source", "test", "include", "^**", "*.hpp"))
 			newProject.GlobFiles(projAbsPath, filepath.Join("source", "test", "include", "^**", "*.inl"))
+		} else if executable {
+			// Application
+			newProject.GlobFiles(projAbsPath, filepath.Join("source", "app", "cpp", "^**", "*.cpp"))
+			newProject.GlobFiles(projAbsPath, filepath.Join("source", "app", "include", "^**", "*.h"))
+			newProject.GlobFiles(projAbsPath, filepath.Join("source", "app", "include", "^**", "*.hpp"))
+			newProject.GlobFiles(projAbsPath, filepath.Join("source", "app", "include", "^**", "*.inl"))
+			if ws.MakeTarget.OSIsMac() {
+				newProject.GlobFiles(projAbsPath, filepath.Join("source", "app", "cpp", "^**", "*.m"))
+				newProject.GlobFiles(projAbsPath, filepath.Join("source", "app", "cpp", "^**", "*.mm"))
+			}
+		} else {
+			newProject.GlobFiles(projAbsPath, filepath.Join("source", "main", "cpp", "^**", "*.cpp"))
+			newProject.GlobFiles(projAbsPath, filepath.Join("source", "main", "include", "^**", "*.h"))
+			newProject.GlobFiles(projAbsPath, filepath.Join("source", "main", "include", "^**", "*.hpp"))
+			newProject.GlobFiles(projAbsPath, filepath.Join("source", "main", "include", "^**", "*.inl"))
+			if ws.MakeTarget.OSIsMac() {
+				newProject.GlobFiles(projAbsPath, filepath.Join("source", "main", "cpp", "^**", "*.m"))
+				newProject.GlobFiles(projAbsPath, filepath.Join("source", "main", "cpp", "^**", "*.mm"))
+			}
 		}
 
 		for _, cfgItem := range devProj.Platform.Configs {
-			g.createProjectConfiguration(newProject, cfgItem, unittest)
+			g.createProjectConfiguration(newProject, cfgItem, executable, unittest)
 		}
 
 		return newProject
 	}
 }
 
-func (g *AxeGenerator) createProjectConfiguration(p *Project, cfg *denv.Config, unittest bool) *Config {
+func (g *AxeGenerator) createProjectConfiguration(p *Project, cfg *denv.Config, executable bool, unittest bool) *Config {
 	configType := ConfigTypeNone
 	if cfg.Config == "Debug" {
 		configType = ConfigTypeDebug
@@ -337,8 +351,16 @@ func (g *AxeGenerator) createProjectConfiguration(p *Project, cfg *denv.Config, 
 	}
 
 	config.AddIncludeDir("source/main/include")
-	if unittest {
+
+	if !unittest && executable {
+		config.AddIncludeDir("source/app/include")
+	}
+
+	if unittest && executable {
 		config.AddIncludeDir("source/test/include")
+	}
+
+	if p.Name == "cunittest" {
 		config.VisualStudioClCompile.AddOrSet("ExceptionHandling", "Sync")
 	}
 
@@ -373,11 +395,26 @@ func (g *AxeGenerator) addWorkspaceConfiguration(ws *Workspace, cfg *denv.Config
 		config.CppDefines.ValuesToAdd("TARGET_MAC")
 	}
 
+	if ws.MakeTarget.OSIsMac() {
+		config.LinkFlags.ValuesToAdd("-ObjC")
+		config.LinkFlags.ValuesToAdd("-framework Foundation")
+		config.LinkFlags.ValuesToAdd("-framework Cocoa")
+		config.LinkFlags.ValuesToAdd("-framework Carbon")
+		config.LinkFlags.ValuesToAdd("-framework Metal")
+		config.LinkFlags.ValuesToAdd("-framework OpenGL")
+		config.LinkFlags.ValuesToAdd("-framework IOKit")
+		config.LinkFlags.ValuesToAdd("-framework AppKit")
+		config.LinkFlags.ValuesToAdd("-framework CoreVideo")
+		config.LinkFlags.ValuesToAdd("-framework QuartzCore")
+		//		config.LinkFlags.ValuesToAdd("-framework AudioToolBox")
+		//		config.LinkFlags.ValuesToAdd("-framework OpenAL")
+	}
+
 	config.CppDefines.ValuesToAdd("_UNICODE", "UNICODE")
 
 	// clang
 	if ws.MakeTarget.CompilerIsClang() {
-		config.CppFlags.ValuesToAdd("-std=c++11", "-Wall")
+		//		config.CppFlags.ValuesToAdd("-std=c++14", "-Wall")
 		config.CppFlags.ValuesToAdd("-Wno-switch", "-Wno-unused-variable", "-Wno-unused-function", "-Wno-unused-private-field")
 		config.CppFlags.ValuesToAdd("-Wno-unused-but-set-variable")
 		//config.CppFlags.ValuesToAdd("-Wfatal-errors", "-Werror")
