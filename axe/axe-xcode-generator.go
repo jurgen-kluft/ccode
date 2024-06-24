@@ -3,6 +3,7 @@ package axe
 import (
 	"fmt"
 	"path/filepath"
+	"strings"
 )
 
 type XcodeGenerator struct {
@@ -668,7 +669,7 @@ func (g *XcodeGenerator) genProjectXCBuildConfiguration(wr *XcodeWriter, proj *P
 				outputTarget := config.OutputTarget.Path
 				targetDir := filepath.Dir(outputTarget)
 				targetBasename := PathFilename(outputTarget, false)
-				targetExt := filepath.Ext(outputTarget)
+				targetExt := strings.TrimLeft(filepath.Ext(outputTarget), ".")
 
 				wr.member("PRODUCT_NAME", g.quoteString(targetBasename))
 				wr.member("EXECUTABLE_PREFIX", g.quoteString(""))
@@ -721,11 +722,11 @@ func (g *XcodeGenerator) genProjectXCBuildConfiguration(wr *XcodeWriter, proj *P
 					}
 					for _, q := range config.LinkDirs.FinalDict.Values {
 						wr.newline(0)
-						wr.write(g.quoteString(filepath.Join("-L", q)))
+						wr.write("-L" + g.quoteString(q))
 					}
 					for _, q := range config.LinkLibs.FinalDict.Values {
 						wr.newline(0)
-						wr.write(g.quoteString(filepath.Join("-l", q)))
+						wr.write("-l" + g.quoteString(q))
 					}
 					for _, q := range config.LinkFiles.FinalDict.Values {
 						wr.newline(0)
