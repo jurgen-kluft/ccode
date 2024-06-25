@@ -28,8 +28,11 @@ func NewAxeGenerator(dev string, os string, arch string) *AxeGenerator {
 	return g
 }
 
+func (g *AxeGenerator) IsValid() bool {
+	return g.Dev != DevInvalid
+}
 func (g *AxeGenerator) IsVisualStudio() bool {
-	return g.Dev&DevVisualStudio != 0
+	return g.Dev&DevVisualStudio == DevVisualStudio
 }
 func (g *AxeGenerator) IsTundra() bool {
 	return g.Dev == DevTundra
@@ -44,7 +47,7 @@ func (g *AxeGenerator) IsXCode() bool {
 	return g.Dev == DevXcode
 }
 
-func (g *AxeGenerator) GenerateMsDev(pkg *denv.Package) error {
+func (g *AxeGenerator) Generate(pkg *denv.Package) error {
 	var ws *Workspace
 	var err error
 
@@ -52,64 +55,23 @@ func (g *AxeGenerator) GenerateMsDev(pkg *denv.Package) error {
 		return err
 	}
 
-	gg := NewMsDevGenerator(ws)
-	gg.Generate()
-
-	return nil
-}
-
-func (g *AxeGenerator) GenerateTundra(pkg *denv.Package) error {
-	var ws *Workspace
-	var err error
-
-	if ws, err = g.GenerateWorkspace(pkg, g.Dev); err != nil {
-		return err
+	switch g.Dev {
+	case DevTundra:
+		gg := NewTundraGenerator(ws)
+		gg.Generate()
+	case DevCmake:
+		gg := NewCMakeGenerator(ws)
+		gg.Generate()
+	case DevMake:
+		gg := NewMakeGenerator2(ws)
+		gg.Generate()
+	case DevXcode:
+		gg := NewXcodeGenerator(ws)
+		gg.Generate()
+	case DevVs2015, DevVs2017, DevVs2019, DevVs2022:
+		gg := NewMsDevGenerator(ws)
+		gg.Generate()
 	}
-
-	gg := NewTundraGenerator(ws)
-	gg.Generate()
-
-	return nil
-}
-
-func (g *AxeGenerator) GenerateMake(pkg *denv.Package) error {
-	var ws *Workspace
-	var err error
-
-	if ws, err = g.GenerateWorkspace(pkg, g.Dev); err != nil {
-		return err
-	}
-
-	gg := NewMakeGenerator2(ws)
-	gg.Generate()
-
-	return nil
-}
-
-func (g *AxeGenerator) GenerateCMake(pkg *denv.Package) error {
-	var ws *Workspace
-	var err error
-
-	if ws, err = g.GenerateWorkspace(pkg, g.Dev); err != nil {
-		return err
-	}
-
-	gg := NewCMakeGenerator(ws)
-	gg.Generate()
-
-	return nil
-}
-
-func (g *AxeGenerator) GenerateXcode(pkg *denv.Package) error {
-	var ws *Workspace
-	var err error
-
-	if ws, err = g.GenerateWorkspace(pkg, g.Dev); err != nil {
-		return err
-	}
-
-	gg := NewXcodeGenerator(ws)
-	gg.Generate()
 
 	return nil
 }

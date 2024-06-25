@@ -35,7 +35,7 @@ func Init() bool {
 
 	fmt.Println("ccode, a tool to generate C/C++ workspace and project files")
 
-	if denv.GetDevEnum(ccode_dev) == denv.INVALID {
+	if axe.GetDevEnum(ccode_dev) == axe.DevInvalid {
 		fmt.Println()
 		fmt.Println("Error, wrong parameter for '-dev', '", ccode_dev, "' is not recognized")
 		fmt.Println()
@@ -56,18 +56,7 @@ func Init() bool {
 // workspace and project files for a specified IDE.
 func Generate(pkg *denv.Package) error {
 	generator := axe.NewAxeGenerator(ccode_dev, ccode_os, ccode_arch)
-	if generator.IsVisualStudio() {
-		return generator.GenerateMsDev(pkg)
-	} else if generator.IsTundra() {
-		return generator.GenerateTundra(pkg)
-	} else if generator.IsMake() {
-		return generator.GenerateMake(pkg)
-	} else if generator.IsCMake() {
-		return generator.GenerateCMake(pkg)
-	} else if generator.IsXCode() {
-		return generator.GenerateXcode(pkg)
-	}
-	return fmt.Errorf("unknown dev '%s', should be one of tundra, cmake, xcode or vs2022", ccode_dev)
+	return generator.Generate(pkg)
 }
 
 // DEV is an enumeration for all possible IDE's that are supported
