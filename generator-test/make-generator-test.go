@@ -15,9 +15,9 @@ func NewMakeTestGenerator() *MakeTestGenerator {
 
 func (m *MakeTestGenerator) TestRun(rootAbsPath string, projectName string) error {
 
-	devVersion := axe.TUNDRA
+	devVersion := axe.DevTundra
 
-	wsc := axe.NewWorkspaceConfig(axe.MAKE, rootAbsPath, projectName)
+	wsc := axe.NewWorkspaceConfig(axe.DevMake, rootAbsPath, projectName)
 	wsc.StartupProject = "cbase_unittest"
 	wsc.MultiThreadedBuild = true
 

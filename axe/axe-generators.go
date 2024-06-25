@@ -29,19 +29,19 @@ func NewAxeGenerator(dev string, os string, arch string) *AxeGenerator {
 }
 
 func (g *AxeGenerator) IsVisualStudio() bool {
-	return g.Dev&VISUALSTUDIO != 0
+	return g.Dev&DevVisualStudio != 0
 }
 func (g *AxeGenerator) IsTundra() bool {
-	return g.Dev == TUNDRA
+	return g.Dev == DevTundra
 }
 func (g *AxeGenerator) IsMake() bool {
-	return g.Dev == MAKE
+	return g.Dev == DevMake
 }
 func (g *AxeGenerator) IsCMake() bool {
-	return g.Dev == CMAKE
+	return g.Dev == DevCmake
 }
 func (g *AxeGenerator) IsXCode() bool {
-	return g.Dev == XCODE
+	return g.Dev == DevXcode
 }
 
 func (g *AxeGenerator) GenerateMsDev(pkg *denv.Package) error {

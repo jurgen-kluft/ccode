@@ -41,12 +41,12 @@ func (u UUID) String(dev DevEnum) string {
 	s1 := g.Uint64()
 	s2 := g.Uint64()
 
-	if dev&VISUALSTUDIO == VISUALSTUDIO {
+	if dev&DevVisualStudio == DevVisualStudio {
 		return fmt.Sprintf("{%08X-%04X-%04X-%04X-%08X%04X}", uint32(s1>>32), uint16(s1&0xFFFF), uint16(s1>>16), uint16(s2>>16), uint32(s2>>32), uint16(s2&0xFFFF))
 	}
 
 	switch dev {
-	case XCODE:
+	case DevXcode:
 		u1 := uint32(s1 >> 32)
 		u2 := uint32(s1 & 0xFFFFFFFF)
 		u3 := uint32(s2 >> 32)

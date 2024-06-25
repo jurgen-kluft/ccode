@@ -15,7 +15,7 @@ func NewTundraTestGenerator() *TundraTestGenerator {
 
 func (m *TundraTestGenerator) TestRun(rootAbsPath string, projectName string) error {
 
-	devVersion := axe.TUNDRA
+	devVersion := axe.DevTundra
 
 	wsc := axe.NewWorkspaceConfig(devVersion, rootAbsPath, projectName)
 	wsc.StartupProject = "cbase_unittest"

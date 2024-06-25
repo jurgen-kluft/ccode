@@ -22,7 +22,7 @@ func TestUUIDRandomGeneration(t *testing.T) {
 
 func TestUUID1(t *testing.T) {
 	uuid := GenerateUUID()
-	str := uuid.String(XCODE)
+	str := uuid.String(DevXcode)
 	if len(str) != 24 || str != "DEBED0FBE6AF2E6F30796D40" {
 		t.Errorf("The UUID string should be 24 characters long and equal to DEBED0FBE6AF2E6F30796D40, instead len=%d and string=%s", len(str), str)
 	}
@@ -30,7 +30,7 @@ func TestUUID1(t *testing.T) {
 }
 func TestUUID2(t *testing.T) {
 	uuid := GenerateUUID()
-	str := uuid.String(VS2022)
+	str := uuid.String(DevVs2022)
 	if len(str) != 38 || str != "{AA5C6F25-A3A0-0D83-9810-AC1ABA981740}" {
 		t.Errorf("The UUID string should be 32 characters long and equal to {AA5C6F25-A3A0-0D83-9810-AC1ABA981740}, instead len=%d and string=%s", len(str), str)
 	}
@@ -42,7 +42,7 @@ func TestUUIDGenerationForXcode(t *testing.T) {
 	uuidMap := make(map[string]bool)
 	for i := 0; i < numUUIDs; i++ {
 		uuid := GenerateUUID()
-		str := uuid.String(XCODE)
+		str := uuid.String(DevXcode)
 		if _, ok := uuidMap[str]; ok {
 			t.Errorf("The UUID string should be unique, but it was not: %s", str)
 		} else {
@@ -57,7 +57,7 @@ func TestUUIDGenerationForMsdev(t *testing.T) {
 	uuidMap := make(map[string]bool)
 	for i := 0; i < numUUIDs; i++ {
 		uuid := GenerateUUID()
-		str := uuid.String(VS2022)
+		str := uuid.String(DevVs2022)
 		if _, ok := uuidMap[str]; ok {
 			t.Errorf("The UUID string should be unique, but it was not: %s", str)
 		} else {

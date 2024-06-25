@@ -98,7 +98,7 @@ func (t ConfigType) IsTest() bool {
 }
 
 func (t ConfigType) String(dev DevEnum) string {
-	if dev == TUNDRA {
+	if dev == DevTundra {
 		switch t {
 		case ConfigTypeDebug:
 			return "*-*-debug-*"

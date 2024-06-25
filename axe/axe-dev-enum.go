@@ -6,35 +6,35 @@ type DevEnum uint
 
 // All development environment
 const (
-	TUNDRA       DevEnum = 0x020000
-	CMAKE        DevEnum = 0x040000
-	MAKE         DevEnum = 0x080000
-	XCODE        DevEnum = 0x100000
-	VISUALSTUDIO DevEnum = 0x200000
-	VS2015       DevEnum = VISUALSTUDIO | 2015
-	VS2017       DevEnum = VISUALSTUDIO | 2017
-	VS2019       DevEnum = VISUALSTUDIO | 2019
-	VS2022       DevEnum = VISUALSTUDIO | 2022
-	INVALID      DevEnum = 0xFFFFFFFF
+	DevTundra       DevEnum = 0x020000
+	DevCmake        DevEnum = 0x040000
+	DevMake         DevEnum = 0x080000
+	DevXcode        DevEnum = 0x100000
+	DevVisualStudio DevEnum = 0x200000
+	DevVs2015       DevEnum = DevVisualStudio | 2015
+	DevVs2017       DevEnum = DevVisualStudio | 2017
+	DevVs2019       DevEnum = DevVisualStudio | 2019
+	DevVs2022       DevEnum = DevVisualStudio | 2022
+	DevInvalid      DevEnum = 0xFFFFFFFF
 )
 
 func (d DevEnum) String() string {
 	switch d {
-	case TUNDRA:
+	case DevTundra:
 		return "tundra"
-	case CMAKE:
+	case DevCmake:
 		return "cmake"
-	case MAKE:
+	case DevMake:
 		return "make"
-	case XCODE:
+	case DevXcode:
 		return "xcode"
-	case VS2015:
+	case DevVs2015:
 		return "vs2015"
-	case VS2017:
+	case DevVs2017:
 		return "vs2017"
-	case VS2019:
+	case DevVs2019:
 		return "vs2019"
-	case VS2022:
+	case DevVs2022:
 		return "vs2022"
 	default:
 		return "__invalid__"
@@ -43,25 +43,25 @@ func (d DevEnum) String() string {
 func GetDevEnum(dev string) DevEnum {
 	dev = strings.ToLower(dev)
 	if dev == "tundra" {
-		return TUNDRA
+		return DevTundra
 	} else if dev == "make" {
-		return MAKE
+		return DevMake
 	} else if dev == "cmake" {
-		return CMAKE
+		return DevCmake
 	} else if dev == "xcode" {
-		return XCODE
+		return DevXcode
 	} else if dev == "vs2022" {
-		return VS2022
+		return DevVs2022
 	} else if dev == "vs2019" {
-		return VS2019
+		return DevVs2019
 	} else if dev == "vs2017" {
-		return VS2017
+		return DevVs2017
 	} else if dev == "vs2015" {
-		return VS2015
+		return DevVs2015
 	}
-	return INVALID
+	return DevInvalid
 }
 
 func (d DevEnum) IsXCode() bool {
-	return d == XCODE
+	return d == DevXcode
 }

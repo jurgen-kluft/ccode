@@ -15,7 +15,7 @@ func NewXcodeTestGenerator() *XcodeTestGenerator {
 
 func (m *XcodeTestGenerator) TestRun(rootAbsPath string, projectName string) error {
 
-	devVersion := axe.XCODE
+	devVersion := axe.DevXcode
 
 	wsc := axe.NewWorkspaceConfig(devVersion, rootAbsPath, projectName)
 	wsc.StartupProject = "cbase_unittest"
