@@ -14,13 +14,15 @@ import (
 // -----------------------------------------------------------------------------------------------------
 
 type ConfigList struct {
+	Dev    DevEnum
 	Dict   map[string]int
 	Values []*Config
 	Keys   []string
 }
 
-func NewConfigList() *ConfigList {
+func NewConfigList(dev DevEnum) *ConfigList {
 	return &ConfigList{
+		Dev:    dev,
 		Dict:   map[string]int{},
 		Values: []*Config{},
 		Keys:   []string{},
@@ -28,16 +30,16 @@ func NewConfigList() *ConfigList {
 }
 
 func (p *ConfigList) Add(config *Config) {
-	if _, ok := p.Dict[config.Type.String()]; !ok {
-		p.Dict[config.Type.String()] = len(p.Values)
+	if _, ok := p.Dict[config.String()]; !ok {
+		p.Dict[config.String()] = len(p.Values)
 		p.Values = append(p.Values, config)
-		p.Keys = append(p.Keys, config.Type.String())
+		p.Keys = append(p.Keys, config.String())
 	}
 }
 
 func (p *ConfigList) DefaultConfigName() string {
 	if len(p.Values) > 0 {
-		return p.Values[0].Type.String()
+		return p.Values[0].String()
 	}
 	return "Debug"
 }
@@ -50,7 +52,7 @@ func (p *ConfigList) First() *Config {
 }
 
 func (p *ConfigList) Get(t ConfigType) (*Config, bool) {
-	if i, ok := p.Dict[t.String()]; ok {
+	if i, ok := p.Dict[t.String(p.Dev)]; ok {
 		return p.Values[i], true
 	}
 	return nil, false
@@ -58,7 +60,7 @@ func (p *ConfigList) Get(t ConfigType) (*Config, bool) {
 
 func (p *ConfigList) CollectByWildcard(name string, list *ConfigList) {
 	for _, p := range p.Values {
-		if PathMatchWildcard(p.Type.String(), name, true) {
+		if PathMatchWildcard(p.String(), name, true) {
 			list.Add(p)
 		}
 	}
@@ -95,52 +97,52 @@ func (t ConfigType) IsTest() bool {
 	return t&ConfigTypeTest != 0
 }
 
-func (t ConfigType) Tundra() string {
-	switch t {
-	case ConfigTypeDebug:
+func (t ConfigType) String(dev DevEnum) string {
+	if dev == TUNDRA {
+		switch t {
+		case ConfigTypeDebug:
+			return "*-*-debug-*"
+		case ConfigTypeRelease:
+			return "*-*-release-*"
+		case ConfigTypeFinal:
+			return "*-*-final-*"
+		case ConfigTypeDebug | ConfigTypeTest:
+			return "*-*-debug-test"
+		case ConfigTypeRelease | ConfigTypeTest:
+			return "*-*-release-test"
+		case ConfigTypeFinal | ConfigTypeTest:
+			return "*-*-final-test"
+		case ConfigTypeDebug | ConfigTypeProfile:
+			return "*-*-debug-profile"
+		case ConfigTypeRelease | ConfigTypeProfile:
+			return "*-*-release-profile"
+		case ConfigTypeFinal | ConfigTypeProfile:
+			return "*-*-final-profile"
+		}
 		return "*-*-debug-*"
-	case ConfigTypeRelease:
-		return "*-*-release-*"
-	case ConfigTypeFinal:
-		return "*-*-final-*"
-	case ConfigTypeDebug | ConfigTypeTest:
-		return "*-*-debug-test"
-	case ConfigTypeRelease | ConfigTypeTest:
-		return "*-*-release-test"
-	case ConfigTypeFinal | ConfigTypeTest:
-		return "*-*-final-test"
-	case ConfigTypeDebug | ConfigTypeProfile:
-		return "*-*-debug-profile"
-	case ConfigTypeRelease | ConfigTypeProfile:
-		return "*-*-release-profile"
-	case ConfigTypeFinal | ConfigTypeProfile:
-		return "*-*-final-profile"
-	}
-	return "*-*-debug-*"
-}
-
-func (t ConfigType) String() string {
-	switch t {
-	case ConfigTypeDebug:
+	} else {
+		switch t {
+		case ConfigTypeDebug:
+			return "Debug"
+		case ConfigTypeRelease:
+			return "Release"
+		case ConfigTypeFinal:
+			return "Final"
+		case ConfigTypeDebug | ConfigTypeTest:
+			return "DebugTest"
+		case ConfigTypeRelease | ConfigTypeTest:
+			return "ReleaseTest"
+		case ConfigTypeFinal | ConfigTypeTest:
+			return "FinalTest"
+		case ConfigTypeDebug | ConfigTypeProfile:
+			return "DebugProfile"
+		case ConfigTypeRelease | ConfigTypeProfile:
+			return "ReleaseProfile"
+		case ConfigTypeFinal | ConfigTypeProfile:
+			return "FinalProfile"
+		}
 		return "Debug"
-	case ConfigTypeRelease:
-		return "Release"
-	case ConfigTypeFinal:
-		return "Final"
-	case ConfigTypeDebug | ConfigTypeTest:
-		return "DebugTest"
-	case ConfigTypeRelease | ConfigTypeTest:
-		return "ReleaseTest"
-	case ConfigTypeFinal | ConfigTypeTest:
-		return "FinalTest"
-	case ConfigTypeDebug | ConfigTypeProfile:
-		return "DebugProfile"
-	case ConfigTypeRelease | ConfigTypeProfile:
-		return "ReleaseProfile"
-	case ConfigTypeFinal | ConfigTypeProfile:
-		return "FinalProfile"
 	}
-	return "Debug"
 }
 
 // -----------------------------------------------------------------------------------------------------
@@ -150,6 +152,7 @@ func (t ConfigType) String() string {
 type Config struct {
 	//Name         string
 	Type         ConfigType
+	Dev          DevEnum
 	Workspace    *Workspace
 	Project      *Project
 	OutputTarget *FileEntry
@@ -177,10 +180,6 @@ type Config struct {
 
 	Resolved bool
 
-	GenDataMakefile struct {
-		CppObjDir string
-	}
-
 	GenDataXcode struct {
 		ProjectConfigUuid UUID
 		TargetUuid        UUID
@@ -191,6 +190,7 @@ type Config struct {
 func NewConfig(t ConfigType, ws *Workspace, p *Project) *Config {
 	c := &Config{}
 	c.Type = t
+	c.Dev = ws.Config.Dev
 	c.Workspace = ws
 	c.Project = p
 
@@ -232,13 +232,16 @@ func NewConfig(t ConfigType, ws *Workspace, p *Project) *Config {
 	c.VisualStudioClCompile = NewKeyValueDict()
 	c.VisualStudioLink = NewKeyValueDict()
 
-	c.GenDataMakefile.CppObjDir = filepath.Join(c.Workspace.GenerateAbsPath, "build_tmp", c.Type.String())
 	c.GenDataXcode.ProjectConfigUuid = GenerateUUID()
 	c.GenDataXcode.TargetUuid = GenerateUUID()
 	c.GenDataXcode.TargetConfigUuid = GenerateUUID()
 
 	c.Resolved = false
 	return c
+}
+
+func (c *Config) String() string {
+	return c.Type.String(c.Dev)
 }
 
 func (c *Config) AddIncludeDir(includeDir string) {
@@ -251,7 +254,7 @@ func (c *Config) init(source *Config) {
 	}
 
 	if c.Project != nil {
-		path := filepath.Join(c.Workspace.GenerateAbsPath, "build_tmp", c.Type.String(), c.Project.Name)
+		path := filepath.Join(c.Workspace.GenerateAbsPath, "build_tmp", c.String(), c.Project.Name)
 		c.BuildTmpDir = NewFileEntryInit(path, true)
 	}
 
@@ -424,14 +427,14 @@ func (c *Config) resolve() {
 		c.CppDefines.FinalDict.AddOrSet("CCORE_GEN_CPU", "CCORE_GEN_CPU_"+strings.ToUpper(c.Workspace.MakeTarget.ArchAsString()))
 		c.CppDefines.FinalDict.AddOrSet("CCORE_GEN_OS", "CCORE_GEN_OS_"+strings.ToUpper(c.Workspace.MakeTarget.OSAsString()))
 		c.CppDefines.FinalDict.AddOrSet("CCORE_GEN_COMPILER", "CCORE_GEN_COMPILER_"+strings.ToUpper(c.Workspace.MakeTarget.CompilerAsString()))
-		c.CppDefines.FinalDict.AddOrSet("CCORE_GEN_GENERATOR", "CCORE_GEN_GENERATOR_"+strings.ToUpper(c.Workspace.Generator.String()))
-		c.CppDefines.FinalDict.AddOrSet("CCORE_GEN_CONFIG", "CCORE_GEN_CONFIG_"+strings.ToUpper(c.Type.String()))
+		c.CppDefines.FinalDict.AddOrSet("CCORE_GEN_GENERATOR", "CCORE_GEN_GENERATOR_"+strings.ToUpper(c.Workspace.Config.Dev.String()))
+		c.CppDefines.FinalDict.AddOrSet("CCORE_GEN_CONFIG", "CCORE_GEN_CONFIG_"+strings.ToUpper(c.String()))
 		c.CppDefines.FinalDict.AddOrSet("CCORE_GEN_PLATFORM_NAME", "CCORE_GEN_PLATFORM_NAME=\""+strings.ToUpper(c.Workspace.MakeTarget.OSAsString()+"\""))
 		c.CppDefines.FinalDict.AddOrSet("CCORE_GEN_PROJECT", "CCORE_GEN_PROJECT_"+strings.ToUpper(c.Project.Name))
 		c.CppDefines.FinalDict.AddOrSet("CCORE_GEN_TYPE", "CCORE_GEN_TYPE_"+strings.ToUpper(c.Project.Settings.Type.String()))
 
-		BINDIR := filepath.Join(c.Workspace.GenerateAbsPath, "bin", c.Project.Name, c.Type.String()+"_"+c.Workspace.MakeTarget.ArchAsString()+"_"+c.Workspace.Config.MsDev.PlatformToolset)
-		LIBDIR := filepath.Join(c.Workspace.GenerateAbsPath, "lib", c.Project.Name, c.Type.String()+"_"+c.Workspace.MakeTarget.ArchAsString()+"_"+c.Workspace.Config.MsDev.PlatformToolset)
+		BINDIR := filepath.Join(c.Workspace.GenerateAbsPath, "bin", c.Project.Name, c.String()+"_"+c.Workspace.MakeTarget.ArchAsString()+"_"+c.Workspace.Config.MsDev.PlatformToolset)
+		LIBDIR := filepath.Join(c.Workspace.GenerateAbsPath, "lib", c.Project.Name, c.String()+"_"+c.Workspace.MakeTarget.ArchAsString()+"_"+c.Workspace.Config.MsDev.PlatformToolset)
 
 		outputTarget := ""
 		if c.Project.TypeIsExe() {

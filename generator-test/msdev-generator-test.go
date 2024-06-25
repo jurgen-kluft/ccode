@@ -17,15 +17,14 @@ func (m *MsDevTestGenerator) TestRun(rootAbsPath string, projectName string) err
 
 	visualStudioVersion := axe.VS2022
 
-	wsc := axe.NewWorkspaceConfig(rootAbsPath, projectName)
+	wsc := axe.NewWorkspaceConfig(visualStudioVersion, rootAbsPath, projectName)
 	wsc.StartupProject = "cbase_unittest"
 	wsc.MultiThreadedBuild = true
 
 	ws := axe.NewWorkspace(wsc)
-	ws.Generator = axe.GeneratorMsDev
 	ws.WorkspaceName = projectName
 	ws.WorkspaceAbsPath = rootAbsPath
-	ws.GenerateAbsPath = filepath.Join(rootAbsPath, projectName, "target", ws.Generator.String())
+	ws.GenerateAbsPath = filepath.Join(rootAbsPath, projectName, "target", ws.Config.Dev.String())
 	m.addWorkspaceConfiguration(ws, axe.ConfigTypeDebug|axe.ConfigTypeTest)
 	m.addWorkspaceConfiguration(ws, axe.ConfigTypeRelease|axe.ConfigTypeTest)
 

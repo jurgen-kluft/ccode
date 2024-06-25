@@ -83,7 +83,7 @@ func (g *TundraGenerator) writeUnit(units *LineWriter, p *Project) {
 			escapedDef := g.escapeString(def)
 			units.WriteILine("++++", `"`, escapedDef, `",`)
 		}
-		units.WriteILine("++++", `Config = "`, cfg.Type.Tundra(), `"`)
+		units.WriteILine("++++", `Config = "`, cfg.String(), `"`)
 		units.WriteILine("+++", `},`)
 	}
 	units.WriteILine("+++", `{ "TARGET_PC", Config = "win64-*-*-*" },`)
@@ -99,9 +99,9 @@ func (g *TundraGenerator) writeUnit(units *LineWriter, p *Project) {
 	for _, pcfg := range p.Configs.Values {
 		for _, inc := range pcfg.IncludeDirs.FinalDict.Values {
 			path := PathGetRel(filepath.Join(p.ProjectAbsPath, inc), p.Workspace.GenerateAbsPath)
-			signature := path + " | " + pcfg.Type.Tundra()
+			signature := path + " | " + pcfg.String()
 			if _, ok := history[signature]; !ok {
-				units.WriteILine("++", `{"`, path, `", Config = "`, pcfg.Type.Tundra(), `"},`)
+				units.WriteILine("++", `{"`, path, `", Config = "`, pcfg.String(), `"},`)
 				history[signature] = 1
 			}
 		}
@@ -110,9 +110,9 @@ func (g *TundraGenerator) writeUnit(units *LineWriter, p *Project) {
 		for _, dpcfg := range dp.Configs.Values {
 			for _, inc := range dpcfg.IncludeDirs.FinalDict.Values {
 				path := PathGetRel(filepath.Join(dp.ProjectAbsPath, inc), p.Workspace.GenerateAbsPath)
-				signature := path + " | " + dpcfg.Type.Tundra()
+				signature := path + " | " + dpcfg.String()
 				if _, ok := history[signature]; !ok {
-					units.WriteILine("++", `{"`, path, `", Config = "`, dpcfg.Type.Tundra(), `"},`)
+					units.WriteILine("++", `{"`, path, `", Config = "`, dpcfg.String(), `"},`)
 					history[signature] = 1
 				}
 			}

@@ -20,11 +20,6 @@ const (
 	FileTypeMxx
 )
 
-type FileEntryXcodeConfig struct {
-	UUID      UUID
-	BuildUUID UUID
-}
-
 // -----------------------------------------------------------------------------------------------
 // FileEntry
 // -----------------------------------------------------------------------------------------------
@@ -32,10 +27,11 @@ type FileEntryXcodeConfig struct {
 type FileEntry struct {
 	Path              string
 	Type              FileType
-	GenDataXcode      FileEntryXcodeConfig
 	Parent            *VirtualDirectory
 	ExcludedFromBuild bool
 	Generated         bool
+	UUID              UUID
+	BuildUUID         UUID
 }
 
 func NewFileEntry() *FileEntry {

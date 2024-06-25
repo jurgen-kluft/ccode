@@ -17,15 +17,14 @@ func (m *MakeTestGenerator) TestRun(rootAbsPath string, projectName string) erro
 
 	devVersion := axe.TUNDRA
 
-	wsc := axe.NewWorkspaceConfig(rootAbsPath, projectName)
+	wsc := axe.NewWorkspaceConfig(axe.MAKE, rootAbsPath, projectName)
 	wsc.StartupProject = "cbase_unittest"
 	wsc.MultiThreadedBuild = true
 
 	ws := axe.NewWorkspace(wsc)
-	ws.Generator = axe.GeneratorMake
 	ws.WorkspaceName = projectName
 	ws.WorkspaceAbsPath = rootAbsPath
-	ws.GenerateAbsPath = filepath.Join(rootAbsPath, projectName, "target", ws.Generator.String())
+	ws.GenerateAbsPath = filepath.Join(rootAbsPath, projectName, "target", ws.Config.Dev.String())
 	m.addWorkspaceConfiguration(ws, axe.ConfigTypeDebug|axe.ConfigTypeTest)
 	m.addWorkspaceConfiguration(ws, axe.ConfigTypeRelease|axe.ConfigTypeTest)
 
@@ -128,7 +127,7 @@ func (m *MakeTestGenerator) TestRun(rootAbsPath string, projectName string) erro
 		return err
 	}
 
-	g := axe.NewMakeGenerator(ws)
+	g := axe.NewMakeGenerator2(ws)
 	g.Generate()
 
 	return nil

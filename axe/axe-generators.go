@@ -9,55 +9,6 @@ import (
 	"github.com/jurgen-kluft/ccode/denv"
 )
 
-type DevEnum uint
-
-// All development environment
-const (
-	TUNDRA       DevEnum = 0x020000
-	CMAKE        DevEnum = 0x040000
-	MAKE         DevEnum = 0x080000
-	XCODE        DevEnum = 0x100000
-	VISUALSTUDIO DevEnum = 0x200000
-	VS2015       DevEnum = VISUALSTUDIO | 2015
-	VS2017       DevEnum = VISUALSTUDIO | 2017
-	VS2019       DevEnum = VISUALSTUDIO | 2019
-	VS2022       DevEnum = VISUALSTUDIO | 2022
-	INVALID      DevEnum = 0xFFFFFFFF
-)
-
-func GetDevEnum(dev string) DevEnum {
-	dev = strings.ToLower(dev)
-	if dev == "tundra" {
-		return TUNDRA
-	} else if dev == "make" {
-		return MAKE
-	} else if dev == "cmake" {
-		return CMAKE
-	} else if dev == "xcode" {
-		return XCODE
-	}
-	return ParseVisualStudio(dev)
-}
-
-func (d DevEnum) IsXCode() bool {
-	return d == XCODE
-}
-
-// ParseVisualStudio returns a value for type IDE deduced from the incoming string @dev
-func ParseVisualStudio(dev string) DevEnum {
-	dev = strings.ToLower(dev)
-	if dev == "vs2022" {
-		return VS2022
-	} else if dev == "vs2019" {
-		return VS2019
-	} else if dev == "vs2017" {
-		return VS2017
-	} else if dev == "vs2015" {
-		return VS2015
-	}
-	return INVALID
-}
-
 // ----------------------------------------------------------------------------------------------
 // IDE generator
 // ----------------------------------------------------------------------------------------------
@@ -97,7 +48,7 @@ func (g *AxeGenerator) GenerateMsDev(pkg *denv.Package) error {
 	var ws *Workspace
 	var err error
 
-	if ws, err = g.GenerateWorkspace(pkg, GeneratorMsDev); err != nil {
+	if ws, err = g.GenerateWorkspace(pkg, g.Dev); err != nil {
 		return err
 	}
 
@@ -111,7 +62,7 @@ func (g *AxeGenerator) GenerateTundra(pkg *denv.Package) error {
 	var ws *Workspace
 	var err error
 
-	if ws, err = g.GenerateWorkspace(pkg, GeneratorTundra); err != nil {
+	if ws, err = g.GenerateWorkspace(pkg, g.Dev); err != nil {
 		return err
 	}
 
@@ -125,7 +76,7 @@ func (g *AxeGenerator) GenerateMake(pkg *denv.Package) error {
 	var ws *Workspace
 	var err error
 
-	if ws, err = g.GenerateWorkspace(pkg, GeneratorMake); err != nil {
+	if ws, err = g.GenerateWorkspace(pkg, g.Dev); err != nil {
 		return err
 	}
 
@@ -139,7 +90,7 @@ func (g *AxeGenerator) GenerateCMake(pkg *denv.Package) error {
 	var ws *Workspace
 	var err error
 
-	if ws, err = g.GenerateWorkspace(pkg, GeneratorCMake); err != nil {
+	if ws, err = g.GenerateWorkspace(pkg, g.Dev); err != nil {
 		return err
 	}
 
@@ -153,7 +104,7 @@ func (g *AxeGenerator) GenerateXcode(pkg *denv.Package) error {
 	var ws *Workspace
 	var err error
 
-	if ws, err = g.GenerateWorkspace(pkg, GeneratorXcode); err != nil {
+	if ws, err = g.GenerateWorkspace(pkg, g.Dev); err != nil {
 		return err
 	}
 
@@ -163,7 +114,7 @@ func (g *AxeGenerator) GenerateXcode(pkg *denv.Package) error {
 	return nil
 }
 
-func (g *AxeGenerator) GenerateWorkspace(pkg *denv.Package, generatorType GeneratorType) (*Workspace, error) {
+func (g *AxeGenerator) GenerateWorkspace(pkg *denv.Package, dev DevEnum) (*Workspace, error) {
 	g.RootAbsPath = filepath.Join(os.Getenv("GOPATH"), "src")
 
 	mainApp := pkg.GetMainApp()
@@ -178,15 +129,14 @@ func (g *AxeGenerator) GenerateWorkspace(pkg *denv.Package, generatorType Genera
 		app = mainApp
 	}
 
-	wsc := NewWorkspaceConfig(g.RootAbsPath, app.Name)
+	wsc := NewWorkspaceConfig(dev, g.RootAbsPath, app.Name)
 	wsc.StartupProject = app.Name
 	wsc.MultiThreadedBuild = true
 
 	ws := NewWorkspace(wsc)
-	ws.Generator = generatorType
 	ws.WorkspaceName = app.Name
 	ws.WorkspaceAbsPath = g.RootAbsPath
-	ws.GenerateAbsPath = filepath.Join(g.RootAbsPath, app.PackageURL, "target", ws.Generator.String())
+	ws.GenerateAbsPath = filepath.Join(g.RootAbsPath, app.PackageURL, "target", ws.Config.Dev.String())
 
 	if unittestApp != nil {
 		for _, cfgItem := range unittestApp.Platform.Configs {

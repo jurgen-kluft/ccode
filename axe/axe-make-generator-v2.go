@@ -75,14 +75,14 @@ func (g *MakeGenerator2) generateMainMakefile() error {
 	mk.NewLine()
 	mk.Write(`.PHONY: all `)
 	for _, cfg := range g.Product.Configs.Values {
-		mk.Write(` `, strings.ToLower(cfg.Type.String()))
+		mk.Write(` `, strings.ToLower(cfg.String()))
 	}
 	mk.WriteLine(` clean $(app) $(libraries)`)
 	mk.NewLine()
 
 	mk.Write(`all: `)
 	for _, cfg := range g.Product.Configs.Values {
-		mk.Write(` `, strings.ToLower(cfg.Type.String()))
+		mk.Write(` `, strings.ToLower(cfg.String()))
 	}
 	mk.NewLine()
 
@@ -97,11 +97,11 @@ func (g *MakeGenerator2) generateMainMakefile() error {
 
 	mk.WriteLine(`# here we list all the projects to make all the targets`)
 	for _, cfg := range g.Product.Configs.Values {
-		mk.WriteLine(strings.ToLower(cfg.Type.String()), `:`)
+		mk.WriteLine(strings.ToLower(cfg.String()), `:`)
 		for _, lib := range g.Libraries {
-			mk.WriteILine(`+`, `@$(MAKE) --directory=`, lib.Name, ` CONFIG=`, strings.ToLower(cfg.Type.String()))
+			mk.WriteILine(`+`, `@$(MAKE) --directory=`, lib.Name, ` CONFIG=`, strings.ToLower(cfg.String()))
 		}
-		mk.WriteILine(`+`, `@$(MAKE) --directory=`, g.Product.Name, ` CONFIG=`, strings.ToLower(cfg.Type.String()))
+		mk.WriteILine(`+`, `@$(MAKE) --directory=`, g.Product.Name, ` CONFIG=`, strings.ToLower(cfg.String()))
 		mk.NewLine()
 	}
 
@@ -157,7 +157,7 @@ func (g *MakeGenerator2) generateProjectMakefile(project *Project, isMain bool) 
 
 	// All include directories
 	for _, cfg := range project.Configs.Values {
-		mk.WriteAligned(`INCLUDES_CPP_`, strings.ToLower(cfg.Type.String()), TabStop(0), `:=`)
+		mk.WriteAligned(`INCLUDES_CPP_`, strings.ToLower(cfg.String()), TabStop(0), `:=`)
 		for _, inc := range cfg.IncludeDirs.FinalDict.Keys {
 			incpath := PathGetRel(inc, filepath.Join(g.TargetAbsPath, project.Name))
 			mk.Write(` -I`, incpath)
@@ -173,7 +173,7 @@ func (g *MakeGenerator2) generateProjectMakefile(project *Project, isMain bool) 
 
 	// The compiler preprocessor defines
 	for _, cfg := range project.Configs.Values {
-		mk.WriteAligned(`DEFINES_CPP_`, strings.ToLower(cfg.Type.String()), TabStop(0), `:=`)
+		mk.WriteAligned(`DEFINES_CPP_`, strings.ToLower(cfg.String()), TabStop(0), `:=`)
 		for _, define := range cfg.CppDefines.InheritDict.Values {
 			mk.Write(` -D`, define)
 		}
@@ -184,7 +184,7 @@ func (g *MakeGenerator2) generateProjectMakefile(project *Project, isMain bool) 
 	// mk.WriteLine(`LIBS_DEBUG          := -L../ccore/target/make/debug/products/arm64 -lccore`)
 	// mk.WriteLine(`LIBS_RELEASE        := -L../ccore/target/make/release/products/arm64 -lccore`)
 	for _, cfg := range project.Configs.Values {
-		mk.WriteAligned(`LIBS_`, strings.ToLower(cfg.Type.String()), TabStop(0), `:=`)
+		mk.WriteAligned(`LIBS_`, strings.ToLower(cfg.String()), TabStop(0), `:=`)
 		// Library directories are tight up with how make lib is registering the output directories
 		for _, dep := range project.Dependencies.Values {
 			mk.Write(` -L../`, dep.Name, `/$(DIR_BUILD_PRODUCTS)`, ` -l`, dep.Name)
@@ -194,7 +194,7 @@ func (g *MakeGenerator2) generateProjectMakefile(project *Project, isMain bool) 
 
 	// compiler warnings per config
 	for _, cfg := range project.Configs.Values {
-		mk.WriteAligned(`FLAGS_WARN_`, strings.ToLower(cfg.Type.String()), TabStop(0), `:=`)
+		mk.WriteAligned(`FLAGS_WARN_`, strings.ToLower(cfg.String()), TabStop(0), `:=`)
 		for _, warn := range cfg.DisableWarning.FinalDict.Values {
 			mk.Write(` `, warn)
 		}
@@ -203,7 +203,7 @@ func (g *MakeGenerator2) generateProjectMakefile(project *Project, isMain bool) 
 
 	// compiler flags per config
 	for _, cfg := range project.Configs.Values {
-		mk.WriteAligned(`FLAGS_CPP_`, strings.ToLower(cfg.Type.String()), TabStop(0), `:=`)
+		mk.WriteAligned(`FLAGS_CPP_`, strings.ToLower(cfg.String()), TabStop(0), `:=`)
 		for _, flag := range cfg.CppFlags.FinalDict.Values {
 			mk.Write(` `, flag)
 		}
@@ -247,14 +247,14 @@ func (g *MakeGenerator2) generateProjectTargets(project *Project, isMain bool, m
 
 	mk.Write(`all: `)
 	for _, cfg := range g.Product.Configs.Values {
-		mk.Write(` `, strings.ToLower(cfg.Type.String()))
+		mk.Write(` `, strings.ToLower(cfg.String()))
 	}
 	mk.NewLine()
 	mk.WriteILine(`+`, `@:`)
 	mk.NewLine()
 
 	for _, cfg := range g.Product.Configs.Values {
-		mk.WriteLine(strings.ToLower(cfg.Type.String()), `: \`)
+		mk.WriteLine(strings.ToLower(cfg.String()), `: \`)
 		mk.WriteILine(`+`, `_prepare_build_directories \`)
 		if isMain {
 			mk.WriteILine(`+`, `$(PRODUCT_LIB)$(EXT_LIB) \`)
@@ -269,7 +269,7 @@ func (g *MakeGenerator2) generateProjectTargets(project *Project, isMain bool, m
 	mk.WriteLine(`# Cleans all build files`)
 	mk.WriteLine(`clean:`)
 	for _, cfg := range g.Product.Configs.Values {
-		mk.WriteILine(`+`, `@$(MAKE) _clean_`, strings.ToLower(cfg.Type.String()), ` CONFIG=`, strings.ToLower(cfg.Type.String()))
+		mk.WriteILine(`+`, `@$(MAKE) _clean_`, strings.ToLower(cfg.String()), ` CONFIG=`, strings.ToLower(cfg.String()))
 	}
 	mk.NewLine()
 

@@ -84,9 +84,9 @@ func (g *MsDevGenerator) genProject(proj *Project) {
 
 			for _, config := range proj.Configs.Values {
 				tag := wr.TagScope("ProjectConfiguration")
-				wr.Attr("Include", config.Type.String()+"|"+g.VcxProjCpu)
+				wr.Attr("Include", config.String()+"|"+g.VcxProjCpu)
 
-				wr.TagWithBody("Configuration", config.Type.String())
+				wr.TagWithBody("Configuration", config.String())
 				wr.TagWithBody("Platform", g.VcxProjCpu)
 				tag.Close()
 			}
@@ -95,7 +95,7 @@ func (g *MsDevGenerator) genProject(proj *Project) {
 		{
 			tag := wr.TagScope("PropertyGroup")
 			wr.Attr("Label", "Globals")
-			wr.TagWithBody("ProjectGuid", proj.GenDataMsDev.UUID.String(g.Workspace.Generator))
+			wr.TagWithBody("ProjectGuid", proj.GenDataMsDev.UUID.String(g.Workspace.Config.Dev))
 			wr.TagWithBody("Keyword", "Win32Proj")
 			wr.TagWithBody("RootNamespace", proj.Name)
 			wr.TagWithBody("WindowsTargetPlatformVersion", proj.Workspace.Config.MsDev.WindowsTargetPlatformVersion)
@@ -284,7 +284,7 @@ func (g *MsDevGenerator) genProjectPch(wr *XmlWriter, proj *Project) {
 }
 
 func (g *MsDevGenerator) genProjectConfig(wr *XmlWriter, proj *Project, config *Config) {
-	cond := "'$(Configuration)|$(Platform)'=='" + config.Type.String() + "|" + g.VcxProjCpu + "'"
+	cond := "'$(Configuration)|$(Platform)'=='" + config.String() + "|" + g.VcxProjCpu + "'"
 	{
 		tag := wr.TagScope("PropertyGroup")
 		wr.Attr("Condition", cond)
@@ -294,7 +294,7 @@ func (g *MsDevGenerator) genProjectConfig(wr *XmlWriter, proj *Project, config *
 			outDir = filepath.Join(outDir, g.Workspace.MakeTarget.OSAsString())
 		}
 
-		intDir := filepath.Join(g.Workspace.GenerateAbsPath, "obj", proj.Name, config.Type.String()+"_"+g.Workspace.MakeTarget.ArchAsString()+"_"+g.Workspace.Config.MsDev.PlatformToolset)
+		intDir := filepath.Join(g.Workspace.GenerateAbsPath, "obj", proj.Name, config.String()+"_"+g.Workspace.MakeTarget.ArchAsString()+"_"+g.Workspace.Config.MsDev.PlatformToolset)
 		targetName := PathFilename(config.OutputTarget.Path, false)
 		targetExt := PathFileExtension(config.OutputTarget.Path)
 
@@ -440,13 +440,13 @@ func (g *MsDevGenerator) genConfigOptionWithModifier(wr *XmlWriter, name string,
 
 func (g *MsDevGenerator) writeSolutionProject(proj *Project, sb *LineWriter) {
 	sb.Write("Project(\"{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}\") = ")
-	sb.WriteLine("\"" + proj.Name + "\", \"" + proj.Name + ".vcxproj\", \"" + proj.GenDataMsDev.UUID.String(g.Workspace.Generator) + "\"")
+	sb.WriteLine("\"" + proj.Name + "\", \"" + proj.Name + ".vcxproj\", \"" + proj.GenDataMsDev.UUID.String(g.Workspace.Config.Dev) + "\"")
 
 	if len(proj.DependenciesInherit.Values) > 0 {
 		{
 			sb.WriteLine("\tProjectSection(ProjectDependencies) = postProject")
 			for _, dp := range proj.DependenciesInherit.Values {
-				sb.WriteLine("\t\t" + dp.GenDataMsDev.UUID.String(g.Workspace.Generator) + " = " + dp.GenDataMsDev.UUID.String(g.Workspace.Generator))
+				sb.WriteLine("\t\t" + dp.GenDataMsDev.UUID.String(g.Workspace.Config.Dev) + " = " + dp.GenDataMsDev.UUID.String(g.Workspace.Config.Dev))
 			}
 			sb.WriteLine("\tEndProjectSection")
 		}
@@ -491,7 +491,7 @@ func (g *MsDevGenerator) genWorkspace(ws *ExtraWorkspace) {
 			sb.Write("\", \"")
 			sb.Write(catName)
 			sb.Write("\", \"")
-			sb.Write(c.MsDev.UUID.String(g.Workspace.Generator))
+			sb.Write(c.MsDev.UUID.String(g.Workspace.Config.Dev))
 			sb.WriteLine("\"")
 		}
 
@@ -502,9 +502,9 @@ func (g *MsDevGenerator) genWorkspace(ws *ExtraWorkspace) {
 		for _, c := range g.Workspace.ProjectGroups.Values {
 			if c.Parent != nil && c.Parent != root {
 				sb.Write("\t\t")
-				sb.Write(c.MsDev.UUID.String(g.Workspace.Generator))
+				sb.Write(c.MsDev.UUID.String(g.Workspace.Config.Dev))
 				sb.Write(" = ")
-				sb.WriteLine(c.Parent.MsDev.UUID.String(g.Workspace.Generator))
+				sb.WriteLine(c.Parent.MsDev.UUID.String(g.Workspace.Config.Dev))
 			}
 
 			for _, proj := range c.Projects {
@@ -515,9 +515,9 @@ func (g *MsDevGenerator) genWorkspace(ws *ExtraWorkspace) {
 					continue
 				}
 				sb.Write("\t\t")
-				sb.Write(proj.GenDataMsDev.UUID.String(g.Workspace.Generator))
+				sb.Write(proj.GenDataMsDev.UUID.String(g.Workspace.Config.Dev))
 				sb.Write(" = ")
-				sb.WriteLine(c.MsDev.UUID.String(g.Workspace.Generator))
+				sb.WriteLine(c.MsDev.UUID.String(g.Workspace.Config.Dev))
 			}
 		}
 		sb.WriteLine("\tEndGlobalSection")

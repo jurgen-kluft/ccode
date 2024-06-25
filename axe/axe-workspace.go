@@ -9,6 +9,7 @@ import (
 // -----------------------------------------------------------------------------------------------------
 
 type WorkspaceConfig struct {
+	Dev                DevEnum
 	GenerateAbsPath    string              // The directory where the workspace and project files will be generated
 	StartupProject     string              // The name of the project that will be marked as the startup project
 	CppStd             string              // The C++ standard to use for this workspace and all projects
@@ -23,8 +24,9 @@ type WorkspaceConfig struct {
 	LibTargetSuffix string
 }
 
-func NewWorkspaceConfig(workspacePath string, projectName string) *WorkspaceConfig {
+func NewWorkspaceConfig(dev DevEnum, workspacePath string, projectName string) *WorkspaceConfig {
 	wsc := &WorkspaceConfig{}
+	wsc.Dev = dev
 	wsc.GenerateAbsPath = filepath.Join(workspacePath, projectName, "target")
 	wsc.StartupProject = projectName
 	wsc.CppStd = "c++17"
@@ -42,7 +44,6 @@ type Workspace struct {
 	WorkspaceName    string                     // The name of the workspace (e.g. For VisualStudio -> "cbase.sln", for Xcode -> "cbase.xcworkspace")
 	WorkspaceAbsPath string                     // The workspace directory is the path where all the projects and workspace are to be generated
 	GenerateAbsPath  string                     // Where to generate the workspace and project files
-	Generator        GeneratorType              // Name of the generator, ccore compiler define
 	Configs          *ConfigList                // The configuration instances for the workspace
 	MakeTarget       MakeTarget                 // The make target for the workspace (e.g. contains details like OS, Compiler, Arch, etc.)
 	StartupProject   *Project                   // The project instance that will be marked as the startup project
@@ -55,7 +56,7 @@ type Workspace struct {
 func NewWorkspace(wsc *WorkspaceConfig) *Workspace {
 	ws := &Workspace{
 		Config:          wsc,
-		Configs:         NewConfigList(),
+		Configs:         NewConfigList(wsc.Dev),
 		ProjectList:     NewProjectList(),
 		ProjectGroups:   NewProjectGroups(),
 		ExtraWorkspaces: make(map[string]*ExtraWorkspace),

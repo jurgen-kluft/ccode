@@ -17,15 +17,14 @@ func (m *TundraTestGenerator) TestRun(rootAbsPath string, projectName string) er
 
 	devVersion := axe.TUNDRA
 
-	wsc := axe.NewWorkspaceConfig(rootAbsPath, projectName)
+	wsc := axe.NewWorkspaceConfig(devVersion, rootAbsPath, projectName)
 	wsc.StartupProject = "cbase_unittest"
 	wsc.MultiThreadedBuild = true
 
 	ws := axe.NewWorkspace(wsc)
-	ws.Generator = axe.GeneratorTundra
 	ws.WorkspaceName = projectName
 	ws.WorkspaceAbsPath = rootAbsPath
-	ws.GenerateAbsPath = filepath.Join(rootAbsPath, projectName, "target", ws.Generator.String())
+	ws.GenerateAbsPath = filepath.Join(rootAbsPath, projectName, "target", ws.Config.Dev.String())
 	m.addWorkspaceConfiguration(ws, axe.ConfigTypeDebug|axe.ConfigTypeTest)
 	m.addWorkspaceConfiguration(ws, axe.ConfigTypeRelease|axe.ConfigTypeTest)
 

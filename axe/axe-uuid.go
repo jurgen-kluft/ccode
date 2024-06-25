@@ -34,22 +34,25 @@ var generator = &UUIDRandomGenerator{seed: 0xEED1A7370B428D0B, s0: 0x5C6121E0670
 // String returns the UUID as a string depending on the generator type
 // Visual Studio uses the format  {XXXXXXXX-XXXX-XXXX-XXXX-XXXXXXXXXXXX}
 // Xcode uses another format      XXXXXXXXXXXXXXXX
-func (u UUID) String(t GeneratorType) string {
+func (u UUID) String(dev DevEnum) string {
 
 	// Random number generation chain depends on what u is
 	g := NewUUIDRandomGenerator(uint64(u))
 	s1 := g.Uint64()
 	s2 := g.Uint64()
 
-	switch t {
-	case GeneratorMsDev:
+	if dev&VISUALSTUDIO == VISUALSTUDIO {
 		return fmt.Sprintf("{%08X-%04X-%04X-%04X-%08X%04X}", uint32(s1>>32), uint16(s1&0xFFFF), uint16(s1>>16), uint16(s2>>16), uint32(s2>>32), uint16(s2&0xFFFF))
-	case GeneratorXcode:
+	}
+
+	switch dev {
+	case XCODE:
 		u1 := uint32(s1 >> 32)
 		u2 := uint32(s1 & 0xFFFFFFFF)
 		u3 := uint32(s2 >> 32)
 		return fmt.Sprintf("%08X%08X%08X", u1, u2, u3)
 	}
+
 	return "Cannot generate UUID for an unknown generator type"
 }
 

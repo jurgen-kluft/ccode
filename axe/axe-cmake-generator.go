@@ -34,13 +34,13 @@ func (g *CMakeGenerator) Generate() {
 
 	for _, cfg := range g.Workspace.Configs.Values {
 
-		makefile.WriteILine(``, `macro(config_`, g.asIdentifierString(cfg.Type.String()), `)`)
-		makefile.WriteILine(`+`, `message(STATUS "Configuring for `, cfg.Type.String(), `")`)
+		makefile.WriteILine(``, `macro(config_`, g.asIdentifierString(cfg.String()), `)`)
+		makefile.WriteILine(`+`, `message(STATUS "Configuring for `, cfg.String(), `")`)
 		makefile.WriteLine(``)
 
-		makefile.WriteILine(`+`, `set(CMAKE_ARCHIVE_OUTPUT_DIRECTORY lib/`, cfg.Type.String(), `)`)
-		makefile.WriteILine(`+`, `set(CMAKE_LIBRARY_OUTPUT_DIRECTORY lib/`, cfg.Type.String(), `)`)
-		makefile.WriteILine(`+`, `set(CMAKE_RUNTIME_OUTPUT_DIRECTORY bin/`, cfg.Type.String(), `)`)
+		makefile.WriteILine(`+`, `set(CMAKE_ARCHIVE_OUTPUT_DIRECTORY lib/`, cfg.String(), `)`)
+		makefile.WriteILine(`+`, `set(CMAKE_LIBRARY_OUTPUT_DIRECTORY lib/`, cfg.String(), `)`)
+		makefile.WriteILine(`+`, `set(CMAKE_RUNTIME_OUTPUT_DIRECTORY bin/`, cfg.String(), `)`)
 		makefile.WriteLine(``)
 
 		// register the library and executable targets
@@ -117,7 +117,7 @@ func (g *CMakeGenerator) Generate() {
 		}
 
 		makefile.WriteILine(`+`, `set(CMAKE_CXX_FLAGS "-g ${CMAKE_CXX_FLAGS}")`)
-		makefile.WriteILine(`+`, `set(CMAKE_BUILD_TYPE `, cfg.Type.String(), `)`)
+		makefile.WriteILine(`+`, `set(CMAKE_BUILD_TYPE `, cfg.String(), `)`)
 
 		// use the name of this dependency appended with _SOURCES
 		makefile.WriteILine(`+`, `# set source files`)
@@ -187,11 +187,11 @@ func (g *CMakeGenerator) Generate() {
 
 		if cfg.Type.IsDebug() {
 			makefile.WriteLine(`if (CMAKE_BUILD_TYPE STREQUAL "DEBUG")`)
-			makefile.WriteILine(`+`, `config_`, g.asIdentifierString(cfg.Type.String()), `()`)
+			makefile.WriteILine(`+`, `config_`, g.asIdentifierString(cfg.String()), `()`)
 			makefile.WriteLine(`endif ()`)
 		} else if cfg.Type.IsRelease() {
 			makefile.WriteLine(`if (CMAKE_BUILD_TYPE STREQUAL "RELEASE")`)
-			makefile.WriteILine(`+`, `config_`, g.asIdentifierString(cfg.Type.String()), `()`)
+			makefile.WriteILine(`+`, `config_`, g.asIdentifierString(cfg.String()), `()`)
 			makefile.WriteLine(`endif ()`)
 		}
 	}

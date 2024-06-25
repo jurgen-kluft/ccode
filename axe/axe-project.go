@@ -242,7 +242,7 @@ func newProject(ws *Workspace, name string, projectAbsPath string, projectType P
 		FileEntries:         NewFileEntryDict(ws, projectAbsPath),
 		ResourceDirs:        NewFileEntryDict(ws, projectAbsPath),
 		HasOutputTarget:     false,
-		Configs:             NewConfigList(),
+		Configs:             NewConfigList(ws.Config.Dev),
 		Dependencies:        NewProjectList(),
 		DependenciesInherit: NewProjectList(),
 		GenDataXcode:        NewXcodeProjectConfig(),
@@ -309,14 +309,14 @@ func (p *Project) GenProjectGenUuid() {
 
 	for _, i := range p.FileEntries.Dict {
 		f := p.FileEntries.Values[i]
-		f.GenDataXcode.UUID = GenerateUUID()
-		f.GenDataXcode.BuildUUID = GenerateUUID()
+		f.UUID = GenerateUUID()
+		f.BuildUUID = GenerateUUID()
 	}
 
 	for _, i := range p.ResourceDirs.Dict {
 		f := p.FileEntries.Values[i]
-		f.GenDataXcode.UUID = GenerateUUID()
-		f.GenDataXcode.BuildUUID = GenerateUUID()
+		f.UUID = GenerateUUID()
+		f.BuildUUID = GenerateUUID()
 	}
 
 	for _, f := range p.VirtualFolders.Folders {
