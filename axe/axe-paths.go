@@ -12,15 +12,6 @@ func PathSlash() string {
 	return string(os.PathSeparator)
 }
 
-// PathOtherSlash returns the opposite slash of the current OS
-func PathOtherSlash() string {
-	slash := os.PathSeparator
-	if slash == '/' {
-		return "\\"
-	}
-	return "/"
-}
-
 // PathNormalize returns a normalized path, fixing slashes and removing '..' and trailing slashes
 func PathNormalize(path string) string {
 
@@ -29,8 +20,12 @@ func PathNormalize(path string) string {
 		return path
 	}
 
-	// For each OS, adjust for the forward and backward slashes
-	path = strings.Replace(path, PathOtherSlash(), PathSlash(), -1)
+	// adjust for the forward and backward slashes
+	if os.PathSeparator == '\\' {
+		path = strings.Replace(path, "/", "\\", -1)
+	} else {
+		path = strings.Replace(path, "\\", "/", -1)
+	}
 
 	// remove any '..' and trailing slashes
 	// adjust for the platform we are on

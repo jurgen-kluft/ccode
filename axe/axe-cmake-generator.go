@@ -3,8 +3,6 @@ package axe
 import (
 	"path/filepath"
 	"strings"
-
-	"github.com/jurgen-kluft/ccode/denv"
 )
 
 type CMakeGenerator struct {
@@ -168,7 +166,7 @@ func (g *CMakeGenerator) Generate() {
 
 		// platform specific libraries
 
-		if denv.OS == denv.OS_MAC {
+		if g.Workspace.MakeTarget.OSIsMac() {
 			makefile.WriteILine(`+++`, `"-framework Foundation"`)
 			makefile.WriteILine(`+++`, `"-framework Cocoa"`)
 			makefile.WriteILine(`+++`, `"-framework Metal"`)

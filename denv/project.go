@@ -1,5 +1,10 @@
 package denv
 
+import (
+	"os"
+	"strings"
+)
+
 // ProjectType defines the type of project, like 'StaticLibrary'
 type ProjectType int
 
@@ -12,47 +17,22 @@ const (
 	Executable ProjectType = 3 // .exe, .app
 )
 
-const (
-	// CppLanguageToken is the language token for C++
-	CppLanguageToken string = "C++"
-)
-
 // Project is a structure that holds all the information that defines a project in an IDE
 type Project struct {
+	Name         string
+	Type         ProjectType
 	ProjectPath  string
 	PackagePath  string
 	PackageURL   string
-	Name         string
-	Type         ProjectType
-	Author       string
-	Language     string
-	Platform     *Platform
+	Configs      []*Config
 	Dependencies []*Project
-}
-
-// HasPlatform returns true if the project is configured for that platform
-func (prj *Project) HasPlatform(platformname string) bool {
-	return prj.Platform.Name == platformname
-}
-
-// HasConfig will return true if platform @platformname has a configuration with name @configname
-func (prj *Project) HasConfig(platformname, configname string) bool {
-	if prj.Platform.Name == platformname {
-		if prj.Platform.HasConfig(configname) == false {
-			return false
-		}
-	}
-	return true
-}
-
-// GetConfig will return the configuration of platform @platformname with name @configname
-func (prj *Project) GetConfig(configname string) *Config {
-	return prj.Platform.GetConfig(configname)
 }
 
 // AddDefine adds a define
 func (prj *Project) AddDefine(define string) {
-	prj.Platform.AddDefine(define)
+	for _, cfg := range prj.Configs {
+		cfg.Defines = append(cfg.Defines, define)
+	}
 }
 
 // SetupDefaultCppLibProject returns a default C++ project
@@ -61,11 +41,15 @@ func (prj *Project) AddDefine(define string) {
 //	SetupDefaultCppLibProject("cbase", "github.com/jurgen-kluft")
 func SetupDefaultCppLibProject(name string, URL string) *Project {
 	project := &Project{Name: name}
-	project.PackageURL = Path(URL)
-	project.Language = CppLanguageToken
+	if os.PathSeparator == '\\' {
+		project.PackageURL = strings.Replace(URL, "/", "\\", -1)
+	} else {
+		project.PackageURL = strings.Replace(URL, "\\", "/", -1)
+	}
 	project.Type = StaticLibrary
 
-	project.Platform = GetDefaultPlatform()
+	project.Configs = append(project.Configs, NewDebugConfig())
+	project.Configs = append(project.Configs, NewReleaseConfig())
 	project.Dependencies = []*Project{}
 
 	return project
@@ -77,11 +61,17 @@ func SetupDefaultCppLibProject(name string, URL string) *Project {
 //	SetupDefaultCppTestProject("cbase", "github.com\\jurgen-kluft")
 func SetupDefaultCppTestProject(name string, URL string) *Project {
 	project := &Project{Name: name}
-	project.PackageURL = Path(URL)
-	project.Language = CppLanguageToken
+
+	if os.PathSeparator == '\\' {
+		project.PackageURL = strings.Replace(URL, "/", "\\", -1)
+	} else {
+		project.PackageURL = strings.Replace(URL, "\\", "/", -1)
+	}
+
 	project.Type = Executable
 
-	project.Platform = GetDefaultPlatform()
+	project.Configs = append(project.Configs, NewDebugConfig())
+	project.Configs = append(project.Configs, NewReleaseConfig())
 	project.Dependencies = []*Project{}
 
 	return project
@@ -93,11 +83,15 @@ func SetupDefaultCppTestProject(name string, URL string) *Project {
 //	SetupDefaultCppAppProject("cbase", "github.com\\jurgen-kluft")
 func SetupDefaultCppAppProject(name string, URL string) *Project {
 	project := &Project{Name: name}
-	project.PackageURL = Path(URL)
-	project.Language = CppLanguageToken
+	if os.PathSeparator == '\\' {
+		project.PackageURL = strings.Replace(URL, "/", "\\", -1)
+	} else {
+		project.PackageURL = strings.Replace(URL, "\\", "/", -1)
+	}
 	project.Type = Executable
 
-	project.Platform = GetDefaultPlatform()
+	project.Configs = append(project.Configs, NewDebugConfig())
+	project.Configs = append(project.Configs, NewReleaseConfig())
 	project.Dependencies = []*Project{}
 
 	return project

@@ -14,10 +14,10 @@ import (
 // ----------------------------------------------------------------------------------------------
 
 type AxeGenerator struct {
-	Dev         DevEnum
-	Os          string
-	Arch        string
-	RootAbsPath string
+	Dev       DevEnum
+	Os        string
+	Arch      string
+	GoPathAbs string // $(GOPATH)/src, absolute path
 }
 
 func NewAxeGenerator(dev string, os string, arch string) *AxeGenerator {
@@ -77,7 +77,7 @@ func (g *AxeGenerator) Generate(pkg *denv.Package) error {
 }
 
 func (g *AxeGenerator) GenerateWorkspace(pkg *denv.Package, dev DevEnum) (*Workspace, error) {
-	g.RootAbsPath = filepath.Join(os.Getenv("GOPATH"), "src")
+	g.GoPathAbs = filepath.Join(os.Getenv("GOPATH"), "src")
 
 	mainApp := pkg.GetMainApp()
 	unittestApp := pkg.GetUnittest()
@@ -91,22 +91,22 @@ func (g *AxeGenerator) GenerateWorkspace(pkg *denv.Package, dev DevEnum) (*Works
 		app = mainApp
 	}
 
-	wsc := NewWorkspaceConfig(dev, g.RootAbsPath, app.Name)
+	wsc := NewWorkspaceConfig(dev, g.GoPathAbs, app.Name)
 	wsc.StartupProject = app.Name
 	wsc.MultiThreadedBuild = true
 
 	ws := NewWorkspace(wsc)
 	ws.WorkspaceName = app.Name
-	ws.WorkspaceAbsPath = g.RootAbsPath
-	ws.GenerateAbsPath = filepath.Join(g.RootAbsPath, app.PackageURL, "target", ws.Config.Dev.String())
+	ws.WorkspaceAbsPath = g.GoPathAbs
+	ws.GenerateAbsPath = filepath.Join(g.GoPathAbs, app.PackageURL, "target", ws.Config.Dev.String())
 
 	if unittestApp != nil {
-		for _, cfgItem := range unittestApp.Platform.Configs {
-			g.addWorkspaceConfiguration(ws, cfgItem, true)
+		for _, cfg := range unittestApp.Configs {
+			g.addWorkspaceConfiguration(ws, cfg, true)
 		}
 	} else {
-		for _, cfgItem := range mainApp.Platform.Configs {
-			g.addWorkspaceConfiguration(ws, cfgItem, false)
+		for _, cfg := range mainApp.Configs {
+			g.addWorkspaceConfiguration(ws, cfg, true)
 		}
 	}
 
@@ -203,7 +203,7 @@ func (g *AxeGenerator) createProject(devProj *denv.Project, ws *Workspace, unitt
 			projectConfig.Dependencies = append(projectConfig.Dependencies, dp.Name)
 		}
 
-		projAbsPath := filepath.Join(g.RootAbsPath, devProj.PackageURL)
+		projAbsPath := filepath.Join(g.GoPathAbs, devProj.PackageURL)
 		newProject := ws.NewProject(devProj.Name, projAbsPath, ProjectTypeCppLib, projectConfig)
 		newProject.ProjectFilename = devProj.Name
 
@@ -234,10 +234,9 @@ func (g *AxeGenerator) createProject(devProj *denv.Project, ws *Workspace, unitt
 			}
 		}
 
-		for _, cfgItem := range devProj.Platform.Configs {
-			g.createProjectConfiguration(newProject, cfgItem, executable, unittest)
+		for _, cfg := range devProj.Configs {
+			g.createProjectConfiguration(newProject, cfg, executable, unittest)
 		}
-
 		return newProject
 	}
 }
