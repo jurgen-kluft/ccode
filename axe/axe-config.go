@@ -52,7 +52,7 @@ func (p *ConfigList) First() *Config {
 }
 
 func (p *ConfigList) Get(t ConfigType) (*Config, bool) {
-	if i, ok := p.Dict[t.String(p.Dev)]; ok {
+	if i, ok := p.Dict[t.String()]; ok {
 		return p.Values[i], true
 	}
 	return nil, false
@@ -97,52 +97,52 @@ func (t ConfigType) IsTest() bool {
 	return t&ConfigTypeTest != 0
 }
 
-func (t ConfigType) String(dev DevEnum) string {
-	if dev == DevTundra {
-		switch t {
-		case ConfigTypeDebug:
-			return "*-*-debug-*"
-		case ConfigTypeRelease:
-			return "*-*-release-*"
-		case ConfigTypeFinal:
-			return "*-*-final-*"
-		case ConfigTypeDebug | ConfigTypeTest:
-			return "*-*-debug-test"
-		case ConfigTypeRelease | ConfigTypeTest:
-			return "*-*-release-test"
-		case ConfigTypeFinal | ConfigTypeTest:
-			return "*-*-final-test"
-		case ConfigTypeDebug | ConfigTypeProfile:
-			return "*-*-debug-profile"
-		case ConfigTypeRelease | ConfigTypeProfile:
-			return "*-*-release-profile"
-		case ConfigTypeFinal | ConfigTypeProfile:
-			return "*-*-final-profile"
-		}
+func (t ConfigType) Tundra() string {
+	switch t {
+	case ConfigTypeDebug:
 		return "*-*-debug-*"
-	} else {
-		switch t {
-		case ConfigTypeDebug:
-			return "Debug"
-		case ConfigTypeRelease:
-			return "Release"
-		case ConfigTypeFinal:
-			return "Final"
-		case ConfigTypeDebug | ConfigTypeTest:
-			return "DebugTest"
-		case ConfigTypeRelease | ConfigTypeTest:
-			return "ReleaseTest"
-		case ConfigTypeFinal | ConfigTypeTest:
-			return "FinalTest"
-		case ConfigTypeDebug | ConfigTypeProfile:
-			return "DebugProfile"
-		case ConfigTypeRelease | ConfigTypeProfile:
-			return "ReleaseProfile"
-		case ConfigTypeFinal | ConfigTypeProfile:
-			return "FinalProfile"
-		}
-		return "Debug"
+	case ConfigTypeRelease:
+		return "*-*-release-*"
+	case ConfigTypeFinal:
+		return "*-*-final-*"
+	case ConfigTypeDebug | ConfigTypeTest:
+		return "*-*-debug-test"
+	case ConfigTypeRelease | ConfigTypeTest:
+		return "*-*-release-test"
+	case ConfigTypeFinal | ConfigTypeTest:
+		return "*-*-final-test"
+	case ConfigTypeDebug | ConfigTypeProfile:
+		return "*-*-debug-profile"
+	case ConfigTypeRelease | ConfigTypeProfile:
+		return "*-*-release-profile"
+	case ConfigTypeFinal | ConfigTypeProfile:
+		return "*-*-final-profile"
 	}
+	return "*-*-debug-*"
+}
+
+func (t ConfigType) String() string {
+	switch t {
+	case ConfigTypeDebug:
+		return "Debug"
+	case ConfigTypeRelease:
+		return "Release"
+	case ConfigTypeFinal:
+		return "Final"
+	case ConfigTypeDebug | ConfigTypeTest:
+		return "DebugTest"
+	case ConfigTypeRelease | ConfigTypeTest:
+		return "ReleaseTest"
+	case ConfigTypeFinal | ConfigTypeTest:
+		return "FinalTest"
+	case ConfigTypeDebug | ConfigTypeProfile:
+		return "DebugProfile"
+	case ConfigTypeRelease | ConfigTypeProfile:
+		return "ReleaseProfile"
+	case ConfigTypeFinal | ConfigTypeProfile:
+		return "FinalProfile"
+	}
+	return "Debug"
 }
 
 // -----------------------------------------------------------------------------------------------------
@@ -241,7 +241,7 @@ func NewConfig(t ConfigType, ws *Workspace, p *Project) *Config {
 }
 
 func (c *Config) String() string {
-	return c.Type.String(c.Dev)
+	return c.Type.String()
 }
 
 func (c *Config) AddIncludeDir(includeDir string) {
