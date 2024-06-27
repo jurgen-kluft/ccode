@@ -1,96 +1,41 @@
 package ccode
 
 import (
-	"flag"
-	"fmt"
-	"runtime"
-	"strings"
-
-	"github.com/jurgen-kluft/ccode/axe"
+	base "github.com/jurgen-kluft/ccode/ccode-base"
 	"github.com/jurgen-kluft/ccode/denv"
-	"github.com/jurgen-kluft/ccode/embedded"
 )
-
-var ccode_dev = "tundra"
-var ccode_os = runtime.GOOS
-var ccode_arch = runtime.GOARCH
 
 // Init will initialize ccode before anything else is run
 func Init() bool {
-	flag.StringVar(&ccode_dev, "dev", "tundra", "the build system to generate projects for (vs2022, tundra, make, cmake, xcode)")
-	flag.Parse()
-
-	if ccode_os == "" {
-		ccode_os = strings.ToLower(runtime.GOOS)
-	}
-	if ccode_arch == "" {
-		ccode_arch = strings.ToLower(runtime.GOARCH)
-	}
-	if ccode_dev == "" {
-		ccode_dev = "tundra"
-		if ccode_os == "windows" {
-			ccode_dev = "vs2022"
-		}
-	}
-
-	fmt.Println("ccode, a tool to generate C/C++ workspace and project files")
-
-	if axe.GetDevEnum(ccode_dev) == axe.DevInvalid {
-		fmt.Println()
-		fmt.Println("Error, wrong parameter for '-dev', '", ccode_dev, "' is not recognized")
-		fmt.Println()
-		fmt.Println("Examples:")
-		fmt.Println("    -> Usage: ccode -dev=vs2022/vs2019/vs2015")
-		fmt.Println("    -> Usage: ccode -dev=tundra")
-		fmt.Println("    -> Usage: ccode -dev=make")
-		fmt.Println("    -> Usage: ccode -dev=xcode")
-		return false
-	}
-
-	fmt.Printf("finished generating %s for os:%s, arch:%s\n", ccode_dev, ccode_os, ccode_arch)
-
-	return true
+	return base.Init()
 }
 
 // Generate is the main function that requires 'arguments' to then generate
 // workspace and project files for a specified IDE.
 func Generate(pkg *denv.Package) error {
-	generator := axe.NewAxeGenerator(ccode_dev, ccode_os, ccode_arch)
-	return generator.Generate(pkg)
+	return base.Generate(pkg)
 }
 
-// DEV is an enumeration for all possible IDE's that are supported
-type GenerateFile int
+func GenerateGitIgnore() {
+	base.GenerateGitIgnore()
+}
 
-// All development environment
-const (
-	CLANGFORMAT GenerateFile = 0x20000
-	GITIGNORE   GenerateFile = 0x40000
-	MAINTEST    GenerateFile = 0x80000
-	EMBEDDED    GenerateFile = 0x100000
-	ALL         GenerateFile = CLANGFORMAT | GITIGNORE | MAINTEST | EMBEDDED
-	INVALID     GenerateFile = 0x0
-)
+func GenerateTestMainCpp() {
+	base.GenerateTestMainCpp()
+}
 
-func GenerateSpecificFiles(files GenerateFile) {
-	if files&CLANGFORMAT == CLANGFORMAT {
-		embedded.WriteClangFormat(false)
-	}
-	if files&GITIGNORE == GITIGNORE {
-		embedded.WriteGitIgnore(false)
-	}
-	if files&MAINTEST == MAINTEST {
-		embedded.WriteTestMainCpp(true)
-	}
-	if files&EMBEDDED == EMBEDDED {
-		embedded.WriteEmbedded()
-	}
+func GenerateEmbedded() {
+	base.GenerateEmbedded()
+}
+
+func GenerateClangFormat() {
+	base.GenerateClangFormat()
 }
 
 func GenerateFiles() {
-	GenerateSpecificFiles(ALL)
+	base.GenerateFiles()
 }
 
 func GenerateCppEnums(inputFile string, outputFile string) error {
-	return embedded.GenerateCppEnums(inputFile, outputFile)
+	return base.GenerateCppEnums(inputFile, outputFile)
 }

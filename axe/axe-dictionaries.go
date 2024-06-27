@@ -47,7 +47,7 @@ func (d *KeyValueDict) AddOrSet(key string, value string) {
 		d.Entries[key] = len(d.Values)
 		d.Keys = append(d.Keys, key)
 		d.Values = append(d.Values, value)
-	} else {
+	} else if d.Values[i] != value {
 		d.Values[i] = value
 	}
 }

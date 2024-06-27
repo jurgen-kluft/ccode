@@ -235,13 +235,13 @@ func (g *AxeGenerator) createProject(devProj *denv.Project, ws *Workspace, unitt
 		}
 
 		for _, cfg := range devProj.Configs {
-			g.createProjectConfiguration(newProject, cfg, executable, unittest)
+			g.createProjectConfiguration(newProject, devProj, cfg, executable, unittest)
 		}
 		return newProject
 	}
 }
 
-func (g *AxeGenerator) createProjectConfiguration(p *Project, cfg *denv.Config, executable bool, unittest bool) *Config {
+func (g *AxeGenerator) createProjectConfiguration(p *Project, prj *denv.Project, cfg *denv.Config, executable bool, unittest bool) *Config {
 	configType := ConfigTypeNone
 	if cfg.Config == "Debug" {
 		configType = ConfigTypeDebug
@@ -257,19 +257,20 @@ func (g *AxeGenerator) createProjectConfiguration(p *Project, cfg *denv.Config, 
 	for _, define := range cfg.Defines {
 		config.CppDefines.ValuesToAdd(define)
 	}
-	for _, include := range cfg.IncludeDirs {
+
+	for _, include := range prj.IncludeDirs {
 		config.AddIncludeDir(include)
 	}
 
-	config.AddIncludeDir("source/main/include")
+	// config.AddIncludeDir("source/main/include")
 
-	if !unittest && executable {
-		config.AddIncludeDir("source/app/include")
-	}
+	// if !unittest && executable {
+	// 	config.AddIncludeDir("source/app/include")
+	// }
 
-	if unittest && executable {
-		config.AddIncludeDir("source/test/include")
-	}
+	// if unittest && executable {
+	// 	config.AddIncludeDir("source/test/include")
+	// }
 
 	if p.Name == "cunittest" {
 		config.VisualStudioClCompile.AddOrSet("ExceptionHandling", "Sync")

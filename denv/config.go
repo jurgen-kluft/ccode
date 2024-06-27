@@ -5,7 +5,6 @@ type Config struct {
 	Config       string
 	Build        string
 	Defines      []string
-	IncludeDirs  []string
 	LibraryFiles []string
 }
 
@@ -15,7 +14,6 @@ func NewDebugConfig() *Config {
 		Config:       "Debug",  // Debug, Release, Final
 		Build:        "Dev",    // Development, Unittest, Profile, Shipping
 		Defines:      []string{},
-		IncludeDirs:  []string{},
 		LibraryFiles: []string{},
 	}
 
@@ -28,7 +26,6 @@ func NewReleaseConfig() *Config {
 		Config:       "Release", // Debug, Release, Final
 		Build:        "Dev",     // Development, Unittest, Profile, Shipping
 		Defines:      []string{},
-		IncludeDirs:  []string{},
 		LibraryFiles: []string{},
 	}
 	return ReleaseConfig

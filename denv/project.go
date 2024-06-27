@@ -14,16 +14,16 @@ const (
 	// SharedLibrary is a library that can be dynamically linked with, like a .DLL
 	SharedLibrary ProjectType = 2 // .dll
 	// Executable is an application that can be run
-	Executable ProjectType = 3 // .exe, .app
+	Executable ProjectType = 4 // .exe, .app
 )
 
 // Project is a structure that holds all the information that defines a project in an IDE
 type Project struct {
 	Name         string
 	Type         ProjectType
-	ProjectPath  string
-	PackagePath  string
 	PackageURL   string
+	IncludeDirs  []string
+	SourceDirs   []string
 	Configs      []*Config
 	Dependencies []*Project
 }
@@ -41,13 +41,15 @@ func (prj *Project) AddDefine(define string) {
 //	SetupDefaultCppLibProject("cbase", "github.com/jurgen-kluft")
 func SetupDefaultCppLibProject(name string, URL string) *Project {
 	project := &Project{Name: name}
+	project.Type = StaticLibrary
 	if os.PathSeparator == '\\' {
 		project.PackageURL = strings.Replace(URL, "/", "\\", -1)
 	} else {
 		project.PackageURL = strings.Replace(URL, "\\", "/", -1)
 	}
-	project.Type = StaticLibrary
 
+	project.IncludeDirs = []string{"source/main/include"}
+	project.SourceDirs = []string{"source/main/cpp"}
 	project.Configs = append(project.Configs, NewDebugConfig())
 	project.Configs = append(project.Configs, NewReleaseConfig())
 	project.Dependencies = []*Project{}
@@ -61,15 +63,14 @@ func SetupDefaultCppLibProject(name string, URL string) *Project {
 //	SetupDefaultCppTestProject("cbase", "github.com\\jurgen-kluft")
 func SetupDefaultCppTestProject(name string, URL string) *Project {
 	project := &Project{Name: name}
-
+	project.Type = Executable
 	if os.PathSeparator == '\\' {
 		project.PackageURL = strings.Replace(URL, "/", "\\", -1)
 	} else {
 		project.PackageURL = strings.Replace(URL, "\\", "/", -1)
 	}
-
-	project.Type = Executable
-
+	project.IncludeDirs = []string{"source/main/include", "source/test/include"}
+	project.SourceDirs = []string{"source/test/cpp"}
 	project.Configs = append(project.Configs, NewDebugConfig())
 	project.Configs = append(project.Configs, NewReleaseConfig())
 	project.Dependencies = []*Project{}
@@ -80,16 +81,17 @@ func SetupDefaultCppTestProject(name string, URL string) *Project {
 // SetupDefaultCppAppProject returns a default C++ project
 // Example:
 //
-//	SetupDefaultCppAppProject("cbase", "github.com\\jurgen-kluft")
+//	SetupDefaultCppAppProject("cmyapp", "github.com\\jurgen-kluft")
 func SetupDefaultCppAppProject(name string, URL string) *Project {
 	project := &Project{Name: name}
+	project.Type = Executable
 	if os.PathSeparator == '\\' {
 		project.PackageURL = strings.Replace(URL, "/", "\\", -1)
 	} else {
 		project.PackageURL = strings.Replace(URL, "\\", "/", -1)
 	}
-	project.Type = Executable
-
+	project.IncludeDirs = []string{"source/main/include", "source/app/include"}
+	project.SourceDirs = []string{"source/app/cpp"}
 	project.Configs = append(project.Configs, NewDebugConfig())
 	project.Configs = append(project.Configs, NewReleaseConfig())
 	project.Dependencies = []*Project{}
