@@ -3,31 +3,80 @@ package ccode
 import (
 	"os"
 	"path/filepath"
+	"strings"
 
 	base "github.com/jurgen-kluft/ccode/ccode-base"
 	"github.com/jurgen-kluft/ccode/denv"
 	fixr "github.com/jurgen-kluft/ccode/include-fixer"
 )
 
+var DefaultHeaderFileExtensions = map[string]bool{".h": true, ".hpp": true, ".inl": true}
+var DefaultHeaderFileFilter = func(_filepath string) bool {
+	_filepath = strings.ToLower(_filepath)
+	ext := filepath.Ext(_filepath)
+	_, ok := DefaultHeaderFileExtensions[ext]
+	return ok
+}
+
+var DefaultSourceFileExtensions = map[string]bool{".cpp": true, ".c": true, ".cxx": true, ".mm": true, ".m": true}
+var DefaultSourceFileFilter = func(_filepath string) bool {
+	_filepath = strings.ToLower(_filepath)
+	ext := filepath.Ext(_filepath)
+	_, ok := DefaultSourceFileExtensions[ext]
+	return ok
+}
+
+var NoFileNamingPolicy = func(_filepath string) (bool, string) {
+	return false, _filepath
+}
+
+var CCoreFileNamingPolicy = func(_filepath string) (bool, string) {
+	renamed := false
+	if strings.HasSuffix(_filepath, ".hpp") {
+		renamed = true
+		_filepath = strings.TrimSuffix(_filepath, ".hpp") + ".h"
+	} else if strings.HasSuffix(_filepath, ".cxx") {
+		renamed = true
+		_filepath = strings.TrimSuffix(_filepath, ".cxx") + ".cpp"
+	}
+
+	filename := filepath.Base(_filepath)
+	if !strings.HasPrefix(filename, "c_") {
+		renamed = true
+		_filepath = strings.TrimSuffix(_filepath, filename) + "c_" + filename
+	}
+
+	return renamed, _filepath
+}
+
 type FixrConfig struct {
+	Setting                fixr.FixrSetting
 	RenamePolicy           func(_filepath string) (bool, string)
 	IncludeGuardConfig     *fixr.IncludeGuardConfig
 	IncludeDirectiveConfig *fixr.IncludeDirectiveConfig
+	HeaderFileFilter       func(_filepath string) bool
+	SourceFileFilter       func(_filepath string) bool
 }
 
-func NewDefaultFixrConfig() *FixrConfig {
+func NewDefaultFixrConfig(setting fixr.FixrSetting) *FixrConfig {
 	return &FixrConfig{
-		RenamePolicy:           func(_filepath string) (bool, string) { return false, _filepath },
-		IncludeGuardConfig:     fixr.NewIncludeGuardConfig(),
+		Setting:                setting,
+		RenamePolicy:           NoFileNamingPolicy,
+		IncludeGuardConfig:     nil,
 		IncludeDirectiveConfig: fixr.NewIncludeDirectiveConfig(),
+		HeaderFileFilter:       DefaultHeaderFileFilter,
+		SourceFileFilter:       DefaultSourceFileFilter,
 	}
 }
 
-func NewCCoreFixrConfig() *FixrConfig {
+func NewCCoreFixrConfig(setting fixr.FixrSetting) *FixrConfig {
 	return &FixrConfig{
-		RenamePolicy:           fixr.CCoreFileNamingPolicy,
+		Setting:                setting,
+		RenamePolicy:           CCoreFileNamingPolicy,
 		IncludeGuardConfig:     fixr.NewIncludeGuardConfig(),
 		IncludeDirectiveConfig: fixr.NewIncludeDirectiveConfig(),
+		HeaderFileFilter:       DefaultHeaderFileFilter,
+		SourceFileFilter:       DefaultSourceFileFilter,
 	}
 }
 
@@ -52,7 +101,7 @@ func IncludeFixer(pkg *denv.Package, cfg *FixrConfig) {
 		projectPath := filepath.Join(basePath, p.PackageURL)
 		for _, inc := range p.IncludeDirs {
 			includePath := filepath.Join(projectPath, inc)
-			scanners.Add(includePath, fixr.DefaultHeaderFileFilter)
+			scanners.Add(includePath, cfg.HeaderFileFilter)
 		}
 	}
 
@@ -61,24 +110,25 @@ func IncludeFixer(pkg *denv.Package, cfg *FixrConfig) {
 		mainProjectPath := filepath.Join(basePath, mainProject.PackageURL)
 		for _, sp := range mainProject.SourceDirs {
 			sourcePath := filepath.Join(mainProjectPath, sp)
-			renamers.Add(sourcePath, fixr.CCoreFileNamingPolicy, fixr.DefaultSourceFileFilter)
-			fixers.Add(sourcePath, fixr.DefaultSourceFileFilter)
+			renamers.Add(sourcePath, cfg.RenamePolicy, cfg.SourceFileFilter, cfg.SourceFileFilter)
+			fixers.Add(sourcePath, cfg.SourceFileFilter)
 		}
 		for _, inc := range mainProject.IncludeDirs {
 			includePath := filepath.Join(mainProjectPath, inc)
-			renamers.Add(includePath, fixr.CCoreFileNamingPolicy, fixr.DefaultHeaderFileFilter)
-			fixers.Add(includePath, fixr.DefaultHeaderFileFilter)
+			renamers.Add(includePath, cfg.RenamePolicy, cfg.SourceFileFilter, cfg.HeaderFileFilter)
+			fixers.Add(includePath, cfg.HeaderFileFilter)
 		}
 	}
 
 	// Create instance
-	includeDirectiveConfig := fixr.NewIncludeDirectiveConfig()
-	includeGuardConfig := fixr.NewIncludeGuardConfig()
-	fixer := fixr.NewFixr(includeDirectiveConfig, includeGuardConfig)
+	fixer := fixr.NewFixr(cfg.IncludeDirectiveConfig, cfg.IncludeGuardConfig)
+	fixer.Setting = cfg.Setting
 
-	fixer.Rename(renamers)
-	fixer.Scan(scanners)
-	fixer.Fix(fixers)
+	if fixer.Rename() {
+		fixer.ProcessRenamers(renamers)
+	}
+	fixer.ProcessScanners(scanners)
+	fixer.ProcessFixers(fixers)
 }
 
 func Init() bool {

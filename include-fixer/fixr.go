@@ -13,9 +13,10 @@ type dirScanItem struct {
 }
 
 type renameItem struct {
-	dir        string
-	renameFunc func(_filepath string) (bool, string)
-	filter     func(filename string) bool
+	dir                string
+	renameFunc         func(_filepath string) (bool, string)
+	isSourceFileFilter func(filename string) bool
+	isHeaderFileFilter func(filename string) bool
 }
 
 type fixerItem struct {
@@ -48,9 +49,9 @@ func NewRenamers() *Renamers {
 	return &Renamers{duplicateMap: make(map[string]bool), renamers: make([]renameItem, 0)}
 }
 
-func (r *Renamers) Add(dir string, renameFunc func(_filepath string) (bool, string), filter func(filename string) bool) {
+func (r *Renamers) Add(dir string, renameFunc func(_filepath string) (bool, string), isSourceFileFilter func(filename string) bool, isHeaderFileFilter func(filename string) bool) {
 	if _, ok := r.duplicateMap[dir]; !ok {
-		r.renamers = append(r.renamers, renameItem{dir: dir, renameFunc: renameFunc, filter: filter})
+		r.renamers = append(r.renamers, renameItem{dir: dir, renameFunc: renameFunc, isSourceFileFilter: isSourceFileFilter, isHeaderFileFilter: isHeaderFileFilter})
 		r.duplicateMap[dir] = true
 	}
 }
@@ -69,22 +70,6 @@ func (f *Fixers) Add(dir string, filter func(filename string) bool) {
 		f.fixers = append(f.fixers, fixerItem{dir: dir, filter: filter})
 		f.duplicateMap[dir] = true
 	}
-}
-
-var DefaultHeaderFileExtensions = map[string]bool{".h": true, ".hpp": true, ".inl": true}
-var DefaultHeaderFileFilter = func(_filepath string) bool {
-	_filepath = strings.ToLower(_filepath)
-	ext := filepath.Ext(_filepath)
-	_, ok := DefaultHeaderFileExtensions[ext]
-	return ok
-}
-
-var DefaultSourceFileExtensions = map[string]bool{".cpp": true, ".c": true, ".cxx": true, ".mm": true, ".m": true}
-var DefaultSourceFileFilter = func(_filepath string) bool {
-	_filepath = strings.ToLower(_filepath)
-	ext := filepath.Ext(_filepath)
-	_, ok := DefaultSourceFileExtensions[ext]
-	return ok
 }
 
 type ffile struct {
@@ -122,9 +107,16 @@ func newFDir(name string, path string, parent *fdir) *fdir {
 	return d
 }
 
+type FixrSetting int
+
+const (
+	DryRun  FixrSetting = 1 << 0
+	Verbose             = 1 << 1
+	Rename              = 1 << 2
+)
+
 type Fixr struct {
-	DryRun                 bool
-	Verbose                bool
+	Setting                FixrSetting
 	rootStructure          *rootTree
 	includeDirectiveConfig *IncludeDirectiveConfig
 	includeGuardConfig     *IncludeGuardConfig
@@ -133,8 +125,6 @@ type Fixr struct {
 
 func NewFixr(includeDirectiveConfig *IncludeDirectiveConfig, includeGuardConfig *IncludeGuardConfig) *Fixr {
 	f := &Fixr{
-		DryRun:        true,
-		Verbose:       true,
 		rootStructure: newRoot(),
 	}
 
@@ -143,6 +133,18 @@ func NewFixr(includeDirectiveConfig *IncludeDirectiveConfig, includeGuardConfig 
 	f.renamedHeaderFiles = make(map[string]FileRename)
 
 	return f
+}
+
+func (f *Fixr) Verbose() bool {
+	return f.Setting&Verbose != 0
+}
+
+func (f *Fixr) DryRun() bool {
+	return f.Setting&DryRun != 0
+}
+
+func (f *Fixr) Rename() bool {
+	return f.Setting&Rename != 0
 }
 
 func (f *Fixr) matchAndFixIncludeDirective(lineNumber int, line string, _filepathOfFileBeingFixed string) (l string, modified bool) {
@@ -180,7 +182,7 @@ func (f *Fixr) matchAndFixIncludeGuard(lineNumber int, line string, nextline str
 		l2 = "#define " + def
 		modified = true
 
-		if f.Verbose {
+		if f.Verbose() {
 			fmt.Printf("fixer include guard in %s, line %d, %s -> %s\n", _filepathOfFileBeingFixed, lineNumber, line, l1)
 		}
 	}
@@ -189,7 +191,7 @@ func (f *Fixr) matchAndFixIncludeGuard(lineNumber int, line string, nextline str
 }
 
 // Scan is adding more directories and files into the full hierarchical structure of directories and files
-func (f *Fixr) Scan(scanners *DirScanner) {
+func (f *Fixr) ProcessScanners(scanners *DirScanner) {
 	for _, scanner := range scanners.scanners {
 		err := f.rootStructure.scanDir(scanner.dir, scanner.filter)
 		if err != nil {
@@ -200,13 +202,13 @@ func (f *Fixr) Scan(scanners *DirScanner) {
 }
 
 // Rename will rename files in the directories that are passed in the Renamer slice
-func (f *Fixr) Rename(renamers *Renamers) {
+func (f *Fixr) ProcessRenamers(renamers *Renamers) {
 	for _, renamer := range renamers.renamers {
-		f.globAndRename(renamer.dir, renamer.renameFunc, renamer.filter)
+		f.globAndRename(renamer.dir, renamer.renameFunc, renamer.isSourceFileFilter, renamer.isHeaderFileFilter)
 	}
 }
 
-func (f *Fixr) Fix(fixers *Fixers) {
+func (f *Fixr) ProcessFixers(fixers *Fixers) {
 	for _, fxr := range fixers.fixers {
 		filepaths := make([]string, 0, 512)
 		err := filepath.WalkDir(fxr.dir, func(path string, d fs.DirEntry, err error) error {
@@ -303,7 +305,7 @@ func (f *Fixr) findBestMatchingHeaderFile(lineNumber int, includeDirective strin
 		return closest, true
 	}
 
-	if f.Verbose {
+	if f.Verbose() {
 		fmt.Printf("fixer was unable to correct include directive in %s, line %d, %s\n", _filepathOfFileBeingFixed, lineNumber, includeDirective)
 	}
 
@@ -316,13 +318,17 @@ func (f *Fixr) correctIncludeDirective(lineNumber int, includeDirective string, 
 		newIncludeDirective := strings.Replace(includeDirective, includePart, newIncludeFilePath, -1)
 		if strings.Compare(newIncludeDirective, includeDirective) != 0 {
 
-			// Handle the rename here ?
-			// f.renamedHeaderFiles
-
-			if f.Verbose {
-				fmt.Printf("fixer, include directive in %s, line %d, %s -> %s\n", _filepathOfFileBeingFixed, lineNumber, includeDirective, newIncludeDirective)
-				return newIncludeDirective, true
+			// TODO Handle the rename here ?
+			//  -> f.renamedHeaderFiles
+			if rename, found := f.renamedHeaderFiles[strings.ToLower(newIncludeDirective)]; found {
+				newIncludeDirective = rename.NewFilePath
 			}
+
+			if f.Verbose() {
+				fmt.Printf("fixer, include directive in %s, line %d, %s -> %s\n", _filepathOfFileBeingFixed, lineNumber, includeDirective, newIncludeDirective)
+			}
+
+			return newIncludeDirective, true
 		}
 	}
 	return includeDirective, false
@@ -359,7 +365,7 @@ func (f *Fixr) fixFile(dirpath string, _filepath string) error {
 	}
 
 	if numCorrections > 0 {
-		if f.DryRun == false {
+		if !f.DryRun() {
 			if err = writeLinesToFile(path, lines); err != nil {
 				return err
 			}
