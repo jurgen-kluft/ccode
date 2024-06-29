@@ -10,14 +10,47 @@ import (
 )
 
 // ----------------------------------------------------------------------------------------------
+// Exclusion filter
+// ----------------------------------------------------------------------------------------------
+
+func NewExclusionFilter(target MakeTarget) *ExclusionFilter {
+	if target.OSIsMac() {
+		return &ExclusionFilter{Exclusions: []string{"_win32", "_win64", "_pc", "_linux", "_nob"}}
+	} else if target.OSIsWindows() {
+		return &ExclusionFilter{Exclusions: []string{"_mac", "_macos", "_darwin", "_linux", "_unix", "_nob"}}
+	} else if target.OSIsLinux() {
+		return &ExclusionFilter{Exclusions: []string{"_win32", "_win64", "_pc", "_mac", "_macos", "_darwin", "_nob"}}
+	}
+	return &ExclusionFilter{Exclusions: []string{"_nob"}}
+}
+
+type ExclusionFilter struct {
+	Exclusions []string
+}
+
+func (f *ExclusionFilter) IsExcluded(filepath string) bool {
+	parts := PathSplitRelativeFilePath(filepath, true)
+	for i := 0; i < len(parts)-1; i++ {
+		p := strings.ToLower(parts[i])
+		for _, exclusion := range f.Exclusions {
+			if strings.HasSuffix(p, exclusion) {
+				return true
+			}
+		}
+	}
+	return false
+}
+
+// ----------------------------------------------------------------------------------------------
 // IDE generator
 // ----------------------------------------------------------------------------------------------
 
 type AxeGenerator struct {
-	Dev       DevEnum
-	Os        string
-	Arch      string
-	GoPathAbs string // $(GOPATH)/src, absolute path
+	Dev             DevEnum
+	Os              string
+	Arch            string
+	GoPathAbs       string // $(GOPATH)/src, absolute path
+	ExclusionFilter *ExclusionFilter
 }
 
 func NewAxeGenerator(dev string, os string, arch string) *AxeGenerator {
@@ -99,6 +132,8 @@ func (g *AxeGenerator) GenerateWorkspace(pkg *denv.Package, dev DevEnum) (*Works
 	ws.WorkspaceName = app.Name
 	ws.WorkspaceAbsPath = g.GoPathAbs
 	ws.GenerateAbsPath = filepath.Join(g.GoPathAbs, app.PackageURL, "target", ws.Config.Dev.String())
+
+	g.ExclusionFilter = NewExclusionFilter(ws.MakeTarget)
 
 	if unittestApp != nil {
 		for _, cfg := range unittestApp.Configs {
@@ -207,30 +242,32 @@ func (g *AxeGenerator) createProject(devProj *denv.Project, ws *Workspace, unitt
 		newProject := ws.NewProject(devProj.Name, projAbsPath, ProjectTypeCppLib, projectConfig)
 		newProject.ProjectFilename = devProj.Name
 
+		exclusionFilter := func(_filepath string) bool { return g.ExclusionFilter.IsExcluded(_filepath) }
+
 		if executable && unittest {
 			// Unittest executable
-			newProject.GlobFiles(projAbsPath, filepath.Join("source", "test", "cpp", "^**", "*.cpp"))
-			newProject.GlobFiles(projAbsPath, filepath.Join("source", "test", "include", "^**", "*.h"))
-			newProject.GlobFiles(projAbsPath, filepath.Join("source", "test", "include", "^**", "*.hpp"))
-			newProject.GlobFiles(projAbsPath, filepath.Join("source", "test", "include", "^**", "*.inl"))
+			newProject.GlobFiles(projAbsPath, filepath.Join("source", "test", "cpp", "^**", "*.cpp"), exclusionFilter)
+			newProject.GlobFiles(projAbsPath, filepath.Join("source", "test", "include", "^**", "*.h"), exclusionFilter)
+			newProject.GlobFiles(projAbsPath, filepath.Join("source", "test", "include", "^**", "*.hpp"), exclusionFilter)
+			newProject.GlobFiles(projAbsPath, filepath.Join("source", "test", "include", "^**", "*.inl"), exclusionFilter)
 		} else if executable {
 			// Application
-			newProject.GlobFiles(projAbsPath, filepath.Join("source", "app", "cpp", "^**", "*.cpp"))
-			newProject.GlobFiles(projAbsPath, filepath.Join("source", "app", "include", "^**", "*.h"))
-			newProject.GlobFiles(projAbsPath, filepath.Join("source", "app", "include", "^**", "*.hpp"))
-			newProject.GlobFiles(projAbsPath, filepath.Join("source", "app", "include", "^**", "*.inl"))
+			newProject.GlobFiles(projAbsPath, filepath.Join("source", "app", "cpp", "^**", "*.cpp"), exclusionFilter)
+			newProject.GlobFiles(projAbsPath, filepath.Join("source", "app", "include", "^**", "*.h"), exclusionFilter)
+			newProject.GlobFiles(projAbsPath, filepath.Join("source", "app", "include", "^**", "*.hpp"), exclusionFilter)
+			newProject.GlobFiles(projAbsPath, filepath.Join("source", "app", "include", "^**", "*.inl"), exclusionFilter)
 			if ws.MakeTarget.OSIsMac() {
-				newProject.GlobFiles(projAbsPath, filepath.Join("source", "app", "cpp", "^**", "*.m"))
-				newProject.GlobFiles(projAbsPath, filepath.Join("source", "app", "cpp", "^**", "*.mm"))
+				newProject.GlobFiles(projAbsPath, filepath.Join("source", "app", "cpp", "^**", "*.m"), exclusionFilter)
+				newProject.GlobFiles(projAbsPath, filepath.Join("source", "app", "cpp", "^**", "*.mm"), exclusionFilter)
 			}
 		} else {
-			newProject.GlobFiles(projAbsPath, filepath.Join("source", "main", "cpp", "^**", "*.cpp"))
-			newProject.GlobFiles(projAbsPath, filepath.Join("source", "main", "include", "^**", "*.h"))
-			newProject.GlobFiles(projAbsPath, filepath.Join("source", "main", "include", "^**", "*.hpp"))
-			newProject.GlobFiles(projAbsPath, filepath.Join("source", "main", "include", "^**", "*.inl"))
+			newProject.GlobFiles(projAbsPath, filepath.Join("source", "main", "cpp", "^**", "*.cpp"), exclusionFilter)
+			newProject.GlobFiles(projAbsPath, filepath.Join("source", "main", "include", "^**", "*.h"), exclusionFilter)
+			newProject.GlobFiles(projAbsPath, filepath.Join("source", "main", "include", "^**", "*.hpp"), exclusionFilter)
+			newProject.GlobFiles(projAbsPath, filepath.Join("source", "main", "include", "^**", "*.inl"), exclusionFilter)
 			if ws.MakeTarget.OSIsMac() {
-				newProject.GlobFiles(projAbsPath, filepath.Join("source", "main", "cpp", "^**", "*.m"))
-				newProject.GlobFiles(projAbsPath, filepath.Join("source", "main", "cpp", "^**", "*.mm"))
+				newProject.GlobFiles(projAbsPath, filepath.Join("source", "main", "cpp", "^**", "*.m"), exclusionFilter)
+				newProject.GlobFiles(projAbsPath, filepath.Join("source", "main", "cpp", "^**", "*.mm"), exclusionFilter)
 			}
 		}
 

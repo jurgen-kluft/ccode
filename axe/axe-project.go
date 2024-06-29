@@ -438,35 +438,7 @@ func (p *Project) resolveFiles() {
 // -----------------------------------------------------------------------------------------------------
 // -----------------------------------------------------------------------------------------------------
 
-type ExclusionFilter struct {
-	Exclusions []string
-}
-
-func (f *ExclusionFilter) IsExcluded(filepath string) bool {
-	parts := PathSplitRelativeFilePath(filepath, true)
-	for i := 0; i < len(parts)-1; i++ {
-		p := strings.ToLower(parts[i])
-		for _, exclusion := range f.Exclusions {
-			if strings.HasSuffix(p, exclusion) {
-				return true
-			}
-		}
-	}
-	return false
-}
-
-func NewExclusionFilter(target MakeTarget) *ExclusionFilter {
-	if target.OSIsMac() {
-		return &ExclusionFilter{Exclusions: []string{"_win32", "_win64", "_pc", "_linux", "_nob"}}
-	} else if target.OSIsWindows() {
-		return &ExclusionFilter{Exclusions: []string{"_mac", "_macos", "_darwin", "_linux", "_unix", "_nob"}}
-	} else if target.OSIsLinux() {
-		return &ExclusionFilter{Exclusions: []string{"_win32", "_win64", "_pc", "_mac", "_macos", "_darwin", "_nob"}}
-	}
-	return &ExclusionFilter{Exclusions: []string{"_nob"}}
-}
-
-func (p *Project) GlobFiles(dir string, pattern string) {
+func (p *Project) GlobFiles(dir string, pattern string, isExcluded func(string) bool) {
 	dir = PathNormalize(dir)
 	pattern = PathNormalize(pattern)
 	pp := strings.Split(pattern, "^")
@@ -476,9 +448,8 @@ func (p *Project) GlobFiles(dir string, pattern string) {
 		return
 	}
 
-	exclusionFilter := NewExclusionFilter(p.Workspace.MakeTarget)
 	for _, file := range files {
-		if exclusionFilter.IsExcluded(file) {
+		if isExcluded(file) {
 			continue
 		}
 		p.FileEntries.Add(filepath.Join(pp[0], file), false)
