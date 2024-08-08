@@ -309,7 +309,7 @@ func (g *AxeGenerator) createProjectConfiguration(p *Project, prj *denv.Project,
 	// 	config.AddIncludeDir("source/test/include")
 	// }
 
-	if p.Name == "cunittest" {
+	if configType.IsTest() {
 		config.VisualStudioClCompile.AddOrSet("ExceptionHandling", "Sync")
 	}
 
