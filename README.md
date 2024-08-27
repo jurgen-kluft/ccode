@@ -3,6 +3,9 @@
 This is a project generator that uses Go and its package management for C++ packages. 
 The structure of packages are defined in Go and files can be generated for Visual Studio (.sln, .vcxproj and .filters), Make, CMake, Xcode as well as Tundra. Work in progress for also supporting Zig as a build system.
 
+If you like my work and want to support me. Please consider to buy me a [coffee!](https://www.buymeacoffee.com/Jur93n)
+<img src="bmacoffee.png" width="100">
+
 Any C++ external dependency like Boost, DirectX or whatnot should be wrapped in a package (github or other git server).
 There are a couple of notable features that can be triggered when generating the project files:
 
