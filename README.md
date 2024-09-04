@@ -27,7 +27,7 @@ This allows me to write packages (C++ libraries) and use them in another C++ pac
 
 Note: Not happy with CMake, there must be a better way of doing this, if you know how please let me know.
 
-Currently the design is quite set and the goal is to keep creating and maintaining packages to a minimum.
+Currently the design is quite set and the goal is to keep API changes to a minimum.
 
 If you have repository/package that uses ccode, you can do the following to generate the make build files, this example uses the `cbase` repository:
 
