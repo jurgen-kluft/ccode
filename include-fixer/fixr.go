@@ -19,9 +19,15 @@ type renameItem struct {
 	isHeaderFileFilter func(filename string) bool
 }
 
+const (
+	SourceFileType = 0
+	HeaderFileType = 1
+)
+
 type fixerItem struct {
-	dir    string
-	filter func(filename string) bool
+	dir      string
+	fileType int
+	filter2  func(filename string) bool
 }
 
 type DirScanner struct {
@@ -58,16 +64,23 @@ func (r *Renamers) Add(dir string, renameFunc func(_filepath string) (bool, stri
 
 type Fixers struct {
 	duplicateMap map[string]bool
-	fixers       []fixerItem
+	fileFixers   []fixerItem
 }
 
 func NewFixers() *Fixers {
-	return &Fixers{duplicateMap: make(map[string]bool), fixers: make([]fixerItem, 0)}
+	return &Fixers{duplicateMap: make(map[string]bool), fileFixers: make([]fixerItem, 0)}
 }
 
-func (f *Fixers) Add(dir string, filter func(filename string) bool) {
+func (f *Fixers) AddSourceFileFilter(dir string, filter func(filename string) bool) {
 	if _, ok := f.duplicateMap[dir]; !ok {
-		f.fixers = append(f.fixers, fixerItem{dir: dir, filter: filter})
+		f.fileFixers = append(f.fileFixers, fixerItem{dir: dir, fileType: SourceFileType, filter2: filter})
+		f.duplicateMap[dir] = true
+	}
+}
+
+func (f *Fixers) AddHeaderFileFilter(dir string, filter func(filename string) bool) {
+	if _, ok := f.duplicateMap[dir]; !ok {
+		f.fileFixers = append(f.fileFixers, fixerItem{dir: dir, fileType: HeaderFileType, filter2: filter})
 		f.duplicateMap[dir] = true
 	}
 }
@@ -138,11 +151,9 @@ func NewFixr(includeDirectiveConfig *IncludeDirectiveConfig, includeGuardConfig 
 func (f *Fixr) Verbose() bool {
 	return f.Setting&Verbose != 0
 }
-
 func (f *Fixr) DryRun() bool {
 	return f.Setting&DryRun != 0
 }
-
 func (f *Fixr) Rename() bool {
 	return f.Setting&Rename != 0
 }
@@ -163,31 +174,32 @@ func (f *Fixr) matchAndFixIncludeDirective(lineNumber int, line string, _filepat
 	return line, false
 }
 
-func (f *Fixr) matchAndFixIncludeGuard(lineNumber int, line string, nextline string, _filepathOfFileBeingFixed string) (l1 string, l2 string, modified bool) {
+func (f *Fixr) matchAndFixIncludeGuard(lineNumber int, line string, nextline string, _filepathOfFileBeingFixed string) (l1 string, l2 string, status int) {
 	cfg := f.includeGuardConfig
 
 	_ifndef := cfg.IncludeGuardIfNotDefRegex.FindStringSubmatch(line)
 	if _ifndef == nil || len(_ifndef) != 2 {
-		return
+		return "", "", -1
 	}
 
 	_define := cfg.IncludeGuardDefineRegex.FindStringSubmatch(nextline)
 	if _define == nil || len(_define) != 2 {
-		return
+		return "", "", -1
 	}
 
+	status = 0
 	if strings.Compare(_ifndef[1], _define[1]) != 0 {
 		def := cfg.modifyDefine(_define[1], _filepathOfFileBeingFixed)
 		l1 = "#ifndef " + def
 		l2 = "#define " + def
-		modified = true
+		status = 1
 
 		if f.Verbose() {
 			fmt.Printf("fixer include guard in %s, line %d, %s -> %s\n", _filepathOfFileBeingFixed, lineNumber, line, l1)
 		}
 	}
 
-	return
+	return l1, l2, status
 }
 
 // Scan is adding more directories and files into the full hierarchical structure of directories and files
@@ -209,28 +221,42 @@ func (f *Fixr) ProcessRenamers(renamers *Renamers) {
 }
 
 func (f *Fixr) ProcessFixers(fixers *Fixers) {
-	for _, fxr := range fixers.fixers {
-		filepaths := make([]string, 0, 512)
+	for _, fxr := range fixers.fileFixers {
+
+		sourceFilepaths := make([]string, 0, 512)
+		headerFilepaths := make([]string, 0, 512)
+
 		err := filepath.WalkDir(fxr.dir, func(path string, d fs.DirEntry, err error) error {
 			if err == nil && !d.IsDir() {
 				path = filepath.Dir(path)
 				relpath, _ := filepath.Rel(fxr.dir, path)
 				_filepath := filepath.Join(relpath, d.Name())
-				if fxr.filter(_filepath) {
-					filepaths = append(filepaths, _filepath)
+				if fxr.filter2(_filepath) {
+					if fxr.fileType == SourceFileType {
+						sourceFilepaths = append(sourceFilepaths, _filepath)
+					} else if fxr.fileType == HeaderFileType {
+						headerFilepaths = append(headerFilepaths, _filepath)
+					}
 				}
 			}
 			return err
 		})
 
 		if err == nil {
-			for _, _filepath := range filepaths {
-				if err := f.fixFile(fxr.dir, _filepath); err != nil {
+			for _, _filepath := range sourceFilepaths {
+				if err := f.fixSourceFile(fxr.dir, _filepath); err != nil {
+					fmt.Println(err)
+				}
+			}
+
+			for _, _filepath := range headerFilepaths {
+				if err := f.fixHeaderFile(fxr.dir, _filepath); err != nil {
 					fmt.Println(err)
 				}
 			}
 		}
 	}
+
 }
 
 func (f *Fixr) findBestMatchingHeaderFile(lineNumber int, includeDirective string, includeFilepath string, _filepathOfFileBeingFixed string) (string, bool) {
@@ -334,7 +360,47 @@ func (f *Fixr) correctIncludeDirective(lineNumber int, includeDirective string, 
 	return includeDirective, false
 }
 
-func (f *Fixr) fixFile(dirpath string, _filepath string) error {
+func skipCommentsAndEmptyLines(line int, lines []string) int {
+	i := line
+	for i < len(lines) {
+		var line string
+
+		skipped := false
+
+		for i < len(lines) {
+			line = lines[i]
+			line = strings.TrimLeft(line, " \t")
+			if line == "" {
+				i++
+				skipped = true
+				continue
+			}
+			if strings.HasPrefix(line, "//") {
+				i++
+				skipped = true
+				continue
+			}
+			if strings.HasPrefix(line, "/*") {
+				for !strings.HasSuffix(line, "*/") {
+					i++
+					line = lines[i]
+					line = strings.TrimLeft(line, " \t")
+				}
+				skipped = true
+				continue
+			}
+			break
+		}
+
+		if !skipped {
+			break
+		}
+	}
+
+	return i
+}
+
+func (f *Fixr) fixHeaderFile(dirpath string, _filepath string) error {
 
 	path := filepath.Join(dirpath, _filepath)
 	lines, err := readLinesFromFile(path)
@@ -353,14 +419,74 @@ func (f *Fixr) fixFile(dirpath string, _filepath string) error {
 	}
 
 	if f.includeGuardConfig != nil {
-		i := 1
-		for i < len(lines) {
-			if l1, l2, modified := f.matchAndFixIncludeGuard(i, lines[i-1], lines[i], _filepath); modified {
-				lines[i-1] = l1
-				lines[i] = l2
+		i := 0
+
+		// Determine if this header file is using include guards, some header files might
+		// only have 'pragma once' and no include guards.
+		i = skipCommentsAndEmptyLines(i, lines)
+		onlyHasPragmaOnce := strings.HasPrefix(lines[i], "#pragma once")
+		if !onlyHasPragmaOnce {
+			i = 0
+			for i < (len(lines) - 1) {
+				l1, l2, status := f.matchAndFixIncludeGuard(i, lines[i], lines[i+1], _filepath)
+				if status == 1 {
+					lines[i] = l1
+					lines[i+1] = l2
+					numCorrections++
+				}
+				i += 1
+			}
+		} else {
+			numCorrections += 1
+
+			define := ""
+			define = f.includeGuardConfig.modifyDefine(define, _filepath)
+
+			if f.Verbose() {
+				fmt.Printf("fixer, include guard set in %s, line %d as #define %s\n", _filepath, i, define)
+			}
+
+			lines[i] = "#ifndef " + define
+			lineToWriteDefineGuard := i + 1
+
+			// Last line of the file should be #endif
+			lines = append(lines, "#endif")
+
+			// Shift all lines down by one, first add one empty line to accommodate the shift
+			lines = append(lines, "")
+			for j := len(lines) - 1; j > i; j-- {
+				lines[j] = lines[j-1]
+			}
+
+			lines[lineToWriteDefineGuard] = "#define " + define
+		}
+	}
+
+	if numCorrections > 0 {
+		if !f.DryRun() {
+			if err = writeLinesToFile(path, lines); err != nil {
+				return err
+			}
+		}
+	}
+	return nil
+}
+
+func (f *Fixr) fixSourceFile(dirpath string, _filepath string) error {
+
+	path := filepath.Join(dirpath, _filepath)
+	lines, err := readLinesFromFile(path)
+	if err != nil {
+		return err
+	}
+
+	numCorrections := 0
+	if f.includeDirectiveConfig != nil {
+		for i, line := range lines {
+			if l, modified := f.matchAndFixIncludeDirective(i+1, line, _filepath); modified {
+				lines[i] = l
 				numCorrections++
 			}
-			i += 1
 		}
 	}
 

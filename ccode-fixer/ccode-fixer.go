@@ -62,7 +62,7 @@ func NewDefaultFixrConfig(setting fixr.FixrSetting) *FixrConfig {
 	return &FixrConfig{
 		Setting:                setting,
 		RenamePolicy:           NoFileNamingPolicy,
-		IncludeGuardConfig:     nil,
+		IncludeGuardConfig:     fixr.NewIncludeGuardConfig(),
 		IncludeDirectiveConfig: fixr.NewIncludeDirectiveConfig(),
 		HeaderFileFilter:       DefaultHeaderFileFilter,
 		SourceFileFilter:       DefaultSourceFileFilter,
@@ -111,12 +111,12 @@ func IncludeFixer(pkg *denv.Package, cfg *FixrConfig) {
 		for _, sp := range mainProject.SourceDirs {
 			sourcePath := filepath.Join(mainProjectPath, sp)
 			renamers.Add(sourcePath, cfg.RenamePolicy, cfg.SourceFileFilter, cfg.SourceFileFilter)
-			fixers.Add(sourcePath, cfg.SourceFileFilter)
+			fixers.AddSourceFileFilter(sourcePath, cfg.SourceFileFilter)
 		}
 		for _, inc := range mainProject.IncludeDirs {
 			includePath := filepath.Join(mainProjectPath, inc)
 			renamers.Add(includePath, cfg.RenamePolicy, cfg.SourceFileFilter, cfg.HeaderFileFilter)
-			fixers.Add(includePath, cfg.HeaderFileFilter)
+			fixers.AddHeaderFileFilter(includePath, cfg.HeaderFileFilter)
 		}
 	}
 
@@ -135,7 +135,15 @@ func Init() bool {
 	return base.Init()
 }
 
-func Generate(pkg *denv.Package, config *FixrConfig) error {
+func Generate(pkg *denv.Package, dryrun bool, verbose bool) error {
+	var setting fixr.FixrSetting
+	if dryrun {
+		setting |= fixr.DryRun
+	}
+	if verbose {
+		setting |= fixr.Verbose
+	}
+	config := NewDefaultFixrConfig(setting)
 	IncludeFixer(pkg, config)
 	return base.Generate(pkg)
 }
