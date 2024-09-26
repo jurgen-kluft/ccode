@@ -203,7 +203,7 @@ func NewConfig(t ConfigType, ws *Workspace, p *Project) *Config {
 	c.CppFlags = NewVarDict("CppFlags")                 // e.g. "-g"
 	c.IncludeDirs = NewPathDict("IncludeDirs", proot)   // e.g. "source/main/include", "source/test/include"
 	c.IncludeFiles = NewPathDict("IncludeFiles", proot) // e.g. "source/main/include/file.h", "source/test/include/file.h"
-	c.LinkDirs = NewPathDict("LinkDirs", proot)         // e.g. "lib"
+	c.LinkDirs = NewPathDict("LinkDirs", proot)         // e.g. "source/main/lib"
 	c.LinkLibs = NewVarDict("LinkLibs")                 // These are just "name.lib" or "name.a" entries
 	c.LinkFiles = NewPathDict("LinkFiles", proot)       // e.g. "link/name.o"
 	c.LinkFlags = NewVarDict("LinkFlags")               // e.g. "-lstdc++"

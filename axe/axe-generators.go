@@ -12,31 +12,94 @@ import (
 // ----------------------------------------------------------------------------------------------
 // Exclusion filter
 // ----------------------------------------------------------------------------------------------
+func IsExcludedOnMac(str string) bool {
+	if strings.HasPrefix(str, "win_") || strings.HasPrefix(str, "pc_") || strings.HasPrefix(str, "win32_") || strings.HasPrefix(str, "win64_") {
+		return true
+	}
+	if strings.HasSuffix(str, "_win") || strings.HasSuffix(str, "_pc") || strings.HasSuffix(str, "_win32") || strings.HasSuffix(str, "_win64") {
+		return true
+	}
+	if strings.HasPrefix(str, "linux_") || strings.HasPrefix(str, "unix_") {
+		return true
+	}
+	if strings.HasSuffix(str, "_linux") || strings.HasSuffix(str, "_unix") {
+		return true
+	}
+	if strings.EqualFold(str, "d3d11") || strings.EqualFold(str, "d3d12") {
+		return true
+	}
+	if strings.HasSuffix(str, "_nob") {
+		return true
+	}
+	return false
+}
+
+func IsExcludedOnWindows(str string) bool {
+	if strings.HasPrefix(str, "mac_") || strings.HasPrefix(str, "macos_") || strings.HasPrefix(str, "darwin_") || strings.HasPrefix(str, "linux_") || strings.HasPrefix(str, "unix_") {
+		return true
+	}
+	if strings.HasSuffix(str, "_mac") || strings.HasSuffix(str, "_macos") || strings.HasSuffix(str, "_darwin") || strings.HasSuffix(str, "_linux") || strings.HasSuffix(str, "_unix") {
+		return true
+	}
+	if strings.EqualFold(str, "cocoa") || strings.EqualFold(str, "metal") {
+		return true
+	}
+	if strings.HasSuffix(str, "_nob") {
+		return true
+	}
+	return false
+}
+
+func IsExcludedOnLinux(str string) bool {
+	if strings.HasPrefix(str, "mac_") || strings.HasPrefix(str, "macos_") || strings.HasPrefix(str, "darwin_") {
+		return true
+	}
+	if strings.HasPrefix(str, "win_") || strings.HasPrefix(str, "pc_") || strings.HasPrefix(str, "win32_") || strings.HasPrefix(str, "win64_") {
+		return true
+	}
+	if strings.EqualFold(str, "d3d11") || strings.EqualFold(str, "d3d12") || strings.EqualFold(str, "cocoa") || strings.EqualFold(str, "metal") {
+		return true
+	}
+	if strings.HasSuffix(str, "_nob") {
+		return true
+	}
+	return false
+}
+
+func IsExcludedDefault(str string) bool {
+	if strings.HasSuffix(str, "_nob") {
+		return true
+	}
+	return false
+}
 
 func NewExclusionFilter(target MakeTarget) *ExclusionFilter {
 	if target.OSIsMac() {
-		return &ExclusionFilter{Exclusions: []string{"_win32", "_win64", "_pc", "_linux", "_nob"}}
+		return &ExclusionFilter{Filter: IsExcludedOnMac}
 	} else if target.OSIsWindows() {
-		return &ExclusionFilter{Exclusions: []string{"_mac", "_macos", "_darwin", "_linux", "_unix", "_nob"}}
+		return &ExclusionFilter{Filter: IsExcludedOnWindows}
 	} else if target.OSIsLinux() {
-		return &ExclusionFilter{Exclusions: []string{"_win32", "_win64", "_pc", "_mac", "_macos", "_darwin", "_nob"}}
+		return &ExclusionFilter{Filter: IsExcludedOnLinux}
 	}
-	return &ExclusionFilter{Exclusions: []string{"_nob"}}
+	return &ExclusionFilter{Filter: IsExcludedDefault}
 }
 
 type ExclusionFilter struct {
-	Exclusions []string
+	Filter func(filepath string) bool
 }
 
 func (f *ExclusionFilter) IsExcluded(filepath string) bool {
 	parts := PathSplitRelativeFilePath(filepath, true)
 	for i := 0; i < len(parts)-1; i++ {
 		p := strings.ToLower(parts[i])
-		for _, exclusion := range f.Exclusions {
-			if strings.HasSuffix(p, exclusion) {
-				return true
-			}
+		if f.Filter(p) {
+			return true
 		}
+		// for _, exclusion := range f.Exclusions {
+		// 	if strings.HasSuffix(p, exclusion) {
+		// 		return true
+		// 	}
+		// }
 	}
 	return false
 }
