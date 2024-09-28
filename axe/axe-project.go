@@ -167,12 +167,16 @@ func (p *ProjectList) CollectByWildcard(name string, list *ProjectList) {
 }
 
 func (p *ProjectList) TopoSort() error {
-	edges := []Edge{}
+	var edges []Edge
 
 	// Sort the projects by dependencies
 	for i, project := range p.Values {
-		for _, dep := range project.Dependencies.Values {
-			edges = append(edges, Edge{S: Vertex(i), D: Vertex(p.Dict[dep.Name])})
+		if project.Dependencies.IsEmpty() {
+			edges = append(edges, Edge{Vertex(i), InvalidVertex})
+		} else {
+			for _, dep := range project.Dependencies.Values {
+				edges = append(edges, Edge{S: Vertex(i), D: Vertex(p.Dict[dep.Name])})
+			}
 		}
 	}
 
@@ -181,7 +185,7 @@ func (p *ProjectList) TopoSort() error {
 		return err
 	}
 
-	sortedProjects := []*Project{}
+	var sortedProjects []*Project
 	for i := len(sorted) - 1; i >= 0; i-- {
 		sortedProjects = append(sortedProjects, p.Values[sorted[i]])
 	}
