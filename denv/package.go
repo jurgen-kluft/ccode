@@ -46,11 +46,6 @@ func (p *Package) Libraries() []*Project {
 	return p.collect(StaticLibrary | SharedLibrary)
 }
 
-// Applications returns all the applications in the package
-func (p *Package) Applications() []*Project {
-	return p.collect(Executable)
-}
-
 func (p *Package) MainProjects() []*Project {
 	projects := make([]*Project, 0)
 	if p.GetMainLib() != nil {

@@ -89,7 +89,7 @@ func (g *XcodeGenerator) genProjectGenUuid(proj *Project) {
 		f.BuildUUID = GenerateUUID()
 	}
 
-	for _, i := range proj.ResourceDirs.Dict {
+	for _, i := range proj.ResourceEntries.Dict {
 		f := proj.FileEntries.Values[i]
 		f.UUID = GenerateUUID()
 		f.BuildUUID = GenerateUUID()
@@ -292,8 +292,8 @@ func (g *XcodeGenerator) genProjectDependencies(wr *XcodeWriter, proj *Project) 
 			wr.member("isa", "PBXGroup")
 			{
 				scope := wr.NewArrayScope("children")
-				for _, i := range proj.ResourceDirs.Dict {
-					f := proj.ResourceDirs.Values[i]
+				for _, i := range proj.ResourceEntries.Dict {
+					f := proj.ResourceEntries.Values[i]
 					wr.write(f.UUID.String(g.Workspace.Config.Dev))
 				}
 				scope.Close()
@@ -317,8 +317,8 @@ func (g *XcodeGenerator) genProjectPBXBuildFile(wr *XcodeWriter, proj *Project) 
 		g.genBuildFileReference(wr, f)
 	}
 
-	for _, i := range proj.ResourceDirs.Dict {
-		f := proj.ResourceDirs.Values[i]
+	for _, i := range proj.ResourceEntries.Dict {
+		f := proj.ResourceEntries.Values[i]
 		g.genBuildFileReference(wr, f)
 	}
 
@@ -335,8 +335,8 @@ func (g *XcodeGenerator) genProjectPBXBuildFile(wr *XcodeWriter, proj *Project) 
 		g.genFileReference(wr, proj, f)
 	}
 
-	for _, i := range proj.ResourceDirs.Dict {
-		f := proj.ResourceDirs.Values[i]
+	for _, i := range proj.ResourceEntries.Dict {
+		f := proj.ResourceEntries.Values[i]
 		wr.newline(0)
 		wr.commentBlock(f.Path)
 		scope := wr.NewObjectScope(f.UUID.String(g.Workspace.Config.Dev))
@@ -537,8 +537,8 @@ func (g *XcodeGenerator) genProjectPBXResourcesBuildPhase(wr *XcodeWriter, proj 
 		wr.member("runOnlyForDeploymentPostprocessing", "0")
 		{
 			scope := wr.NewArrayScope("files")
-			for _, i := range proj.ResourceDirs.Dict {
-				f := proj.ResourceDirs.Values[i]
+			for _, i := range proj.ResourceEntries.Dict {
+				f := proj.ResourceEntries.Values[i]
 				wr.write(f.BuildUUID.String(g.Workspace.Config.Dev))
 			}
 			scope.Close()

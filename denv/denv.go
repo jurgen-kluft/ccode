@@ -2,4 +2,14 @@ package denv
 
 import "runtime"
 
-var OS = runtime.GOOS
+func IsWindows() bool {
+	return runtime.GOOS == "windows"
+}
+
+func IsMacOS() bool {
+	return runtime.GOOS == "darwin"
+}
+
+func IsLinux() bool {
+	return runtime.GOOS == "linux"
+}

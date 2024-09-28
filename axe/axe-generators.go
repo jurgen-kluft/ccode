@@ -117,6 +117,7 @@ type AxeGenerator struct {
 	Arch            string
 	GoPathAbs       string // $(GOPATH)/src, absolute path
 	ExclusionFilter *ExclusionFilter
+	CreatedProjects *ProjectList
 }
 
 func NewAxeGenerator(dev string, os string, arch string) *AxeGenerator {
@@ -124,6 +125,7 @@ func NewAxeGenerator(dev string, os string, arch string) *AxeGenerator {
 	g.Dev = GetDevEnum(strings.ToLower(dev))
 	g.Os = strings.ToLower(os)
 	g.Arch = strings.ToLower(arch)
+	g.CreatedProjects = NewProjectList()
 	return g
 }
 
@@ -163,7 +165,7 @@ func (g *AxeGenerator) Generate(pkg *denv.Package) error {
 		gg.Generate()
 	case DevMake:
 		gg := NewMakeGenerator2(ws)
-		gg.Generate()
+		err = gg.Generate()
 	case DevXcode:
 		gg := NewXcodeGenerator(ws)
 		gg.Generate()
@@ -172,7 +174,7 @@ func (g *AxeGenerator) Generate(pkg *denv.Package) error {
 		gg.Generate()
 	}
 
-	return nil
+	return err
 }
 
 func (g *AxeGenerator) GenerateWorkspace(pkg *denv.Package, dev DevEnum) (*Workspace, error) {
@@ -206,98 +208,73 @@ func (g *AxeGenerator) GenerateWorkspace(pkg *denv.Package, dev DevEnum) (*Works
 	g.ExclusionFilter = NewExclusionFilter(ws.MakeTarget)
 
 	if mainLib != nil {
-		for _, cfg := range mainLib.Configs {
-			g.addWorkspaceConfiguration(ws, cfg, true)
-		}
+		g.addWorkspaceConfigurations(ws, mainLib)
+	}
+	if mainApp != nil {
+		g.addWorkspaceConfigurations(ws, mainApp)
+	}
+	if mainTest != nil {
+		g.addWorkspaceConfigurations(ws, mainTest)
 	}
 
-	if mainApp != nil {
-		for _, cfg := range mainApp.Configs {
-			g.addWorkspaceConfiguration(ws, cfg, true)
-		}
-	}
+	// Create the main and dependency projects and also set up the list of dependencies of each project
 
 	if mainTest != nil {
-		for _, cfg := range mainTest.Configs {
-			g.addWorkspaceConfiguration(ws, cfg, true)
+		mainTestProject := g.getOrCreateProject(mainTest, ws)
+		g.addProjectConfigurations(mainTestProject, mainTest)
+
+		mainTestDependencies := g.collectProjectDependencies(mainTest)
+		for _, dp := range mainTestDependencies {
+			mainTestProject.Settings.Dependencies.Add(dp.Name)
+		}
+		for _, dp := range mainTestDependencies {
+			depProject := g.getOrCreateProject(dp, ws)
+			g.addProjectConfigurations(depProject, dp)
+
+			dpDependencies := g.collectProjectDependencies(dp)
+			for _, dpd := range dpDependencies {
+				depProject.Settings.Dependencies.Add(dpd.Name)
+			}
 		}
 	}
 
-	// Create the main and dependency projects and also setup the list of dependencies of each project
-
-	// Note: Can we not create all 3: App, Lib and Unittest projects ?
 	if mainApp != nil {
+		mainAppProject := g.getOrCreateProject(mainApp, ws)
+		g.addProjectConfigurations(mainAppProject, mainApp)
+
 		mainAppDependencies := g.collectProjectDependencies(mainApp)
-		mainAppProject := g.createProject(mainApp, ws, false)
 		for _, dp := range mainAppDependencies {
-			mainAppProject.Settings.Dependencies = append(mainAppProject.Settings.Dependencies, dp.Name)
+			mainAppProject.Settings.Dependencies.Add(dp.Name)
 		}
 		for _, dp := range mainAppDependencies {
-			depProjectDependencies := g.collectProjectDependencies(dp)
-			depProject := g.createProject(dp, ws, false)
-			for _, ddp := range depProjectDependencies {
-				depProject.Settings.Dependencies = append(depProject.Settings.Dependencies, ddp.Name)
+			depProject := g.getOrCreateProject(dp, ws)
+			g.addProjectConfigurations(depProject, dp)
+
+			dpDependencies := g.collectProjectDependencies(dp)
+			for _, dpd := range dpDependencies {
+				depProject.Settings.Dependencies.Add(dpd.Name)
 			}
 		}
 	}
 
 	if mainLib != nil {
+		mainLibProject := g.getOrCreateProject(mainLib, ws)
+		g.addProjectConfigurations(mainLibProject, mainLib)
+
 		mainLibDependencies := g.collectProjectDependencies(mainLib)
-		mainLibProject := g.createProject(mainLib, ws, false)
 		for _, dp := range mainLibDependencies {
-			mainLibProject.Settings.Dependencies = append(mainLibProject.Settings.Dependencies, dp.Name)
+			mainLibProject.Settings.Dependencies.Add(dp.Name)
 		}
 		for _, dp := range mainLibDependencies {
-			depProjectDependencies := g.collectProjectDependencies(dp)
-			depProject := g.createProject(dp, ws, false)
-			for _, ddp := range depProjectDependencies {
-				depProject.Settings.Dependencies = append(depProject.Settings.Dependencies, ddp.Name)
+			depProject := g.getOrCreateProject(dp, ws)
+			g.addProjectConfigurations(depProject, dp)
+
+			dpDependencies := g.collectProjectDependencies(dp)
+			for _, dpd := range dpDependencies {
+				depProject.Settings.Dependencies.Add(dpd.Name)
 			}
 		}
 	}
-
-	if mainTest != nil {
-		mainTestDependencies := g.collectProjectDependencies(mainTest)
-		mainTestProject := g.createProject(mainTest, ws, true)
-		for _, dp := range mainTestDependencies {
-			mainTestProject.Settings.Dependencies = append(mainTestProject.Settings.Dependencies, dp.Name)
-		}
-		for _, dp := range mainTestDependencies {
-			depProjectDependencies := g.collectProjectDependencies(dp)
-			depProject := g.createProject(dp, ws, true)
-			for _, ddp := range depProjectDependencies {
-				depProject.Settings.Dependencies = append(depProject.Settings.Dependencies, ddp.Name)
-			}
-		}
-	}
-
-	// if app == mainApp {
-	// 	mainAppDependencies := g.collectProjectDependencies(app)
-	// 	mainAppProject := g.createProject(app, ws, false)
-	// 	for _, dp := range mainAppDependencies {
-	// 		mainAppProject.Settings.Dependencies = append(mainAppProject.Settings.Dependencies, dp.Name)
-	// 	}
-	// 	for _, dp := range mainAppDependencies {
-	// 		depProjectDependencies := g.collectProjectDependencies(dp)
-	// 		depProject := g.createProject(dp, ws, false)
-	// 		for _, ddp := range depProjectDependencies {
-	// 			depProject.Settings.Dependencies = append(depProject.Settings.Dependencies, ddp.Name)
-	// 		}
-	// 	}
-	// } else if app == mainTest {
-	// 	mainTestDependencies := g.collectProjectDependencies(app)
-	// 	mainTestProject := g.createProject(app, ws, true)
-	// 	for _, dp := range mainTestDependencies {
-	// 		mainTestProject.Settings.Dependencies = append(mainTestProject.Settings.Dependencies, dp.Name)
-	// 	}
-	// 	for _, dp := range mainTestDependencies {
-	// 		depProjectDependencies := g.collectProjectDependencies(dp)
-	// 		depProject := g.createProject(dp, ws, true)
-	// 		for _, ddp := range depProjectDependencies {
-	// 			depProject.Settings.Dependencies = append(depProject.Settings.Dependencies, ddp.Name)
-	// 		}
-	// 	}
-	// }
 
 	if err := ws.Resolve(); err != nil {
 		return nil, err
@@ -334,19 +311,25 @@ func (g *AxeGenerator) collectProjectDependencies(proj *denv.Project) []*denv.Pr
 	return projectList
 }
 
-func (g *AxeGenerator) createProject(devProj *denv.Project, ws *Workspace, unittest bool) *Project {
-	projectConfig := NewVisualStudioProjectConfig(g.Dev)
+func (g *AxeGenerator) getOrCreateProject(devProj *denv.Project, ws *Workspace) *Project {
+
+	if p, ok := g.CreatedProjects.Get(devProj.Name); ok {
+		return p
+	}
+
+	projectConfig := NewProjectConfig(g.Dev)
 	{
-		executable := devProj.Type == denv.Executable
-		if !executable {
-			if unittest {
+		if devProj.Type.IsLibrary() {
+			if devProj.Type.IsUnitTest() {
 				projectConfig.Group = "unittest/cpp-library"
-			} else {
+			} else if devProj.Type.IsApplication() {
 				projectConfig.Group = "mainapp/cpp-library"
+			} else {
+				projectConfig.Group = "mainlib/cpp-library"
 			}
 			projectConfig.Type = ProjectTypeCppLib
-		} else {
-			if unittest {
+		} else if devProj.Type.IsExecutable() {
+			if devProj.Type.IsUnitTest() {
 				projectConfig.Group = "unittest/cpp-exe"
 			} else {
 				projectConfig.Group = "mainapp/cpp-exe"
@@ -355,12 +338,12 @@ func (g *AxeGenerator) createProject(devProj *denv.Project, ws *Workspace, unitt
 		}
 		projectConfig.IsGuiApp = false
 		projectConfig.PchHeader = ""
-		projectConfig.Dependencies = []string{}
+		projectConfig.Dependencies = NewValueSet()
 		projectConfig.MultiThreadedBuild = true
 		projectConfig.CppAsObjCpp = false
 
 		for _, dp := range devProj.Dependencies {
-			projectConfig.Dependencies = append(projectConfig.Dependencies, dp.Name)
+			projectConfig.Dependencies.Add(dp.Name)
 		}
 
 		projAbsPath := filepath.Join(g.GoPathAbs, devProj.PackageURL)
@@ -369,13 +352,13 @@ func (g *AxeGenerator) createProject(devProj *denv.Project, ws *Workspace, unitt
 
 		exclusionFilter := func(_filepath string) bool { return g.ExclusionFilter.IsExcluded(_filepath) }
 
-		if executable && unittest {
+		if devProj.Type.IsUnitTest() {
 			// Unittest executable
 			newProject.GlobFiles(projAbsPath, filepath.Join("source", "test", "cpp", "^**", "*.cpp"), exclusionFilter)
 			newProject.GlobFiles(projAbsPath, filepath.Join("source", "test", "include", "^**", "*.h"), exclusionFilter)
 			newProject.GlobFiles(projAbsPath, filepath.Join("source", "test", "include", "^**", "*.hpp"), exclusionFilter)
 			newProject.GlobFiles(projAbsPath, filepath.Join("source", "test", "include", "^**", "*.inl"), exclusionFilter)
-		} else if executable {
+		} else if devProj.Type.IsApplication() {
 			// Application
 			newProject.GlobFiles(projAbsPath, filepath.Join("source", "app", "cpp", "^**", "*.cpp"), exclusionFilter)
 			newProject.GlobFiles(projAbsPath, filepath.Join("source", "app", "include", "^**", "*.h"), exclusionFilter)
@@ -385,7 +368,7 @@ func (g *AxeGenerator) createProject(devProj *denv.Project, ws *Workspace, unitt
 				newProject.GlobFiles(projAbsPath, filepath.Join("source", "app", "cpp", "^**", "*.m"), exclusionFilter)
 				newProject.GlobFiles(projAbsPath, filepath.Join("source", "app", "cpp", "^**", "*.mm"), exclusionFilter)
 			}
-		} else {
+		} else if devProj.Type.IsLibrary() {
 			newProject.GlobFiles(projAbsPath, filepath.Join("source", "main", "cpp", "^**", "*.cpp"), exclusionFilter)
 			newProject.GlobFiles(projAbsPath, filepath.Join("source", "main", "include", "^**", "*.h"), exclusionFilter)
 			newProject.GlobFiles(projAbsPath, filepath.Join("source", "main", "include", "^**", "*.hpp"), exclusionFilter)
@@ -396,69 +379,106 @@ func (g *AxeGenerator) createProject(devProj *denv.Project, ws *Workspace, unitt
 			}
 		}
 
-		for _, cfg := range devProj.Configs {
-			g.createProjectConfiguration(newProject, devProj, cfg, executable, unittest)
-		}
 		return newProject
 	}
 }
 
-func (g *AxeGenerator) createProjectConfiguration(p *Project, prj *denv.Project, cfg *denv.Config, executable bool, unittest bool) *Config {
-	configType := ConfigTypeNone
-	if cfg.Config == "Debug" {
-		configType = ConfigTypeDebug
-	} else if cfg.Config == "Release" {
-		configType = ConfigTypeRelease
+func (g *AxeGenerator) addProjectConfigurations(p *Project, prj *denv.Project) {
+	for _, cfg := range prj.Configs {
+		configType := buildConfigType(cfg.Configs)
+		config := g.createProjectConfiguration(p, prj, cfg, configType)
+		p.Configs.Add(config)
 	}
-	if unittest {
-		configType |= ConfigTypeTest
-	}
+}
 
+func (g *AxeGenerator) createProjectConfiguration(p *Project, prj *denv.Project, cfg *denv.Config, configType ConfigType) *Config {
 	config := p.GetOrCreateConfig(configType)
 
+	// C++ defines
 	for _, define := range cfg.Defines {
 		config.CppDefines.ValuesToAdd(define)
 	}
 
+	// Library directories and files
+	for _, lib := range cfg.Libs {
+		if lib.Type == denv.UserLibrary {
+			config.LinkDirs.ValuesToAdd(lib.Dir)
+		}
+		if lib.Type != denv.Framework {
+			for _, libFile := range lib.Files {
+				config.LinkLibs.ValuesToAdd(libFile)
+			}
+		}
+	}
+
+	// Frameworks
+	for _, lib := range cfg.Libs {
+		if lib.Type == denv.Framework {
+			for _, libFile := range lib.Files {
+				config.AddFramework(libFile)
+			}
+		}
+	}
+
+	// Include directories
 	for _, include := range prj.IncludeDirs {
 		config.AddIncludeDir(include)
 	}
-
-	// config.AddIncludeDir("source/main/include")
-
-	// if !unittest && executable {
-	// 	config.AddIncludeDir("source/app/include")
-	// }
-
-	// if unittest && executable {
-	// 	config.AddIncludeDir("source/test/include")
-	// }
 
 	if configType.IsTest() {
 		config.VisualStudioClCompile.AddOrSet("ExceptionHandling", "Sync")
 	}
 
-	p.Configs.Add(config)
 	return config
 }
 
-func (g *AxeGenerator) addWorkspaceConfiguration(ws *Workspace, cfg *denv.Config, unittest bool) {
-	configType := ConfigTypeNone
-	if cfg.Config == "Debug" {
-		configType = ConfigTypeDebug
-	} else if cfg.Config == "Release" {
-		configType = ConfigTypeRelease
+func (g *AxeGenerator) addWorkspaceConfigurations(ws *Workspace, prj *denv.Project) {
+	for _, cfg := range prj.Configs {
+		cfgType := buildConfigType(cfg.Configs)
+		if !ws.HasConfig(cfgType) {
+			g.addWorkspaceConfiguration(ws, cfgType)
+		}
 	}
-	if unittest {
+}
+
+func buildConfigType(cfgType denv.ConfigType) ConfigType {
+	configType := ConfigTypeNone
+
+	if cfgType.IsDebug() {
+		configType = ConfigTypeDebug
+	} else if cfgType.IsRelease() {
+		configType = ConfigTypeRelease
+	} else if cfgType.IsFinal() {
+		configType = ConfigTypeFinal
+	}
+
+	if cfgType.IsProfile() {
+		configType = ConfigTypeProfile
+	}
+
+	if cfgType.IsUnittest() {
 		configType |= ConfigTypeTest
 	}
+
+	return configType
+}
+
+func (g *AxeGenerator) addWorkspaceConfiguration(ws *Workspace, configType ConfigType) {
 
 	config := NewConfig(configType, ws, nil)
 
 	if configType.IsDebug() {
 		config.CppDefines.ValuesToAdd("TARGET_DEBUG", "TARGET_DEV", "_DEBUG")
-	} else {
+	} else if configType.IsRelease() {
 		config.CppDefines.ValuesToAdd("TARGET_RELEASE", "TARGET_DEV", "NDEBUG")
+	} else if configType.IsFinal() {
+		config.CppDefines.ValuesToAdd("TARGET_FINAL", "NDEBUG")
+	} else if configType.IsProfile() {
+		config.CppDefines.ValuesToAdd("TARGET_RELEASE", "TARGET_PROFILE", "TARGET_DEV", "NDEBUG")
+	}
+
+	if configType.IsTest() {
+		config.CppDefines.ValuesToAdd("TARGET_TEST")
 	}
 
 	if ws.MakeTarget.OSIsWindows() {

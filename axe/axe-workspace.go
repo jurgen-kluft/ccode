@@ -94,6 +94,10 @@ func (ws *Workspace) AddConfig(config *Config) {
 	ws.Configs.Add(config)
 }
 
+func (ws *Workspace) HasConfig(c ConfigType) bool {
+	return ws.Configs.Has(c)
+}
+
 func (ws *Workspace) Resolve() error {
 	if ws.StartupProject == nil {
 		if startupProject, ok := ws.ProjectList.Get(ws.Config.StartupProject); ok {

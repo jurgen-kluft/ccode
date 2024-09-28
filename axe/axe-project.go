@@ -71,7 +71,7 @@ type ProjectConfig struct {
 	Type               ProjectType // ccore compiler define (CCORE_GEN_TYPE_{Type})
 	IsGuiApp           bool
 	PchHeader          string
-	Dependencies       []string
+	Dependencies       *ValueSet
 	MultiThreadedBuild Boolean
 	CppAsObjCpp        Boolean
 	Xcode              struct {
@@ -79,14 +79,10 @@ type ProjectConfig struct {
 	}
 }
 
-func NewProjectConfig() *ProjectConfig {
-	return &ProjectConfig{}
-}
-
-func NewVisualStudioProjectConfig(dev DevEnum) *ProjectConfig {
+func NewProjectConfig(dev DevEnum) *ProjectConfig {
 	config := &ProjectConfig{}
 	config.Dev = dev
-	config.Dependencies = make([]string, 0)
+	config.Dependencies = NewValueSet()
 	return config
 }
 
@@ -214,7 +210,8 @@ type Project struct {
 	Settings            *ProjectConfig
 	Group               *ProjectGroup
 	FileEntries         *FileEntryDict
-	ResourceDirs        *FileEntryDict
+	ResourceEntries     *FileEntryDict
+	LibEntries          *FileEntryDict
 	HasOutputTarget     bool
 	VirtualFolders      *VirtualDirectories
 	PchCpp              *FileEntry
@@ -244,7 +241,8 @@ func newProject(ws *Workspace, name string, projectAbsPath string, projectType P
 		GenerateAbsPath:     ws.GenerateAbsPath,
 		Settings:            settings,
 		FileEntries:         NewFileEntryDict(ws, projectAbsPath),
-		ResourceDirs:        NewFileEntryDict(ws, projectAbsPath),
+		ResourceEntries:     NewFileEntryDict(ws, projectAbsPath),
+		LibEntries:          NewFileEntryDict(ws, projectAbsPath),
 		HasOutputTarget:     false,
 		Configs:             NewConfigList(ws.Config.Dev),
 		Dependencies:        NewProjectList(),
@@ -256,12 +254,6 @@ func newProject(ws *Workspace, name string, projectAbsPath string, projectType P
 
 	p.Settings.MultiThreadedBuild = Boolean(ws.Config.MultiThreadedBuild)
 	p.Settings.Xcode.BundleIdentifier = "$(PROJECT_NAME)"
-
-	for _, srcConfig := range ws.Configs.Values {
-		dstConfig := NewConfig(srcConfig.Type, ws, p)
-		dstConfig.init(srcConfig)
-		p.Configs.Add(dstConfig)
-	}
 
 	return p
 }
@@ -292,7 +284,6 @@ func (p *Project) GetOrCreateConfig(t ConfigType) *Config {
 	c, ok := p.Configs.Get(t)
 	if !ok {
 		c = NewConfig(t, p.Workspace, p)
-		p.Configs.Add(c)
 	}
 	return c
 }
@@ -317,7 +308,13 @@ func (p *Project) GenProjectGenUuid() {
 		f.BuildUUID = GenerateUUID()
 	}
 
-	for _, i := range p.ResourceDirs.Dict {
+	for _, i := range p.ResourceEntries.Dict {
+		f := p.FileEntries.Values[i]
+		f.UUID = GenerateUUID()
+		f.BuildUUID = GenerateUUID()
+	}
+
+	for _, i := range p.LibEntries.Dict {
 		f := p.FileEntries.Values[i]
 		f.UUID = GenerateUUID()
 		f.BuildUUID = GenerateUUID()
@@ -388,7 +385,7 @@ func (p *Project) resolveInternal() error {
 		}
 	}
 
-	for _, d := range p.Settings.Dependencies {
+	for d, _ := range p.Settings.Dependencies.Entries {
 		dp, ok := p.Workspace.ProjectList.Get(d)
 		if !ok {
 			return fmt.Errorf("cannot find dependency project '%s' for project '%s'", d, p.Name)

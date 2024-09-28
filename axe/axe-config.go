@@ -58,6 +58,11 @@ func (p *ConfigList) Get(t ConfigType) (*Config, bool) {
 	return nil, false
 }
 
+func (p *ConfigList) Has(t ConfigType) bool {
+	_, ok := p.Dict[t.String()]
+	return ok
+}
+
 func (p *ConfigList) CollectByWildcard(name string, list *ConfigList) {
 	for _, p := range p.Values {
 		if PathMatchWildcard(p.String(), name, true) {
@@ -89,8 +94,12 @@ func (t ConfigType) IsRelease() bool {
 	return t&ConfigTypeRelease != 0
 }
 
+func (t ConfigType) IsFinal() bool {
+	return t&ConfigTypeFinal != 0
+}
+
 func (t ConfigType) IsProfile() bool {
-	return t&ConfigTypeTest != 0
+	return t&ConfigTypeProfile != 0
 }
 
 func (t ConfigType) IsTest() bool {
@@ -169,10 +178,11 @@ type Config struct {
 	LinkLibs       *VarSettings
 	LinkFiles      *PathSettings
 	LinkFlags      *VarSettings
+	Frameworks     *VarSettings
 	DisableWarning *VarSettings
 
-	VarSettings  map[string]*VarSettings
-	PathSettings map[string]*PathSettings
+	VarSettings  map[string]*VarSettings  // These exist to make it easier to iterate over all var settings
+	PathSettings map[string]*PathSettings // These exist to make it easier to iterate over all path settings
 
 	XcodeSettings         *KeyValueDict
 	VisualStudioClCompile *KeyValueDict
@@ -203,10 +213,11 @@ func NewConfig(t ConfigType, ws *Workspace, p *Project) *Config {
 	c.CppFlags = NewVarDict("CppFlags")                 // e.g. "-g"
 	c.IncludeDirs = NewPathDict("IncludeDirs", proot)   // e.g. "source/main/include", "source/test/include"
 	c.IncludeFiles = NewPathDict("IncludeFiles", proot) // e.g. "source/main/include/file.h", "source/test/include/file.h"
-	c.LinkDirs = NewPathDict("LinkDirs", proot)         // e.g. "source/main/lib"
+	c.LinkDirs = NewPathDict("LinkDirs", proot)         // e.g. "lib"
 	c.LinkLibs = NewVarDict("LinkLibs")                 // These are just "name.lib" or "name.a" entries
 	c.LinkFiles = NewPathDict("LinkFiles", proot)       // e.g. "link/name.o"
 	c.LinkFlags = NewVarDict("LinkFlags")               // e.g. "-lstdc++"
+	c.Frameworks = NewVarDict("Frameworks")             // e.g. "Cocoa", "OpenGL" (mainly MacOS)
 	c.DisableWarning = NewVarDict("DisableWarning")     // e.g. "unused-variable"
 
 	c.OutputTarget = NewFileEntry()
@@ -218,6 +229,7 @@ func NewConfig(t ConfigType, ws *Workspace, p *Project) *Config {
 		c.CppFlags.Name:       c.CppFlags,
 		c.LinkLibs.Name:       c.LinkLibs,
 		c.LinkFlags.Name:      c.LinkFlags,
+		c.Frameworks.Name:     c.Frameworks,
 		c.DisableWarning.Name: c.DisableWarning,
 	}
 
@@ -236,6 +248,8 @@ func NewConfig(t ConfigType, ws *Workspace, p *Project) *Config {
 	c.GenDataXcode.TargetUuid = GenerateUUID()
 	c.GenDataXcode.TargetConfigUuid = GenerateUUID()
 
+	c.init(nil)
+
 	c.Resolved = false
 	return c
 }
@@ -246,6 +260,10 @@ func (c *Config) String() string {
 
 func (c *Config) AddIncludeDir(includeDir string) {
 	c.IncludeDirs.ValuesToAdd(includeDir)
+}
+
+func (c *Config) AddFramework(framework string) {
+	c.Frameworks.ValuesToAdd(framework)
 }
 
 func (c *Config) init(source *Config) {

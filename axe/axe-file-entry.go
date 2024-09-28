@@ -18,6 +18,8 @@ const (
 	FileTypeObjCpp
 	FileTypeIxx
 	FileTypeMxx
+	FileTypeStaticLib
+	FileTypeSharedLib
 )
 
 // -----------------------------------------------------------------------------------------------
@@ -70,6 +72,16 @@ func (fe *FileEntry) Init(path string, isGenerated bool) {
 		fe.Type = FileTypeObjCpp
 	case ".mxx":
 		fe.Type = FileTypeMxx
+	case ".lib":
+		fe.Type = FileTypeStaticLib
+	case ".a":
+		fe.Type = FileTypeStaticLib
+	case ".dll":
+		fe.Type = FileTypeSharedLib
+	case ".so":
+		fe.Type = FileTypeSharedLib
+	default:
+		fe.Type = FileTypeNone
 	}
 }
 
@@ -89,12 +101,24 @@ func (f *FileEntry) Is_ObjC() bool {
 	return f.Type == FileTypeObjC
 }
 
+func (f *FileEntry) Is_SourceFile() bool {
+	return f.Type == FileTypeCppSource || f.Type == FileTypeCSource || f.Type == FileTypeCuSource || f.Type == FileTypeObjC || f.Type == FileTypeObjCpp
+}
+
 func (f *FileEntry) Is_ObjCpp() bool {
 	return f.Type == FileTypeObjCpp
 }
 
 func (f *FileEntry) Is_IXX() bool {
 	return f.Type == FileTypeIxx
+}
+
+func (f *FileEntry) Is_StaticLib() bool {
+	return f.Type == FileTypeStaticLib
+}
+
+func (f *FileEntry) Is_SharedLib() bool {
+	return f.Type == FileTypeSharedLib
 }
 
 // -----------------------------------------------------------------------------------------------

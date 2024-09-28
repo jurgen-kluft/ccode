@@ -37,16 +37,16 @@ func (g *TundraGenerator) generateUnitsLua(ws *Workspace) {
 	// Get all the projects and write them out
 	for _, p := range ws.ProjectList.Values {
 		switch p.Type {
+		case ProjectTypeCppExe, ProjectTypeCExe:
+			continue
 		case ProjectTypeCppLib, ProjectTypeCLib:
 			units.NewLine()
 			units.WriteILine("", "local ", p.Name, "_staticlib = ", "StaticLibrary", "{")
 		case ProjectTypeCppDll, ProjectTypeCDll:
 			units.NewLine()
 			units.WriteILine("", "local ", p.Name, "_sharedlib = ", "SharedLibrary", "{")
-		case ProjectTypeCppExe, ProjectTypeCExe:
-			continue
 		}
-		g.writeUnit(units, p)
+		g.writeUnit(units, p, false)
 		units.WriteLine("}")
 	}
 
@@ -60,7 +60,7 @@ func (g *TundraGenerator) generateUnitsLua(ws *Workspace) {
 			units.NewLine()
 			units.WriteILine("", "local ", p.Name, "_program = ", "Program", "{")
 		}
-		g.writeUnit(units, p)
+		g.writeUnit(units, p, true)
 		units.WriteLine("}")
 
 		units.WriteILine("", "Default(", p.Name, "_program)")
@@ -70,9 +70,27 @@ func (g *TundraGenerator) generateUnitsLua(ws *Workspace) {
 	units.WriteToFile(filepath.Join(ws.GenerateAbsPath, "units.lua"))
 }
 
-func (g *TundraGenerator) writeUnit(units *LineWriter, p *Project) {
+func (g *TundraGenerator) writeUnit(units *LineWriter, p *Project, isProgram bool) {
 	units.WriteILine("+", "Name = ", `"`, p.Name, `",`)
 	units.WriteILine("+", "Env = {")
+
+	// Library Paths
+	if isProgram {
+		//    Libs = {
+		//        "user32.lib"; Config = "win32-*",
+		//        "ws2_32.lib"; Config = "win32-*",
+		//        "gdi32.lib"; Config = "win32-*",
+		//    },
+
+		units.WriteILine("++", "LIBPATH = {")
+		for _, cfg := range p.Configs.Values {
+			for _, dir := range cfg.LinkDirs.FinalDict.Values {
+				path := PathGetRel(filepath.Join(p.ProjectAbsPath, dir), p.Workspace.GenerateAbsPath)
+				units.WriteILine("+++", `{"`, path, `", `, `Config = "`, cfg.Type.Tundra(), `"},`)
+			}
+		}
+		units.WriteILine("++", "},")
+	}
 
 	// Compiler Defines
 
@@ -126,9 +144,11 @@ func (g *TundraGenerator) writeUnit(units *LineWriter, p *Project) {
 
 	units.WriteILine("+", `Sources = {`)
 	for _, src := range p.FileEntries.Values {
-		path := p.FileEntries.GetRelativePath(src, p.Workspace.GenerateAbsPath)
-		path = strings.Replace(path, "\\", "/", -1)
-		units.WriteILine("++", `"`, path, `",`)
+		if src.Is_SourceFile() {
+			path := p.FileEntries.GetRelativePath(src, p.Workspace.GenerateAbsPath)
+			path = strings.Replace(path, "\\", "/", -1)
+			units.WriteILine("++", `"`, path, `",`)
+		}
 	}
 	units.WriteILine("+", "},")
 
@@ -145,19 +165,31 @@ func (g *TundraGenerator) writeUnit(units *LineWriter, p *Project) {
 	}
 	units.WriteILine("+", "},")
 
-	// Framework Dependencies
+	if isProgram {
+		//    Libs = {
+		//        "user32.lib"; Config = "win32-*",
+		//        "ws2_32.lib"; Config = "win32-*",
+		//        "gdi32.lib"; Config = "win32-*",
+		//    },
 
-	// if the platform is Mac also write out the Frameworks we are using
-	if p.Workspace.MakeTarget.OSIsMac() {
-		units.WriteILine("+", `Frameworks = {`)
-		units.WriteILine("++", `{ "Cocoa" },`)
-		units.WriteILine("++", `{ "Metal" },`)
-		units.WriteILine("++", `{ "OpenGL" },`)
-		units.WriteILine("++", `{ "IOKit" },`)
-		units.WriteILine("++", `{ "Carbon" },`)
-		units.WriteILine("++", `{ "CoreVideo" },`)
-		units.WriteILine("++", `{ "QuartzCore" },`)
-		units.WriteILine("+", `},`)
+		units.WriteILine("+", "Libs = {")
+		for _, cfg := range p.Configs.Values {
+			for _, lib := range cfg.LinkLibs.FinalDict.Values {
+				units.WriteILine("++", `{"`, lib, `"`, `, Config = "`, cfg.Type.Tundra(), `"},`)
+			}
+		}
+		units.WriteILine("+", "},")
+
+		// if the platform is Mac also write out the Frameworks we are using
+		if p.Workspace.MakeTarget.OSIsMac() {
+			units.WriteILine("+", `Frameworks = {`)
+			for _, cfg := range p.Configs.Values {
+				for _, framework := range cfg.Frameworks.FinalDict.Values {
+					units.WriteILine("++", `{"`, framework, `"`, `, Config = "`, cfg.Type.Tundra(), `"},`)
+				}
+			}
+			units.WriteILine("+", `},`)
+		}
 	}
 }
 
