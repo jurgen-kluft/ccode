@@ -325,7 +325,6 @@ func (g *MsDevGenerator) genProjectConfig(wr *XmlWriter, proj *Project, config *
 			}
 
 			wr.TagWithBody("LanguageStandard", cppStd)
-			wr.TagWithBody("PreprocessorDefinitions", "%(PreprocessorDefinitions)")
 
 			if g.Workspace.MakeTarget.OSIsLinux() {
 				wr.TagWithBody("Verbose", "true")
@@ -343,8 +342,8 @@ func (g *MsDevGenerator) genProjectConfig(wr *XmlWriter, proj *Project, config *
 				wr.TagWithBody("PrecompiledHeader", "NotUsing")
 			}
 
-			g.genConfigOption(wr, "DisableSpecificWarnings", config.DisableWarning.FinalDict)
-			g.genConfigOption(wr, "PreprocessorDefinitions", config.CppDefines.FinalDict)
+			g.genConfigOption(wr, proj, "DisableSpecificWarnings", config.DisableWarning.FinalDict, false)
+			g.genConfigOption(wr, proj, "PreprocessorDefinitions", config.CppDefines.FinalDict, false)
 			g.genConfigOptionWithModifier(wr, "AdditionalIncludeDirectories", config.IncludeDirs.FinalDict, func(key string, value string) string {
 				path := PathGetRel(key, proj.Workspace.GenerateAbsPath)
 				return path
@@ -364,7 +363,7 @@ func (g *MsDevGenerator) genProjectConfig(wr *XmlWriter, proj *Project, config *
 			}
 
 			if proj.TypeIsExeOrDll() {
-				g.genConfigOption(wr, "AdditionalLibraryDirectories", config.LinkDirs.FinalDict)
+				g.genConfigOption(wr, proj, "AdditionalLibraryDirectories", config.LinkDirs.FinalDict, true)
 
 				optName := "AdditionalDependencies"
 				relativeTo := ""
@@ -426,8 +425,14 @@ func (g *MsDevGenerator) genProjectConfig(wr *XmlWriter, proj *Project, config *
 	}
 }
 
-func (g *MsDevGenerator) genConfigOption(wr *XmlWriter, name string, value *KeyValueDict) {
-	option := value.Concatenated("", ";", func(string, s string) string { return s })
+func (g *MsDevGenerator) genConfigOption(wr *XmlWriter, proj *Project, name string, value *KeyValueDict, treatAsPath bool) {
+	option := value.Concatenated("", ";", func(k string, v string) string {
+		if treatAsPath {
+			path := PathGetRel(k, proj.Workspace.GenerateAbsPath)
+			return path
+		}
+		return v
+	})
 	option += "%(" + name + ")"
 	wr.TagWithBody(name, option)
 }
