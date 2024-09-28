@@ -25,6 +25,9 @@ func IsExcludedOnMac(str string) bool {
 	if strings.HasSuffix(str, "_linux") || strings.HasSuffix(str, "_unix") {
 		return true
 	}
+	if strings.EqualFold(str, "windows") || strings.EqualFold(str, "linux") {
+		return true
+	}
 	if strings.EqualFold(str, "d3d11") || strings.EqualFold(str, "d3d12") {
 		return true
 	}
@@ -41,6 +44,9 @@ func IsExcludedOnWindows(str string) bool {
 	if strings.HasSuffix(str, "_mac") || strings.HasSuffix(str, "_macos") || strings.HasSuffix(str, "_darwin") || strings.HasSuffix(str, "_linux") || strings.HasSuffix(str, "_unix") {
 		return true
 	}
+	if strings.EqualFold(str, "macos") || strings.EqualFold(str, "linux") {
+		return true
+	}
 	if strings.EqualFold(str, "cocoa") || strings.EqualFold(str, "metal") {
 		return true
 	}
@@ -55,6 +61,9 @@ func IsExcludedOnLinux(str string) bool {
 		return true
 	}
 	if strings.HasPrefix(str, "win_") || strings.HasPrefix(str, "pc_") || strings.HasPrefix(str, "win32_") || strings.HasPrefix(str, "win64_") {
+		return true
+	}
+	if strings.EqualFold(str, "windows") || strings.EqualFold(str, "macos") {
 		return true
 	}
 	if strings.EqualFold(str, "d3d11") || strings.EqualFold(str, "d3d12") || strings.EqualFold(str, "cocoa") || strings.EqualFold(str, "metal") {
@@ -95,11 +104,6 @@ func (f *ExclusionFilter) IsExcluded(filepath string) bool {
 		if f.Filter(p) {
 			return true
 		}
-		// for _, exclusion := range f.Exclusions {
-		// 	if strings.HasSuffix(p, exclusion) {
-		// 		return true
-		// 	}
-		// }
 	}
 	return false
 }
@@ -107,7 +111,6 @@ func (f *ExclusionFilter) IsExcluded(filepath string) bool {
 // ----------------------------------------------------------------------------------------------
 // IDE generator
 // ----------------------------------------------------------------------------------------------
-
 type AxeGenerator struct {
 	Dev             DevEnum
 	Os              string
@@ -175,16 +178,20 @@ func (g *AxeGenerator) Generate(pkg *denv.Package) error {
 func (g *AxeGenerator) GenerateWorkspace(pkg *denv.Package, dev DevEnum) (*Workspace, error) {
 	g.GoPathAbs = filepath.Join(os.Getenv("GOPATH"), "src")
 
+	mainLib := pkg.GetMainLib()
 	mainApp := pkg.GetMainApp()
-	unittestApp := pkg.GetUnittest()
+	mainTest := pkg.GetUnittest()
 
-	if mainApp == nil && unittestApp == nil {
-		return nil, fmt.Errorf("this package has no main app or unittest")
+	if mainApp == nil && mainTest == nil && mainLib == nil {
+		return nil, fmt.Errorf("this package has no main app, main lib or unittest")
 	}
 
-	app := unittestApp
+	app := mainTest
 	if app == nil {
 		app = mainApp
+	}
+	if app == nil {
+		app = mainLib
 	}
 
 	wsc := NewWorkspaceConfig(dev, g.GoPathAbs, app.Name)
@@ -198,20 +205,30 @@ func (g *AxeGenerator) GenerateWorkspace(pkg *denv.Package, dev DevEnum) (*Works
 
 	g.ExclusionFilter = NewExclusionFilter(ws.MakeTarget)
 
-	if unittestApp != nil {
-		for _, cfg := range unittestApp.Configs {
+	if mainLib != nil {
+		for _, cfg := range mainLib.Configs {
 			g.addWorkspaceConfiguration(ws, cfg, true)
 		}
-	} else {
+	}
+
+	if mainApp != nil {
 		for _, cfg := range mainApp.Configs {
 			g.addWorkspaceConfiguration(ws, cfg, true)
 		}
 	}
 
+	if mainTest != nil {
+		for _, cfg := range mainTest.Configs {
+			g.addWorkspaceConfiguration(ws, cfg, true)
+		}
+	}
+
 	// Create the main and dependency projects and also setup the list of dependencies of each project
-	if app == mainApp {
-		mainAppDependencies := g.collectProjectDependencies(app)
-		mainAppProject := g.createProject(app, ws, false)
+
+	// Note: Can we not create all 3: App, Lib and Unittest projects ?
+	if mainApp != nil {
+		mainAppDependencies := g.collectProjectDependencies(mainApp)
+		mainAppProject := g.createProject(mainApp, ws, false)
 		for _, dp := range mainAppDependencies {
 			mainAppProject.Settings.Dependencies = append(mainAppProject.Settings.Dependencies, dp.Name)
 		}
@@ -222,13 +239,30 @@ func (g *AxeGenerator) GenerateWorkspace(pkg *denv.Package, dev DevEnum) (*Works
 				depProject.Settings.Dependencies = append(depProject.Settings.Dependencies, ddp.Name)
 			}
 		}
-	} else if app == unittestApp {
-		unittestDependencies := g.collectProjectDependencies(app)
-		unittestProject := g.createProject(app, ws, true)
-		for _, dp := range unittestDependencies {
-			unittestProject.Settings.Dependencies = append(unittestProject.Settings.Dependencies, dp.Name)
+	}
+
+	if mainLib != nil {
+		mainLibDependencies := g.collectProjectDependencies(mainLib)
+		mainLibProject := g.createProject(mainLib, ws, false)
+		for _, dp := range mainLibDependencies {
+			mainLibProject.Settings.Dependencies = append(mainLibProject.Settings.Dependencies, dp.Name)
 		}
-		for _, dp := range unittestDependencies {
+		for _, dp := range mainLibDependencies {
+			depProjectDependencies := g.collectProjectDependencies(dp)
+			depProject := g.createProject(dp, ws, false)
+			for _, ddp := range depProjectDependencies {
+				depProject.Settings.Dependencies = append(depProject.Settings.Dependencies, ddp.Name)
+			}
+		}
+	}
+
+	if mainTest != nil {
+		mainTestDependencies := g.collectProjectDependencies(mainTest)
+		mainTestProject := g.createProject(mainTest, ws, true)
+		for _, dp := range mainTestDependencies {
+			mainTestProject.Settings.Dependencies = append(mainTestProject.Settings.Dependencies, dp.Name)
+		}
+		for _, dp := range mainTestDependencies {
 			depProjectDependencies := g.collectProjectDependencies(dp)
 			depProject := g.createProject(dp, ws, true)
 			for _, ddp := range depProjectDependencies {
@@ -236,6 +270,34 @@ func (g *AxeGenerator) GenerateWorkspace(pkg *denv.Package, dev DevEnum) (*Works
 			}
 		}
 	}
+
+	// if app == mainApp {
+	// 	mainAppDependencies := g.collectProjectDependencies(app)
+	// 	mainAppProject := g.createProject(app, ws, false)
+	// 	for _, dp := range mainAppDependencies {
+	// 		mainAppProject.Settings.Dependencies = append(mainAppProject.Settings.Dependencies, dp.Name)
+	// 	}
+	// 	for _, dp := range mainAppDependencies {
+	// 		depProjectDependencies := g.collectProjectDependencies(dp)
+	// 		depProject := g.createProject(dp, ws, false)
+	// 		for _, ddp := range depProjectDependencies {
+	// 			depProject.Settings.Dependencies = append(depProject.Settings.Dependencies, ddp.Name)
+	// 		}
+	// 	}
+	// } else if app == mainTest {
+	// 	mainTestDependencies := g.collectProjectDependencies(app)
+	// 	mainTestProject := g.createProject(app, ws, true)
+	// 	for _, dp := range mainTestDependencies {
+	// 		mainTestProject.Settings.Dependencies = append(mainTestProject.Settings.Dependencies, dp.Name)
+	// 	}
+	// 	for _, dp := range mainTestDependencies {
+	// 		depProjectDependencies := g.collectProjectDependencies(dp)
+	// 		depProject := g.createProject(dp, ws, true)
+	// 		for _, ddp := range depProjectDependencies {
+	// 			depProject.Settings.Dependencies = append(depProject.Settings.Dependencies, ddp.Name)
+	// 		}
+	// 	}
+	// }
 
 	if err := ws.Resolve(); err != nil {
 		return nil, err
@@ -426,7 +488,7 @@ func (g *AxeGenerator) addWorkspaceConfiguration(ws *Workspace, cfg *denv.Config
 
 	// clang
 	if ws.MakeTarget.CompilerIsClang() {
-		//		config.CppFlags.ValuesToAdd("-std=c++14", "-Wall")
+		config.CppFlags.ValuesToAdd("-std=c++17")
 		config.CppFlags.ValuesToAdd("-Wno-switch", "-Wno-unused-variable", "-Wno-unused-function", "-Wno-unused-private-field")
 		config.CppFlags.ValuesToAdd("-Wno-unused-but-set-variable")
 		//config.CppFlags.ValuesToAdd("-Wfatal-errors", "-Werror")
