@@ -34,6 +34,8 @@ func (g *TundraGenerator) generateUnitsLua(ws *Workspace) {
 	// Sort the projects by their dependencies using topological sort
 	ws.ProjectList.TopoSort()
 
+	default_unit := ""
+
 	// Get all the projects and write them out
 	for _, p := range ws.ProjectList.Values {
 		switch p.Type {
@@ -48,6 +50,10 @@ func (g *TundraGenerator) generateUnitsLua(ws *Workspace) {
 		}
 		g.writeUnit(units, p, false)
 		units.WriteLine("}")
+
+		// Set the default unit to the last library project, in case there is no program this
+		// will be the default unit. For example if we only have a static library project.
+		default_unit = p.Name + "_staticlib"
 	}
 
 	for _, p := range ws.ProjectList.Values {
@@ -63,8 +69,10 @@ func (g *TundraGenerator) generateUnitsLua(ws *Workspace) {
 		g.writeUnit(units, p, true)
 		units.WriteLine("}")
 
-		units.WriteILine("", "Default(", p.Name, "_program)")
+		default_unit = p.Name + "_program"
 	}
+
+	units.WriteILine("", "Default(", default_unit, ")")
 
 	units.NewLine()
 	units.WriteToFile(filepath.Join(ws.GenerateAbsPath, "units.lua"))
@@ -230,7 +238,18 @@ func (g *TundraGenerator) generateTundraLua(ws *Workspace) {
 	tundra.WriteLine(``)
 	tundra.WriteLine(`        CXXOPTS = {`)
 	tundra.WriteLine(`            mac_opts,`)
-	tundra.WriteLine(`            "-std=c++14",`)
+	switch ws.Config.CppStd {
+	case CppStd11:
+		tundra.WriteLine(`            "-std=c++11",`)
+	case CppStd14:
+		tundra.WriteLine(`            "-std=c++14",`)
+	case CppStd17:
+		tundra.WriteLine(`            "-std=c++17",`)
+	case CppStd20:
+		tundra.WriteLine(`            "-std=c++20",`)
+	case CppStdLatest:
+		tundra.WriteLine(`            "-std=c++latest",`)
+	}
 	if runtime.GOARCH == "amd64" {
 		tundra.WriteLine(`			"-arch x86_64",`)
 	} else if runtime.GOARCH == "arm64" {

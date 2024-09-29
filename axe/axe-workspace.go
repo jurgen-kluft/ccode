@@ -8,11 +8,26 @@ import (
 // -----------------------------------------------------------------------------------------------------
 // -----------------------------------------------------------------------------------------------------
 
+type CppStdType int
+
+const (
+	CppStdUnknown CppStdType = iota
+	CppStd11
+	CppStd14
+	CppStd17
+	CppStd20
+	CppStd23
+	CppStdLatest
+)
+
+// -----------------------------------------------------------------------------------------------------
+// -----------------------------------------------------------------------------------------------------
+
 type WorkspaceConfig struct {
 	Dev                DevEnum
 	GenerateAbsPath    string              // The directory where the workspace and project files will be generated
 	StartupProject     string              // The name of the project that will be marked as the startup project
-	CppStd             string              // The C++ standard to use for this workspace and all projects
+	CppStd             CppStdType          // The C++ standard to use for this workspace and all projects
 	MultiThreadedBuild bool                // Whether to mark 'multi-threaded build' in the project files
 	MsDev              *VisualStudioConfig // The project configuration to use for msdev
 
@@ -29,7 +44,7 @@ func NewWorkspaceConfig(dev DevEnum, workspacePath string, projectName string) *
 	wsc.Dev = dev
 	wsc.GenerateAbsPath = filepath.Join(workspacePath, projectName, "target")
 	wsc.StartupProject = projectName
-	wsc.CppStd = "c++17"
+	wsc.CppStd = CppStd17
 	wsc.MultiThreadedBuild = true
 	wsc.MsDev = NewVisualStudioConfig(VisualStudio2022)
 

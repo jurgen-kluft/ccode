@@ -316,11 +316,11 @@ func (g *MsDevGenerator) genProjectConfig(wr *XmlWriter, proj *Project, config *
 
 			cppStd := "stdcpp14"
 			switch g.Workspace.Config.CppStd {
-			case "c++11", "c++14":
+			case CppStd11, CppStd14:
 				cppStd = "stdcpp14"
-			case "c++17":
+			case CppStd17:
 				cppStd = "stdcpp17"
-			case "latest":
+			case CppStdLatest:
 				cppStd = "stdcpplatest"
 			}
 
