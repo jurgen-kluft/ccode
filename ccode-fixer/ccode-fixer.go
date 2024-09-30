@@ -99,7 +99,7 @@ func IncludeFixer(pkg *denv.Package, cfg *FixrConfig) {
 	// So we need the list of unique include directories of all the projects
 	for _, p := range projects {
 		projectPath := filepath.Join(basePath, p.PackageURL)
-		for _, inc := range p.IncludeDirs {
+		for _, inc := range p.CollectIncludeDirs().Values {
 			includePath := filepath.Join(projectPath, inc)
 			scanners.Add(includePath, cfg.HeaderFileFilter)
 		}
@@ -108,12 +108,12 @@ func IncludeFixer(pkg *denv.Package, cfg *FixrConfig) {
 	// Then we need the source and include directories of the main application(s) and main library
 	for _, mainProject := range mainProjects {
 		mainProjectPath := filepath.Join(basePath, mainProject.PackageURL)
-		for _, sp := range mainProject.SourceDirs {
+		for _, sp := range mainProject.CollectSourceDirs().Values {
 			sourcePath := filepath.Join(mainProjectPath, sp)
 			renamers.Add(sourcePath, cfg.RenamePolicy, cfg.SourceFileFilter, cfg.SourceFileFilter)
 			fixers.AddSourceFileFilter(sourcePath, cfg.SourceFileFilter)
 		}
-		for _, inc := range mainProject.IncludeDirs {
+		for _, inc := range mainProject.CollectIncludeDirs().Values {
 			includePath := filepath.Join(mainProjectPath, inc)
 			renamers.Add(includePath, cfg.RenamePolicy, cfg.SourceFileFilter, cfg.HeaderFileFilter)
 			fixers.AddHeaderFileFilter(includePath, cfg.HeaderFileFilter)

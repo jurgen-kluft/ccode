@@ -1,9 +1,10 @@
 package axe
 
 import (
-	"log"
 	"path/filepath"
 	"strings"
+
+	"github.com/jurgen-kluft/ccode/denv"
 )
 
 // -----------------------------------------------------------------------------------------------------
@@ -14,15 +15,13 @@ import (
 // -----------------------------------------------------------------------------------------------------
 
 type ConfigList struct {
-	Dev    DevEnum
 	Dict   map[string]int
 	Values []*Config
 	Keys   []string
 }
 
-func NewConfigList(dev DevEnum) *ConfigList {
+func NewConfigList() *ConfigList {
 	return &ConfigList{
-		Dev:    dev,
 		Dict:   map[string]int{},
 		Values: []*Config{},
 		Keys:   []string{},
@@ -86,22 +85,40 @@ const (
 	ConfigTypeProfile ConfigType = 16
 )
 
+func MakeFromDenvConfigType(cfgType denv.ConfigType) ConfigType {
+	configType := ConfigTypeNone
+
+	if cfgType.IsDebug() {
+		configType = ConfigTypeDebug
+	} else if cfgType.IsRelease() {
+		configType = ConfigTypeRelease
+	} else if cfgType.IsFinal() {
+		configType = ConfigTypeFinal
+	}
+
+	if cfgType.IsProfile() {
+		configType = ConfigTypeProfile
+	}
+
+	if cfgType.IsUnittest() {
+		configType |= ConfigTypeTest
+	}
+
+	return configType
+}
+
 func (t ConfigType) IsDebug() bool {
 	return t&ConfigTypeDebug != 0
 }
-
 func (t ConfigType) IsRelease() bool {
 	return t&ConfigTypeRelease != 0
 }
-
 func (t ConfigType) IsFinal() bool {
 	return t&ConfigTypeFinal != 0
 }
-
 func (t ConfigType) IsProfile() bool {
 	return t&ConfigTypeProfile != 0
 }
-
 func (t ConfigType) IsTest() bool {
 	return t&ConfigTypeTest != 0
 }
@@ -159,86 +176,44 @@ func (t ConfigType) String() string {
 // -----------------------------------------------------------------------------------------------------
 
 type Config struct {
-	//Name         string
-	Type         ConfigType
-	Dev          DevEnum
-	Workspace    *Workspace
-	Project      *Project
-	OutputTarget *FileEntry
-	OutputLib    *FileEntry
-	BuildTmpDir  *FileEntry
-
-	OutTargetDir string
+	Type      ConfigType
+	Workspace *Workspace
+	Project   *Project
 
 	CppDefines     *VarSettings
 	CppFlags       *VarSettings
-	IncludeDirs    *PathSettings
-	IncludeFiles   *PathSettings
-	LinkDirs       *PathSettings
-	LinkLibs       *VarSettings
-	LinkFiles      *PathSettings
+	IncludeDirs    *PinnedPathSet
+	IncludeFiles   *PinnedPathSet
+	Library        *Library
 	LinkFlags      *VarSettings
-	Frameworks     *VarSettings
 	DisableWarning *VarSettings
-
-	VarSettings  map[string]*VarSettings  // These exist to make it easier to iterate over all var settings
-	PathSettings map[string]*PathSettings // These exist to make it easier to iterate over all path settings
 
 	XcodeSettings         *KeyValueDict
 	VisualStudioClCompile *KeyValueDict
 	VisualStudioLink      *KeyValueDict
-
-	Resolved bool
 
 	GenDataXcode struct {
 		ProjectConfigUuid UUID
 		TargetUuid        UUID
 		TargetConfigUuid  UUID
 	}
+
+	Resolved *ConfigResolved
 }
 
 func NewConfig(t ConfigType, ws *Workspace, p *Project) *Config {
 	c := &Config{}
 	c.Type = t
-	c.Dev = ws.Config.Dev
 	c.Workspace = ws
 	c.Project = p
 
-	proot := ""
-	if p != nil {
-		proot = p.ProjectAbsPath
-	}
-
-	c.CppDefines = NewVarDict("CppDefines")             // e.g. "DEBUG" "PROFILE"
-	c.CppFlags = NewVarDict("CppFlags")                 // e.g. "-g"
-	c.IncludeDirs = NewPathDict("IncludeDirs", proot)   // e.g. "source/main/include", "source/test/include"
-	c.IncludeFiles = NewPathDict("IncludeFiles", proot) // e.g. "source/main/include/file.h", "source/test/include/file.h"
-	c.LinkDirs = NewPathDict("LinkDirs", proot)         // e.g. "lib"
-	c.LinkLibs = NewVarDict("LinkLibs")                 // These are just "name.lib" or "name.a" entries
-	c.LinkFiles = NewPathDict("LinkFiles", proot)       // e.g. "link/name.o"
-	c.LinkFlags = NewVarDict("LinkFlags")               // e.g. "-lstdc++"
-	c.Frameworks = NewVarDict("Frameworks")             // e.g. "Cocoa", "OpenGL" (mainly MacOS)
-	c.DisableWarning = NewVarDict("DisableWarning")     // e.g. "unused-variable"
-
-	c.OutputTarget = NewFileEntry()
-	c.OutputLib = NewFileEntry()
-	c.BuildTmpDir = NewFileEntry()
-
-	c.VarSettings = map[string]*VarSettings{
-		c.CppDefines.Name:     c.CppDefines,
-		c.CppFlags.Name:       c.CppFlags,
-		c.LinkLibs.Name:       c.LinkLibs,
-		c.LinkFlags.Name:      c.LinkFlags,
-		c.Frameworks.Name:     c.Frameworks,
-		c.DisableWarning.Name: c.DisableWarning,
-	}
-
-	c.PathSettings = map[string]*PathSettings{
-		c.IncludeDirs.Name:  c.IncludeDirs,
-		c.IncludeFiles.Name: c.IncludeFiles,
-		c.LinkDirs.Name:     c.LinkDirs,
-		c.LinkFiles.Name:    c.LinkFiles,
-	}
+	c.CppDefines = NewVarDict("CppDefines")         // e.g. "DEBUG" "PROFILE"
+	c.CppFlags = NewVarDict("CppFlags")             // e.g. "-g"
+	c.IncludeDirs = NewPinnedPathSet()              // e.g. "source/main/include", "source/test/include"
+	c.IncludeFiles = NewPinnedPathSet()             // e.g. "source/main/include/file.h", "source/test/include/file.h"
+	c.Library = NewLibrary()                        // Holds the information of library directories and files
+	c.LinkFlags = NewVarDict("LinkFlags")           // e.g. "-lstdc++"
+	c.DisableWarning = NewVarDict("DisableWarning") // e.g. "unused-variable"
 
 	c.XcodeSettings = NewKeyValueDict()
 	c.VisualStudioClCompile = NewKeyValueDict()
@@ -248,9 +223,9 @@ func NewConfig(t ConfigType, ws *Workspace, p *Project) *Config {
 	c.GenDataXcode.TargetUuid = GenerateUUID()
 	c.GenDataXcode.TargetConfigUuid = GenerateUUID()
 
-	c.init(nil)
+	c.InitXcodeSettings()
+	c.InitVisualStudioSettings()
 
-	c.Resolved = false
 	return c
 }
 
@@ -259,31 +234,7 @@ func (c *Config) String() string {
 }
 
 func (c *Config) AddIncludeDir(includeDir string) {
-	c.IncludeDirs.ValuesToAdd(includeDir)
-}
-
-func (c *Config) AddFramework(framework string) {
-	c.Frameworks.ValuesToAdd(framework)
-}
-
-func (c *Config) init(source *Config) {
-	if c.Workspace == nil {
-		log.Panic("Config hasn't been created with a valid Workspace")
-	}
-
-	if c.Project != nil {
-		path := filepath.Join(c.Workspace.GenerateAbsPath, "build_tmp", c.String(), c.Project.Name)
-		c.BuildTmpDir = NewFileEntryInit(path, true)
-	}
-
-	if source != nil {
-		c.XcodeSettings.Merge(source.XcodeSettings)
-		c.VisualStudioClCompile.Merge(source.VisualStudioClCompile)
-		c.VisualStudioLink.Merge(source.VisualStudioLink)
-	} else {
-		c.InitXcodeSettings()
-		c.InitVisualStudioSettings()
-	}
+	c.IncludeDirs.AddOrSet(c.Project.ProjectAbsPath, includeDir)
 }
 
 func (c *Config) InitXcodeSettings() {
@@ -405,52 +356,83 @@ func (c *Config) InitVisualStudioSettings() {
 	c.VisualStudioClCompile.AddOrSet("RuntimeLibrary", c.Workspace.Config.MsDev.RuntimeLibrary.String(c.Type.IsDebug()))
 }
 
-func (c *Config) inherit(rhs *Config) {
-	c.resolve()
-
-	for key, ps := range c.VarSettings {
-		ps.inherit(rhs.VarSettings[key])
-	}
-	for key, ps := range c.PathSettings {
-		ps.inherit(rhs.PathSettings[key])
-	}
-
-	if t := rhs.OutputLib.Path; len(t) > 0 {
-		c.LinkFiles.InheritDict.AddOrSet(t, t)
-	}
-
-	c.XcodeSettings.UniqueExtend(rhs.XcodeSettings)
-	c.VisualStudioClCompile.UniqueExtend(rhs.VisualStudioClCompile)
-	c.VisualStudioLink.UniqueExtend(rhs.VisualStudioLink)
+type ConfigResolved struct {
+	OutputTarget *FileEntry
+	OutputLib    *FileEntry
+	BuildTmpDir  *FileEntry
 }
 
-func (c *Config) computeFinal() {
-	c.resolve()
+func NewConfigResolved() *ConfigResolved {
+	c := &ConfigResolved{}
 
-	for _, p := range c.VarSettings {
-		p.computeFinal()
-	}
-	for _, p := range c.PathSettings {
-		p.computeFinal()
-	}
+	c.OutputTarget = NewFileEntry()
+	c.OutputLib = NewFileEntry()
+	c.BuildTmpDir = NewFileEntry()
+
+	return c
 }
 
-func (c *Config) resolve() {
-	if c.Resolved {
-		return
+func (c *Config) Copy() *Config {
+	nc := NewConfig(c.Type, c.Workspace, c.Project)
+
+	nc.CppDefines = c.CppDefines.Copy()
+	nc.CppFlags = c.CppFlags.Copy()
+	nc.IncludeDirs = c.IncludeDirs.Copy()
+	nc.IncludeFiles = c.IncludeFiles.Copy()
+	nc.Library = c.Library.Copy()
+	nc.LinkFlags = c.LinkFlags.Copy()
+	nc.DisableWarning = c.DisableWarning.Copy()
+
+	nc.XcodeSettings = c.XcodeSettings.Copy()
+	nc.VisualStudioClCompile = c.VisualStudioClCompile.Copy()
+	nc.VisualStudioLink = c.VisualStudioLink.Copy()
+
+	nc.GenDataXcode = c.GenDataXcode
+
+	nc.Resolved = nil
+
+	return nc
+}
+
+func (c *Config) BuildResolved(otherConfigs []*Config) *Config {
+	configMerged := c.Copy()
+
+	// Merge the settings from the other configs
+	for _, otherConfig := range otherConfigs {
+		configMerged.CppDefines.Merge(otherConfig.CppDefines)
+		configMerged.CppFlags.Merge(otherConfig.CppFlags)
+		configMerged.IncludeDirs.Merge(otherConfig.IncludeDirs)
+		configMerged.IncludeFiles.Merge(otherConfig.IncludeFiles)
+		configMerged.Library.Merge(otherConfig.Library)
+		configMerged.LinkFlags.Merge(otherConfig.LinkFlags)
+
+		configMerged.DisableWarning.Merge(otherConfig.DisableWarning)
+		configMerged.XcodeSettings.Merge(otherConfig.XcodeSettings)
+		configMerged.VisualStudioClCompile.Merge(otherConfig.VisualStudioClCompile)
+		configMerged.VisualStudioLink.Merge(otherConfig.VisualStudioLink)
+
 	}
-	c.Resolved = true
+
+	configResolved := NewConfigResolved()
+
+	if configMerged.Project != nil {
+		path := filepath.Join(c.Workspace.GenerateAbsPath, "build_tmp", c.String(), c.Project.Name)
+		configResolved.BuildTmpDir = NewFileEntryInit(path, true)
+	}
+
+	// TODO Only do this if this project is ccore or has a dependency on ccore
+	if c.Project != nil {
+		configMerged.CppDefines.AddOrSet("CCORE_GEN_CPU", "CCORE_GEN_CPU_"+strings.ToUpper(c.Workspace.MakeTarget.ArchAsString()))
+		configMerged.CppDefines.AddOrSet("CCORE_GEN_OS", "CCORE_GEN_OS_"+strings.ToUpper(c.Workspace.MakeTarget.OSAsString()))
+		configMerged.CppDefines.AddOrSet("CCORE_GEN_COMPILER", "CCORE_GEN_COMPILER_"+strings.ToUpper(c.Workspace.MakeTarget.CompilerAsString()))
+		configMerged.CppDefines.AddOrSet("CCORE_GEN_GENERATOR", "CCORE_GEN_GENERATOR_"+strings.ToUpper(c.Workspace.Config.Dev.String()))
+		configMerged.CppDefines.AddOrSet("CCORE_GEN_CONFIG", "CCORE_GEN_CONFIG_"+strings.ToUpper(c.String()))
+		configMerged.CppDefines.AddOrSet("CCORE_GEN_PLATFORM_NAME", "CCORE_GEN_PLATFORM_NAME=\""+strings.ToUpper(c.Workspace.MakeTarget.OSAsString()+"\""))
+		configMerged.CppDefines.AddOrSet("CCORE_GEN_PROJECT", "CCORE_GEN_PROJECT_"+strings.ToUpper(c.Project.Name))
+		configMerged.CppDefines.AddOrSet("CCORE_GEN_TYPE", "CCORE_GEN_TYPE_"+strings.ToUpper(c.Project.Type.String()))
+	}
 
 	if c.Project != nil {
-		c.CppDefines.FinalDict.AddOrSet("CCORE_GEN_CPU", "CCORE_GEN_CPU_"+strings.ToUpper(c.Workspace.MakeTarget.ArchAsString()))
-		c.CppDefines.FinalDict.AddOrSet("CCORE_GEN_OS", "CCORE_GEN_OS_"+strings.ToUpper(c.Workspace.MakeTarget.OSAsString()))
-		c.CppDefines.FinalDict.AddOrSet("CCORE_GEN_COMPILER", "CCORE_GEN_COMPILER_"+strings.ToUpper(c.Workspace.MakeTarget.CompilerAsString()))
-		c.CppDefines.FinalDict.AddOrSet("CCORE_GEN_GENERATOR", "CCORE_GEN_GENERATOR_"+strings.ToUpper(c.Workspace.Config.Dev.String()))
-		c.CppDefines.FinalDict.AddOrSet("CCORE_GEN_CONFIG", "CCORE_GEN_CONFIG_"+strings.ToUpper(c.String()))
-		c.CppDefines.FinalDict.AddOrSet("CCORE_GEN_PLATFORM_NAME", "CCORE_GEN_PLATFORM_NAME=\""+strings.ToUpper(c.Workspace.MakeTarget.OSAsString()+"\""))
-		c.CppDefines.FinalDict.AddOrSet("CCORE_GEN_PROJECT", "CCORE_GEN_PROJECT_"+strings.ToUpper(c.Project.Name))
-		c.CppDefines.FinalDict.AddOrSet("CCORE_GEN_TYPE", "CCORE_GEN_TYPE_"+strings.ToUpper(c.Project.Settings.Type.String()))
-
 		BINDIR := filepath.Join(c.Workspace.GenerateAbsPath, "bin", c.Project.Name, c.String()+"_"+c.Workspace.MakeTarget.ArchAsString()+"_"+c.Workspace.Config.MsDev.PlatformToolset)
 		LIBDIR := filepath.Join(c.Workspace.GenerateAbsPath, "lib", c.Project.Name, c.String()+"_"+c.Workspace.MakeTarget.ArchAsString()+"_"+c.Workspace.Config.MsDev.PlatformToolset)
 
@@ -463,18 +445,22 @@ func (c *Config) resolve() {
 			outputTarget = filepath.Join(BINDIR, dllFilename)
 			if c.Workspace.MakeTarget.OSIsWindows() {
 				libFilename := c.Workspace.Config.LibTargetPrefix + c.Project.Name + c.Workspace.Config.LibTargetSuffix
-				c.OutputLib = NewFileEntryInit(filepath.Join(LIBDIR, libFilename), false)
+				configResolved.OutputLib = NewFileEntryInit(filepath.Join(LIBDIR, libFilename), false)
 			} else {
-				c.OutputLib = NewFileEntryInit(filepath.Join(BINDIR, dllFilename), false)
+				configResolved.OutputLib = NewFileEntryInit(filepath.Join(BINDIR, dllFilename), false)
 			}
 		} else if c.Project.TypeIsLib() {
 			libFilename := c.Workspace.Config.LibTargetPrefix + c.Project.Name + c.Workspace.Config.LibTargetSuffix
 			outputTarget = filepath.Join(LIBDIR, libFilename)
-			c.OutputLib = NewFileEntryInit(outputTarget, false)
+			configResolved.OutputLib = NewFileEntryInit(outputTarget, false)
 		}
 
 		if len(outputTarget) > 0 {
-			c.OutputTarget = NewFileEntryInit(outputTarget, false)
+			configResolved.OutputTarget = NewFileEntryInit(outputTarget, false)
 		}
 	}
+
+	configMerged.Resolved = configResolved
+
+	return configMerged
 }

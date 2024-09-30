@@ -111,44 +111,23 @@ func (f *ExclusionFilter) IsExcluded(filepath string) bool {
 // ----------------------------------------------------------------------------------------------
 // IDE generator
 // ----------------------------------------------------------------------------------------------
-type AxeGenerator struct {
+type Generator struct {
 	Dev             DevEnum
 	Os              string
 	Arch            string
 	GoPathAbs       string // $(GOPATH)/src, absolute path
 	ExclusionFilter *ExclusionFilter
-	CreatedProjects *ProjectList
 }
 
-func NewAxeGenerator(dev string, os string, arch string) *AxeGenerator {
-	g := &AxeGenerator{}
-	g.Dev = GetDevEnum(strings.ToLower(dev))
+func NewGenerator(dev string, os string, arch string) *Generator {
+	g := &Generator{}
+	g.Dev = DevEnumFromString(strings.ToLower(dev))
 	g.Os = strings.ToLower(os)
 	g.Arch = strings.ToLower(arch)
-	g.CreatedProjects = NewProjectList()
 	return g
 }
 
-func (g *AxeGenerator) IsValid() bool {
-	return g.Dev != DevInvalid
-}
-func (g *AxeGenerator) IsVisualStudio() bool {
-	return g.Dev&DevVisualStudio == DevVisualStudio
-}
-func (g *AxeGenerator) IsTundra() bool {
-	return g.Dev == DevTundra
-}
-func (g *AxeGenerator) IsMake() bool {
-	return g.Dev == DevMake
-}
-func (g *AxeGenerator) IsCMake() bool {
-	return g.Dev == DevCmake
-}
-func (g *AxeGenerator) IsXCode() bool {
-	return g.Dev == DevXcode
-}
-
-func (g *AxeGenerator) Generate(pkg *denv.Package) error {
+func (g *Generator) Generate(pkg *denv.Package) error {
 	var ws *Workspace
 	var err error
 
@@ -159,9 +138,6 @@ func (g *AxeGenerator) Generate(pkg *denv.Package) error {
 	switch g.Dev {
 	case DevTundra:
 		gg := NewTundraGenerator(ws)
-		gg.Generate()
-	case DevCmake:
-		gg := NewCMakeGenerator(ws)
 		gg.Generate()
 	case DevMake:
 		gg := NewMakeGenerator2(ws)
@@ -177,7 +153,7 @@ func (g *AxeGenerator) Generate(pkg *denv.Package) error {
 	return err
 }
 
-func (g *AxeGenerator) GenerateWorkspace(pkg *denv.Package, dev DevEnum) (*Workspace, error) {
+func (g *Generator) GenerateWorkspace(pkg *denv.Package, dev DevEnum) (*Workspace, error) {
 	g.GoPathAbs = filepath.Join(os.Getenv("GOPATH"), "src")
 
 	mainLib := pkg.GetMainLib()
@@ -207,147 +183,87 @@ func (g *AxeGenerator) GenerateWorkspace(pkg *denv.Package, dev DevEnum) (*Works
 
 	g.ExclusionFilter = NewExclusionFilter(ws.MakeTarget)
 
-	if mainLib != nil {
-		g.addWorkspaceConfigurations(ws, mainLib)
-	}
-	if mainApp != nil {
-		g.addWorkspaceConfigurations(ws, mainApp)
-	}
-	if mainTest != nil {
-		g.addWorkspaceConfigurations(ws, mainTest)
-	}
-
 	// Create the main and dependency projects and also set up the list of dependencies of each project
 
 	if mainTest != nil {
 		mainTestProject := g.getOrCreateProject(mainTest, ws)
-		g.addProjectConfigurations(mainTestProject, mainTest)
+		mainTestProject.AddConfigurations(mainTest.Configs)
 
-		mainTestDependencies := g.collectProjectDependencies(mainTest)
+		mainTestDependencies := mainTest.CollectProjectDependencies()
 		for _, dp := range mainTestDependencies {
-			mainTestProject.Settings.Dependencies.Add(dp.Name)
-		}
-		for _, dp := range mainTestDependencies {
-			depProject := g.getOrCreateProject(dp, ws)
-			g.addProjectConfigurations(depProject, dp)
+			dpProject := g.getOrCreateProject(dp, ws)
+			mainTestProject.Dependencies.Add(dpProject)
 
-			dpDependencies := g.collectProjectDependencies(dp)
+			dpProject.AddConfigurations(dp.Configs)
+
+			dpDependencies := dp.CollectProjectDependencies()
 			for _, dpd := range dpDependencies {
-				depProject.Settings.Dependencies.Add(dpd.Name)
+				dpdProject := g.getOrCreateProject(dpd, ws)
+				dpProject.Dependencies.Add(dpdProject)
 			}
 		}
 	}
 
 	if mainApp != nil {
 		mainAppProject := g.getOrCreateProject(mainApp, ws)
-		g.addProjectConfigurations(mainAppProject, mainApp)
+		mainAppProject.AddConfigurations(mainApp.Configs)
 
-		mainAppDependencies := g.collectProjectDependencies(mainApp)
-		for _, dp := range mainAppDependencies {
-			mainAppProject.Settings.Dependencies.Add(dp.Name)
-		}
+		mainAppDependencies := mainApp.CollectProjectDependencies()
 		for _, dp := range mainAppDependencies {
 			depProject := g.getOrCreateProject(dp, ws)
-			g.addProjectConfigurations(depProject, dp)
+			mainAppProject.Dependencies.Add(depProject)
 
-			dpDependencies := g.collectProjectDependencies(dp)
+			depProject.AddConfigurations(dp.Configs)
+
+			dpDependencies := dp.CollectProjectDependencies()
 			for _, dpd := range dpDependencies {
-				depProject.Settings.Dependencies.Add(dpd.Name)
+				dpdProject := g.getOrCreateProject(dpd, ws)
+				depProject.Dependencies.Add(dpdProject)
 			}
 		}
 	}
 
 	if mainLib != nil {
 		mainLibProject := g.getOrCreateProject(mainLib, ws)
-		g.addProjectConfigurations(mainLibProject, mainLib)
+		mainLibProject.AddConfigurations(mainLib.Configs)
 
-		mainLibDependencies := g.collectProjectDependencies(mainLib)
-		for _, dp := range mainLibDependencies {
-			mainLibProject.Settings.Dependencies.Add(dp.Name)
-		}
+		mainLibDependencies := mainLib.CollectProjectDependencies()
 		for _, dp := range mainLibDependencies {
 			depProject := g.getOrCreateProject(dp, ws)
-			g.addProjectConfigurations(depProject, dp)
+			mainLibProject.Dependencies.Add(depProject)
 
-			dpDependencies := g.collectProjectDependencies(dp)
+			depProject.AddConfigurations(dp.Configs)
+
+			dpDependencies := dp.CollectProjectDependencies()
 			for _, dpd := range dpDependencies {
-				depProject.Settings.Dependencies.Add(dpd.Name)
+				dpdProject := g.getOrCreateProject(dpd, ws)
+				depProject.Dependencies.Add(dpdProject)
 			}
 		}
 	}
 
-	if err := ws.Resolve(); err != nil {
+	if err := ws.Resolve(dev); err != nil {
 		return nil, err
 	}
 
 	return ws, nil
 }
 
-func (g *AxeGenerator) collectProjectDependencies(proj *denv.Project) []*denv.Project {
+func (g *Generator) getOrCreateProject(devProj *denv.Project, ws *Workspace) *Project {
 
-	// Traverse and collect all dependencies
-
-	projectMap := map[string]int{}
-	projectList := []*denv.Project{}
-	for _, dp := range proj.Dependencies {
-		if _, ok := projectMap[dp.Name]; !ok {
-			projectMap[dp.Name] = len(projectList)
-			projectList = append(projectList, dp)
-		}
-	}
-
-	projectIdx := 0
-	for projectIdx < len(projectList) {
-		cp := projectList[projectIdx]
-		projectIdx++
-
-		for _, dp := range cp.Dependencies {
-			if _, ok := projectMap[dp.Name]; !ok {
-				projectMap[dp.Name] = len(projectList)
-				projectList = append(projectList, dp)
-			}
-		}
-	}
-	return projectList
-}
-
-func (g *AxeGenerator) getOrCreateProject(devProj *denv.Project, ws *Workspace) *Project {
-
-	if p, ok := g.CreatedProjects.Get(devProj.Name); ok {
+	if p, ok := ws.ProjectList.Get(devProj.Name); ok {
 		return p
 	}
 
-	projectConfig := NewProjectConfig(g.Dev)
+	projectConfig := NewProjectConfig()
 	{
-		if devProj.Type.IsLibrary() {
-			if devProj.Type.IsUnitTest() {
-				projectConfig.Group = "unittest/cpp-library"
-			} else if devProj.Type.IsApplication() {
-				projectConfig.Group = "mainapp/cpp-library"
-			} else {
-				projectConfig.Group = "mainlib/cpp-library"
-			}
-			projectConfig.Type = ProjectTypeCppLib
-		} else if devProj.Type.IsExecutable() {
-			if devProj.Type.IsUnitTest() {
-				projectConfig.Group = "unittest/cpp-exe"
-			} else {
-				projectConfig.Group = "mainapp/cpp-exe"
-			}
-			projectConfig.Type = ProjectTypeCppExe
-		}
 		projectConfig.IsGuiApp = false
 		projectConfig.PchHeader = ""
-		projectConfig.Dependencies = NewValueSet()
 		projectConfig.MultiThreadedBuild = true
 		projectConfig.CppAsObjCpp = false
 
-		for _, dp := range devProj.Dependencies {
-			projectConfig.Dependencies.Add(dp.Name)
-		}
-
 		projAbsPath := filepath.Join(g.GoPathAbs, devProj.PackageURL)
-		newProject := ws.NewProject(devProj.Name, projAbsPath, ProjectTypeCppLib, projectConfig)
+		newProject := ws.NewProject(devProj.Name, projAbsPath, devProj.Type, projectConfig)
 		newProject.ProjectFilename = devProj.Name
 
 		exclusionFilter := func(_filepath string) bool { return g.ExclusionFilter.IsExcluded(_filepath) }
@@ -381,142 +297,4 @@ func (g *AxeGenerator) getOrCreateProject(devProj *denv.Project, ws *Workspace) 
 
 		return newProject
 	}
-}
-
-func (g *AxeGenerator) addProjectConfigurations(p *Project, prj *denv.Project) {
-	for _, cfg := range prj.Configs {
-		configType := buildConfigType(cfg.Configs)
-		config := g.createProjectConfiguration(p, prj, cfg, configType)
-		p.Configs.Add(config)
-	}
-}
-
-func (g *AxeGenerator) createProjectConfiguration(p *Project, prj *denv.Project, cfg *denv.Config, configType ConfigType) *Config {
-	config := p.GetOrCreateConfig(configType)
-
-	// C++ defines
-	for _, define := range cfg.Defines {
-		config.CppDefines.ValuesToAdd(define)
-	}
-
-	// Library directories and files
-	for _, lib := range cfg.Libs {
-		if lib.Type == denv.UserLibrary {
-			config.LinkDirs.ValuesToAdd(lib.Dir)
-		}
-		if lib.Type != denv.Framework {
-			for _, libFile := range lib.Files {
-				config.LinkLibs.ValuesToAdd(libFile)
-			}
-		}
-	}
-
-	// Frameworks
-	for _, lib := range cfg.Libs {
-		if lib.Type == denv.Framework {
-			for _, libFile := range lib.Files {
-				config.AddFramework(libFile)
-			}
-		}
-	}
-
-	// Include directories
-	for _, include := range prj.IncludeDirs {
-		config.AddIncludeDir(include)
-	}
-
-	if configType.IsTest() {
-		config.VisualStudioClCompile.AddOrSet("ExceptionHandling", "Sync")
-	}
-
-	return config
-}
-
-func (g *AxeGenerator) addWorkspaceConfigurations(ws *Workspace, prj *denv.Project) {
-	for _, cfg := range prj.Configs {
-		cfgType := buildConfigType(cfg.Configs)
-		if !ws.HasConfig(cfgType) {
-			g.addWorkspaceConfiguration(ws, cfgType)
-		}
-	}
-}
-
-func buildConfigType(cfgType denv.ConfigType) ConfigType {
-	configType := ConfigTypeNone
-
-	if cfgType.IsDebug() {
-		configType = ConfigTypeDebug
-	} else if cfgType.IsRelease() {
-		configType = ConfigTypeRelease
-	} else if cfgType.IsFinal() {
-		configType = ConfigTypeFinal
-	}
-
-	if cfgType.IsProfile() {
-		configType = ConfigTypeProfile
-	}
-
-	if cfgType.IsUnittest() {
-		configType |= ConfigTypeTest
-	}
-
-	return configType
-}
-
-func (g *AxeGenerator) addWorkspaceConfiguration(ws *Workspace, configType ConfigType) {
-
-	config := NewConfig(configType, ws, nil)
-
-	if configType.IsDebug() {
-		config.CppDefines.ValuesToAdd("TARGET_DEBUG", "TARGET_DEV", "_DEBUG")
-	} else if configType.IsRelease() {
-		config.CppDefines.ValuesToAdd("TARGET_RELEASE", "TARGET_DEV", "NDEBUG")
-	} else if configType.IsFinal() {
-		config.CppDefines.ValuesToAdd("TARGET_FINAL", "NDEBUG")
-	} else if configType.IsProfile() {
-		config.CppDefines.ValuesToAdd("TARGET_RELEASE", "TARGET_PROFILE", "TARGET_DEV", "NDEBUG")
-	}
-
-	if configType.IsTest() {
-		config.CppDefines.ValuesToAdd("TARGET_TEST")
-	}
-
-	if ws.MakeTarget.OSIsWindows() {
-		config.CppDefines.ValuesToAdd("TARGET_PC")
-	} else if ws.MakeTarget.OSIsLinux() {
-		config.CppDefines.ValuesToAdd("TARGET_LINUX")
-	} else if ws.MakeTarget.OSIsMac() {
-		config.CppDefines.ValuesToAdd("TARGET_MAC")
-	}
-
-	if ws.MakeTarget.OSIsMac() {
-		config.LinkFlags.ValuesToAdd("-ObjC")
-		config.LinkFlags.ValuesToAdd("-framework Foundation")
-		config.LinkFlags.ValuesToAdd("-framework Cocoa")
-		config.LinkFlags.ValuesToAdd("-framework Carbon")
-		config.LinkFlags.ValuesToAdd("-framework Metal")
-		config.LinkFlags.ValuesToAdd("-framework OpenGL")
-		config.LinkFlags.ValuesToAdd("-framework IOKit")
-		config.LinkFlags.ValuesToAdd("-framework AppKit")
-		config.LinkFlags.ValuesToAdd("-framework CoreVideo")
-		config.LinkFlags.ValuesToAdd("-framework QuartzCore")
-		//		config.LinkFlags.ValuesToAdd("-framework AudioToolBox")
-		//		config.LinkFlags.ValuesToAdd("-framework OpenAL")
-	}
-
-	config.CppDefines.ValuesToAdd("_UNICODE", "UNICODE")
-
-	// clang
-	if ws.MakeTarget.CompilerIsClang() {
-		config.CppFlags.ValuesToAdd("-std=c++17")
-		config.CppFlags.ValuesToAdd("-Wno-switch", "-Wno-unused-variable", "-Wno-unused-function", "-Wno-unused-private-field")
-		config.CppFlags.ValuesToAdd("-Wno-unused-but-set-variable")
-		//config.CppFlags.ValuesToAdd("-Wfatal-errors", "-Werror")
-		config.LinkFlags.ValuesToAdd("-lstdc++")
-		if configType.IsDebug() {
-			config.CppFlags.ValuesToAdd("-g")
-		}
-	}
-
-	ws.AddConfig(config)
 }

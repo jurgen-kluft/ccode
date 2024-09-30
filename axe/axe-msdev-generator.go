@@ -1,6 +1,7 @@
 package axe
 
 import (
+	"path"
 	"path/filepath"
 )
 
@@ -67,8 +68,6 @@ func (g *MsDevGenerator) TargetPlatformVersion(proj *Project) string {
 func (g *MsDevGenerator) genProject(proj *Project) {
 	projectFilepath := filepath.Join(g.Workspace.GenerateAbsPath, proj.ProjectFilename+".vcxproj")
 
-	proj.GenDataMsDev.UUID = GenerateUUID()
-
 	wr := NewXmlWriter()
 	{
 		wr.WriteHeader()
@@ -82,7 +81,7 @@ func (g *MsDevGenerator) genProject(proj *Project) {
 			tag := wr.TagScope("ItemGroup")
 			wr.Attr("Label", "ProjectConfigurations")
 
-			for _, config := range proj.Configs.Values {
+			for _, config := range proj.Resolved.Configs.Values {
 				tag := wr.TagScope("ProjectConfiguration")
 				wr.Attr("Include", config.String()+"|"+g.VcxProjCpu)
 
@@ -95,7 +94,7 @@ func (g *MsDevGenerator) genProject(proj *Project) {
 		{
 			tag := wr.TagScope("PropertyGroup")
 			wr.Attr("Label", "Globals")
-			wr.TagWithBody("ProjectGuid", proj.GenDataMsDev.UUID.String(g.Workspace.Config.Dev))
+			wr.TagWithBody("ProjectGuid", proj.Resolved.GenDataMsDev.UUID.String(g.Workspace.Config.Dev))
 			wr.TagWithBody("Keyword", "Win32Proj")
 			wr.TagWithBody("RootNamespace", proj.Name)
 			wr.TagWithBody("WindowsTargetPlatformVersion", proj.Workspace.Config.MsDev.WindowsTargetPlatformVersion)
@@ -140,7 +139,7 @@ func (g *MsDevGenerator) genProject(proj *Project) {
 					panic("Unsupported compiler")
 				}
 
-				relBuildDir := PathGetRel(g.Workspace.GenerateAbsPath, g.Workspace.WorkspaceAbsPath)
+				relBuildDir := PathGetRelativeTo(g.Workspace.GenerateAbsPath, g.Workspace.WorkspaceAbsPath)
 
 				remoteRootDir := "_vsForLinux/" + g.Workspace.MakeTarget.OSAsString() + "/" + relBuildDir
 				wr.TagWithBody("RemoteRootDir", remoteRootDir)
@@ -195,7 +194,7 @@ func (g *MsDevGenerator) genProject(proj *Project) {
 		}
 
 		//-----------
-		for _, config := range proj.Configs.Values {
+		for _, config := range proj.Resolved.Configs.Values {
 			g.genProjectConfig(wr, proj, config)
 		}
 
@@ -253,7 +252,7 @@ func (g *MsDevGenerator) genProjectFiles(wr *XmlWriter, proj *Project) {
 }
 
 func (g *MsDevGenerator) genProjectPch(wr *XmlWriter, proj *Project) {
-	if proj.PchHeader == nil {
+	if proj.Resolved.PchHeader == nil {
 		return
 	}
 
@@ -266,10 +265,10 @@ func (g *MsDevGenerator) genProjectPch(wr *XmlWriter, proj *Project) {
 		return
 	}
 
-	filename := proj.GeneratedFilesDir + proj.Name + "-precompiledHeader" + pchExt
-	tmp := PathGetRel(proj.PchHeader.Path, proj.GeneratedFilesDir)
+	filename := proj.Resolved.GeneratedFilesDir + proj.Name + "-precompiledHeader" + pchExt
+	tmp := PathGetRelativeTo(proj.Resolved.PchHeader.Path, proj.Resolved.GeneratedFilesDir)
 
-	proj.PchHeader.Init(filename, true)
+	proj.Resolved.PchHeader.Init(filename, true)
 	code := "//-- Auto Generated File for Visual C++ precompiled header\n"
 	code += "#include \"" + tmp + "\"\n"
 
@@ -277,7 +276,7 @@ func (g *MsDevGenerator) genProjectPch(wr *XmlWriter, proj *Project) {
 
 	tag := wr.TagScope("ClCompile")
 	{
-		wr.Attr("Include", proj.PchHeader.Path)
+		wr.Attr("Include", proj.Resolved.PchHeader.Path)
 		wr.TagWithBody("PrecompiledHeader", "Create")
 	}
 	tag.Close()
@@ -289,18 +288,18 @@ func (g *MsDevGenerator) genProjectConfig(wr *XmlWriter, proj *Project, config *
 		tag := wr.TagScope("PropertyGroup")
 		wr.Attr("Condition", cond)
 
-		outDir := PathDirname(config.OutputTarget.Path)
+		outDir := PathDirname(config.Resolved.OutputTarget.Path)
 		if g.Workspace.MakeTarget.OSIsLinux() {
 			outDir = filepath.Join(outDir, g.Workspace.MakeTarget.OSAsString())
 		}
 
 		intDir := filepath.Join(g.Workspace.GenerateAbsPath, "obj", proj.Name, config.String()+"_"+g.Workspace.MakeTarget.ArchAsString()+"_"+g.Workspace.Config.MsDev.PlatformToolset)
-		targetName := PathFilename(config.OutputTarget.Path, false)
-		targetExt := PathFileExtension(config.OutputTarget.Path)
+		targetName := PathFilename(config.Resolved.OutputTarget.Path, false)
+		targetExt := PathFileExtension(config.Resolved.OutputTarget.Path)
 
 		// Visual Studio wants the following paths to end with a backslash
-		wr.TagWithBody("OutDir", PathNormalize(PathGetRel(outDir, proj.GenerateAbsPath))+PathSlash())
-		wr.TagWithBody("IntDir", PathNormalize(PathGetRel(intDir, proj.GenerateAbsPath))+PathSlash())
+		wr.TagWithBody("OutDir", PathNormalize(PathGetRelativeTo(outDir, proj.GenerateAbsPath))+PathSlash())
+		wr.TagWithBody("IntDir", PathNormalize(PathGetRelativeTo(intDir, proj.GenerateAbsPath))+PathSlash())
 		wr.TagWithBody("TargetName", targetName)
 		if targetExt != "" {
 			wr.TagWithBody("TargetExt", targetExt)
@@ -333,20 +332,20 @@ func (g *MsDevGenerator) genProjectConfig(wr *XmlWriter, proj *Project, config *
 				wr.TagWithBodyBool("MultiProcessorCompilation", proj.Settings.MultiThreadedBuild.Bool())
 			}
 
-			if proj.PchHeader != nil {
+			if proj.Resolved.PchHeader != nil {
 				wr.TagWithBody("PrecompiledHeader", "Use")
-				pch := "$(ProjectDir)" + proj.PchHeader.Path
+				pch := "$(ProjectDir)" + proj.Resolved.PchHeader.Path
 				wr.TagWithBody("PrecompiledHeaderFile", pch)
 				wr.TagWithBody("ForcedIncludeFiles", pch)
 			} else {
 				wr.TagWithBody("PrecompiledHeader", "NotUsing")
 			}
 
-			g.genConfigOption(wr, proj, "DisableSpecificWarnings", config.DisableWarning.FinalDict, false)
-			g.genConfigOption(wr, proj, "PreprocessorDefinitions", config.CppDefines.FinalDict, false)
-			g.genConfigOptionWithModifier(wr, "AdditionalIncludeDirectories", config.IncludeDirs.FinalDict, func(key string, value string) string {
-				path := PathGetRel(key, proj.Workspace.GenerateAbsPath)
-				return path
+			g.genConfigOptionFromKeyValueDict(wr, proj, "DisableSpecificWarnings", config.DisableWarning.Vars, false)
+			g.genConfigOptionFromKeyValueDict(wr, proj, "PreprocessorDefinitions", config.CppDefines.Vars, false)
+			g.genConfigOptionWithModifier(wr, "AdditionalIncludeDirectories", config.IncludeDirs, func(_root string, _path string) string {
+				relpath := PathGetRelativeTo(path.Join(_root, _path), proj.Workspace.GenerateAbsPath)
+				return relpath
 			})
 
 			for i, value := range config.VisualStudioClCompile.Values {
@@ -359,20 +358,27 @@ func (g *MsDevGenerator) genProjectConfig(wr *XmlWriter, proj *Project, config *
 			tag := wr.TagScope("Link")
 
 			if proj.TypeIsDll() {
-				wr.TagWithBody("ImportLibrary", config.OutputLib.Path)
+				wr.TagWithBody("ImportLibrary", config.Resolved.OutputLib.Path)
 			}
 
+			// Based on the dependencies of this project we need to collect:
+			// - Library directories
+			// - Library files
+			// - And also include the dependency project output as a file to link with
+
+			linkDirs, linkFiles, linkLibs := proj.BuildLibraryInformation(config, proj.Workspace.GenerateAbsPath)
+
 			if proj.TypeIsExeOrDll() {
-				g.genConfigOption(wr, proj, "AdditionalLibraryDirectories", config.LinkDirs.FinalDict, true)
+				g.genConfigOptionFromValueSet(wr, proj, "AdditionalLibraryDirectories", linkDirs, true)
 
 				optName := "AdditionalDependencies"
 				relativeTo := ""
 				if g.Workspace.MakeTarget.OSIsLinux() {
 					relativeTo = "$(RemoteRootDir)/"
 				}
-				tmp := config.LinkLibs.FinalDict.Concatenated("", ";", func(string, s string) string { return s })
-				tmp += config.LinkFiles.FinalDict.Concatenated(relativeTo, ";", func(key string, value string) string {
-					path := PathGetRel(key, proj.Workspace.GenerateAbsPath)
+				tmp := linkLibs.Concatenated("", ";", func(s string) string { return s })
+				tmp += linkFiles.Concatenated(relativeTo, ";", func(value string) string {
+					path := PathGetRelativeTo(value, proj.Workspace.GenerateAbsPath)
 					return path
 				})
 				tmp += "%(" + optName + ")"
@@ -382,7 +388,7 @@ func (g *MsDevGenerator) genProjectConfig(wr *XmlWriter, proj *Project, config *
 			if g.Workspace.MakeTarget.OSIsLinux() {
 				wr.TagWithBody("VerboseOutput", "true")
 
-				tmp := config.LinkFlags.FinalDict.Concatenated(" -Wl,", "", func(string, s string) string { return s })
+				tmp := config.LinkFlags.Vars.Concatenated(" -Wl,", "", func(string, s string) string { return s })
 				wr.TagWithBody("AdditionalOptions", tmp)
 
 				if config.Type.IsDebug() {
@@ -395,7 +401,7 @@ func (g *MsDevGenerator) genProjectConfig(wr *XmlWriter, proj *Project, config *
 				wr.TagWithBody("SubSystem", "Console")
 				wr.TagWithBody("GenerateDebugInformation", "true")
 
-				tmp := config.LinkFlags.FinalDict.Concatenated(" ", "", func(string, s string) string { return s })
+				tmp := config.LinkFlags.Vars.Concatenated(" ", "", func(string, s string) string { return s })
 				wr.TagWithBody("AdditionalOptions", tmp)
 
 				if !config.Type.IsDebug() {
@@ -411,11 +417,11 @@ func (g *MsDevGenerator) genProjectConfig(wr *XmlWriter, proj *Project, config *
 			tag.Close()
 		}
 
-		if config.OutputTarget.Path != "" {
+		if config.Resolved.OutputTarget.Path != "" {
 			tag := wr.TagScope("RemotePostBuildEvent")
 			{
-				cmd := "mkdir -p \"" + "$(RemoteRootDir)/" + PathDirname(config.OutputTarget.Path) + "\";"
-				cmd += "cp -f \"$(RemoteProjectDir)/" + config.OutputTarget.Path + "\" \"$(RemoteRootDir)/" + config.OutputTarget.Path + "\""
+				cmd := "mkdir -p \"" + "$(RemoteRootDir)/" + PathDirname(config.Resolved.OutputTarget.Path) + "\";"
+				cmd += "cp -f \"$(RemoteProjectDir)/" + config.Resolved.OutputTarget.Path + "\" \"$(RemoteRootDir)/" + config.Resolved.OutputTarget.Path + "\""
 				wr.TagWithBody("Command", cmd)
 			}
 			tag.Close()
@@ -425,10 +431,10 @@ func (g *MsDevGenerator) genProjectConfig(wr *XmlWriter, proj *Project, config *
 	}
 }
 
-func (g *MsDevGenerator) genConfigOption(wr *XmlWriter, proj *Project, name string, value *KeyValueDict, treatAsPath bool) {
-	option := value.Concatenated("", ";", func(k string, v string) string {
+func (g *MsDevGenerator) genConfigOptionFromKeyValueDict(wr *XmlWriter, proj *Project, name string, kv *KeyValueDict, treatAsPath bool) {
+	option := kv.Concatenated("", ";", func(k string, v string) string {
 		if treatAsPath {
-			path := PathGetRel(k, proj.Workspace.GenerateAbsPath)
+			path := PathGetRelativeTo(v, proj.Workspace.GenerateAbsPath)
 			return path
 		}
 		return v
@@ -437,21 +443,33 @@ func (g *MsDevGenerator) genConfigOption(wr *XmlWriter, proj *Project, name stri
 	wr.TagWithBody(name, option)
 }
 
-func (g *MsDevGenerator) genConfigOptionWithModifier(wr *XmlWriter, name string, value *KeyValueDict, valueModifier func(string, string) string) {
-	option := value.Concatenated("", ";", valueModifier)
+func (g *MsDevGenerator) genConfigOptionFromValueSet(wr *XmlWriter, proj *Project, name string, value *ValueSet, treatAsPath bool) {
+	option := value.Concatenated("", ";", func(v string) string {
+		if treatAsPath {
+			path := PathGetRelativeTo(v, proj.Workspace.GenerateAbsPath)
+			return path
+		}
+		return v
+	})
+	option += "%(" + name + ")"
+	wr.TagWithBody(name, option)
+}
+
+func (g *MsDevGenerator) genConfigOptionWithModifier(wr *XmlWriter, name string, value *PinnedPathSet, modifier func(string, string) string) {
+	option := value.Concatenated("", ";", modifier)
 	option += "%(" + name + ")"
 	wr.TagWithBody(name, option)
 }
 
 func (g *MsDevGenerator) writeSolutionProject(proj *Project, sb *LineWriter) {
 	sb.Write("Project(\"{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}\") = ")
-	sb.WriteLine("\"" + proj.Name + "\", \"" + proj.Name + ".vcxproj\", \"" + proj.GenDataMsDev.UUID.String(g.Workspace.Config.Dev) + "\"")
+	sb.WriteLine("\"" + proj.Name + "\", \"" + proj.Name + ".vcxproj\", \"" + proj.Resolved.GenDataMsDev.UUID.String(g.Workspace.Config.Dev) + "\"")
 
-	if len(proj.DependenciesInherit.Values) > 0 {
+	if len(proj.Dependencies.Values) > 0 {
 		{
 			sb.WriteLine("\tProjectSection(ProjectDependencies) = postProject")
-			for _, dp := range proj.DependenciesInherit.Values {
-				sb.WriteLine("\t\t" + dp.GenDataMsDev.UUID.String(g.Workspace.Config.Dev) + " = " + dp.GenDataMsDev.UUID.String(g.Workspace.Config.Dev))
+			for _, dp := range proj.Dependencies.Values {
+				sb.WriteLine("\t\t" + dp.Resolved.GenDataMsDev.UUID.String(g.Workspace.Config.Dev) + " = " + dp.Resolved.GenDataMsDev.UUID.String(g.Workspace.Config.Dev))
 			}
 			sb.WriteLine("\tEndProjectSection")
 		}
@@ -520,7 +538,7 @@ func (g *MsDevGenerator) genWorkspace(ws *ExtraWorkspace) {
 					continue
 				}
 				sb.Write("\t\t")
-				sb.Write(proj.GenDataMsDev.UUID.String(g.Workspace.Config.Dev))
+				sb.Write(proj.Resolved.GenDataMsDev.UUID.String(g.Workspace.Config.Dev))
 				sb.Write(" = ")
 				sb.WriteLine(c.MsDev.UUID.String(g.Workspace.Config.Dev))
 			}
@@ -578,7 +596,7 @@ func (g *MsDevGenerator) genProjectFilters(proj *Project) {
 					}
 
 					tag := wr.TagScope(typeName)
-					relPath := PathGetRel(filepath.Join(proj.VirtualFolders.DiskPath, f.Path), proj.Workspace.GenerateAbsPath)
+					relPath := PathGetRelativeTo(filepath.Join(proj.VirtualFolders.DiskPath, f.Path), proj.Workspace.GenerateAbsPath)
 					wr.Attr("Include", relPath)
 					if len(vf.Path) > 0 {
 						winPath := PathWindowsPath(vf.Path)

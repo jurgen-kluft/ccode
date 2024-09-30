@@ -1,9 +1,5 @@
 package axe
 
-import (
-	"path/filepath"
-)
-
 // ----------------------------------------------------------------------------------------------------------
 // ----------------------------------------------------------------------------------------------------------
 
@@ -23,6 +19,12 @@ func NewValueSet() *ValueSet {
 	d.Entries = make(map[string]int)
 	d.Values = make([]string, 0)
 	return d
+}
+
+func (d *ValueSet) Copy() *ValueSet {
+	c := NewValueSet()
+	c.Merge(d)
+	return c
 }
 
 func (d *ValueSet) Extend(rhs *ValueSet) {
@@ -46,6 +48,12 @@ func (d *ValueSet) Add(value string) {
 		d.Values = append(d.Values, value)
 	} else if d.Values[i] != value {
 		d.Values[i] = value
+	}
+}
+
+func (d *ValueSet) AddMany(values ...string) {
+	for _, value := range values {
+		d.Add(value)
 	}
 }
 
@@ -91,6 +99,12 @@ func NewKeyValueDict() *KeyValueDict {
 	d.Keys = make([]string, 0)
 	d.Values = make([]string, 0)
 	return d
+}
+
+func (d *KeyValueDict) Copy() *KeyValueDict {
+	c := NewKeyValueDict()
+	c.Merge(d)
+	return c
 }
 
 func (d *KeyValueDict) Extend(rhs *KeyValueDict) {
@@ -143,97 +157,33 @@ func (d *KeyValueDict) Concatenated(prefix string, suffix string, valueModifier 
 // ----------------------------------------------------------------------------------------------------------
 
 type VarSettings struct {
-	Name            string
-	InheritDict     *KeyValueDict
-	AddDict         *KeyValueDict
-	RemoveDict      *KeyValueDict
-	LocalAddDict    *KeyValueDict
-	LocalRemoveDict *KeyValueDict
-	FinalDict       *KeyValueDict
+	Name string
+	Vars *KeyValueDict
 }
 
 func NewVarDict(name string) *VarSettings {
 	s := &VarSettings{}
 	s.Name = name
-	s.InheritDict = NewKeyValueDict()
-	s.AddDict = NewKeyValueDict()
-	s.RemoveDict = NewKeyValueDict()
-	s.LocalAddDict = NewKeyValueDict()
-	s.LocalRemoveDict = NewKeyValueDict()
-	s.FinalDict = NewKeyValueDict()
+	s.Vars = NewKeyValueDict()
 	return s
+}
+
+func (s *VarSettings) Merge(other *VarSettings) {
+	s.Vars.Merge(other.Vars)
+}
+
+func (s *VarSettings) Copy() *VarSettings {
+	c := NewVarDict(s.Name)
+	c.Vars.Merge(s.Vars)
+	return c
 }
 
 func (s *VarSettings) ValuesToAdd(values ...string) {
 	for _, value := range values {
-		s.AddDict.AddOrSet(value, value)
+		s.Vars.AddOrSet(value, value)
 	}
 }
 
-func (s *VarSettings) inherit(rhs *VarSettings) {
-	s.InheritDict.Extend(rhs.InheritDict)
-}
-
-func (s *VarSettings) computeFinal() {
-	s.InheritDict.Extend(s.AddDict)
-	s.FinalDict.Extend(s.InheritDict)
-	//s.FinalDict.Extend(s.LocalAddDict)
-}
-
-// ----------------------------------------------------------------------------------------------------------
-// ----------------------------------------------------------------------------------------------------------
-
-/*
-NOTE At the moment, remove, local_add, and local_remove are not used. The purpose of these dictionaries is to
-provide a means to specify values that are not going to be inherited by other dictionaries.
-
-How 'inheritance' works:
-- The 'inherit' dictionary is the dictionary that is inherited from the parent dictionary.
-- The 'add' dictionary is the dictionary where the user can add values to the dictionary.
-- The 'remove' dictionary is the dictionary where the user can specify values to remove from the dictionary.
-- The 'local_add' dictionary is the dictionary where the user can add values that are not going to be inherited.
-- The 'local_remove' dictionary is the dictionary where the user can specify values to remove but that are not going to be inherited.
-- The 'final' dictionary is the dictionary that is computed from the 'inherit', 'add', 'local_add' dictionaries,
-  and the 'remove' and 'local_remove' dictionaries are applied to the 'final' dictionary.
-
-*/
-
-type PathSettings struct {
-	Name            string
-	Root            string
-	InheritDict     *KeyValueDict
-	AddDict         *KeyValueDict
-	RemoveDict      *KeyValueDict
-	LocalAddDict    *KeyValueDict
-	LocalRemoveDict *KeyValueDict
-	FinalDict       *KeyValueDict
-}
-
-func NewPathDict(name string, root string) *PathSettings {
-	s := &PathSettings{}
-	s.Name = name
-	s.Root = root
-	s.InheritDict = NewKeyValueDict()
-	s.AddDict = NewKeyValueDict()
-	s.RemoveDict = NewKeyValueDict()
-	s.LocalAddDict = NewKeyValueDict()
-	s.LocalRemoveDict = NewKeyValueDict()
-	s.FinalDict = NewKeyValueDict()
-	return s
-}
-
-func (s *PathSettings) ValuesToAdd(values ...string) {
-	for _, value := range values {
-		s.AddDict.AddOrSet(filepath.Join(s.Root, value), value)
-	}
-}
-
-func (s *PathSettings) inherit(rhs *PathSettings) {
-	s.InheritDict.Extend(rhs.InheritDict)
-}
-
-func (s *PathSettings) computeFinal() {
-	s.InheritDict.Extend(s.AddDict)
-	s.FinalDict.Extend(s.InheritDict)
-	//s.FinalDict.Extend(s.LocalAddDict)
+func (s *VarSettings) AddOrSet(key string, value string) {
+	s.Vars.AddOrSet(key, value)
 }

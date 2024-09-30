@@ -3,6 +3,8 @@ package axe
 import (
 	"fmt"
 	"path/filepath"
+
+	"github.com/jurgen-kluft/ccode/denv"
 )
 
 // -----------------------------------------------------------------------------------------------------
@@ -59,7 +61,6 @@ type Workspace struct {
 	WorkspaceName    string                     // The name of the workspace (e.g. For VisualStudio -> "cbase.sln", for Xcode -> "cbase.xcworkspace")
 	WorkspaceAbsPath string                     // The workspace directory is the path where all the projects and workspace are to be generated
 	GenerateAbsPath  string                     // Where to generate the workspace and project files
-	Configs          *ConfigList                // The configuration instances for the workspace
 	MakeTarget       MakeTarget                 // The make target for the workspace (e.g. contains details like OS, Compiler, Arch, etc.)
 	StartupProject   *Project                   // The project instance that will be marked as the startup project
 	ProjectList      *ProjectList               // The project list
@@ -71,7 +72,6 @@ type Workspace struct {
 func NewWorkspace(wsc *WorkspaceConfig) *Workspace {
 	ws := &Workspace{
 		Config:          wsc,
-		Configs:         NewConfigList(wsc.Dev),
 		ProjectList:     NewProjectList(),
 		ProjectGroups:   NewProjectGroups(),
 		ExtraWorkspaces: make(map[string]*ExtraWorkspace),
@@ -98,22 +98,13 @@ func NewWorkspace(wsc *WorkspaceConfig) *Workspace {
 	return ws
 }
 
-func (ws *Workspace) NewProject(name string, projectAbsPath string, projectType ProjectType, settings *ProjectConfig) *Project {
+func (ws *Workspace) NewProject(name string, projectAbsPath string, projectType denv.ProjectType, settings *ProjectConfig) *Project {
 	p := newProject(ws, name, projectAbsPath, projectType, settings)
 	ws.ProjectList.Add(p)
 	return p
 }
 
-func (ws *Workspace) AddConfig(config *Config) {
-	config.init(nil)
-	ws.Configs.Add(config)
-}
-
-func (ws *Workspace) HasConfig(c ConfigType) bool {
-	return ws.Configs.Has(c)
-}
-
-func (ws *Workspace) Resolve() error {
+func (ws *Workspace) Resolve(dev DevEnum) error {
 	if ws.StartupProject == nil {
 		if startupProject, ok := ws.ProjectList.Get(ws.Config.StartupProject); ok {
 			ws.StartupProject = startupProject
@@ -122,13 +113,16 @@ func (ws *Workspace) Resolve() error {
 		}
 	}
 
-	for _, c := range ws.Configs.Values {
-		c.computeFinal()
+	// Sort ProjectList in topological order
+	err := ws.ProjectList.TopoSort()
+	if err != nil {
+		return err
 	}
 
+	// Now Resolve all projects
 	for _, p := range ws.ProjectList.Values {
 		ws.ProjectGroups.Add(p)
-		if err := p.resolve(); err != nil {
+		if err := p.Resolve(dev); err != nil {
 			return err
 		}
 	}

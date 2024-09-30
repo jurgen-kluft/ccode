@@ -4,6 +4,8 @@ import (
 	"fmt"
 	"path/filepath"
 	"strings"
+
+	"github.com/jurgen-kluft/ccode/denv"
 )
 
 // -----------------------------------------------------------------------------------------------------
@@ -12,31 +14,61 @@ import (
 type ProjectType int
 
 const (
-	ProjectTypeNone ProjectType = iota
-	ProjectTypeCHeaders
-	ProjectTypeCppHeaders
-	ProjectTypeCLib
-	ProjectTypeCExe
-	ProjectTypeCDll
-	ProjectTypeCppLib
-	ProjectTypeCppDll
-	ProjectTypeCppExe
+	ProjectTypeNone        ProjectType = iota
+	ProjectTypeHeaders                 = 1
+	ProjectTypeLib                     = 2
+	ProjectTypeExe                     = 4
+	ProjectTypeDll                     = 8
+	ProjectTypeCLanguage               = 64
+	ProjectTypeCppLanguage             = 128
+	ProjectTypeCHeaders                = ProjectTypeHeaders | ProjectTypeCLanguage
+	ProjectTypeCppHeaders              = ProjectTypeHeaders | ProjectTypeCppLanguage
+	ProjectTypeCLib                    = ProjectTypeLib | ProjectTypeCLanguage
+	ProjectTypeCppLib                  = ProjectTypeLib | ProjectTypeCppLanguage
+	ProjectTypeCExe                    = ProjectTypeExe | ProjectTypeCLanguage
+	ProjectTypeCppExe                  = ProjectTypeExe | ProjectTypeCppLanguage
+	ProjectTypeCDll                    = ProjectTypeDll | ProjectTypeCLanguage
+	ProjectTypeCppDll                  = ProjectTypeDll | ProjectTypeCppLanguage
 )
 
+func MakeProjectType(t denv.ProjectType) ProjectType {
+
+	projectType := ProjectTypeNone
+	if t.IsStaticLibrary() {
+		projectType |= ProjectTypeLib
+	} else if t.IsSharedLibrary() {
+		projectType |= ProjectTypeDll
+	} else if t.IsExecutable() {
+		projectType |= ProjectTypeExe
+	}
+
+	if t.IsCLanguage() {
+		projectType |= ProjectTypeCLanguage
+	} else if t.IsCppLanguage() {
+		projectType |= ProjectTypeCppLanguage
+	}
+
+	if t.IsHeaders() {
+		projectType |= ProjectTypeHeaders
+	}
+
+	return projectType
+}
+
 func (t ProjectType) IsExecutable() bool {
-	return t == ProjectTypeCppExe || t == ProjectTypeCExe
+	return t&ProjectTypeExe == ProjectTypeExe
 }
 
 func (t ProjectType) IsStaticLibrary() bool {
-	return t == ProjectTypeCppLib || t == ProjectTypeCLib
+	return t&ProjectTypeLib == ProjectTypeLib
 }
 
 func (t ProjectType) IsSharedLibrary() bool {
-	return t == ProjectTypeCppDll || t == ProjectTypeCDll
+	return t&ProjectTypeDll == ProjectTypeDll
 }
 
 func (t ProjectType) IsHeaders() bool {
-	return t == ProjectTypeCHeaders || t == ProjectTypeCppHeaders
+	return t&ProjectTypeHeaders == ProjectTypeHeaders
 }
 
 func (t ProjectType) String() string {
@@ -66,12 +98,9 @@ func (t ProjectType) String() string {
 // -----------------------------------------------------------------------------------------------------
 
 type ProjectConfig struct {
-	Dev                DevEnum
 	Group              string
-	Type               ProjectType // ccore compiler define (CCORE_GEN_TYPE_{Type})
 	IsGuiApp           bool
 	PchHeader          string
-	Dependencies       *ValueSet
 	MultiThreadedBuild Boolean
 	CppAsObjCpp        Boolean
 	Xcode              struct {
@@ -79,10 +108,8 @@ type ProjectConfig struct {
 	}
 }
 
-func NewProjectConfig(dev DevEnum) *ProjectConfig {
+func NewProjectConfig() *ProjectConfig {
 	config := &ProjectConfig{}
-	config.Dev = dev
-	config.Dependencies = NewValueSet()
 	return config
 }
 
@@ -104,8 +131,7 @@ type XcodeProjectConfig struct {
 }
 
 type MsDevProjectConfig struct {
-	VcxProj string
-	UUID    UUID
+	UUID UUID
 }
 
 func NewXcodeProjectConfig() *XcodeProjectConfig {
@@ -202,53 +228,36 @@ func (p *ProjectList) TopoSort() error {
 // -----------------------------------------------------------------------------------------------------
 
 type Project struct {
-	Workspace           *Workspace  // The workspace this project is part of
-	Name                string      // The name of the project
-	Type                ProjectType // The type of the project
-	ProjectAbsPath      string      // The path where the project is located on disk, under the workspace directory
-	GenerateAbsPath     string      // Where the project will be saved on disk
-	Settings            *ProjectConfig
-	Group               *ProjectGroup
-	FileEntries         *FileEntryDict
-	ResourceEntries     *FileEntryDict
-	LibEntries          *FileEntryDict
-	HasOutputTarget     bool
-	VirtualFolders      *VirtualDirectories
-	PchCpp              *FileEntry
-	ProjectFilename     string
-	Configs             *ConfigList
-	GeneratedFilesDir   string
-	Dependencies        *ProjectList
-	DependenciesInherit *ProjectList
-	PchHeader           *FileEntry
-	PchSuffix           string
-	Resolved            bool
-	Resolving           bool
+	Workspace       *Workspace  // The workspace this project is part of
+	Name            string      // The name of the project
+	Type            ProjectType // The type of the project
+	ProjectAbsPath  string      // The path where the project is located on disk, under the workspace directory
+	GenerateAbsPath string      // Where the project will be saved on disk
+	Settings        *ProjectConfig
+	Group           *ProjectGroup
+	FileEntries     *FileEntryDict
+	ResourceEntries *FileEntryDict
+	VirtualFolders  *VirtualDirectories
+	PchCpp          *FileEntry
+	ProjectFilename string
+	ConfigsLocal    *ConfigList
+	Dependencies    *ProjectList
 
-	GenDataMake struct {
-		Makefile string
-	}
-	GenDataXcode *XcodeProjectConfig
-	GenDataMsDev *MsDevProjectConfig
+	Resolved *ProjectResolved
 }
 
-func newProject(ws *Workspace, name string, projectAbsPath string, projectType ProjectType, settings *ProjectConfig) *Project {
+func newProject(ws *Workspace, name string, projectAbsPath string, projectType denv.ProjectType, settings *ProjectConfig) *Project {
 	p := &Project{
-		Workspace:           ws,
-		Name:                name,
-		Type:                projectType,
-		ProjectAbsPath:      projectAbsPath,
-		GenerateAbsPath:     ws.GenerateAbsPath,
-		Settings:            settings,
-		FileEntries:         NewFileEntryDict(ws, projectAbsPath),
-		ResourceEntries:     NewFileEntryDict(ws, projectAbsPath),
-		LibEntries:          NewFileEntryDict(ws, projectAbsPath),
-		HasOutputTarget:     false,
-		Configs:             NewConfigList(ws.Config.Dev),
-		Dependencies:        NewProjectList(),
-		DependenciesInherit: NewProjectList(),
-		GenDataXcode:        NewXcodeProjectConfig(),
-		GenDataMsDev:        NewMsDevProjectConfig(),
+		Workspace:       ws,
+		Name:            name,
+		Type:            MakeProjectType(projectType),
+		ProjectAbsPath:  projectAbsPath,
+		GenerateAbsPath: ws.GenerateAbsPath,
+		Settings:        settings,
+		FileEntries:     NewFileEntryDict(ws, projectAbsPath),
+		ResourceEntries: NewFileEntryDict(ws, projectAbsPath),
+		ConfigsLocal:    NewConfigList(),
+		Dependencies:    NewProjectList(),
 	}
 	p.VirtualFolders = NewVirtualFolders(p.ProjectAbsPath) // The path that is the root path of the virtual folder/file structure
 
@@ -281,26 +290,22 @@ func (p *Project) TypeIsExeOrDll() bool {
 }
 
 func (p *Project) GetOrCreateConfig(t ConfigType) *Config {
-	c, ok := p.Configs.Get(t)
+	c, ok := p.ConfigsLocal.Get(t)
 	if !ok {
 		c = NewConfig(t, p.Workspace, p)
 	}
 	return c
 }
 
-func (p *Project) GenProjectGenUuid() {
-	gd := &XcodeProjectConfig{}
-	gd.XcodeProj = NewFileEntry()
-	gd.XcodeProj.Init(filepath.Join(p.Workspace.GenerateAbsPath, p.Name, ".xcodeproj"), true)
-	gd.PbxProj = filepath.Join(gd.XcodeProj.Path, "project.pbxproj")
-	gd.Uuid = GenerateUUID()
-	gd.TargetUuid = GenerateUUID()
-	gd.TargetProductUuid = GenerateUUID()
-	gd.ConfigListUuid = GenerateUUID()
-	gd.TargetConfigListUuid = GenerateUUID()
-	gd.DependencyProxyUuid = GenerateUUID()
-	gd.DependencyTargetUuid = GenerateUUID()
-	gd.DependencyTargetProxyUuid = GenerateUUID()
+func (p *Project) FindConfig(t ConfigType) *Config {
+	c, ok := p.ConfigsLocal.Get(t)
+	if !ok {
+		return nil
+	}
+	return c
+}
+
+func (p *Project) FileEntriesGenerateUUIDs() {
 
 	for _, i := range p.FileEntries.Dict {
 		f := p.FileEntries.Values[i]
@@ -314,117 +319,116 @@ func (p *Project) GenProjectGenUuid() {
 		f.BuildUUID = GenerateUUID()
 	}
 
-	for _, i := range p.LibEntries.Dict {
-		f := p.FileEntries.Values[i]
-		f.UUID = GenerateUUID()
-		f.BuildUUID = GenerateUUID()
-	}
-
 	for _, f := range p.VirtualFolders.Folders {
 		f.UUID = GenerateUUID()
 	}
+}
 
-	for _, config := range p.Configs.Values {
-		config.GenDataXcode.ProjectConfigUuid = GenerateUUID()
-		config.GenDataXcode.TargetUuid = GenerateUUID()
-		config.GenDataXcode.TargetConfigUuid = GenerateUUID()
+func (p *Project) CreateConfiguration(cfg *denv.Config, configType ConfigType) *Config {
+	config := p.GetOrCreateConfig(configType)
+
+	// C++ defines
+	for _, define := range cfg.Defines.Values {
+		config.CppDefines.ValuesToAdd(define)
 	}
 
+	// Library
+	for _, lib := range cfg.Libs {
+		config.Library.Add(p.ProjectAbsPath, lib)
+	}
+
+	// Include directories
+	for _, include := range cfg.IncludeDirs {
+		config.AddIncludeDir(include)
+	}
+
+	if configType.IsTest() {
+		config.VisualStudioClCompile.AddOrSet("ExceptionHandling", "Sync")
+	}
+
+	return config
+}
+
+func (p *Project) AddConfigurations(configs []*denv.Config) {
+	for _, cfg := range configs {
+		configType := MakeFromDenvConfigType(cfg.ConfigType)
+		config := p.CreateConfiguration(cfg, configType)
+		p.ConfigsLocal.Add(config)
+	}
+}
+
+// ProjectResolved contains resolved information, and can be used by a generator
+type ProjectResolved struct {
+	HasOutputTarget   bool
+	GeneratedFilesDir string
+	Configs           *ConfigList
+	PchHeader         *FileEntry
+	PchSuffix         string
+
+	GenDataMake struct {
+		Makefile string
+	}
+	GenDataXcode *XcodeProjectConfig
+	GenDataMsDev *MsDevProjectConfig
+}
+
+func NewProjectResolved() *ProjectResolved {
+	return &ProjectResolved{
+		Configs:      NewConfigList(),
+		GenDataXcode: NewXcodeProjectConfig(),
+		GenDataMsDev: NewMsDevProjectConfig(),
+	}
+}
+
+func (p *ProjectResolved) InitXCodeConfig(prj *Project) {
+	gd := &XcodeProjectConfig{}
+	gd.XcodeProj = NewFileEntry()
+	gd.XcodeProj.Init(filepath.Join(prj.Workspace.GenerateAbsPath, prj.Name, ".xcodeproj"), true)
+	gd.PbxProj = filepath.Join(gd.XcodeProj.Path, "project.pbxproj")
 	p.GenDataXcode = gd
 }
 
-func (p *Project) resolve() error {
-	if p.Resolved {
-		return nil
-	}
-	p.Resolved = true
+func (p *ProjectResolved) GenerateUUIDs(dev DevEnum) {
+	if dev.IsXCode() {
+		p.GenDataXcode.Uuid = GenerateUUID()
+		p.GenDataXcode.TargetUuid = GenerateUUID()
+		p.GenDataXcode.TargetProductUuid = GenerateUUID()
+		p.GenDataXcode.ConfigListUuid = GenerateUUID()
+		p.GenDataXcode.TargetConfigListUuid = GenerateUUID()
+		p.GenDataXcode.DependencyProxyUuid = GenerateUUID()
+		p.GenDataXcode.DependencyTargetUuid = GenerateUUID()
+		p.GenDataXcode.DependencyTargetProxyUuid = GenerateUUID()
 
-	if p.Resolving {
-		return fmt.Errorf("cyclic dependencies in project %s", p.Name)
+		for _, config := range p.Configs.Values {
+			config.GenDataXcode.ProjectConfigUuid = GenerateUUID()
+			config.GenDataXcode.TargetUuid = GenerateUUID()
+			config.GenDataXcode.TargetConfigUuid = GenerateUUID()
+		}
 	}
 
-	p.Resolving = true
-	if err := p.resolveInternal(); err != nil {
-		return err
-	}
-	p.Resolving = false
-
-	p.FileEntries.SortByKey()
-	p.VirtualFolders.SortByKey()
-	return nil
+	p.GenDataMsDev.UUID = GenerateUUID()
 }
 
-func (p *Project) resolveInternal() error {
-	p.resolveFiles()
+func (p *Project) Resolve(dev DevEnum) error {
+	resolved := NewProjectResolved()
 
-	p.Type = p.Settings.Type
-
-	if p.Settings.Type == ProjectTypeCppExe {
-		p.HasOutputTarget = true
-	} else if p.Settings.Type == ProjectTypeCExe {
-		p.HasOutputTarget = true
-	} else if p.Settings.Type == ProjectTypeCppDll {
-		p.HasOutputTarget = true
-	} else if p.Settings.Type == ProjectTypeCDll {
-		p.HasOutputTarget = true
-	} else if p.Settings.Type == ProjectTypeCppLib {
-		p.HasOutputTarget = true
-	} else if p.Settings.Type == ProjectTypeCLib {
-		p.HasOutputTarget = true
-	} else if p.Settings.Type == ProjectTypeCHeaders {
-		// ...
-	} else if p.Settings.Type == ProjectTypeCppHeaders {
+	if p.Type.IsExecutable() {
+		resolved.HasOutputTarget = true
+	} else if p.Type.IsSharedLibrary() {
+		resolved.HasOutputTarget = true
+	} else if p.Type.IsStaticLibrary() {
+		resolved.HasOutputTarget = true
+	} else if p.Type.IsHeaders() {
 		// ...
 	} else {
-		return fmt.Errorf("unknown project type %q from project %q", p.Settings.Type, p.Name)
+		return fmt.Errorf("project %q has unknown project type %q", p.Name, p.Type.String())
 	}
 
-	for _, pc := range p.Configs.Values {
-		if wc, ok := p.Workspace.Configs.Get(pc.Type); ok {
-			pc.inherit(wc)
-		}
-	}
-
-	for d, _ := range p.Settings.Dependencies.Entries {
-		dp, ok := p.Workspace.ProjectList.Get(d)
-		if !ok {
-			return fmt.Errorf("cannot find dependency project '%s' for project '%s'", d, p.Name)
-		}
-		if dp == p {
-			return fmt.Errorf("project depends on itself, project='%s'", p.Name)
-		}
-
-		p.Dependencies.Add(dp)
-
-		if err := dp.resolve(); err != nil {
-			return err
-		}
-
-		for _, pc := range p.Configs.Values {
-			if dpc, ok := dp.Configs.Get(pc.Type); ok {
-				pc.inherit(dpc)
-			}
-		}
-
-		for _, dpdp := range dp.DependenciesInherit.Values {
-			p.DependenciesInherit.Add(dpdp)
-		}
-		p.DependenciesInherit.Add(dp)
-	}
-
-	for _, pc := range p.Configs.Values {
-		pc.computeFinal()
-	}
-
-	return nil
-}
-
-func (p *Project) resolveFiles() {
-	p.GeneratedFilesDir = filepath.Join(p.Workspace.GenerateAbsPath, "_generated_", p.Name)
+	resolved.GeneratedFilesDir = filepath.Join(p.Workspace.GenerateAbsPath, "_generated_", p.Name)
 
 	if p.Settings.PchHeader != "" {
-		p.PchHeader = NewFileEntry()
-		p.PchHeader.Init(p.Settings.PchHeader, false)
+		resolved.PchHeader = NewFileEntry()
+		resolved.PchHeader.Init(p.Settings.PchHeader, false)
 	}
 
 	for _, f := range p.FileEntries.Values {
@@ -434,6 +438,50 @@ func (p *Project) resolveFiles() {
 			p.VirtualFolders.AddFile(f)
 		}
 	}
+
+	configsPerConfigTypeDb := map[ConfigType][]*Config{}
+
+	err := p.Dependencies.TopoSort()
+	if err != nil {
+		return err
+	}
+
+	for _, depProject := range p.Dependencies.Values {
+		if depProject == p {
+			return fmt.Errorf("project depends on itself, project='%s'", p.Name)
+		}
+
+		for _, config := range p.ConfigsLocal.Values {
+			if dpConfig, ok := depProject.ConfigsLocal.Get(config.Type); ok {
+				configsPerConfigTypeDb[config.Type] = append(configsPerConfigTypeDb[config.Type], dpConfig)
+			}
+		}
+	}
+
+	// For each config of this project, merge it will all the configs of the dependencies using the configsPerConfigTypeDb
+	for _, config := range p.ConfigsLocal.Values {
+		if configsOfSpecificConfigType, ok := configsPerConfigTypeDb[config.Type]; ok {
+			mergedConfig := config.BuildResolved(configsOfSpecificConfigType)
+			resolved.Configs.Add(mergedConfig)
+		} else {
+			resolved.Configs.Add(config.Copy())
+		}
+	}
+
+	// Should we copy these and then sort ?
+	p.FileEntries.SortByKey()
+	p.VirtualFolders.SortByKey()
+	p.FileEntriesGenerateUUIDs()
+
+	// XCode ?
+	if dev.IsXCode() {
+		resolved.InitXCodeConfig(p)
+	}
+	resolved.GenerateUUIDs(dev)
+
+	p.Resolved = resolved
+
+	return nil
 }
 
 // -----------------------------------------------------------------------------------------------------
@@ -455,4 +503,37 @@ func (p *Project) GlobFiles(dir string, pattern string, isExcluded func(string) 
 		}
 		p.FileEntries.Add(filepath.Join(pp[0], file), false)
 	}
+}
+
+// -----------------------------------------------------------------------------------------------------
+// -----------------------------------------------------------------------------------------------------
+
+func (p *Project) BuildLibraryInformation(config *Config, workspaceGenerateAbsPath string) (linkDirs, linkFiles, linkLibs *ValueSet) {
+	linkDirs = NewValueSet()
+	linkFiles = NewValueSet()
+	linkLibs = NewValueSet()
+
+	// Library files
+	for _, file := range config.Library.Files.Values {
+		linkLibs.Add(file)
+	}
+
+	// Library directories, these will be relative to the workspace generate path
+	for _, dir := range config.Library.Dirs.Values {
+		relpath := PathGetRelativeTo(dir.String(), workspaceGenerateAbsPath)
+		linkDirs.Add(relpath)
+	}
+
+	return
+}
+
+func (p *Project) BuildFrameworkInformation(config *Config) (frameworks *ValueSet) {
+	frameworks = NewValueSet()
+
+	// Library directories and files
+	for _, fw := range config.Library.Frameworks.Values {
+		frameworks.Add(fw)
+	}
+
+	return
 }

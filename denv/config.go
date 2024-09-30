@@ -62,9 +62,12 @@ func (t ConfigType) IsProfile() bool {
 }
 
 type Config struct {
-	Configs ConfigType
-	Defines []string
-	Libs    []*Lib
+	ConfigType  ConfigType
+	IncludeDirs []string
+	SourceDirs  []string
+	Defines     *ValueSet
+	LinkFlags   *ValueSet
+	Libs        []*Lib
 }
 
 func NewConfig(configType ConfigType) *Config {
@@ -72,9 +75,10 @@ func NewConfig(configType ConfigType) *Config {
 		// Type:    "Static", // Static, Dynamic, Executable
 		// Config:  "Debug",  // Debug, Release, Final
 		// Build:   "Dev",    // Development(dev), Unittest(test), Profile(prof), Production(prod)
-		Configs: configType,
-		Defines: []string{},
-		Libs:    []*Lib{},
+		ConfigType: configType,
+		Defines:    NewValueSet(),
+		LinkFlags:  NewValueSet(),
+		Libs:       []*Lib{},
 	}
 
 	return config

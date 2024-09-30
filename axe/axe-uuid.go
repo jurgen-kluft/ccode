@@ -41,7 +41,7 @@ func (u UUID) String(dev DevEnum) string {
 	s1 := g.Uint64()
 	s2 := g.Uint64()
 
-	if dev&DevVisualStudio == DevVisualStudio {
+	if dev.IsVisualStudio() {
 		return fmt.Sprintf("{%08X-%04X-%04X-%04X-%08X%04X}", uint32(s1>>32), uint16(s1&0xFFFF), uint16(s1>>16), uint16(s2>>16), uint32(s2>>32), uint16(s2&0xFFFF))
 	}
 

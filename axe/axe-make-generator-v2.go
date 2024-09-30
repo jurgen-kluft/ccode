@@ -74,14 +74,14 @@ func (g *MakeGenerator2) generateMainMakefile() error {
 
 	mk.NewLine()
 	mk.Write(`.PHONY: all `)
-	for _, cfg := range g.Product.Configs.Values {
+	for _, cfg := range g.Product.Resolved.Configs.Values {
 		mk.Write(` `, strings.ToLower(cfg.String()))
 	}
 	mk.WriteLine(` clean $(app) $(libraries)`)
 	mk.NewLine()
 
 	mk.Write(`all: `)
-	for _, cfg := range g.Product.Configs.Values {
+	for _, cfg := range g.Product.Resolved.Configs.Values {
 		mk.Write(` `, strings.ToLower(cfg.String()))
 	}
 	mk.NewLine()
@@ -96,7 +96,7 @@ func (g *MakeGenerator2) generateMainMakefile() error {
 	mk.NewLine()
 
 	mk.WriteLine(`# here we list all the projects to make all the targets`)
-	for _, cfg := range g.Product.Configs.Values {
+	for _, cfg := range g.Product.Resolved.Configs.Values {
 		mk.WriteLine(strings.ToLower(cfg.String()), `:`)
 		for _, lib := range g.Libraries {
 			mk.WriteILine(`+`, `@$(MAKE) --directory=`, lib.Name, ` CONFIG=`, strings.ToLower(cfg.String()))
@@ -156,10 +156,11 @@ func (g *MakeGenerator2) generateProjectMakefile(project *Project, isMain bool) 
 	mk.WriteAlignedLine(`PRODUCT_FRAMEWORK`, TabStop(0), `:= `, project.Name)
 
 	// All include directories
-	for _, cfg := range project.Configs.Values {
+	rootPath := filepath.Join(g.TargetAbsPath, project.Name)
+	for _, cfg := range project.Resolved.Configs.Values {
 		mk.WriteAligned(`INCLUDES_CPP_`, strings.ToLower(cfg.String()), TabStop(0), `:=`)
-		for _, inc := range cfg.IncludeDirs.FinalDict.Keys {
-			incpath := PathGetRel(inc, filepath.Join(g.TargetAbsPath, project.Name))
+		for _, inc := range cfg.IncludeDirs.Values {
+			incpath := inc.RelativeTo(rootPath)
 			mk.Write(` -I`, incpath)
 		}
 		mk.NewLine()
@@ -172,9 +173,9 @@ func (g *MakeGenerator2) generateProjectMakefile(project *Project, isMain bool) 
 	}
 
 	// The compiler preprocessor defines
-	for _, cfg := range project.Configs.Values {
+	for _, cfg := range project.Resolved.Configs.Values {
 		mk.WriteAligned(`DEFINES_CPP_`, strings.ToLower(cfg.String()), TabStop(0), `:=`)
-		for _, define := range cfg.CppDefines.InheritDict.Values {
+		for _, define := range cfg.CppDefines.Vars.Values {
 			mk.Write(` -D`, define)
 		}
 		mk.NewLine()
@@ -183,7 +184,7 @@ func (g *MakeGenerator2) generateProjectMakefile(project *Project, isMain bool) 
 	// The linker library directories per config
 	// mk.WriteLine(`LIBS_DEBUG          := -L../ccore/target/make/debug/products/arm64 -lccore`)
 	// mk.WriteLine(`LIBS_RELEASE        := -L../ccore/target/make/release/products/arm64 -lccore`)
-	for _, cfg := range project.Configs.Values {
+	for _, cfg := range project.Resolved.Configs.Values {
 		mk.WriteAligned(`LIBS_`, strings.ToLower(cfg.String()), TabStop(0), `:=`)
 		// Library directories are tight up with how make lib is registering the output directories
 		for _, dep := range project.Dependencies.Values {
@@ -193,18 +194,18 @@ func (g *MakeGenerator2) generateProjectMakefile(project *Project, isMain bool) 
 	}
 
 	// compiler warnings per config
-	for _, cfg := range project.Configs.Values {
+	for _, cfg := range project.Resolved.Configs.Values {
 		mk.WriteAligned(`FLAGS_WARN_`, strings.ToLower(cfg.String()), TabStop(0), `:=`)
-		for _, warn := range cfg.DisableWarning.FinalDict.Values {
+		for _, warn := range cfg.DisableWarning.Vars.Values {
 			mk.Write(` `, warn)
 		}
 		mk.NewLine()
 	}
 
 	// compiler flags per config
-	for _, cfg := range project.Configs.Values {
+	for _, cfg := range project.Resolved.Configs.Values {
 		mk.WriteAligned(`FLAGS_CPP_`, strings.ToLower(cfg.String()), TabStop(0), `:=`)
-		for _, flag := range cfg.CppFlags.FinalDict.Values {
+		for _, flag := range cfg.CppFlags.Vars.Values {
 			mk.Write(` `, flag)
 		}
 		mk.NewLine()
@@ -246,14 +247,14 @@ func (g *MakeGenerator2) generateProjectTargets(project *Project, isMain bool, m
 	mk.WriteLine(`# Main Target`)
 
 	mk.Write(`all: `)
-	for _, cfg := range g.Product.Configs.Values {
+	for _, cfg := range g.Product.Resolved.Configs.Values {
 		mk.Write(` `, strings.ToLower(cfg.String()))
 	}
 	mk.NewLine()
 	mk.WriteILine(`+`, `@:`)
 	mk.NewLine()
 
-	for _, cfg := range g.Product.Configs.Values {
+	for _, cfg := range g.Product.Resolved.Configs.Values {
 		mk.WriteLine(strings.ToLower(cfg.String()), `: \`)
 		mk.WriteILine(`+`, `_prepare_build_directories \`)
 		if isMain {
@@ -268,7 +269,7 @@ func (g *MakeGenerator2) generateProjectTargets(project *Project, isMain bool, m
 
 	mk.WriteLine(`# Cleans all build files`)
 	mk.WriteLine(`clean:`)
-	for _, cfg := range g.Product.Configs.Values {
+	for _, cfg := range g.Product.Resolved.Configs.Values {
 		mk.WriteILine(`+`, `@$(MAKE) _clean_`, strings.ToLower(cfg.String()), ` CONFIG=`, strings.ToLower(cfg.String()))
 	}
 	mk.NewLine()
@@ -298,7 +299,7 @@ func (g *MakeGenerator2) generateProjectTargets(project *Project, isMain bool, m
 	for _, dir := range directories {
 		for _, f := range dir.Files {
 			if !f.ExcludedFromBuild && (f.Is_C_or_CPP() || f.Is_ObjC()) {
-				path := PathGetRel(dir.DiskPath, PathParent(project.ProjectAbsPath))
+				path := PathGetRelativeTo(dir.DiskPath, PathParent(project.ProjectAbsPath))
 				mk.WriteILine(`+`, `@mkdir -p $(DIR_BUILD_TEMP)`, path)
 				break
 			}
@@ -319,7 +320,7 @@ func (g *MakeGenerator2) generateProjectTargets(project *Project, isMain bool, m
 	mk.WriteLine(`$(PRODUCT_FRAMEWORK)$(EXT_FRAMEWORK):     \`)
 
 	project.FileEntries.Enumerate(isCppFileNotExcluded, func(i int, key string, value *FileEntry, last int) {
-		path := PathGetRel(filepath.Join(project.ProjectAbsPath, value.Path), PathParent(project.ProjectAbsPath))
+		path := PathGetRelativeTo(filepath.Join(project.ProjectAbsPath, value.Path), PathParent(project.ProjectAbsPath))
 		mk.WriteILine(`+`, `$(DIR_BUILD_TEMP)`, path, `$(EXT_O)`, lineEnds[last])
 	})
 
@@ -336,7 +337,7 @@ func (g *MakeGenerator2) generateProjectTargets(project *Project, isMain bool, m
 
 	// Example: $(DIR_BUILD_TEMP)ccore/source/main/cpp/c_allocator.cpp.o     \
 	project.FileEntries.Enumerate(isCppFileNotExcluded, func(i int, key string, value *FileEntry, last int) {
-		path := PathGetRel(filepath.Join(project.ProjectAbsPath, value.Path), PathParent(project.ProjectAbsPath))
+		path := PathGetRelativeTo(filepath.Join(project.ProjectAbsPath, value.Path), PathParent(project.ProjectAbsPath))
 		mk.WriteILine(`+`, `$(DIR_BUILD_TEMP)`, path, `$(EXT_O)`, lineEnds[last])
 	})
 
@@ -352,7 +353,7 @@ func (g *MakeGenerator2) generateProjectTargets(project *Project, isMain bool, m
 
 	// Example: $(DIR_BUILD_TEMP)ccore/source/main/cpp/c_allocator.cpp.o     \
 	project.FileEntries.Enumerate(isCppFileNotExcluded, func(i int, key string, value *FileEntry, last int) {
-		path := PathGetRel(filepath.Join(project.ProjectAbsPath, value.Path), PathParent(project.ProjectAbsPath))
+		path := PathGetRelativeTo(filepath.Join(project.ProjectAbsPath, value.Path), PathParent(project.ProjectAbsPath))
 		mk.WriteILine(`+`, `$(DIR_BUILD_TEMP)`, path, `$(EXT_O)`, lineEnds[last])
 	})
 
@@ -368,8 +369,8 @@ func (g *MakeGenerator2) generateProjectTargets(project *Project, isMain bool, m
 	// ----- C
 
 	project.FileEntries.Enumerate(isCFileNotExcluded, func(i int, key string, f *FileEntry, last int) {
-		srcfile := PathGetRel(filepath.Join(project.ProjectAbsPath, f.Path), filepath.Join(g.TargetAbsPath, project.Name))
-		buildfile := PathGetRel(filepath.Join(project.ProjectAbsPath, f.Path), PathParent(project.ProjectAbsPath))
+		srcfile := PathGetRelativeTo(filepath.Join(project.ProjectAbsPath, f.Path), filepath.Join(g.TargetAbsPath, project.Name))
+		buildfile := PathGetRelativeTo(filepath.Join(project.ProjectAbsPath, f.Path), PathParent(project.ProjectAbsPath))
 		mk.WriteLine(`-include $(DIR_BUILD_TEMP)`, buildfile+`.d`)
 		mk.WriteLine(`$(DIR_BUILD_TEMP)`, buildfile+`.o: `, srcfile)
 		mk.WriteILine(`+`, `@echo -e $(call PRINT,compiling C,`, buildfile, `)`)
@@ -380,8 +381,8 @@ func (g *MakeGenerator2) generateProjectTargets(project *Project, isMain bool, m
 	// ----- C++
 
 	project.FileEntries.Enumerate(isCppFileNotExcluded, func(i int, key string, f *FileEntry, last int) {
-		srcfile := PathGetRel(filepath.Join(project.ProjectAbsPath, f.Path), filepath.Join(g.TargetAbsPath, project.Name))
-		buildfile := PathGetRel(filepath.Join(project.ProjectAbsPath, f.Path), PathParent(project.ProjectAbsPath))
+		srcfile := PathGetRelativeTo(filepath.Join(project.ProjectAbsPath, f.Path), filepath.Join(g.TargetAbsPath, project.Name))
+		buildfile := PathGetRelativeTo(filepath.Join(project.ProjectAbsPath, f.Path), PathParent(project.ProjectAbsPath))
 		mk.WriteLine(`-include $(DIR_BUILD_TEMP)`, buildfile+`.d`)
 		mk.WriteLine(`$(DIR_BUILD_TEMP)`, buildfile+`.o: `, srcfile)
 		mk.WriteILine(`+`, `@echo -e $(call PRINT,compiling C++,`, buildfile, `)`)
@@ -392,8 +393,8 @@ func (g *MakeGenerator2) generateProjectTargets(project *Project, isMain bool, m
 	// ----- Objective-C
 
 	project.FileEntries.Enumerate(isObjCFileNotExcluded, func(i int, key string, f *FileEntry, last int) {
-		srcfile := PathGetRel(filepath.Join(project.ProjectAbsPath, f.Path), filepath.Join(g.TargetAbsPath, project.Name))
-		buildfile := PathGetRel(filepath.Join(project.ProjectAbsPath, f.Path), PathParent(project.ProjectAbsPath))
+		srcfile := PathGetRelativeTo(filepath.Join(project.ProjectAbsPath, f.Path), filepath.Join(g.TargetAbsPath, project.Name))
+		buildfile := PathGetRelativeTo(filepath.Join(project.ProjectAbsPath, f.Path), PathParent(project.ProjectAbsPath))
 		mk.WriteLine(`-include $(DIR_BUILD_TEMP)`, buildfile+`.d`)
 		mk.WriteLine(`$(DIR_BUILD_TEMP)`, buildfile+`.o: `, srcfile)
 		mk.WriteILine(`+`, `@echo -e $(call PRINT,compiling objective-c,`, buildfile, `)`)
@@ -404,8 +405,8 @@ func (g *MakeGenerator2) generateProjectTargets(project *Project, isMain bool, m
 	// ----- Objective-C++
 
 	project.FileEntries.Enumerate(isObjCppFileNotExcluded, func(i int, key string, f *FileEntry, last int) {
-		srcfile := PathGetRel(filepath.Join(project.ProjectAbsPath, f.Path), filepath.Join(g.TargetAbsPath, project.Name))
-		buildfile := PathGetRel(filepath.Join(project.ProjectAbsPath, f.Path), PathParent(project.ProjectAbsPath))
+		srcfile := PathGetRelativeTo(filepath.Join(project.ProjectAbsPath, f.Path), filepath.Join(g.TargetAbsPath, project.Name))
+		buildfile := PathGetRelativeTo(filepath.Join(project.ProjectAbsPath, f.Path), PathParent(project.ProjectAbsPath))
 		mk.WriteLine(`-include $(DIR_BUILD_TEMP)`, buildfile+`.d`)
 		mk.WriteLine(`$(DIR_BUILD_TEMP)`, buildfile+`.o: `, srcfile)
 		mk.WriteILine(`+`, `@echo -e $(call PRINT,compiling objective-c++,`, buildfile, `)`)

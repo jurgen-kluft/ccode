@@ -144,7 +144,7 @@ func NewFileEntryDict(ws *Workspace, path string) *FileEntryDict {
 }
 
 func (d *FileEntryDict) GetRelativePath(e *FileEntry, path string) string {
-	return PathGetRel(filepath.Join(d.Path, e.Path), path)
+	return PathGetRelativeTo(filepath.Join(d.Path, e.Path), path)
 }
 
 func (d *FileEntryDict) Add(path string, isGenerated bool) *FileEntry {

@@ -31,9 +31,6 @@ func (g *TundraGenerator) generateUnitsLua(ws *Workspace) {
 	units.WriteLine(`require "tundra.path"`)
 	units.WriteLine(`require "tundra.util"`)
 
-	// Sort the projects by their dependencies using topological sort
-	ws.ProjectList.TopoSort()
-
 	default_unit := ""
 
 	// Get all the projects and write them out
@@ -89,12 +86,11 @@ func (g *TundraGenerator) writeUnit(units *LineWriter, p *Project, isProgram boo
 		//        "ws2_32.lib"; Config = "win32-*",
 		//        "gdi32.lib"; Config = "win32-*",
 		//    },
-
 		units.WriteILine("++", "LIBPATH = {")
-		for _, cfg := range p.Configs.Values {
-			for _, dir := range cfg.LinkDirs.FinalDict.Values {
-				path := PathGetRel(filepath.Join(p.ProjectAbsPath, dir), p.Workspace.GenerateAbsPath)
-				units.WriteILine("+++", `{"`, path, `", `, `Config = "`, cfg.Type.Tundra(), `"},`)
+		for _, cfg := range p.Resolved.Configs.Values {
+			linkDirs, _, _ := p.BuildLibraryInformation(cfg, p.Workspace.GenerateAbsPath)
+			for _, linkDir := range linkDirs.Values {
+				units.WriteILine("+++", `{"`, linkDir, `", `, `Config = "`, cfg.Type.Tundra(), `"},`)
 			}
 		}
 		units.WriteILine("++", "},")
@@ -103,9 +99,9 @@ func (g *TundraGenerator) writeUnit(units *LineWriter, p *Project, isProgram boo
 	// Compiler Defines
 
 	units.WriteILine("++", `CPPDEFS = {`)
-	for _, cfg := range p.Configs.Values {
+	for _, cfg := range p.Resolved.Configs.Values {
 		units.WriteILine("+++", `{`)
-		for _, def := range cfg.CppDefines.FinalDict.Values {
+		for _, def := range cfg.CppDefines.Vars.Values {
 			escapedDef := g.escapeString(def)
 			units.WriteILine("++++", `"`, escapedDef, `",`)
 		}
@@ -122,9 +118,10 @@ func (g *TundraGenerator) writeUnit(units *LineWriter, p *Project, isProgram boo
 
 	units.WriteILine("+", `Includes = {`)
 	history := make(map[string]int)
-	for _, pcfg := range p.Configs.Values {
-		for _, inc := range pcfg.IncludeDirs.FinalDict.Values {
-			path := PathGetRel(filepath.Join(p.ProjectAbsPath, inc), p.Workspace.GenerateAbsPath)
+	for _, pcfg := range p.Resolved.Configs.Values {
+		for _, inc := range pcfg.IncludeDirs.Values {
+			//path := PathGetRelativeTo(filepath.Join(p.ProjectAbsPath, inc), p.Workspace.GenerateAbsPath)
+			path := inc.RelativeTo(p.Workspace.GenerateAbsPath)
 			path = strings.Replace(path, "\\", "/", -1)
 			signature := path + " | " + pcfg.String()
 			if _, ok := history[signature]; !ok {
@@ -134,9 +131,10 @@ func (g *TundraGenerator) writeUnit(units *LineWriter, p *Project, isProgram boo
 		}
 	}
 	for _, dp := range p.Dependencies.Values {
-		for _, dpcfg := range dp.Configs.Values {
-			for _, inc := range dpcfg.IncludeDirs.FinalDict.Values {
-				path := PathGetRel(filepath.Join(dp.ProjectAbsPath, inc), p.Workspace.GenerateAbsPath)
+		for _, dpcfg := range dp.Resolved.Configs.Values {
+			for _, inc := range dpcfg.IncludeDirs.Values {
+				//path := PathGetRelativeTo(filepath.Join(dp.ProjectAbsPath, inc), p.Workspace.GenerateAbsPath)
+				path := inc.RelativeTo(p.Workspace.GenerateAbsPath)
 				path = strings.Replace(path, "\\", "/", -1)
 				signature := path + " | " + dpcfg.String()
 				if _, ok := history[signature]; !ok {
@@ -181,8 +179,9 @@ func (g *TundraGenerator) writeUnit(units *LineWriter, p *Project, isProgram boo
 		//    },
 
 		units.WriteILine("+", "Libs = {")
-		for _, cfg := range p.Configs.Values {
-			for _, lib := range cfg.LinkLibs.FinalDict.Values {
+		for _, cfg := range p.Resolved.Configs.Values {
+			_, _, linkLibs := p.BuildLibraryInformation(cfg, p.Workspace.GenerateAbsPath)
+			for _, lib := range linkLibs.Values {
 				units.WriteILine("++", `{"`, lib, `"`, `, Config = "`, cfg.Type.Tundra(), `"},`)
 			}
 		}
@@ -191,8 +190,9 @@ func (g *TundraGenerator) writeUnit(units *LineWriter, p *Project, isProgram boo
 		// if the platform is Mac also write out the Frameworks we are using
 		if p.Workspace.MakeTarget.OSIsMac() {
 			units.WriteILine("+", `Frameworks = {`)
-			for _, cfg := range p.Configs.Values {
-				for _, framework := range cfg.Frameworks.FinalDict.Values {
+			for _, cfg := range p.Resolved.Configs.Values {
+				frameworks := p.BuildFrameworkInformation(cfg)
+				for _, framework := range frameworks.Values {
 					units.WriteILine("++", `{"`, framework, `"`, `, Config = "`, cfg.Type.Tundra(), `"},`)
 				}
 			}
