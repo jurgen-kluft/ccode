@@ -13,64 +13,31 @@ import (
 // Exclusion filter
 // ----------------------------------------------------------------------------------------------
 func IsExcludedOnMac(str string) bool {
-	if strings.HasPrefix(str, "win_") || strings.HasPrefix(str, "pc_") || strings.HasPrefix(str, "win32_") || strings.HasPrefix(str, "win64_") {
-		return true
-	}
-	if strings.HasSuffix(str, "_win") || strings.HasSuffix(str, "_pc") || strings.HasSuffix(str, "_win32") || strings.HasSuffix(str, "_win64") {
-		return true
-	}
-	if strings.HasPrefix(str, "linux_") || strings.HasPrefix(str, "unix_") {
-		return true
-	}
-	if strings.HasSuffix(str, "_linux") || strings.HasSuffix(str, "_unix") {
-		return true
-	}
-	if strings.EqualFold(str, "windows") || strings.EqualFold(str, "linux") {
-		return true
-	}
-	if strings.EqualFold(str, "d3d11") || strings.EqualFold(str, "d3d12") {
-		return true
-	}
-	if strings.HasSuffix(str, "_nob") {
-		return true
+	exclude := []string{"win", "pc", "win32", "win64", "windows", "d3d11", "d3d12", "linux", "unix", "nob", "ios"}
+	for _, e := range exclude {
+		if strings.HasPrefix(str, e+"_") || strings.HasSuffix(str, "_"+e) || strings.EqualFold(str, e) {
+			return true
+		}
 	}
 	return false
 }
 
 func IsExcludedOnWindows(str string) bool {
-	if strings.HasPrefix(str, "mac_") || strings.HasPrefix(str, "macos_") || strings.HasPrefix(str, "darwin_") || strings.HasPrefix(str, "linux_") || strings.HasPrefix(str, "unix_") {
-		return true
-	}
-	if strings.HasSuffix(str, "_mac") || strings.HasSuffix(str, "_macos") || strings.HasSuffix(str, "_darwin") || strings.HasSuffix(str, "_linux") || strings.HasSuffix(str, "_unix") {
-		return true
-	}
-	if strings.EqualFold(str, "macos") || strings.EqualFold(str, "linux") {
-		return true
-	}
-	if strings.EqualFold(str, "cocoa") || strings.EqualFold(str, "metal") {
-		return true
-	}
-	if strings.HasSuffix(str, "_nob") {
-		return true
+	exclude := []string{"mac", "macos", "darwin", "linux", "unix", "nob", "cocoa", "metal", "osx", "ios"}
+	for _, e := range exclude {
+		if strings.HasPrefix(str, e+"_") || strings.HasSuffix(str, "_"+e) || strings.EqualFold(str, e) {
+			return true
+		}
 	}
 	return false
 }
 
 func IsExcludedOnLinux(str string) bool {
-	if strings.HasPrefix(str, "mac_") || strings.HasPrefix(str, "macos_") || strings.HasPrefix(str, "darwin_") {
-		return true
-	}
-	if strings.HasPrefix(str, "win_") || strings.HasPrefix(str, "pc_") || strings.HasPrefix(str, "win32_") || strings.HasPrefix(str, "win64_") {
-		return true
-	}
-	if strings.EqualFold(str, "windows") || strings.EqualFold(str, "macos") {
-		return true
-	}
-	if strings.EqualFold(str, "d3d11") || strings.EqualFold(str, "d3d12") || strings.EqualFold(str, "cocoa") || strings.EqualFold(str, "metal") {
-		return true
-	}
-	if strings.HasSuffix(str, "_nob") {
-		return true
+	exclude := []string{"mac", "macos", "darwin", "win", "pc", "win32", "win64", "windows", "d3d11", "d3d12", "cocoa", "metal", "osx", "ios", "nob"}
+	for _, e := range exclude {
+		if strings.HasPrefix(str, e+"_") || strings.HasSuffix(str, "_"+e) || strings.EqualFold(str, e) {
+			return true
+		}
 	}
 	return false
 }
@@ -285,6 +252,7 @@ func (g *Generator) getOrCreateProject(devProj *denv.Project, ws *Workspace) *Pr
 				newProject.GlobFiles(projAbsPath, filepath.Join("source", "app", "cpp", "^**", "*.mm"), exclusionFilter)
 			}
 		} else if devProj.Type.IsLibrary() {
+			newProject.GlobFiles(projAbsPath, filepath.Join("source", "main", "cpp", "^**", "*.c"), exclusionFilter)
 			newProject.GlobFiles(projAbsPath, filepath.Join("source", "main", "cpp", "^**", "*.cpp"), exclusionFilter)
 			newProject.GlobFiles(projAbsPath, filepath.Join("source", "main", "include", "^**", "*.h"), exclusionFilter)
 			newProject.GlobFiles(projAbsPath, filepath.Join("source", "main", "include", "^**", "*.hpp"), exclusionFilter)

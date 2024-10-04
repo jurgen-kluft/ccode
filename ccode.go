@@ -20,8 +20,8 @@ func GenerateGitIgnore() {
 	base.GenerateGitIgnore()
 }
 
-func GenerateTestMainCpp() {
-	base.GenerateTestMainCpp()
+func GenerateTestMainCpp(has_ccore, has_cbase bool) {
+	base.GenerateTestMainCpp(has_ccore, has_cbase)
 }
 
 func GenerateEmbedded() {
@@ -32,8 +32,8 @@ func GenerateClangFormat() {
 	base.GenerateClangFormat()
 }
 
-func GenerateFiles() {
-	base.GenerateFiles()
+func GenerateFiles(pkg *denv.Package) {
+	base.GenerateFiles(pkg)
 }
 
 func GenerateCppEnums(inputFile string, outputFile string) error {

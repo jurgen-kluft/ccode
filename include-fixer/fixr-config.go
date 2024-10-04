@@ -21,7 +21,7 @@ func NewIncludeGuardConfig() *IncludeGuardConfig {
 	d.UseFilename = true
 	d.RemovePrefix = ""
 	d.RemoveSuffix = ""
-	d.AddPrefix = "__CCORE_"
+	d.AddPrefix = "__CRED_"
 	d.AddSuffix = "__"
 	d.IncludeGuardIfNotDefRegex, _ = regexp.Compile(`#ifndef\s+(.*)\s*`)
 	d.IncludeGuardDefineRegex, _ = regexp.Compile(`#define\s+(.*)\s*`)

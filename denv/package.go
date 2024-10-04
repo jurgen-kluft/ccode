@@ -65,6 +65,22 @@ func NewPackage(name string) *Package {
 	return &Package{Name: name, Packages: make(map[string]*Package), Projects: make(map[string]*Project)}
 }
 
+func (p *Package) HasDependencyOn(name string) bool {
+	for _, prj := range p.Projects {
+		if prj.Name == name {
+			return true
+		}
+
+		deps := prj.CollectProjectDependencies()
+		for _, dep := range deps {
+			if dep.Name == name {
+				return true
+			}
+		}
+	}
+	return false
+}
+
 // AddPackage adds a package to this package
 func (p *Package) AddPackage(pkg *Package) {
 	p.Packages[pkg.Name] = pkg

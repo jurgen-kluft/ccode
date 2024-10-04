@@ -148,16 +148,16 @@ func Generate(pkg *denv.Package, dryrun bool, verbose bool) error {
 	return base.Generate(pkg)
 }
 
-func GenerateFiles() {
-	base.GenerateFiles()
+func GenerateFiles(pkg *denv.Package) {
+	base.GenerateFiles(pkg)
 }
 
 func GenerateGitIgnore() {
 	base.GenerateGitIgnore()
 }
 
-func GenerateTestMainCpp() {
-	base.GenerateTestMainCpp()
+func GenerateTestMainCpp(has_ccore, has_cbase bool) {
+	base.GenerateTestMainCpp(has_ccore, has_cbase)
 }
 
 func GenerateEmbedded() {

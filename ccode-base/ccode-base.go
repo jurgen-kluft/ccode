@@ -62,8 +62,8 @@ func GenerateGitIgnore() {
 	embedded.WriteGitIgnore(false)
 }
 
-func GenerateTestMainCpp() {
-	embedded.WriteTestMainCpp(true)
+func GenerateTestMainCpp(ccore, cbase bool) {
+	embedded.WriteTestMainCpp(ccore, cbase, true)
 }
 
 func GenerateEmbedded() {
@@ -74,9 +74,22 @@ func GenerateClangFormat() {
 	embedded.WriteClangFormat(false)
 }
 
-func GenerateFiles() {
+func GenerateFiles(pkg *denv.Package) {
+
+	// Analyze the package to see if it has dependencies on:
+	// - ccore
+	// - cbase
+	// If it only has a dependency on ccore, we should generate a TestMainCpp that is compatible with only ccore, if
+	// however it is depending on cbase then we can use the TestMainCpp that is compatible with cbase.
+	//
+	// But, if there is no dependency on ccore or cbase, we should generate a TestMainCpp that can work without any
+	// ccore or cbase functionality
+	//
+	has_ccore := pkg.HasDependencyOn("ccore")
+	has_cbase := pkg.HasDependencyOn("cbase")
+
 	GenerateGitIgnore()
-	GenerateTestMainCpp()
+	GenerateTestMainCpp(has_ccore, has_cbase)
 	GenerateEmbedded()
 	GenerateClangFormat()
 }
