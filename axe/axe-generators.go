@@ -224,6 +224,22 @@ func (g *Generator) getOrCreateProject(devProj *denv.Project, ws *Workspace) *Pr
 
 	projectConfig := NewProjectConfig()
 	{
+		if !devProj.Type.IsExecutable() {
+			if devProj.Type.IsUnitTest() {
+				projectConfig.Group = "unittest/cpp-library"
+			} else {
+				projectConfig.Group = "main/cpp-library"
+			}
+			//projectConfig.Type = ProjectTypeCppLib
+		} else {
+			if devProj.Type.IsUnitTest() {
+				projectConfig.Group = "unittest/cpp-exe"
+			} else {
+				projectConfig.Group = "main/cpp-exe"
+			}
+			//projectConfig.Type = ProjectTypeCppExe
+		}
+
 		projectConfig.IsGuiApp = false
 		projectConfig.PchHeader = ""
 		projectConfig.MultiThreadedBuild = true

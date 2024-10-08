@@ -234,7 +234,7 @@ type Project struct {
 	ProjectAbsPath  string      // The path where the project is located on disk, under the workspace directory
 	GenerateAbsPath string      // Where the project will be saved on disk
 	Settings        *ProjectConfig
-	Group           *ProjectGroup
+	Group           *ProjectGroup // Set when project is added into ProjectGroups
 	FileEntries     *FileEntryDict
 	ResourceEntries *FileEntryDict
 	VirtualFolders  *VirtualDirectories
@@ -254,6 +254,7 @@ func newProject(ws *Workspace, name string, projectAbsPath string, projectType d
 		ProjectAbsPath:  projectAbsPath,
 		GenerateAbsPath: ws.GenerateAbsPath,
 		Settings:        settings,
+		Group:           nil,
 		FileEntries:     NewFileEntryDict(ws, projectAbsPath),
 		ResourceEntries: NewFileEntryDict(ws, projectAbsPath),
 		ConfigsLocal:    NewConfigList(),
@@ -464,7 +465,8 @@ func (p *Project) Resolve(dev DevEnum) error {
 			mergedConfig := config.BuildResolved(configsOfSpecificConfigType)
 			resolved.Configs.Add(mergedConfig)
 		} else {
-			resolved.Configs.Add(config.Copy())
+			mergedConfig := config.BuildResolved([]*Config{})
+			resolved.Configs.Add(mergedConfig)
 		}
 	}
 
