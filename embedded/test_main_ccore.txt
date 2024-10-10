@@ -42,11 +42,10 @@ namespace ncore
             void* ptr = ::malloc(size);
             return ptr;
         }
-        virtual unsigned int Deallocate(void* ptr, int* status)
+        virtual void Deallocate(void* ptr, int* status)
         {
             --mNumAllocations;
             ::free(ptr);
-            return 0;
         }
     };
 
