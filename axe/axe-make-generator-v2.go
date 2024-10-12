@@ -387,7 +387,7 @@ func (g *MakeGenerator2) generateProjectTargets(project *Project, isMain bool, m
 		mk.WriteLine(`-include $(DIR_BUILD_TEMP)`, buildfile+`.d`)
 		mk.WriteLine(`$(DIR_BUILD_TEMP)`, buildfile+`.o: `, srcfile)
 		mk.WriteILine(`+`, `@echo -e $(call PRINT,compiling C,`, buildfile, `)`)
-		mk.WriteILine(`+`, `@$(CC) $(CC_FLAGS_$(_ARCH)) -fPIC -std=$(FLAGS_STD_C) $(FLAGS_C) $(FLAGS_WARN_$(CONFIG)) $(FLAGS_OTHER_$(CONFIG)) $(INCLUDES_CPP_$(CONFIG)) $(DEFINES_CPP_$(CONFIG)) -o $@ -c $< -MT $@ -MMD -MP`)
+		mk.WriteILine(`+`, `@$(CC) $(CC_FLAGS_$(TARGET_ARCH)) -fPIC -std=$(FLAGS_STD_C) $(FLAGS_C) $(FLAGS_WARN_$(CONFIG)) $(FLAGS_OTHER_$(CONFIG)) $(INCLUDES_CPP_$(CONFIG)) $(DEFINES_CPP_$(CONFIG)) -o $@ -c $< -MT $@ -MMD -MP`)
 		mk.NewLine()
 	})
 
@@ -399,7 +399,7 @@ func (g *MakeGenerator2) generateProjectTargets(project *Project, isMain bool, m
 		mk.WriteLine(`-include $(DIR_BUILD_TEMP)`, buildfile+`.d`)
 		mk.WriteLine(`$(DIR_BUILD_TEMP)`, buildfile+`.o: `, srcfile)
 		mk.WriteILine(`+`, `@echo -e $(call PRINT,compiling C++,`, buildfile, `)`)
-		mk.WriteILine(`+`, `@$(CC) $(CC_FLAGS_$(_ARCH)) -fPIC -std=$(FLAGS_STD_CPP) $(FLAGS_CPP) $(FLAGS_WARN_$(CONFIG)) $(FLAGS_OTHER_$(CONFIG)) $(INCLUDES_CPP_$(CONFIG)) $(DEFINES_CPP_$(CONFIG)) -o $@ -c $< -MT $@ -MMD -MP`)
+		mk.WriteILine(`+`, `@$(CC) $(CC_FLAGS_$(TARGET_ARCH)) -fPIC -std=$(FLAGS_STD_CPP) $(FLAGS_CPP) $(FLAGS_WARN_$(CONFIG)) $(FLAGS_OTHER_$(CONFIG)) $(INCLUDES_CPP_$(CONFIG)) $(DEFINES_CPP_$(CONFIG)) -o $@ -c $< -MT $@ -MMD -MP`)
 		mk.NewLine()
 	})
 
@@ -411,7 +411,7 @@ func (g *MakeGenerator2) generateProjectTargets(project *Project, isMain bool, m
 		mk.WriteLine(`-include $(DIR_BUILD_TEMP)`, buildfile+`.d`)
 		mk.WriteLine(`$(DIR_BUILD_TEMP)`, buildfile+`.o: `, srcfile)
 		mk.WriteILine(`+`, `@echo -e $(call PRINT,compiling objective-c,`, buildfile, `)`)
-		mk.WriteILine(`+`, `@$(CC) $(CC_FLAGS_$(_ARCH)) -fPIC -std=$(FLAGS_STD_C) $(FLAGS_M) $(FLAGS_WARN_$(CONFIG)) $(FLAGS_OTHER_$(CONFIG)) $(INCLUDES_CPP_$(CONFIG)) $(DEFINES_CPP_$(CONFIG)) -o $@ -c $< -MT $@ -MMD -MP`)
+		mk.WriteILine(`+`, `@$(CC) $(CC_FLAGS_$(TARGET_ARCH)) -fPIC -std=$(FLAGS_STD_C) $(FLAGS_M) $(FLAGS_WARN_$(CONFIG)) $(FLAGS_OTHER_$(CONFIG)) $(INCLUDES_CPP_$(CONFIG)) $(DEFINES_CPP_$(CONFIG)) -o $@ -c $< -MT $@ -MMD -MP`)
 		mk.NewLine()
 	})
 
@@ -423,7 +423,7 @@ func (g *MakeGenerator2) generateProjectTargets(project *Project, isMain bool, m
 		mk.WriteLine(`-include $(DIR_BUILD_TEMP)`, buildfile+`.d`)
 		mk.WriteLine(`$(DIR_BUILD_TEMP)`, buildfile+`.o: `, srcfile)
 		mk.WriteILine(`+`, `@echo -e $(call PRINT,compiling objective-c++,`, buildfile, `)`)
-		mk.WriteILine(`+`, `@$(CC) $(CC_FLAGS_$(_ARCH)) -fPIC -std=$(FLAGS_STD_CPP) $(FLAGS_MM) $(FLAGS_WARN_$(CONFIG)) $(FLAGS_OTHER_$(CONFIG)) $(INCLUDES_CPP_$(CONFIG)) $(DEFINES_CPP_$(CONFIG)) -o $@ -c $< -MT $@ -MMD -MP`)
+		mk.WriteILine(`+`, `@$(CC) $(CC_FLAGS_$(TARGET_ARCH)) -fPIC -std=$(FLAGS_STD_CPP) $(FLAGS_MM) $(FLAGS_WARN_$(CONFIG)) $(FLAGS_OTHER_$(CONFIG)) $(INCLUDES_CPP_$(CONFIG)) $(DEFINES_CPP_$(CONFIG)) -o $@ -c $< -MT $@ -MMD -MP`)
 		mk.NewLine()
 	})
 
