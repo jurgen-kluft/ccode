@@ -212,7 +212,20 @@ func (g *MakeGenerator2) generateProjectMakefile(project *Project, isMain bool) 
 	}
 
 	mk.WriteAlignedLine(`FLAGS_STD_C`, TabStop(0), `:= c99`)
-	mk.WriteAlignedLine(`FLAGS_STD_CPP`, TabStop(0), `:= c++11`)
+
+	switch g.Workspace.Config.CppStd {
+	case CppStd11:
+		mk.WriteAlignedLine(`FLAGS_STD_CPP`, TabStop(0), `:= c++11`)
+	case CppStd14:
+		mk.WriteAlignedLine(`FLAGS_STD_CPP`, TabStop(0), `:= c++14`)
+	case CppStd17:
+		mk.WriteAlignedLine(`FLAGS_STD_CPP`, TabStop(0), `:= c++17`)
+	case CppStd20:
+		mk.WriteAlignedLine(`FLAGS_STD_CPP`, TabStop(0), `:= c++20`)
+	case CppStdLatest:
+		mk.WriteAlignedLine(`FLAGS_STD_CPP`, TabStop(0), `:= c++latest`)
+	}
+
 	mk.WriteAlignedLine(`FLAGS_OTHER_`, TabStop(0), `:=`)
 	mk.WriteAlignedLine(`FLAGS_C`, TabStop(0), `:=`)
 	mk.WriteAlignedLine(`FLAGS_M`, TabStop(0), `:= -fobjc-arc`)
@@ -359,7 +372,7 @@ func (g *MakeGenerator2) generateProjectTargets(project *Project, isMain bool, m
 
 	mk.WriteILine(`+`, `@echo -e $(call PRINT,$(notdir $@),$(TARGET_ARCH),Linking the $(TARGET_ARCH) static binary)`)
 	mk.WriteILine(`+`, `@mkdir -p $(DIR_BUILD_PRODUCTS)`)
-	mk.WriteILine(`+`, `@$(AR) $(AR_FLAGS_arm64) $(DIR_BUILD_PRODUCTS)$@ $^`)
+	mk.WriteILine(`+`, `@$(AR) $(AR_FLAGS_$(TARGET_ARCH)) $(DIR_BUILD_PRODUCTS)$@ $^`)
 	mk.WriteLine(``)
 
 	// ---------- Source Files -------------------------------------------------------------------------
