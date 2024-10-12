@@ -16,6 +16,7 @@ type MakeTarget interface {
 	CompilerIsVc() bool
 
 	ArchIsX64() bool
+	ArchIsAmd64() bool
 	ArchIsArm64() bool
 
 	OSAsString() string
@@ -72,6 +73,7 @@ const (
 
 const (
 	ARCH_X64   = "x86_64"
+	ARCH_AMD64 = "amd64"
 	ARCH_ARM64 = "arm64"
 )
 
@@ -104,7 +106,10 @@ func (t *MakeTargetInstance) CompilerIsVc() bool {
 	return strings.EqualFold(t.Compiler, COMPILER_VC)
 }
 func (t *MakeTargetInstance) ArchIsX64() bool {
-	return strings.EqualFold(t.Cpu, ARCH_X64) || strings.EqualFold(t.Cpu, ARCH_ARM64)
+	return strings.EqualFold(t.Cpu, ARCH_X64)
+}
+func (t *MakeTargetInstance) ArchIsAmd64() bool {
+	return strings.EqualFold(t.Cpu, ARCH_AMD64)
 }
 func (t *MakeTargetInstance) ArchIsArm64() bool {
 	return strings.EqualFold(t.Cpu, ARCH_ARM64)

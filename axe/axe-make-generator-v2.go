@@ -442,11 +442,7 @@ func (g *MakeGenerator2) generateLibMakeCommonMk() error {
 	mk.NewLine()
 
 	mk.WriteLine(`# Target architecture`)
-	if g.Workspace.MakeTarget.ArchIsArm64() {
-		mk.WriteLine(`TARGET_ARCH := `, "arm64")
-	} else if g.Workspace.MakeTarget.ArchIsX64() {
-		mk.WriteLine(`TARGET_ARCH := `, "x86_64")
-	}
+	mk.WriteLine(`TARGET_ARCH := `, g.Workspace.MakeTarget.ArchAsString())
 	mk.NewLine()
 
 	mk.WriteLine(`#-------------------------------------------------------------------------------`)
@@ -593,7 +589,8 @@ func (g *MakeGenerator2) generateLibMakePlatformLinux() error {
 	mk.WriteLine(`#-------------------------------------------------------------------------------`)
 	mk.NewLine()
 	mk.WriteLine(`# Architecture specific flags for ld`)
-	mk.WriteLine(`LD_FLAGS_$(TARGET_ARCH)       := -m elf_$(TARGET_ARCH)`)
+	mk.WriteLine(`# LD_FLAGS_$(TARGET_ARCH)       := -m elf_$(TARGET_ARCH)`)
+	mk.WriteLine(`LD_FLAGS_$(TARGET_ARCH)       := `)
 	mk.NewLine()
 	mk.WriteLine(`# Architecture specific flags for ar`)
 	mk.WriteLine(`AR_FLAGS_$(TARGET_ARCH)       := rcs`)
