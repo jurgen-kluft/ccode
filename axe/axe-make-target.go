@@ -38,6 +38,11 @@ func NewMakeTargetMacOS() MakeTarget {
 	return NewMakeTarget(OS_MAC, COMPILER_CLANG, arch)
 }
 
+func NewMakeTargetLinux() MakeTarget {
+	arch := runtime.GOARCH
+	return NewMakeTarget(OS_LINUX, COMPILER_CLANG, arch)
+}
+
 func NewMakeTargetWindows() MakeTarget {
 	return NewMakeTarget(OS_WINDOWS, COMPILER_VC, ARCH_X64)
 }
@@ -49,7 +54,7 @@ func NewDefaultMakeTarget() MakeTarget {
 	} else if strings.Contains(runtime.GOOS, "darwin") {
 		return NewMakeTargetMacOS()
 	}
-	return NewMakeTarget(OS_LINUX, COMPILER_GCC, ARCH_X64)
+	return NewMakeTargetLinux()
 }
 
 const (
