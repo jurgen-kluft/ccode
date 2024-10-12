@@ -58,22 +58,22 @@ type FixrConfig struct {
 	SourceFileFilter       func(_filepath string) bool
 }
 
-func NewDefaultFixrConfig(setting fixr.FixrSetting) *FixrConfig {
+func NewDefaultFixrConfig(prjname string, setting fixr.FixrSetting) *FixrConfig {
 	return &FixrConfig{
 		Setting:                setting,
 		RenamePolicy:           NoFileNamingPolicy,
-		IncludeGuardConfig:     fixr.NewIncludeGuardConfig(),
+		IncludeGuardConfig:     fixr.NewIncludeGuardConfig(prjname),
 		IncludeDirectiveConfig: fixr.NewIncludeDirectiveConfig(),
 		HeaderFileFilter:       DefaultHeaderFileFilter,
 		SourceFileFilter:       DefaultSourceFileFilter,
 	}
 }
 
-func NewCCoreFixrConfig(setting fixr.FixrSetting) *FixrConfig {
+func NewCCoreFixrConfig(prjname string, setting fixr.FixrSetting) *FixrConfig {
 	return &FixrConfig{
 		Setting:                setting,
 		RenamePolicy:           CCoreFileNamingPolicy,
-		IncludeGuardConfig:     fixr.NewIncludeGuardConfig(),
+		IncludeGuardConfig:     fixr.NewIncludeGuardConfig(prjname),
 		IncludeDirectiveConfig: fixr.NewIncludeDirectiveConfig(),
 		HeaderFileFilter:       DefaultHeaderFileFilter,
 		SourceFileFilter:       DefaultSourceFileFilter,
@@ -143,7 +143,7 @@ func Generate(pkg *denv.Package, dryrun bool, verbose bool) error {
 	if verbose {
 		setting |= fixr.Verbose
 	}
-	config := NewDefaultFixrConfig(setting)
+	config := NewDefaultFixrConfig(pkg.Name, setting)
 	IncludeFixer(pkg, config)
 	return base.Generate(pkg)
 }

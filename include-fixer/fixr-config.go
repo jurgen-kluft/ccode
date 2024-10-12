@@ -16,12 +16,12 @@ type IncludeGuardConfig struct {
 	IncludeGuardDefineRegex   *regexp.Regexp
 }
 
-func NewIncludeGuardConfig() *IncludeGuardConfig {
+func NewIncludeGuardConfig(prjname string) *IncludeGuardConfig {
 	d := &IncludeGuardConfig{}
 	d.UseFilename = true
 	d.RemovePrefix = ""
 	d.RemoveSuffix = ""
-	d.AddPrefix = "__CRED_"
+	d.AddPrefix = "__" + strings.ToUpper(prjname) + "_"
 	d.AddSuffix = "__"
 	d.IncludeGuardIfNotDefRegex, _ = regexp.Compile(`#ifndef\s+(.*)\s*`)
 	d.IncludeGuardDefineRegex, _ = regexp.Compile(`#define\s+(.*)\s*`)
