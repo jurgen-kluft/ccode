@@ -323,6 +323,17 @@ func (g *MsDevGenerator) genProjectConfig(wr *XmlWriter, proj *Project, config *
 				cppStd = "stdcpplatest"
 			}
 
+			// Streaming SIMD Extensions (X86) (/arch:SSE)
+			//    <EnableEnhancedInstructionSet>StreamingSIMDExtensions</EnableEnhancedInstructionSet>
+			// Streaming SIMD Extensions 2 (X86) (/arch:SSE2)
+			//    <EnableEnhancedInstructionSet>StreamingSIMDExtensions2</EnableEnhancedInstructionSet>
+			// Advanced Vector Extensions (X86/X64) (/arch:AVX)
+			//    <EnableEnhancedInstructionSet>AdvancedVectorExtensions</EnableEnhancedInstructionSet>
+			// Advanced Vector Extensions 2 (X86/X64) (/arch:AVX2)
+			//    <EnableEnhancedInstructionSet>AdvancedVectorExtensions2</EnableEnhancedInstructionSet>
+			// Advanced Vector Extensions 512 (X86/X64) (/arch:AVX512)
+			//    <EnableEnhancedInstructionSet>AdvancedVectorExtensions512</EnableEnhancedInstructionSet>
+
 			wr.TagWithBody("LanguageStandard", cppStd)
 
 			if g.Workspace.MakeTarget.OSIsLinux() {

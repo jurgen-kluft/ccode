@@ -224,6 +224,8 @@ func (g *MakeGenerator2) generateProjectMakefile(project *Project, isMain bool) 
 		mk.WriteAlignedLine(`FLAGS_STD_CPP`, TabStop(0), `:= c++20`)
 	case CppStdLatest:
 		mk.WriteAlignedLine(`FLAGS_STD_CPP`, TabStop(0), `:= c++latest`)
+	default:
+		mk.WriteAlignedLine(`FLAGS_STD_CPP`, TabStop(0), `:= c++17`)
 	}
 
 	mk.WriteAlignedLine(`FLAGS_OTHER_`, TabStop(0), `:=`)
