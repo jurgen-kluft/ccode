@@ -1,3 +1,4 @@
+#include "ccore/config/descr/c_build.h"
 #include "ccore/c_target.h"
 #include "ccore/c_allocator.h"
 
