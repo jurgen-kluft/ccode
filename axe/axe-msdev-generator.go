@@ -322,19 +322,12 @@ func (g *MsDevGenerator) genProjectConfig(wr *XmlWriter, proj *Project, config *
 			case CppStdLatest:
 				cppStd = "stdcpplatest"
 			}
-
-			// Streaming SIMD Extensions (X86) (/arch:SSE)
-			//    <EnableEnhancedInstructionSet>StreamingSIMDExtensions</EnableEnhancedInstructionSet>
-			// Streaming SIMD Extensions 2 (X86) (/arch:SSE2)
-			//    <EnableEnhancedInstructionSet>StreamingSIMDExtensions2</EnableEnhancedInstructionSet>
-			// Advanced Vector Extensions (X86/X64) (/arch:AVX)
-			//    <EnableEnhancedInstructionSet>AdvancedVectorExtensions</EnableEnhancedInstructionSet>
-			// Advanced Vector Extensions 2 (X86/X64) (/arch:AVX2)
-			//    <EnableEnhancedInstructionSet>AdvancedVectorExtensions2</EnableEnhancedInstructionSet>
-			// Advanced Vector Extensions 512 (X86/X64) (/arch:AVX512)
-			//    <EnableEnhancedInstructionSet>AdvancedVectorExtensions512</EnableEnhancedInstructionSet>
-
 			wr.TagWithBody("LanguageStandard", cppStd)
+
+			cppAdvanced := g.Workspace.Config.CppAdvanced.VisualStudio()
+			if cppAdvanced != "" {
+				wr.TagWithBody("EnableEnhancedInstructionSet", cppAdvanced)
+			}
 
 			if g.Workspace.MakeTarget.OSIsLinux() {
 				wr.TagWithBody("Verbose", "true")

@@ -238,17 +238,9 @@ func (g *TundraGenerator) generateTundraLua(ws *Workspace) {
 	tundra.WriteLine(``)
 	tundra.WriteLine(`        CXXOPTS = {`)
 	tundra.WriteLine(`            mac_opts,`)
-	switch ws.Config.CppStd {
-	case CppStd11:
-		tundra.WriteLine(`            "-std=c++11",`)
-	case CppStd14:
-		tundra.WriteLine(`            "-std=c++14",`)
-	case CppStd17:
-		tundra.WriteLine(`            "-std=c++17",`)
-	case CppStd20:
-		tundra.WriteLine(`            "-std=c++20",`)
-	case CppStdLatest:
-		tundra.WriteLine(`            "-std=c++latest",`)
+	tundra.WriteLine(`            "-std=`, ws.Config.CppStd.String(), `",`)
+	if ws.Config.CppAdvanced.IsEnabled() {
+		tundra.WriteLine(`    "`, ws.Config.CppAdvanced.Tundra(ws.MakeTarget), `",`)
 	}
 	if runtime.GOARCH == "amd64" {
 		tundra.WriteLine(`			"-arch x86_64",`)
@@ -307,7 +299,9 @@ func (g *TundraGenerator) generateTundraLua(ws *Workspace) {
 	tundra.WriteLine(`    "-I$(OBJECTDIR)",`)
 	tundra.WriteLine(`    "-Wall",`)
 	tundra.WriteLine(`    "-fPIC",`)
-	tundra.WriteLine(`    "-msse2",   -- TODO: Separate gcc options for x64/arm somehow?`)
+	if ws.Config.CppAdvanced.IsEnabled() {
+		tundra.WriteLine(`    "`, ws.Config.CppAdvanced.Tundra(ws.MakeTarget), `",`)
+	}
 	tundra.WriteLine(`    { "-O2", "-g"; Config = "*-*-*-test" },`)
 	tundra.WriteLine(`    { "-O0", "-g"; Config = "*-*-debug-*" },`)
 	tundra.WriteLine(`    { "-O3", Config = "*-*-release-*" },`)
@@ -336,6 +330,10 @@ func (g *TundraGenerator) generateTundraLua(ws *Workspace) {
 	tundra.WriteLine(``)
 
 	tundra.WriteLine(`local win64_opts = {`)
+	tundra.WriteLine(`    "/std:`, ws.Config.CppStd.String(), `",`)
+	if ws.Config.CppAdvanced.IsEnabled() {
+		tundra.WriteLine(`    "`, ws.Config.CppAdvanced.Tundra(ws.MakeTarget), `",`)
+	}
 	tundra.WriteLine(`    "/EHsc", "/FS", "/W3", "/I.", "/DUNICODE", "/D_UNICODE", "/DWIN32", "/D_CRT_SECURE_NO_WARNINGS",`)
 	tundra.WriteLine(`    "\"/DOBJECT_DIR=$(OBJECTDIR:#)\"",`)
 	tundra.WriteLine(`    { "/Od", "/MDd"; Config = "*-*-debug-*" },`)

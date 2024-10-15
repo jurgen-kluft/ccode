@@ -3,6 +3,7 @@ package axe
 import (
 	"fmt"
 	"path/filepath"
+	"strings"
 
 	"github.com/jurgen-kluft/ccode/denv"
 )
@@ -22,6 +23,94 @@ const (
 	CppStdLatest
 )
 
+func (cst CppStdType) String() string {
+	switch cst {
+	case CppStd11:
+		return "c++11"
+	case CppStd14:
+		return "c++14"
+	case CppStd17:
+		return "c++17"
+	case CppStd20:
+		return "c++20"
+	case CppStd23:
+		return "c++23"
+	case CppStdLatest:
+		return "c++latest"
+	}
+	return ""
+}
+
+// -----------------------------------------------------------------------------------------------------
+// -----------------------------------------------------------------------------------------------------
+
+type CppAdvancedType int
+
+const (
+	CppAdvancedNone CppAdvancedType = iota
+	CppAdvancedSSE
+	CppAdvancedSSE2
+	CppAdvancedAVX
+	CppAdvancedAVX2
+	CppAdvancedAVX512
+)
+
+func (cat CppAdvancedType) IsEnabled() bool {
+	return cat != CppAdvancedNone
+}
+
+func (cat CppAdvancedType) ToString() string {
+	switch cat {
+	case CppAdvancedSSE:
+		return "SSE"
+	case CppAdvancedSSE2:
+		return "SSE2"
+	case CppAdvancedAVX:
+		return "AVX"
+	case CppAdvancedAVX2:
+		return "AVX2"
+	case CppAdvancedAVX512:
+		return "AVX512"
+	}
+	return ""
+}
+func (cat CppAdvancedType) Tundra(t MakeTarget) string {
+	if t.CompilerIsVc() && cat.IsEnabled() {
+		return "/arch:" + cat.ToString()
+	} else if t.CompilerIsClang() || t.CompilerIsGcc() {
+		return "-m" + strings.ToLower(cat.ToString())
+	}
+	return ""
+}
+
+func (cat CppAdvancedType) VisualStudio() string {
+	// Streaming SIMD Extensions (X86) (/arch:SSE)
+	//    <EnableEnhancedInstructionSet>StreamingSIMDExtensions</EnableEnhancedInstructionSet>
+	// Streaming SIMD Extensions 2 (X86) (/arch:SSE2)
+	//    <EnableEnhancedInstructionSet>StreamingSIMDExtensions2</EnableEnhancedInstructionSet>
+	// Advanced Vector Extensions (X86/X64) (/arch:AVX)
+	//    <EnableEnhancedInstructionSet>AdvancedVectorExtensions</EnableEnhancedInstructionSet>
+	// Advanced Vector Extensions 2 (X86/X64) (/arch:AVX2)
+	//    <EnableEnhancedInstructionSet>AdvancedVectorExtensions2</EnableEnhancedInstructionSet>
+	// Advanced Vector Extensions 512 (X86/X64) (/arch:AVX512)
+	//    <EnableEnhancedInstructionSet>AdvancedVectorExtensions512</EnableEnhancedInstructionSet>
+
+	cppAdvanced := ""
+	switch cat {
+	case CppAdvancedSSE:
+		cppAdvanced = "StreamingSIMDExtensions"
+	case CppAdvancedSSE2:
+		cppAdvanced = "StreamingSIMDExtensions2"
+	case CppAdvancedAVX:
+		cppAdvanced = "AdvancedVectorExtensions"
+	case CppAdvancedAVX2:
+		cppAdvanced = "AdvancedVectorExtensions2"
+	case CppAdvancedAVX512:
+		cppAdvanced = "AdvancedVectorExtensions512"
+	}
+	return cppAdvanced
+}
+
 // -----------------------------------------------------------------------------------------------------
 // -----------------------------------------------------------------------------------------------------
 
@@ -30,6 +119,7 @@ type WorkspaceConfig struct {
 	GenerateAbsPath    string              // The directory where the workspace and project files will be generated
 	StartupProject     string              // The name of the project that will be marked as the startup project
 	CppStd             CppStdType          // The C++ standard to use for this workspace and all projects
+	CppAdvanced        CppAdvancedType     // The C++ advanced features to use for this workspace and all projects
 	MultiThreadedBuild bool                // Whether to mark 'multi-threaded build' in the project files
 	MsDev              *VisualStudioConfig // The project configuration to use for msdev
 
@@ -47,6 +137,7 @@ func NewWorkspaceConfig(dev DevEnum, workspacePath string, projectName string) *
 	wsc.GenerateAbsPath = filepath.Join(workspacePath, projectName, "target")
 	wsc.StartupProject = projectName
 	wsc.CppStd = CppStd17
+	wsc.CppAdvanced = CppAdvancedNone
 	wsc.MultiThreadedBuild = true
 	wsc.MsDev = NewVisualStudioConfig(VisualStudio2022)
 
