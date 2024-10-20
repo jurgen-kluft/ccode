@@ -1,14 +1,11 @@
-#ignore all files
+#ignore all files and folders
 *
 !*/
 
-vendor/
-t2-output/
+#ignore this folder
 target/
-zig-cache/
-tags
 
-#except the following files
+#except the following file types
 !.gitignore
 !.clang-format
 !*.cpp
@@ -17,9 +14,10 @@ tags
 !*.h
 !*.inl
 
-!*.zig
-
 !*.go
+
+!*.md
+!*.pdf
 
 !*.cs
 !*.csproj
@@ -28,12 +26,6 @@ tags
 !*.hlsl
 !*.fragment
 
-!*.md
-!*.jpg
-!*.txt
-!*.html
-
 !*.ini
 !*.bat
 
-#except the following folders
