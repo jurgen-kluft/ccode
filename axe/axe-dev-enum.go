@@ -6,21 +6,22 @@ type DevEnum uint
 
 // All development environment
 const (
-	DevTundra  DevEnum = 0x020000
-	DevMake    DevEnum = 0x080000
-	DevXcode   DevEnum = 0x100000
-	DevVs2015  DevEnum = 0x200000 | 2015
-	DevVs2017  DevEnum = 0x200000 | 2017
-	DevVs2019  DevEnum = 0x200000 | 2019
-	DevVs2022  DevEnum = 0x200000 | 2022
-	DevInvalid DevEnum = 0xFFFFFFFF
+	DevTundra       DevEnum = 0x020000
+	DevMake         DevEnum = 0x080000
+	DevXcode        DevEnum = 0x100000
+	DevVisualStudio DevEnum = 0x200000
+	DevVs2015       DevEnum = DevVisualStudio | 2015
+	DevVs2017       DevEnum = DevVisualStudio | 2017
+	DevVs2019       DevEnum = DevVisualStudio | 2019
+	DevVs2022       DevEnum = DevVisualStudio | 2022
+	DevInvalid      DevEnum = 0xFFFFFFFF
 )
 
 func (d DevEnum) IsValid() bool {
 	return d.IsVisualStudio() || d.IsTundra() || d.IsMake() || d.IsXCode()
 }
 func (d DevEnum) IsVisualStudio() bool {
-	return d == DevVs2015 || d == DevVs2017 || d == DevVs2019 || d == DevVs2022
+	return d&DevVisualStudio != 0
 }
 func (d DevEnum) IsTundra() bool {
 	return d == DevTundra
@@ -48,10 +49,13 @@ func (d DevEnum) String() string {
 		return "vs2019"
 	case DevVs2022:
 		return "vs2022"
+	case DevVisualStudio:
+		return "vs2022"
 	default:
 		return "__invalid__"
 	}
 }
+
 func DevEnumFromString(dev string) DevEnum {
 	dev = strings.ToLower(dev)
 	if dev == "tundra" {

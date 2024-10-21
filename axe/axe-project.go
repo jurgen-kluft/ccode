@@ -510,7 +510,7 @@ func (p *Project) GlobFiles(dir string, pattern string, isExcluded func(string) 
 // -----------------------------------------------------------------------------------------------------
 // -----------------------------------------------------------------------------------------------------
 
-func (p *Project) BuildLibraryInformation(config *Config, workspaceGenerateAbsPath string) (linkDirs, linkFiles, linkLibs *ValueSet) {
+func (p *Project) BuildLibraryInformation(dev DevEnum, config *Config, workspaceGenerateAbsPath string) (linkDirs, linkFiles, linkLibs *ValueSet) {
 	linkDirs = NewValueSet()
 	linkFiles = NewValueSet()
 	linkLibs = NewValueSet()
@@ -527,10 +527,12 @@ func (p *Project) BuildLibraryInformation(config *Config, workspaceGenerateAbsPa
 	}
 
 	// For all project dependencies, get their matching config and take the OutputLib and add it to the linkLibs
-	for _, dep := range p.Dependencies.Values {
-		if cfg, has := dep.Resolved.Configs.Get(config.Type); has {
-			relpath := PathGetRelativeTo(cfg.Resolved.OutputLib.Path, workspaceGenerateAbsPath)
-			linkLibs.Add(relpath)
+	if dev.IsVisualStudio() {
+		for _, dep := range p.Dependencies.Values {
+			if cfg, has := dep.Resolved.Configs.Get(config.Type); has {
+				relpath := PathGetRelativeTo(cfg.Resolved.OutputLib.Path, workspaceGenerateAbsPath)
+				linkLibs.Add(relpath)
+			}
 		}
 	}
 

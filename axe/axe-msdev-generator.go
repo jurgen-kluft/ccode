@@ -370,7 +370,7 @@ func (g *MsDevGenerator) genProjectConfig(wr *XmlWriter, proj *Project, config *
 			// - Library files
 			// - And also include the dependency project output as a file to link with
 
-			linkDirs, linkFiles, linkLibs := proj.BuildLibraryInformation(config, proj.Workspace.GenerateAbsPath)
+			linkDirs, linkFiles, linkLibs := proj.BuildLibraryInformation(DevVisualStudio, config, proj.Workspace.GenerateAbsPath)
 
 			if proj.TypeIsExeOrDll() {
 				g.genConfigOptionFromValueSet(wr, proj, "AdditionalLibraryDirectories", linkDirs, true)
