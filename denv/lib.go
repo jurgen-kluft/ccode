@@ -13,5 +13,6 @@ type Lib struct {
 	Configs ConfigType
 	Type    LibType
 	Files   []string
+	Libs    []string
 	Dir     string
 }

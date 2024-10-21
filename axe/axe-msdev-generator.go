@@ -520,6 +520,7 @@ func (g *MsDevGenerator) genWorkspace(ws *ExtraWorkspace) {
 			sb.Write("\", \"")
 			sb.Write(c.MsDev.UUID.String(g.Workspace.Config.Dev))
 			sb.WriteLine("\"")
+			sb.WriteLine("EndProject")
 		}
 
 		sb.WriteLines("", "# ----  (ProjectGroups) -> parent ----", "")

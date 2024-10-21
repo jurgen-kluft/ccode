@@ -515,15 +515,28 @@ func (p *Project) BuildLibraryInformation(config *Config, workspaceGenerateAbsPa
 	linkFiles = NewValueSet()
 	linkLibs = NewValueSet()
 
-	// Library files
-	for _, file := range config.Library.Files.Values {
-		linkLibs.Add(file)
-	}
-
 	// Library directories, these will be relative to the workspace generate path
 	for _, dir := range config.Library.Dirs.Values {
 		relpath := PathGetRelativeTo(dir.String(), workspaceGenerateAbsPath)
 		linkDirs.Add(relpath)
+	}
+
+	// Library libs
+	for _, file := range config.Library.Libs.Values {
+		linkLibs.Add(file)
+	}
+
+	// For all project dependencies, get their matching config and take the OutputLib and add it to the linkLibs
+	for _, dep := range p.Dependencies.Values {
+		if cfg, has := dep.Resolved.Configs.Get(config.Type); has {
+			relpath := PathGetRelativeTo(cfg.Resolved.OutputLib.Path, workspaceGenerateAbsPath)
+			linkLibs.Add(relpath)
+		}
+	}
+
+	// Library files
+	for _, file := range config.Library.Files.Values {
+		linkFiles.Add(file)
 	}
 
 	return
