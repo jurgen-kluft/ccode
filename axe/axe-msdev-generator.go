@@ -406,7 +406,9 @@ func (g *MsDevGenerator) genProjectConfig(wr *XmlWriter, proj *Project, config *
 				wr.TagWithBody("GenerateDebugInformation", "true")
 
 				tmp := config.LinkFlags.Vars.Concatenated(" ", "", func(string, s string) string { return s })
-				wr.TagWithBody("AdditionalOptions", tmp)
+				if len(tmp) > 0 {
+					wr.TagWithBody("AdditionalOptions", tmp)
+				}
 
 				if !config.Type.IsDebug() {
 					wr.TagWithBodyBool("EnableCOMDATFolding", true)

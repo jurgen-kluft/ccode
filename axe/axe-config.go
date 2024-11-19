@@ -336,16 +336,16 @@ func (c *Config) InitVisualStudioSettings() {
 	if c.Workspace.MakeTarget.CompilerIsClang() {
 		c.VisualStudioClCompile.AddOrSet("DebugInformationFormat", "None")
 	} else {
-		c.VisualStudioClCompile.AddOrSet("DebugInformationFormat", "ProgramDatabase")
+		if c.Type.IsFinal() == false {
+			c.VisualStudioClCompile.AddOrSet("DebugInformationFormat", "ProgramDatabase")
+		}
 	}
 
 	if c.Type.IsDebug() {
 		c.VisualStudioClCompile.AddOrSet("Optimization", "Disabled")
-		c.VisualStudioClCompile.AddOrSet("DebugInformationFormat", "ProgramDatabase")
 		c.VisualStudioClCompile.AddOrSet("OmitFramePointers", "false")
 	} else {
 		c.VisualStudioClCompile.AddOrSet("Optimization", "Full") // MinSpace, MaxSpeed
-		c.VisualStudioClCompile.AddOrSet("DebugInformationFormat", "None")
 		c.VisualStudioClCompile.AddOrSet("OmitFramePointers", "true")
 		c.VisualStudioClCompile.AddOrSet("FunctionLevelLinking", "true")
 		c.VisualStudioClCompile.AddOrSet("IntrinsicFunctions", "true")

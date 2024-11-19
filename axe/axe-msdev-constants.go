@@ -28,9 +28,9 @@ func (r RuntimeLibraryType) String(debug bool) string {
 	} else {
 		switch r {
 		case RuntimeLibraryMultiThreaded:
-			return "MultiThreadedDebug"
+			return "MultiThreaded"
 		case RuntimeLibraryMultiThreadedDLL:
-			return "MultiThreadedDebugDLL"
+			return "MultiThreadedDLL"
 		}
 	}
 	return ""
