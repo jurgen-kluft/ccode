@@ -10,7 +10,7 @@ import (
 	fixr "github.com/jurgen-kluft/ccode/include-fixer"
 )
 
-var DefaultHeaderFileExtensions = map[string]bool{".h": true, ".hpp": true, ".inl": true}
+var DefaultHeaderFileExtensions = map[string]bool{".h": true, ".hpp": true, ".inl": true, ".inc": true}
 var DefaultHeaderFileFilter = func(_filepath string) bool {
 	_filepath = strings.ToLower(_filepath)
 	ext := filepath.Ext(_filepath)
