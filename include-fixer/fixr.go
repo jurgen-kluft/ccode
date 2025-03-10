@@ -174,29 +174,25 @@ func (f *Fixr) matchAndFixIncludeDirective(lineNumber int, line string, _filepat
 	return line, false
 }
 
-func (f *Fixr) matchAndFixIncludeGuard(lineNumber int, line string, nextline string, _filepathOfFileBeingFixed string) (l1 string, l2 string, status int) {
+func (f *Fixr) matchAndFixIncludeGuard(line string, nextline string, _filepathOfFileBeingFixed string) (l1 string, l2 string, status bool) {
 	cfg := f.includeGuardConfig
 
 	_ifndef := cfg.IncludeGuardIfNotDefRegex.FindStringSubmatch(line)
 	if _ifndef == nil || len(_ifndef) != 2 {
-		return "", "", -1
+		return "", "", false
 	}
 
 	_define := cfg.IncludeGuardDefineRegex.FindStringSubmatch(nextline)
 	if _define == nil || len(_define) != 2 {
-		return "", "", -1
+		return "", "", false
 	}
 
-	status = 0
-	if strings.Compare(_ifndef[1], _define[1]) != 0 {
+	status = false
+	if strings.Compare(_ifndef[1], _define[1]) == 0 {
 		def := cfg.modifyDefine(_define[1], _filepathOfFileBeingFixed)
 		l1 = "#ifndef " + def
 		l2 = "#define " + def
-		status = 1
-
-		if f.Verbose() {
-			fmt.Printf("fixer include guard in %s, line %d, %s -> %s\n", _filepathOfFileBeingFixed, lineNumber, line, l1)
-		}
+		status = true
 	}
 
 	return l1, l2, status
@@ -419,23 +415,25 @@ func (f *Fixr) fixHeaderFile(dirpath string, _filepath string) error {
 	}
 
 	if f.includeGuardConfig != nil {
-		i := 0
-
 		// Determine if this header file is using include guards, some header files might
 		// only have 'pragma once' and no include guards.
-		i = skipCommentsAndEmptyLines(i, lines)
+		i := skipCommentsAndEmptyLines(0, lines)
 		onlyHasPragmaOnce := strings.HasPrefix(lines[i], "#pragma once")
 		if !onlyHasPragmaOnce {
-			i = 0
 			for i < (len(lines) - 1) {
-				l1, l2, status := f.matchAndFixIncludeGuard(i, lines[i], lines[i+1], _filepath)
-				if status == 1 {
+				l1, l2, status := f.matchAndFixIncludeGuard(lines[i], lines[i+1], _filepath)
+				if status {
+					if f.Verbose() {
+						fmt.Printf("fixer include guard in %s, line %d, %s -> %s\n", _filepath, i+1, lines[i], l1)
+					}
 					lines[i] = l1
 					lines[i+1] = l2
 					numCorrections++
+					goto done
 				}
 				i += 1
 			}
+		done:
 		} else {
 			numCorrections += 1
 
