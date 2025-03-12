@@ -187,6 +187,32 @@ func SetupDefaultCppTestProject(name string, URL string) *Project {
 	return project
 }
 
+// SetupDefaultCppCliProject returns a default C++ command-line program project
+// Example:
+//
+//	SetupDefaultCppCliProject("cmycli", "github.com\\jurgen-kluft")
+func SetupDefaultCppCliProject(name string, URL string) *Project {
+	project := &Project{Name: name}
+	project.Type = Executable | Application | CppLanguage
+	if os.PathSeparator == '\\' {
+		project.PackageURL = strings.Replace(URL, "/", "\\", -1)
+	} else {
+		project.PackageURL = strings.Replace(URL, "\\", "/", -1)
+	}
+	project.Configs = append(project.Configs, NewConfig(ConfigTypeDebug|ConfigTypeDevelopment|ConfigTypeExecutable))
+	project.Configs = append(project.Configs, NewConfig(ConfigTypeRelease|ConfigTypeDevelopment|ConfigTypeExecutable))
+	project.Dependencies = []*Project{}
+
+	for _, cfg := range project.Configs {
+		configureProjectBasicConfiguration(project, cfg)
+		configureProjectPlatformConfiguration(project, cfg)
+		configureProjectLocalizedConfiguration(project, cfg)
+		configureProjectCliConfiguration(project, cfg)
+	}
+
+	return project
+}
+
 // SetupDefaultCppAppProject returns a default C++ application project
 // Example:
 //
@@ -223,9 +249,17 @@ func configureProjectTestConfiguration(project *Project, config *Config) {
 	config.SourceDirs = []string{"source/test/cpp"}
 }
 
+func configureProjectProgramConfiguration(dir string, project *Project, config *Config) {
+	config.IncludeDirs = []string{"source/main/include", "source/" + dir + "/include"}
+	config.SourceDirs = []string{"source/" + dir + "/cpp"}
+}
+
+func configureProjectCliConfiguration(project *Project, config *Config) {
+	configureProjectProgramConfiguration("cli", project, config)
+}
+
 func configureProjectAppConfiguration(project *Project, config *Config) {
-	config.IncludeDirs = []string{"source/main/include", "source/app/include"}
-	config.SourceDirs = []string{"source/app/cpp"}
+	configureProjectProgramConfiguration("app", project, config)
 }
 
 func configureProjectBasicConfiguration(project *Project, config *Config) {
