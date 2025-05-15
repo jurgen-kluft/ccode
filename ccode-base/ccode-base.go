@@ -12,13 +12,23 @@ import (
 )
 
 // Init will initialize ccode before anything else is run
+
+// tundra, vs2022, make, cmake, xcode, espmake
 var ccode_dev = "tundra"
+
+// win32, win64, linux32, linux64, macos64
 var ccode_os = runtime.GOOS
+
+// x64, arm64, amd64, 386, esp32 / esp32c3 / esp32s3
 var ccode_arch = runtime.GOARCH
+
+// verbose
+var ccode_verbose = false
 
 func Init() bool {
 
-	flag.StringVar(&ccode_dev, "dev", "tundra", "the build system to generate projects for (vs2022, tundra, make, cmake, xcode)")
+	flag.StringVar(&ccode_dev, "dev", "tundra", "the build system to generate projects for (vs2022, tundra, make, cmake, xcode, espmake)")
+	flag.BoolVar(&ccode_verbose, "verbose", false, "verbose output")
 	flag.Parse()
 
 	if ccode_os == "" {
@@ -33,6 +43,12 @@ func Init() bool {
 			ccode_dev = "vs2022"
 		}
 	}
+	if ccode_dev == "espmake" {
+		ccode_os = "arduino"
+		if ccode_arch == "" {
+			ccode_arch = "esp32"
+		}
+	}
 
 	fmt.Println("ccode, a tool to generate C/C++ workspace and project files")
 
@@ -45,6 +61,7 @@ func Init() bool {
 		fmt.Println("    -> Usage: ccode -dev=tundra")
 		fmt.Println("    -> Usage: ccode -dev=make")
 		fmt.Println("    -> Usage: ccode -dev=xcode")
+		fmt.Println("    -> Usage: ccode -dev=espmake")
 		return false
 	}
 
@@ -54,7 +71,7 @@ func Init() bool {
 // Generate is the main function that requires 'arguments' to then generate
 // workspace and project files for a specified IDE.
 func Generate(pkg *denv.Package) error {
-	generator := axe.NewGenerator(ccode_dev, ccode_os, ccode_arch)
+	generator := axe.NewGenerator(ccode_dev, ccode_os, ccode_arch, ccode_verbose)
 	return generator.Generate(pkg)
 }
 

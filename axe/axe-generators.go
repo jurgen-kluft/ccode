@@ -82,15 +82,17 @@ type Generator struct {
 	Dev             DevEnum
 	Os              string
 	Arch            string
+	Verbose         bool
 	GoPathAbs       string // $(GOPATH)/src, absolute path
 	ExclusionFilter *ExclusionFilter
 }
 
-func NewGenerator(dev string, os string, arch string) *Generator {
+func NewGenerator(dev string, os string, arch string, verbose bool) *Generator {
 	g := &Generator{}
 	g.Dev = DevEnumFromString(strings.ToLower(dev))
 	g.Os = strings.ToLower(os)
 	g.Arch = strings.ToLower(arch)
+	g.Verbose = verbose
 	return g
 }
 
@@ -115,6 +117,9 @@ func (g *Generator) Generate(pkg *denv.Package) error {
 	case DevVs2015, DevVs2017, DevVs2019, DevVs2022:
 		gg := NewMsDevGenerator(ws)
 		gg.Generate()
+	case DevEspMake:
+		gg := NewEspMakeGenerator(ws, g.Verbose)
+		err = gg.Generate()
 	}
 
 	return err

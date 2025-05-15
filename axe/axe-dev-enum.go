@@ -14,6 +14,7 @@ const (
 	DevVs2017       DevEnum = DevVisualStudio | 2017
 	DevVs2019       DevEnum = DevVisualStudio | 2019
 	DevVs2022       DevEnum = DevVisualStudio | 2022
+	DevEspMake      DevEnum = 0x400000
 	DevInvalid      DevEnum = 0xFFFFFFFF
 )
 
@@ -31,6 +32,9 @@ func (d DevEnum) IsMake() bool {
 }
 func (d DevEnum) IsXCode() bool {
 	return d == DevXcode
+}
+func (d DevEnum) IsEspMake() bool {
+	return d == DevEspMake
 }
 
 func (d DevEnum) String() string {
@@ -51,6 +55,8 @@ func (d DevEnum) String() string {
 		return "vs2022"
 	case DevVisualStudio:
 		return "vs2022"
+	case DevEspMake:
+		return "espmake"
 	default:
 		return "__invalid__"
 	}
@@ -72,6 +78,8 @@ func DevEnumFromString(dev string) DevEnum {
 		return DevVs2017
 	} else if dev == "vs2015" {
 		return DevVs2015
+	} else if dev == "espmake" {
+		return DevEspMake
 	} else {
 		if strings.HasPrefix(dev, "vs") {
 			return DevVs2022

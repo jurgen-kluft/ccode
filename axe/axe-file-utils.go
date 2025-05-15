@@ -5,6 +5,16 @@ import (
 	"path/filepath"
 )
 
+func FileExists(path string) bool {
+	fi, err := os.Stat(path)
+	return err == nil && !fi.IsDir()
+}
+
+func DirExists(path string) bool {
+	di, err := os.Stat(path)
+	return err == nil && di.IsDir()
+}
+
 func WriteTextFile(filename string, text string) error {
 	f, err := os.Create(filename)
 	if err != nil {
