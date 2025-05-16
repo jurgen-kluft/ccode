@@ -24,8 +24,8 @@ func NewIncludeMap() *IncludeMap {
 
 func (kv *IncludeMap) Add(value string, prefix bool) {
 	if prefix {
-		fmt.Println("Warning: Adding '/' to prefix include path to ensure it can concatenate")
 		if !strings.HasSuffix(value, "/") {
+            fmt.Println("Warning: Adding '/' to prefix include path to ensure it can concatenate")
 			value += "/"
 		}
 	}

@@ -5,6 +5,17 @@ import (
 	"path/filepath"
 )
 
+// TODO:
+// - MINOR: Archiver
+// - MINOR: Linker
+// - MINOR: ESP32 S3
+// - MAJOR: To reduce compile/link time we need Dependency Tracking (Database)
+//   - source file -> object file
+//     + args (excluding '<src> + -o <obj>')
+//     + response files, they should be a dependency
+//     + header files
+//     + tool(s) used
+
 // Project represents a C/C++ project that can be built using the Clay build system.
 type Project struct {
 	Name       string
