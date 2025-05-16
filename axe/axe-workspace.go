@@ -115,7 +115,9 @@ func (cat CppAdvancedType) VisualStudio() string {
 // -----------------------------------------------------------------------------------------------------
 
 type WorkspaceConfig struct {
-	Dev                DevEnum
+	Dev                DevEnum             // The development environment (tundra, make, xcode, vs2022, espmake)
+	OS                 string              // The operating system (windows, linux, macos, arduino)
+	Arch               string              // The architecture (x86, x64, arm, arm64, esp32)
 	GenerateAbsPath    string              // The directory where the workspace and project files will be generated
 	StartupProject     string              // The name of the project that will be marked as the startup project
 	CppStd             CppStdType          // The C++ standard to use for this workspace and all projects
@@ -131,9 +133,11 @@ type WorkspaceConfig struct {
 	LibTargetSuffix string
 }
 
-func NewWorkspaceConfig(dev DevEnum, workspacePath string, projectName string) *WorkspaceConfig {
+func NewWorkspaceConfig(_dev DevEnum, _os string, _arch string, workspacePath string, projectName string) *WorkspaceConfig {
 	wsc := &WorkspaceConfig{}
-	wsc.Dev = dev
+	wsc.Dev = _dev
+	wsc.OS = _os
+	wsc.Arch = _arch
 	wsc.GenerateAbsPath = filepath.Join(workspacePath, projectName, "target")
 	wsc.StartupProject = projectName
 	wsc.CppStd = CppStd17
@@ -167,7 +171,7 @@ func NewWorkspace(wsc *WorkspaceConfig) *Workspace {
 		ProjectGroups:   NewProjectGroups(),
 		ExtraWorkspaces: make(map[string]*ExtraWorkspace),
 	}
-	ws.MakeTarget = NewDefaultMakeTarget()
+	ws.MakeTarget = NewDefaultMakeTarget(ws.Config.Dev, ws.Config.OS, ws.Config.Arch)
 	ws.GenerateAbsPath = ws.Config.GenerateAbsPath
 
 	if ws.MakeTarget.OSIsWindows() {

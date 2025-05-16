@@ -82,10 +82,14 @@ func (d *PinnedPathSet) AddOrSet(base string, dir string) {
 //
 //	'last' will be 0 for all but the last key-value pair, and 1 for the last key-value pair.
 func (d *PinnedPathSet) Enumerate(enumerator func(i int, base string, dir string, last int)) {
+    n := (len(d.Values) - 1)
 	for i, fp := range d.Values {
-		base := fp.Root
-		dir := fp.Path
-		last := i / (len(d.Values) - 1)
+        base := fp.Root
+        dir := fp.Path
+        last := 0
+        if i == n {
+            last = 1
+        }
 		enumerator(i, base, dir, last)
 	}
 }

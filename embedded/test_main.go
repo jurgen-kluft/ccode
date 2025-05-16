@@ -21,6 +21,9 @@ var testMainFilename = "source/test/cpp/test_main.cpp"
 func WriteTestMainCpp(ccore bool, cbase bool, overwrite bool) {
 	// check if the file exists, if it does not, create it
 	_, err := os.Stat(testMainFilename)
+    if err  != nil {
+        return
+    }
 	if err == nil && !overwrite {
 		return
 	}

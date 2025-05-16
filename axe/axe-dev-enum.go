@@ -37,53 +37,45 @@ func (d DevEnum) IsEspMake() bool {
 	return d == DevEspMake
 }
 
+var DevEnumToStrMap = map[DevEnum]string{
+	DevTundra:       "tundra",
+	DevMake:         "make",
+	DevXcode:        "xcode",
+	DevVisualStudio: "vs2022",
+	DevVs2015:       "vs2015",
+	DevVs2017:       "vs2017",
+	DevVs2019:       "vs2019",
+	DevVs2022:       "vs2022",
+	DevEspMake:      "espmake",
+}
+
+var DevStrToEnumMap = map[string]DevEnum{
+	"tundra":       DevTundra,
+	"make":         DevMake,
+	"xcode":        DevXcode,
+	"vs2022":       DevVs2022,
+	"vs2015":       DevVs2015,
+	"vs2017":       DevVs2017,
+	"vs2019":       DevVs2019,
+	"espmake":      DevEspMake,
+	"visualstudio": DevVisualStudio,
+}
+
 func (d DevEnum) String() string {
-	switch d {
-	case DevTundra:
-		return "tundra"
-	case DevMake:
-		return "make"
-	case DevXcode:
-		return "xcode"
-	case DevVs2015:
-		return "vs2015"
-	case DevVs2017:
-		return "vs2017"
-	case DevVs2019:
-		return "vs2019"
-	case DevVs2022:
-		return "vs2022"
-	case DevVisualStudio:
-		return "vs2022"
-	case DevEspMake:
-		return "espmake"
-	default:
-		return "__invalid__"
+	if str, ok := DevEnumToStrMap[d]; ok {
+		return str
 	}
+	return "__invalid__"
 }
 
 func DevEnumFromString(dev string) DevEnum {
 	dev = strings.ToLower(dev)
-	if dev == "tundra" {
-		return DevTundra
-	} else if dev == "make" {
-		return DevMake
-	} else if dev == "xcode" {
-		return DevXcode
-	} else if dev == "vs2022" {
+	if devEnum, ok := DevStrToEnumMap[dev]; ok {
+		return devEnum
+	}
+
+	if strings.HasPrefix(dev, "vs") {
 		return DevVs2022
-	} else if dev == "vs2019" {
-		return DevVs2019
-	} else if dev == "vs2017" {
-		return DevVs2017
-	} else if dev == "vs2015" {
-		return DevVs2015
-	} else if dev == "espmake" {
-		return DevEspMake
-	} else {
-		if strings.HasPrefix(dev, "vs") {
-			return DevVs2022
-		}
 	}
 
 	return DevInvalid

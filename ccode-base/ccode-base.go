@@ -31,22 +31,23 @@ func Init() bool {
 	flag.BoolVar(&ccode_verbose, "verbose", false, "verbose output")
 	flag.Parse()
 
-	if ccode_os == "" {
+    if ccode_dev == "espmake" {
+        ccode_os = "arduino"
+        ccode_arch = "esp32"
+    }
+
+    if ccode_os == "" {
 		ccode_os = strings.ToLower(runtime.GOOS)
 	}
+
 	if ccode_arch == "" {
 		ccode_arch = strings.ToLower(runtime.GOARCH)
 	}
+
 	if ccode_dev == "" {
 		ccode_dev = "tundra"
 		if ccode_os == "windows" {
 			ccode_dev = "vs2022"
-		}
-	}
-	if ccode_dev == "espmake" {
-		ccode_os = "arduino"
-		if ccode_arch == "" {
-			ccode_arch = "esp32"
 		}
 	}
 

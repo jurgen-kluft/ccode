@@ -57,6 +57,12 @@ func NewLineWriter(mode IndentMode) *LineWriter {
 	return l
 }
 
+func (w *LineWriter) Clear() {
+	w.line.Reset()
+	w.lineLen = 0
+	w.lines = make([]string, 0, 8192)
+}
+
 func (w *LineWriter) finalize() {
 	if w.line.Len() > 0 {
 		w.lines = append(w.lines, w.line.String())

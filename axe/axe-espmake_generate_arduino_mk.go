@@ -4,7 +4,6 @@ import (
 	"bufio"
 	_ "embed"
 	"fmt"
-	"log"
 	"os"
 	"path/filepath"
 	"regexp"
@@ -88,42 +87,25 @@ func (v *Vars) multiCom(match string) string {
 }
 
 type TextFile struct {
-	Name  string
-	Path  string
-	Vars  *Vars
-	Lines []string
+	lines []string
 }
 
-func newTextFile(name, path string, vars *Vars) *TextFile {
+func newTextFile() *TextFile {
 	return &TextFile{
-		Name:  name,
-		Path:  path,
-		Vars:  vars,
-		Lines: make([]string, 0),
+		lines: make([]string, 0),
 	}
 }
 
-func (text *TextFile) defVar(name, _var string) {
-	text.writeLn(_var + " ?= " + text.Vars.Get(name))
-	text.Vars.Set(name, "$("+_var+")")
+func (text *TextFile) defVar(v *Vars, name, _var string) {
+	text.writeLn(_var + " ?= " + v.Get(name))
+	v.Set(name, "$("+_var+")")
 }
 
 func (text *TextFile) writeLn(lines ...string) {
-	text.Lines = append(text.Lines, lines...)
+	text.lines = append(text.lines, lines...)
 }
 
-// Helper function to check if a file or directory exists.
-func fileExists(path string) bool {
-	fi, err := os.Stat(path)
-	return err == nil && !fi.IsDir()
-}
-
-func dirExists(path string) bool {
-	di, err := os.Stat(path)
-	return err == nil && di.IsDir()
-}
-
-func GenerateArduinoMake(espRoot, ardEspRoot, boardName, flashSize, osType, lwipVariant string) (err error) {
+func GenerateArduinoMake(espRoot string, ardEspRoot string, boardName string, flashSize []string, osType string, lwipVariant []string) (lines []string, err error) {
 
 	filesToParse, err := filepath.Glob(espRoot + "/*.txt")
 	if err != nil {
@@ -167,14 +149,26 @@ func GenerateArduinoMake(espRoot, ardEspRoot, boardName, flashSize, osType, lwip
 
 	var boardDefined bool
 
-	reFlashSize := regexp.MustCompile(fmt.Sprintf(`%s.menu.(?:FlashSize|eesz).%s\.`, boardName, flashSize))
+	var reFlashSize *regexp.Regexp
+	if len(flashSize) > 0 {
+		reFlashSize = regexp.MustCompile(fmt.Sprintf(`%s.menu.(?:FlashSize|eesz).%s\.`, boardName, flashSize))
+	} else {
+		return nil, fmt.Errorf("Flash size not defined for %s\n", boardName)
+	}
+
+	var reLwIPVariant *regexp.Regexp
+	if len(lwipVariant) > 0 {
+		reLwIPVariant = regexp.MustCompile(fmt.Sprintf(`%s.menu.(?:LwIPVariant|ip).%s\.`, boardName, lwipVariant))
+	} else {
+		reLwIPVariant = nil
+	}
+
 	reCpuFrequency := regexp.MustCompile(fmt.Sprintf(`%s.menu.CpuFrequency.[^\.]+\.`, boardName))
 	reFlashFreq := regexp.MustCompile(fmt.Sprintf(`%s.menu.(?:FlashFreq|xtal).[^\.]+\.`, boardName))
 	reUploadSpeed := regexp.MustCompile(fmt.Sprintf(`%s.menu.UploadSpeed.[^\.]+\.`, boardName))
 	reBaud := regexp.MustCompile(fmt.Sprintf(`%s.menu.baud.[^\.]+\.`, boardName))
 	reResetMethod := regexp.MustCompile(fmt.Sprintf(`%s.menu.ResetMethod.[^\.]+\.`, boardName))
 	reFlashMode := regexp.MustCompile(fmt.Sprintf(`%s.menu.FlashMode.[^\.]+\.`, boardName))
-	reLwIPVariant := regexp.MustCompile(fmt.Sprintf(`%s.menu.(?:LwIPVariant|ip).%s\.`, boardName, lwipVariant))
 	rePartitionScheme := regexp.MustCompile(fmt.Sprintf(`%s.menu.PartitionScheme.[^\.]+\.`, boardName))
 
 	boardNameDotMenuDot := fmt.Sprintf("%s.menu.", boardName)
@@ -217,7 +211,9 @@ func GenerateArduinoMake(espRoot, ardEspRoot, boardName, flashSize, osType, lwip
 					key = reBaud.ReplaceAllString(key, "")
 					key = reResetMethod.ReplaceAllString(key, "")
 					key = reFlashMode.ReplaceAllString(key, "")
-					key = reLwIPVariant.ReplaceAllString(key, "")
+					if reLwIPVariant != nil {
+						key = reLwIPVariant.ReplaceAllString(key, "")
+					}
 					key = rePartitionScheme.ReplaceAllString(key, "")
 				}
 
@@ -269,23 +265,21 @@ func GenerateArduinoMake(espRoot, ardEspRoot, boardName, flashSize, osType, lwip
 
 	// fatal if boardDefined is false.
 	if !boardDefined {
-		log.Fatalf("* Unknown board %s\n", boardName)
+		return nil, fmt.Errorf("Unknown board %s", boardName)
 	}
 
-	// print "# Board definitions";
+	text := newTextFile()
 
-	text := newTextFile("arduino.mk", "", vars)
-
-	fmt.Println("# Board definitions")
-	text.defVar("build.code_debug", "CORE_DEBUG_LEVEL")
-	text.defVar("build.f_cpu", "F_CPU")
-	text.defVar("build.flash_mode", "FLASH_MODE")
-	text.defVar("build.cdc_on_boot", "CDC_ON_BOOT")
-	text.defVar("build.flash_freq", "FLASH_SPEED")
+	text.writeLn(fmt.Sprintln("# Board definitions"))
+	text.defVar(vars, "build.code_debug", "CORE_DEBUG_LEVEL")
+	text.defVar(vars, "build.f_cpu", "F_CPU")
+	text.defVar(vars, "build.flash_mode", "FLASH_MODE")
+	text.defVar(vars, "build.cdc_on_boot", "CDC_ON_BOOT")
+	text.defVar(vars, "build.flash_freq", "FLASH_SPEED")
 
 	// Note: This call to defVar will overwrite the default set earlier if it was used.
-	text.defVar("upload.resetmethod", "UPLOAD_RESET")
-	text.defVar("upload.speed", "UPLOAD_SPEED")
+	text.defVar(vars, "upload.resetmethod", "UPLOAD_RESET")
+	text.defVar(vars, "upload.speed", "UPLOAD_SPEED")
 	vars.Set("serial.port", "$(UPLOAD_PORT)")
 
 	re := regexp.MustCompile(`\{(cmd|path)\}`)
@@ -307,16 +301,16 @@ func GenerateArduinoMake(espRoot, ardEspRoot, boardName, flashSize, osType, lwip
 		// The loop continues as long as the value contains '{'.
 		// Inside the loop, replace the *first* match.
 		// We simulate this by finding the first match, replacing it, and repeating until no '{' is left.
-		for strings.Contains(vars.Get(key), "{") {
+		keyValue := vars.Get(key)
+		for strings.Contains(keyValue, "{") {
 			// Find the first match of {variable.name} in the current value.
-			match := varExpansionRegex.FindStringSubmatchIndex(vars.Get(key))
+			match := varExpansionRegex.FindStringSubmatchIndex(keyValue)
 			if match == nil {
 				// Should not happen if strings.Contains("{") is true, but as a safeguard.
 				break
 			}
 
 			// Extract the variable name from the first capture group.
-			keyValue := vars.Get(key)
 			varName := keyValue[match[2]:match[3]]
 
 			// Look up the variable name in the vars map.
@@ -330,33 +324,36 @@ func GenerateArduinoMake(espRoot, ardEspRoot, boardName, flashSize, osType, lwip
 			// Manually build the new string by replacing the first matched pattern with the replacement.
 			keyValue = keyValue[:match[0]] + replacement + keyValue[match[1]:]
 			keyValue = strings.ReplaceAll(keyValue, `""`, "")
-
-			// Translate the s/""//; replacement inside the while loop.
-			// This removes all occurrences of "" after each single variable substitution.
-			vars.Set(key, keyValue)
 		}
+
 		// After the while loop, the value for this key should have no '{' and no '""'.
+		vars.Set(key, keyValue)
 
 		// Checks if key is "compiler.path", if the value does NOT exist as a file/directory (-e),
 		// and if the value does NOT contain "$(COMP_PATH".
-		if key == "compiler.path" && !fileExists(vars.Get(key)) && !strings.Contains(vars.Get(key), "$(COMP_PATH") {
-			// Replaces the literal string $esp_root with $ard_esp_root.
-			vars.Set(key, strings.ReplaceAll(vars.Get(key), espRoot, ardEspRoot))
+		if key == "compiler.path" {
+			compilerPath := vars.Get(key)
+			containsCompPath := strings.Contains(compilerPath, "$(COMP_PATH")
+			if !containsCompPath && !DirExists(compilerPath) {
+				// Replaces the literal string $esp_root with $ard_esp_root.
+				compilerPath = strings.ReplaceAll(compilerPath, espRoot, ardEspRoot)
+				vars.Set(key, compilerPath)
 
-			// Removes "/bin/" from the end of the string.
-			vars.Set(key, strings.TrimSuffix(vars.Get(key), "/bin/"))
+				// Removes "/bin/" from the end of the string.
+				compilerPath = strings.TrimSuffix(compilerPath, "/bin/")
+				vars.Set(key, compilerPath)
 
-			pattern := vars.Get(key) + "*/*/bin/"
-			matches, err := filepath.Glob(pattern)
-			if err != nil {
-				// Handle glob error. Assign empty string on error or no match.
-				fmt.Fprintf(os.Stderr, "Error performing glob for pattern %q: %v", pattern, err)
-				//(*vars)[key] = "" // Assign empty string on error
-				vars.Set(key, "")
-			} else if len(matches) > 0 {
-				vars.Set(key, matches[0]) // Assign the first match found
-			} else {
-				vars.Set(key, "") // Assign empty string if no matches found
+				pattern := compilerPath + "*/*/bin/"
+				matches, err := filepath.Glob(pattern)
+				if err != nil {
+					// Handle glob error. Assign empty string on error or no match.
+					fmt.Fprintf(os.Stderr, "Error performing glob for pattern %q: %v", pattern, err)
+					vars.Set(key, "")
+				} else if len(matches) > 0 {
+					vars.Set(key, matches[0]) // Assign the first match found
+				} else {
+					vars.Set(key, "") // Assign empty string if no matches found
+				}
 			}
 		}
 
@@ -370,7 +367,7 @@ func GenerateArduinoMake(espRoot, ardEspRoot, boardName, flashSize, osType, lwip
 		vars.Set(key, escapeQuotesRegex.ReplaceAllString(vars.Get(key), "$1\\\"$2\\\""))
 	}
 
-	text.defVar("compiler.warning_flags", "COMP_WARNINGS")
+	text.defVar(vars, "compiler.warning_flags", "COMP_WARNINGS")
 
 	// Print the makefile content
 	var val string
@@ -466,30 +463,35 @@ func GenerateArduinoMake(espRoot, ardEspRoot, boardName, flashSize, osType, lwip
 	val = re4.ReplaceAllString(val, `$1`)
 	re5 := regexp.MustCompile("(#define .+0x)(`)")
 	val = re5.ReplaceAllString(val, `"\\$1\"$2`)
-	fmt.Printf("PREBUILD=%s", val)
+    text.writeLn(fmt.Sprintf("PREBUILD=%s", val))
 
 	text.writeLn(fmt.Sprintf("PRELINK=%s", vars.multiCom(`recipe\.hooks\.linking\.prelink.*\.pattern`)))
 	text.writeLn(fmt.Sprintf("MEM_FLASH=%s", vars.Get("recipe.size.regex")))
 	text.writeLn(fmt.Sprintf("MEM_RAM=%s", vars.Get("recipe.size.regex.data")))
 
-	flash_info := vars.Get("menu.FlashSize." + flashSize)
-	if flash_info == "" {
-		flash_info = vars.Get("menu.eesz." + flashSize)
+	if len(flashSize) > 0 {
+		flash_info := vars.Get("menu.FlashSize." + flashSize[0])
+		if flash_info == "" {
+			flash_info = vars.Get("menu.eesz." + flashSize[0])
+		}
+		text.writeLn(fmt.Sprintf("FLASH_INFO=%s", flash_info))
+	} else {
+		// default ?
+		text.writeLn(fmt.Sprintf("FLASH_INFO=%s", "4MB"))
 	}
 
-	text.writeLn(fmt.Sprintf("FLASH_INFO=%s", flash_info))
-
-	lwip_info := vars.Get("menu.LwIPVariant." + lwipVariant)
-	if lwip_info == "" {
-		lwip_info = vars.Get("menu.ip." + lwipVariant)
+	if len(lwipVariant) > 0 {
+		lwip_info := vars.Get("menu.LwIPVariant." + lwipVariant[0])
+		if lwip_info == "" {
+			lwip_info = vars.Get("menu.ip." + lwipVariant[0])
+		}
+		text.writeLn(fmt.Sprintf("LWIP_INFO=%s", lwip_info))
 	}
-
-	text.writeLn(fmt.Sprintf("LWIP_INFO=%s", lwip_info))
 
 	// for testing purposes, print to stdout
-	for _, line := range text.Lines {
-		fmt.Println(line)
-	}
+	// for _, line := range text.Lines {
+	// 	fmt.Println(line)
+	// }
 
-	return
+	return text.lines, nil
 }

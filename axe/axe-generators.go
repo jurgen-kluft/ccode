@@ -89,7 +89,7 @@ type Generator struct {
 
 func NewGenerator(dev string, os string, arch string, verbose bool) *Generator {
 	g := &Generator{}
-	g.Dev = DevEnumFromString(strings.ToLower(dev))
+	g.Dev = DevEnumFromString(dev)
 	g.Os = strings.ToLower(os)
 	g.Arch = strings.ToLower(arch)
 	g.Verbose = verbose
@@ -100,7 +100,7 @@ func (g *Generator) Generate(pkg *denv.Package) error {
 	var ws *Workspace
 	var err error
 
-	if ws, err = g.GenerateWorkspace(pkg, g.Dev); err != nil {
+	if ws, err = g.GenerateWorkspace(pkg, g.Dev, g.Os, g.Arch); err != nil {
 		return err
 	}
 
@@ -125,7 +125,7 @@ func (g *Generator) Generate(pkg *denv.Package) error {
 	return err
 }
 
-func (g *Generator) GenerateWorkspace(pkg *denv.Package, dev DevEnum) (*Workspace, error) {
+func (g *Generator) GenerateWorkspace(pkg *denv.Package, _dev DevEnum, _os string, _arch string) (*Workspace, error) {
 	g.GoPathAbs = filepath.Join(os.Getenv("GOPATH"), "src")
 
 	mainLib := pkg.GetMainLib()
@@ -144,7 +144,7 @@ func (g *Generator) GenerateWorkspace(pkg *denv.Package, dev DevEnum) (*Workspac
 		app = mainLib
 	}
 
-	wsc := NewWorkspaceConfig(dev, g.GoPathAbs, app.Name)
+	wsc := NewWorkspaceConfig(_dev, _os, _arch, g.GoPathAbs, app.Name)
 	wsc.StartupProject = app.Name
 	wsc.MultiThreadedBuild = true
 
@@ -214,7 +214,7 @@ func (g *Generator) GenerateWorkspace(pkg *denv.Package, dev DevEnum) (*Workspac
 		}
 	}
 
-	if err := ws.Resolve(dev); err != nil {
+	if err := ws.Resolve(ws.Config.Dev); err != nil {
 		return nil, err
 	}
 

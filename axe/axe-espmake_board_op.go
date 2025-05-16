@@ -80,7 +80,7 @@ func BoardOp(filePath string, cpuName string, boardName string, opName string) (
 				break
 			}
 		}
-	} else if opName == "list_names" {
+	} else if opName == "list_names" || opName == "list_boards" {
 		re := regexp.MustCompile(`^([\w\-]+)\.name=(.+)`)
 		for scanner.Scan() {
 			line := scanner.Text()
@@ -90,7 +90,7 @@ func BoardOp(filePath string, cpuName string, boardName string, opName string) (
 			}
 		}
 	} else if opName == "list_flash" {
-		//fmt.Printf("=== Memory configurations for board: %s ===\n", boardName)
+		// memory configurations for board
 		re := regexp.MustCompile(regexp.QuoteMeta(boardName) + flashDefMatch)
 		for scanner.Scan() {
 			line := scanner.Text()
@@ -109,7 +109,7 @@ func BoardOp(filePath string, cpuName string, boardName string, opName string) (
 			}
 		}
 	} else if opName == "list_lwip" {
-		//fmt.Printf("=== lwip configurations for board: %s ===\n", boardName)
+		// lwip configurations for board
 		re := regexp.MustCompile(regexp.QuoteMeta(boardName) + lwipDefMatch)
 		for scanner.Scan() {
 			line := scanner.Text()

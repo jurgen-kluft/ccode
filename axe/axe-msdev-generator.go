@@ -31,7 +31,7 @@ func (g *MsDevGenerator) Generate() {
 
 func (g *MsDevGenerator) init(ws *Workspace) {
 	if ws.MakeTarget == nil {
-		ws.MakeTarget = NewDefaultMakeTarget()
+		ws.MakeTarget = NewDefaultMakeTarget(ws.Config.Dev, ws.Config.OS, ws.Config.Arch)
 	}
 
 	if ws.MakeTarget.ArchIsX64() {

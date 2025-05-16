@@ -34,6 +34,10 @@ func NewMakeTarget(os string, compiler string, cpu string) MakeTarget {
 	return target
 }
 
+func NewMakeTargetWindows() MakeTarget {
+	return NewMakeTarget(OS_WINDOWS, COMPILER_VC, ARCH_X64)
+}
+
 func NewMakeTargetMacOS() MakeTarget {
 	arch := runtime.GOARCH
 	return NewMakeTarget(OS_MAC, COMPILER_CLANG, arch)
@@ -44,16 +48,19 @@ func NewMakeTargetLinux() MakeTarget {
 	return NewMakeTarget(OS_LINUX, COMPILER_CLANG, arch)
 }
 
-func NewMakeTargetWindows() MakeTarget {
-	return NewMakeTarget(OS_WINDOWS, COMPILER_VC, ARCH_X64)
+func NewMakeTargetEsp32() MakeTarget {
+	return NewMakeTarget(OS_ARDUINO, COMPILER_GCC, ARCH_ESP32)
 }
 
-func NewDefaultMakeTarget() MakeTarget {
-	// use golang internal 'runtime' variables to determine the default target
-	if strings.Contains(runtime.GOOS, "windows") {
+func NewDefaultMakeTarget(_dev DevEnum, _os string, _arch string) MakeTarget {
+	if _os == "windows" {
 		return NewMakeTargetWindows()
-	} else if strings.Contains(runtime.GOOS, "darwin") {
+	} else if _os == "darwin" {
 		return NewMakeTargetMacOS()
+	} else if _os == "linux" {
+		return NewMakeTargetLinux()
+	} else if _os == "arduino" {
+		return NewMakeTargetEsp32()
 	}
 	return NewMakeTargetLinux()
 }
@@ -63,6 +70,7 @@ const (
 	OS_WINDOWS = "windows"
 	OS_MAC     = "mac"
 	OS_IOS     = "ios"
+	OS_ARDUINO = "arduino"
 )
 
 const (
@@ -75,6 +83,7 @@ const (
 	ARCH_X64   = "x86_64"
 	ARCH_AMD64 = "amd64"
 	ARCH_ARM64 = "arm64"
+	ARCH_ESP32 = "esp32"
 )
 
 type MakeTargetInstance struct {

@@ -149,7 +149,7 @@ func SetupDefaultCppLibProject(name string, URL string) *Project {
 		configureProjectBasicConfiguration(project, cfg)
 		configureProjectPlatformConfiguration(project, cfg)
 		configureProjectLocalizedConfiguration(project, cfg)
-		configureProjectLibConfiguration(project, cfg)
+		configureProjectLibConfiguration(cfg)
 	}
 
 	return project
@@ -181,7 +181,7 @@ func SetupDefaultCppTestProject(name string, URL string) *Project {
 		configureProjectBasicConfiguration(project, cfg)
 		configureProjectPlatformConfiguration(project, cfg)
 		configureProjectLocalizedConfiguration(project, cfg)
-		configureProjectTestConfiguration(project, cfg)
+		configureProjectTestConfiguration(cfg)
 	}
 
 	return project
@@ -239,27 +239,27 @@ func SetupDefaultCppAppProject(name string, URL string) *Project {
 	return project
 }
 
-func configureProjectLibConfiguration(project *Project, config *Config) {
+func configureProjectLibConfiguration(config *Config) {
 	config.IncludeDirs = []string{"source/main/include"}
 	config.SourceDirs = []string{"source/main/cpp"}
 }
 
-func configureProjectTestConfiguration(project *Project, config *Config) {
+func configureProjectTestConfiguration(config *Config) {
 	config.IncludeDirs = []string{"source/main/include", "source/test/include"}
 	config.SourceDirs = []string{"source/test/cpp"}
 }
 
-func configureProjectProgramConfiguration(dir string, project *Project, config *Config) {
+func configureProjectProgramConfiguration(dir string, config *Config) {
 	config.IncludeDirs = []string{"source/main/include", "source/" + dir + "/include"}
 	config.SourceDirs = []string{"source/" + dir + "/cpp"}
 }
 
 func configureProjectCliConfiguration(project *Project, config *Config) {
-	configureProjectProgramConfiguration("cli", project, config)
+	configureProjectProgramConfiguration("cli", config)
 }
 
 func configureProjectAppConfiguration(project *Project, config *Config) {
-	configureProjectProgramConfiguration("app", project, config)
+	configureProjectProgramConfiguration("app", config)
 }
 
 func configureProjectBasicConfiguration(project *Project, config *Config) {

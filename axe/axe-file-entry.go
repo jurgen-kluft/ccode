@@ -143,6 +143,10 @@ func NewFileEntryDict(ws *Workspace, path string) *FileEntryDict {
 	}
 }
 
+func (d *FileEntryDict) GetAbsPath(e *FileEntry) string {
+	return filepath.Join(d.Path, e.Path)
+}
+
 func (d *FileEntryDict) GetRelativePath(e *FileEntry, path string) string {
 	return PathGetRelativeTo(filepath.Join(d.Path, e.Path), path)
 }
