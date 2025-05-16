@@ -11,18 +11,14 @@ import (
 // Project represents a C/C++ project that can be built using the Clay build system.
 
 type TargetEsp32 struct {
-	cp *CompilerPackage
+	benv *BuildEnvironment
 }
 
 func NewTargetEsp32(buildPath string) *TargetEsp32 {
-	t := &TargetEsp32{}
 
-	cp := &CompilerPackage{}
-	t.cp = cp
-	cp.Name = "esp32-compiler"
-	cp.Version = "1.0.0"
-	cp.ArchiverPath = "/Users/obnosis5/sdk/arduino/esp32/tools/xtensa-esp-elf/bin/xtensa-esp32-elf-gcc-ar"
-	cp.LinkerPath = "/Users/obnosis5/sdk/arduino/esp32/tools/xtensa-esp-elf/bin/xtensa-esp32-elf-g++"
+	benv := NewBuildEnvironment("esp32", "v1.0.0")
+	benv.ArchiverPath = "/Users/obnosis5/sdk/arduino/esp32/tools/xtensa-esp-elf/bin/xtensa-esp32-elf-gcc-ar"
+	benv.LinkerPath = "/Users/obnosis5/sdk/arduino/esp32/tools/xtensa-esp-elf/bin/xtensa-esp32-elf-g++"
 
 	// C specific
 	cc := &Compiler{}
@@ -102,8 +98,8 @@ func NewTargetEsp32(buildPath string) *TargetEsp32 {
 
 	// Compilers
 
-	cp.CCompiler = cc
-	cp.CppCompiler = cxc
+	benv.CCompiler = cc
+	benv.CppCompiler = cxc
 
 	// Linker specific
 
@@ -111,17 +107,17 @@ func NewTargetEsp32(buildPath string) *TargetEsp32 {
 
 	// Functions to be implemented
 
-	cp.PreBuild = func() error { return nil }
-	cp.Setup = func() error { return nil }
-	cp.Compile = func(srcFile *SourceFile, outputPath string) error {
+	benv.PreBuild = func() error { return nil }
+	benv.Setup = func() error { return nil }
+	benv.Compile = func(srcFile *SourceFile, outputPath string) error {
 		var args []string
 		var cl string
 		if srcFile.IsCpp {
-			args = cp.CppCompiler.BuildArgs(cp.CppCompiler, srcFile, outputPath)
-			cl = cp.CppCompiler.CompilerPath
+			args = benv.CppCompiler.BuildArgs(benv.CppCompiler, srcFile, outputPath)
+			cl = benv.CppCompiler.CompilerPath
 		} else {
-			args = cp.CCompiler.BuildArgs(cp.CCompiler, srcFile, outputPath)
-			cl = cp.CCompiler.CompilerPath
+			args = benv.CCompiler.BuildArgs(benv.CCompiler, srcFile, outputPath)
+			cl = benv.CCompiler.CompilerPath
 		}
 		cmd := exec.Command(cl, args...)
 		out, err := cmd.CombinedOutput()
@@ -133,22 +129,22 @@ func NewTargetEsp32(buildPath string) *TargetEsp32 {
 		}
 		return nil
 	}
-	cp.PreArchive = func() error { return nil }
-	cp.Archive = func(lib *Library, outputPath string) error { return nil }
-	cp.PreLink = func() error { return nil }
-	cp.Link = func(exe Executable) error { return nil }
+	benv.PreArchive = func() error { return nil }
+	benv.Archive = func(lib *Library, outputPath string) error { return nil }
+	benv.PreLink = func() error { return nil }
+	benv.Link = func(exe Executable) error { return nil }
 
-	return t
+	return &TargetEsp32{benv: benv}
 }
 
 func (t *TargetEsp32) Init() error {
 	// Initialize the compiler package
-	if t.cp == nil {
+	if t.benv == nil {
 		return fmt.Errorf("compiler package is not initialized")
 	}
 
 	// Set up the compiler package
-	if err := t.cp.Setup(); err != nil {
+	if err := t.benv.Setup(); err != nil {
 		return fmt.Errorf("failed to set up compiler package: %w", err)
 	}
 
@@ -212,7 +208,7 @@ func BuildCompilerArgs(cl *Compiler, srcFile *SourceFile, outputPath string) []s
 func (t *TargetEsp32) Prebuild() error {
 
 	// Call the pre-build function if it exists
-	if err := t.cp.PreBuild(); err != nil {
+	if err := t.benv.PreBuild(); err != nil {
 		return fmt.Errorf("failed to run prebuild: %w", err)
 	}
 
@@ -249,7 +245,7 @@ func (t *TargetEsp32) Build() error {
 	buildPathC := filepath.Join(buildPath, coreCLib.OutputRelFilePath)
 	MakeDir(buildPathC)
 	for _, src := range coreCLib.SourceFiles {
-		if err := t.cp.Compile(src, buildPathC); err != nil {
+		if err := t.benv.Compile(src, buildPathC); err != nil {
 			return fmt.Errorf("failed to compile C source file %s: %w", src.SrcAbsPath, err)
 		}
 	}
@@ -278,7 +274,7 @@ func (t *TargetEsp32) Build() error {
 	buildPathCpp := filepath.Join(buildPath, coreCppLib.OutputRelFilePath)
 	MakeDir(buildPathCpp)
 	for _, src := range coreCppLib.SourceFiles {
-		if err := t.cp.Compile(src, buildPathCpp); err != nil {
+		if err := t.benv.Compile(src, buildPathCpp); err != nil {
 			return fmt.Errorf("failed to compile C++ source file %s: %w", src.SrcAbsPath, err)
 		}
 	}
