@@ -4,6 +4,8 @@ import (
 	"fmt"
 	"path/filepath"
 	"strings"
+
+	ccode_utils "github.com/jurgen-kluft/ccode/utils"
 )
 
 type XcodeGenerator struct {
@@ -35,7 +37,7 @@ func (g *XcodeGenerator) genWorkSpace() {
 		}
 	}
 
-	wr := NewXmlWriter()
+	wr := ccode_utils.NewXmlWriter()
 	{
 		tag := wr.TagScope("Workspace")
 		wr.Attr("version", "1.0")
@@ -48,7 +50,7 @@ func (g *XcodeGenerator) genWorkSpace() {
 	wr.WriteToFile(filepath.Join(xcodeWorkspace, "contents.xcworkspacedata"))
 }
 
-func (g *XcodeGenerator) genWorkspaceGroup(wr *XmlWriter, group *ProjectGroup) {
+func (g *XcodeGenerator) genWorkspaceGroup(wr *ccode_utils.XmlWriter, group *ProjectGroup) {
 	for _, c := range group.Children {
 		tag := wr.TagScope("Group")
 		{
@@ -833,7 +835,7 @@ func (g *XcodeGenerator) genInfoPlistMacOSX(proj *Project) error {
 	gd := proj.Resolved.GenDataXcode
 	gd.InfoPlistFile = proj.Name + "_info.plist"
 
-	wr := NewXmlWriter()
+	wr := ccode_utils.NewXmlWriter()
 	wr.WriteHeader()
 	wr.WriteDocType("plist", "-//Apple//DTD PLIST 1.0//EN", "http://www.apple.com/DTDs/PropertyList-1.0.dtd")
 

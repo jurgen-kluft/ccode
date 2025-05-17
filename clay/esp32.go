@@ -1,20 +1,41 @@
 package clay
 
 import (
+	"bufio"
+	"bytes"
 	"fmt"
 	"log"
 	"os"
 	"os/exec"
 	"path/filepath"
+	"strconv"
+	"strings"
+
+	ccode_utils "github.com/jurgen-kluft/ccode/utils"
 )
 
-// Project represents a C/C++ project that can be built using the Clay build system.
+//
+// This is a build environment for a generic ESP32 board.
+// It uses the ESP32 Arduino core and the ESP32 toolchain.
+//
+// The YD ESP32 board is such a generic ESP32 board.
+//
+// NOTE: Currently a lot of paths and details are hardcoded,
+// the next step is to have some functions that can read the
+// necessary information from the boards.txt file and with that
+// generate the necessary paths and flags.
+//
+// However, it should not be too much effort to add support for
+// a ESP32 S3 board.
+//
 
 type BuildEnvironmentEsp32 BuildEnvironment
 
 func NewBuildEnvironmentEsp32(buildPath string) *BuildEnvironment {
 
+	// TODO Hard-coded, this should likely be read as a environment variable
 	ESP_ROOT := "/Users/obnosis5/sdk/arduino/esp32"
+
 	be := (*BuildEnvironmentEsp32)(NewBuildEnvironment("esp32", "v1.0.0", ESP_ROOT))
 
 	{ // C specific
@@ -211,6 +232,120 @@ func NewBuildEnvironmentEsp32(buildPath string) *BuildEnvironment {
 		return args
 	}
 
+	be.ImageStatsTool = NewImageStatsTool(filepath.Join(ESP_ROOT, "/tools/xtensa-esp-elf/bin/xtensa-esp32-elf-size"))
+	be.ImageStatsTool.GenArgs = func(img *ImageStatsTool, exe *Executable, buildPath string) []string {
+		args := make([]string, 0, 2)
+		args = append(args, "-A")
+		args = append(args, filepath.Join(buildPath, exe.OutputFilePath))
+		return args
+	}
+
+	be.ImageStatsTool.ParseStats = func(s string, exe *Executable) (*ImageStats, error) {
+		stats := &ImageStats{
+			FlashSize: 0,
+			RAMSize:   0,
+		}
+
+		// Example Output:
+		//     build/TestProject.elf  :
+		//     section                 size         addr
+		//     .rtc.text                  0   1074528256
+		//     .rtc.dummy                 0   1073217536
+		//     .rtc.force_fast           28   1073217536
+		//     .rtc_noinit                0   1342177792
+		//     .rtc.force_slow            0   1342177792
+		//     .rtc_fast_reserved        16   1073225712
+		//     .rtc_slow_reserved        24   1342185448
+		//     .iram0.vectors          1027   1074266112
+		//     .iram0.text            58615   1074267140
+		//     .dram0.data            15284   1073470304
+		//     .ext_ram_noinit            0   1065353216
+		//     .noinit                    0   1073485588
+		//     .ext_ram.bss               0   1065353216
+		//     .dram0.bss              5224   1073485592
+		//     .flash.appdesc           256   1061158944
+		//     .flash.rodata          69160   1061159200
+		//     .flash.text           135512   1074593824
+		//     .iram0.text_end            1   1074325755
+		//     .iram0.data                0   1074325756
+		//     .iram0.bss                 0   1074325756
+		//     .dram0.heap_start          0   1073490816
+		//     .debug_aranges         33920            0
+		//     .debug_info          2191837            0
+		//     .debug_abbrev         281430            0
+		//     .debug_line          1342862            0
+		//     .debug_frame           85216            0
+		//     .debug_str            361642            0
+		//     .debug_loc            438423            0
+		//     .debug_ranges          67832            0
+		//     .debug_line_str        12428            0
+		//     .debug_loclists       113443            0
+		//     .debug_rnglists        10220            0
+		//     .comment                 169            0
+		//     .xtensa.info              56            0
+		//     .xt.prop                2220            0
+		//     .xt.lit                   80            0
+		//     Total                5226925
+
+		// Flash sections:
+		//    "^(?:\.iram0\.text|\.iram0\.vectors|\.dram0\.data|\.dram1\.data|\.flash\.text|\.flash\.rodata|\.flash\.appdesc|\.flash\.init_array|\.eh_frame|)\s+([0-9]+).*"
+		// RAM sections:
+		//    "^(?:\.dram0\.data|\.dram0\.bss|\.dram1\.data|\.dram1\.bss|\.noinit)\s+([0-9]+).*"
+
+		// Check if the section is a flash section
+		patterns_RAM := make([]string, 0, 5)
+		patterns_RAM = append(patterns_RAM, ".iram?.text")
+		patterns_RAM = append(patterns_RAM, ".iram?.vectors")
+		patterns_RAM = append(patterns_RAM, ".dram?.data")
+		patterns_RAM = append(patterns_RAM, ".dram?.data")
+
+		patterns_FLASH := make([]string, 0, 5)
+		patterns_FLASH = append(patterns_FLASH, ".flash.text")
+		patterns_FLASH = append(patterns_FLASH, ".flash.rodata")
+		patterns_FLASH = append(patterns_FLASH, ".flash.appdesc")
+		patterns_FLASH = append(patterns_FLASH, ".flash.init_array")
+		patterns_FLASH = append(patterns_FLASH, ".eh_frame")
+
+		scanner := bufio.NewScanner(bytes.NewBufferString(s))
+		for scanner.Scan() {
+			line := scanner.Text()
+			if len(line) == 0 {
+				continue
+			}
+
+			// Split the line into fields
+			fields := strings.Fields(line)
+			if len(fields) < 2 {
+				continue
+			}
+
+			section := fields[0]
+
+			for _, pattern := range patterns_FLASH {
+				if ccode_utils.GlobMatching(section, pattern) {
+					if size, err := strconv.ParseInt(fields[1], 10, 64); err == nil {
+						stats.FlashSize += size
+					}
+					goto found_match
+				}
+			}
+			for _, pattern := range patterns_RAM {
+				if ccode_utils.GlobMatching(section, pattern) {
+					if size, err := strconv.ParseInt(fields[1], 10, 64); err == nil {
+						stats.RAMSize += size
+					}
+					goto found_match
+				}
+			}
+		found_match:
+		}
+		if err := scanner.Err(); err != nil {
+			return nil, fmt.Errorf("failed to read output: %w", err)
+		}
+
+		return stats, nil
+	}
+
 	// Functions
 
 	be.SetupFunc = func(be *BuildEnvironment) error { return nil }
@@ -250,7 +385,7 @@ func NewBuildEnvironmentEsp32(buildPath string) *BuildEnvironment {
 		ar = be.Archiver.ArchiverPath
 
 		cmd := exec.Command(ar, args...)
-        log.Printf("Archiving %s\n", lib.OutputFilename)
+		log.Printf("Archiving %s\n", lib.OutputFilename)
 		out, err := cmd.CombinedOutput()
 		if err != nil {
 			return fmt.Errorf("Archive failed with %s\n", err)
@@ -272,7 +407,7 @@ func NewBuildEnvironmentEsp32(buildPath string) *BuildEnvironment {
 		lnk = be.Linker.LinkerPath
 
 		cmd := exec.Command(lnk, args...)
-        log.Printf("Linking '%s'...\n", exe.Name+".elf")
+		log.Printf("Linking '%s'...\n", exe.Name+".elf")
 		out, err := cmd.CombinedOutput()
 		if err != nil {
 			return fmt.Errorf("Link failed with %s\n", err)
@@ -286,7 +421,6 @@ func NewBuildEnvironmentEsp32(buildPath string) *BuildEnvironment {
 
 	// Generate Image
 	be.GenerateImageFunc = func(be *BuildEnvironment, exe *Executable, buildPath string) error {
-
 		{
 			img, _ := exec.LookPath(be.ImageGenerator.EspPartitionsToolPath)
 			args := be.ImageGenerator.GenEspPartArgs(be.ImageGenerator, exe, buildPath)
@@ -306,7 +440,7 @@ func NewBuildEnvironmentEsp32(buildPath string) *BuildEnvironment {
 			args := be.ImageGenerator.GenEspToolArgs(be.ImageGenerator, exe, buildPath)
 
 			cmd := exec.Command(imgPath, args...)
-            log.Printf("Generating image '%s'\n", exe.Name+".bin")
+			log.Printf("Generating image '%s'\n", exe.Name+".bin")
 			out, err := cmd.CombinedOutput()
 			if err != nil {
 				return fmt.Errorf("Image generation failed with %s\n", err)
@@ -317,6 +451,29 @@ func NewBuildEnvironmentEsp32(buildPath string) *BuildEnvironment {
 		}
 
 		return nil
+	}
+
+	be.GenerateStatsFunc = func(be *BuildEnvironment, exe *Executable, buildPath string) (*ImageStats, error) {
+
+		statsToolPath := be.ImageStatsTool.ElfSizeToolPath
+		statsToolArgs := be.ImageStatsTool.GenArgs(be.ImageStatsTool, exe, buildPath)
+
+		cmd := exec.Command(statsToolPath, statsToolArgs...)
+		log.Printf("Generating ELF size stats for '%s'\n", exe.Name+".elf")
+		out, err := cmd.CombinedOutput()
+		if err != nil {
+			return nil, fmt.Errorf("ELF size stats query failed with %s\n", err)
+		}
+		if len(out) > 0 {
+			stats, err := be.ImageStatsTool.ParseStats(string(out), exe)
+			if err != nil {
+				return nil, fmt.Errorf("failed to parse ELF size stats: %w", err)
+			}
+
+			return stats, nil
+		}
+
+		return nil, fmt.Errorf("failed to generate ELF size stats: %s", string(out))
 	}
 
 	return (*BuildEnvironment)(be)
@@ -409,10 +566,9 @@ func (*BuildEnvironmentEsp32) Build(be *BuildEnvironment, exe *Executable, build
 	if stats, err := be.GenerateStatsFunc(be, exe, buildPath); err != nil {
 		return err
 	} else {
-		// Print the ELF size stats
-		fmt.Println("ELF Size Stats:")
-		fmt.Printf("RAM: %d bytes\n", stats.RAMSize)
-		fmt.Printf("Flash: %d bytes\n", stats.FlashSize)
+		fmt.Println("Memory summary:")
+		fmt.Printf("    RAM:   %d bytes\n", stats.RAMSize)
+		fmt.Printf("    Flash: %d bytes\n", stats.FlashSize)
 	}
 
 	return nil

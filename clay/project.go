@@ -5,10 +5,8 @@ import (
 )
 
 // TODO:
+// - MINOR: Clay build CLI-APP for the user to build/clean/flash the project
 // - MINOR: Build Info (build_info.h and build_info.cpp as a Library)
-// - MINOR: Archiver
-// - MINOR: Linker
-// - MINOR: Image Generator
 // - MINOR: Elf Size Stats
 // - MINOR: ESP32 S3 Target
 // - MAJOR: To reduce compile/link time we need Dependency Tracking (Database)
@@ -17,6 +15,11 @@ import (
 //     + response files, they should be a dependency
 //     + header files
 //     + tool(s) used
+
+// DONE:
+// - MINOR: Archiver
+// - MINOR: Linker
+// - MINOR: Image Generator
 
 // Project represents a C/C++ project that can be built using the Clay build system.
 type Project struct {
@@ -36,6 +39,13 @@ func NewProject(name string, version string, buildPath string) *Project {
 	}
 }
 
+func (p *Project) GetExecutable() *Executable {
+	if p.Executable == nil {
+		p.Executable = NewExecutable(p.Name, p.Version, p.BuildPath)
+	}
+	return p.Executable
+}
+
 func (p *Project) SetBuildEnvironment(be *BuildEnvironment) error {
 
 	sdkRoot := be.SdkRoot
@@ -44,25 +54,7 @@ func (p *Project) SetBuildEnvironment(be *BuildEnvironment) error {
 	//// all the C and Cpp source files in this directory and create a Library.
 	coreLibPath := filepath.Join(sdkRoot, "cores/esp32/")
 
-    //
-	//coreCLib := NewCLibrary("esp32-core-c", "1.0.0", "esp32-core", "libesp32-core-c.a")
-	//coreCLib.IsSystemLibrary = true
-    //
-	//coreCLib.IncludeDirs.Add(coreLibPath, false)
-	//coreCLib.IncludeDirs.Add(filepath.Join(sdkRoot, "tools/esp32-arduino-libs/esp32/include/"), true)
-	//coreCLib.IncludeDirs.Add(filepath.Join(sdkRoot, "cores/esp32"), false)
-	//coreCLib.IncludeDirs.Add(filepath.Join(sdkRoot, "variants/esp32"), false)
-    //
-	//// Flash Type
-	//coreCLib.IncludeDirs.Add(filepath.Join(sdkRoot, "tools/esp32-arduino-libs/esp32/dio_qspi/include"), false)
-    //
-	//// Get all the .c files from the core library path
-	//coreCLib.AddSourceFilesFrom(coreLibPath, OptionAddCFiles)
-	//coreCLib.PrepareOutput(p.BuildPath)
-
-    //p.Executable.Libraries = append(p.Executable.Libraries, coreCLib)
-
-    coreCppLib := NewCppLibrary("esp32-core-cpp", "1.0.0", "esp32-core", "libesp32-core-cpp.a")
+	coreCppLib := NewCppLibrary("esp32-core-cpp", "1.0.0", "esp32-core", "libesp32-core-cpp.a")
 	coreCppLib.IsSystemLibrary = true
 
 	coreCppLib.IncludeDirs.Add(coreLibPath, false)
@@ -74,7 +66,7 @@ func (p *Project) SetBuildEnvironment(be *BuildEnvironment) error {
 	coreCppLib.IncludeDirs.Add(filepath.Join(sdkRoot, "tools/esp32-arduino-libs/esp32/dio_qspi/include"), false)
 
 	// Get all the .cpp files from the core library path
-	coreCppLib.AddSourceFilesFrom(coreLibPath, OptionAddCppFiles | OptionAddCFiles | OptionAddRecursively)
+	coreCppLib.AddSourceFilesFrom(coreLibPath, OptionAddCppFiles|OptionAddCFiles|OptionAddRecursively)
 	coreCppLib.PrepareOutput(p.BuildPath)
 
 	p.Executable.Libraries = append(p.Executable.Libraries, coreCppLib)

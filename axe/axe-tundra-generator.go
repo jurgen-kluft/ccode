@@ -4,6 +4,8 @@ import (
 	"path/filepath"
 	"runtime"
 	"strings"
+
+	ccode_utils "github.com/jurgen-kluft/ccode/utils"
 )
 
 type TundraGenerator struct {
@@ -25,7 +27,7 @@ func (g *TundraGenerator) Generate() {
 }
 
 func (g *TundraGenerator) generateUnitsLua(ws *Workspace) {
-	units := NewLineWriter(IndentModeTabs)
+	units := ccode_utils.NewLineWriter(ccode_utils.IndentModeTabs)
 
 	units.WriteLine(`require "tundra.syntax.glob"`)
 	units.WriteLine(`require "tundra.path"`)
@@ -75,7 +77,7 @@ func (g *TundraGenerator) generateUnitsLua(ws *Workspace) {
 	units.WriteToFile(filepath.Join(ws.GenerateAbsPath, "units.lua"))
 }
 
-func (g *TundraGenerator) writeUnit(units *LineWriter, p *Project, isProgram bool) {
+func (g *TundraGenerator) writeUnit(units *ccode_utils.LineWriter, p *Project, isProgram bool) {
 	units.WriteILine("+", "Name = ", `"`, p.Name, `",`)
 	units.WriteILine("+", "Env = {")
 
@@ -203,7 +205,7 @@ func (g *TundraGenerator) writeUnit(units *LineWriter, p *Project, isProgram boo
 }
 
 func (g *TundraGenerator) generateTundraLua(ws *Workspace) {
-	tundra := NewLineWriter(IndentModeTabs)
+	tundra := ccode_utils.NewLineWriter(ccode_utils.IndentModeTabs)
 	tundra.WriteLine(`local native = require('tundra.native')`)
 	tundra.WriteLine(``)
 	tundra.WriteLine(`-----------------------------------------------------------------------------------------------------------------------`)

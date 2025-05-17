@@ -2,6 +2,8 @@ package axe
 
 import (
 	"fmt"
+
+	ccode_utils "github.com/jurgen-kluft/ccode/utils"
 )
 
 type LevelType int8
@@ -12,7 +14,7 @@ const (
 )
 
 type XcodeWriter struct {
-	buffer        *stringBuilder
+	buffer        *ccode_utils.StringBuilder
 	lines         []string
 	levels        []int8
 	newlineNeeded bool
@@ -20,7 +22,7 @@ type XcodeWriter struct {
 
 func NewXcodeWriter() *XcodeWriter {
 	w := &XcodeWriter{}
-	w.buffer = NewStringBuilder()
+	w.buffer = ccode_utils.NewStringBuilder()
 	w.lines = make([]string, 0, 2048)
 	w.levels = make([]int8, 0, 16)
 	w.newlineNeeded = true
@@ -29,7 +31,7 @@ func NewXcodeWriter() *XcodeWriter {
 
 func (w *XcodeWriter) WriteToFile(filename string) error {
 	w.finalize()
-	return WriteLinesToFile(filename, w.lines)
+	return ccode_utils.WriteLinesToFile(filename, w.lines)
 }
 
 // ------------------------------------------------------------------------------------------------

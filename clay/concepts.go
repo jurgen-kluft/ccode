@@ -26,7 +26,6 @@ type Library struct {
 	Defines     *ValueMap     // Compiler defines (macros) for the library
 	IncludeDirs *IncludeMap   // Include paths for the library (system)
 	SourceFiles []*SourceFile // C/C++ Source files for the library
-	Libraries   []*Library    // Libraries that this library depends on
 }
 
 func NewLibrary(name string, version string, buildSubDir string, outputFilename string) *Library {
@@ -40,7 +39,6 @@ func NewLibrary(name string, version string, buildSubDir string, outputFilename 
 		Defines:         NewValueMap(),
 		IncludeDirs:     NewIncludeMap(),
 		SourceFiles:     make([]*SourceFile, 0),
-		Libraries:       make([]*Library, 0),
 	}
 }
 
@@ -54,6 +52,17 @@ func NewCppLibrary(name string, version string, buildSubDir string, outputFilena
 	lib := NewLibrary(name, version, buildSubDir, outputFilename)
 	lib.IsCppLibrary = true
 	return lib
+}
+
+func (lib *Library) AddSourceFile(srcPath string, srcRelPath string, isCpp bool) {
+	srcFile := &SourceFile{
+		SrcAbsPath: srcPath,
+		SrcRelPath: srcRelPath,
+		IsCpp:      isCpp,
+		ObjRelPath: "",
+		DepRelPath: "",
+	}
+	lib.SourceFiles = append(lib.SourceFiles, srcFile)
 }
 
 type AddSourceFileOptions int
@@ -93,14 +102,7 @@ func (lib *Library) AddSourceFilesFrom(srcPath string, options AddSourceFileOpti
 		isCpp := HasOption(options, OptionAddCppFiles) && filepath.Ext(relPath) == ".cpp"
 		isC := !isCpp && (HasOption(options, OptionAddCFiles) && filepath.Ext(relPath) == ".c")
 		if isCpp || isC {
-			srcFile := &SourceFile{
-				SrcAbsPath: path,
-				SrcRelPath: relPath,
-				IsCpp:      isCpp,
-				ObjRelPath: "",
-				DepRelPath: "",
-			}
-			lib.SourceFiles = append(lib.SourceFiles, srcFile)
+			lib.AddSourceFile(path, relPath, isCpp)
 		}
 		return nil
 	})
@@ -131,6 +133,10 @@ func NewExecutable(name string, version string, outputPath string) *Executable {
 		ObjectFiles:    make([]*SourceFile, 0),
 		Libraries:      make([]*Library, 0),
 	}
+}
+
+func (exe *Executable) AddLibrary(lib *Library) {
+	exe.Libraries = append(exe.Libraries, lib)
 }
 
 type Compiler struct {
@@ -239,7 +245,15 @@ type ImageStats struct {
 type ImageStatsTool struct {
 	ElfSizeToolPath string                                                                // FilePath to the ELF size tool
 	GenArgs         func(es *ImageStatsTool, exe *Executable, outputPath string) []string // Function to build the ELF size tool arguments
-	GetStats        func(s string, exe *Executable) (*ImageStats, error)                  // Function to print the ELF size stats
+	ParseStats      func(s string, exe *Executable) (*ImageStats, error)                  // Function to print the ELF size stats
+}
+
+func NewImageStatsTool(elfSizeToolPath string) *ImageStatsTool {
+	return &ImageStatsTool{
+		ElfSizeToolPath: elfSizeToolPath,
+		GenArgs:         func(es *ImageStatsTool, exe *Executable, outputPath string) []string { return nil },
+		ParseStats:      func(s string, exe *Executable) (*ImageStats, error) { return &ImageStats{}, nil },
+	}
 }
 
 type BuildEnvironment struct {

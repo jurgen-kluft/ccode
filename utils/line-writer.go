@@ -1,4 +1,4 @@
-package axe
+package ccode_utils
 
 import "unicode/utf8"
 
@@ -6,7 +6,7 @@ import "unicode/utf8"
 // --------------------------------------------------------------------------------------------
 
 type LineWriter struct {
-	line           *stringBuilder
+	line           *StringBuilder
 	lineLen        int
 	lines          []string
 	tabstops       []int

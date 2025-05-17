@@ -3,6 +3,8 @@ package axe
 import (
 	"path"
 	"path/filepath"
+
+	ccode_utils "github.com/jurgen-kluft/ccode/utils"
 )
 
 type MsDevGenerator struct {
@@ -68,7 +70,7 @@ func (g *MsDevGenerator) TargetPlatformVersion(proj *Project) string {
 func (g *MsDevGenerator) genProject(proj *Project) {
 	projectFilepath := filepath.Join(g.Workspace.GenerateAbsPath, proj.ProjectFilename+".vcxproj")
 
-	wr := NewXmlWriter()
+	wr := ccode_utils.NewXmlWriter()
 	{
 		wr.WriteHeader()
 		tag := wr.TagScope("Project")
@@ -216,7 +218,7 @@ func (g *MsDevGenerator) genProject(proj *Project) {
 	wr.WriteToFile(projectFilepath)
 }
 
-func (g *MsDevGenerator) genProjectFiles(wr *XmlWriter, proj *Project) {
+func (g *MsDevGenerator) genProjectFiles(wr *ccode_utils.XmlWriter, proj *Project) {
 	tag := wr.TagScope("ItemGroup")
 
 	g.genProjectPch(wr, proj)
@@ -251,7 +253,7 @@ func (g *MsDevGenerator) genProjectFiles(wr *XmlWriter, proj *Project) {
 	tag.Close()
 }
 
-func (g *MsDevGenerator) genProjectPch(wr *XmlWriter, proj *Project) {
+func (g *MsDevGenerator) genProjectPch(wr *ccode_utils.XmlWriter, proj *Project) {
 	if proj.Resolved.PchHeader == nil {
 		return
 	}
@@ -272,7 +274,7 @@ func (g *MsDevGenerator) genProjectPch(wr *XmlWriter, proj *Project) {
 	code := "//-- Auto Generated File for Visual C++ precompiled header\n"
 	code += "#include \"" + tmp + "\"\n"
 
-	WriteTextFile(filename, code)
+	ccode_utils.WriteTextToFile(filename, code)
 
 	tag := wr.TagScope("ClCompile")
 	{
@@ -282,7 +284,7 @@ func (g *MsDevGenerator) genProjectPch(wr *XmlWriter, proj *Project) {
 	tag.Close()
 }
 
-func (g *MsDevGenerator) genProjectConfig(wr *XmlWriter, proj *Project, config *Config) {
+func (g *MsDevGenerator) genProjectConfig(wr *ccode_utils.XmlWriter, proj *Project, config *Config) {
 	cond := "'$(Configuration)|$(Platform)'=='" + config.String() + "|" + g.VcxProjCpu + "'"
 	{
 		tag := wr.TagScope("PropertyGroup")
@@ -437,7 +439,7 @@ func (g *MsDevGenerator) genProjectConfig(wr *XmlWriter, proj *Project, config *
 	}
 }
 
-func (g *MsDevGenerator) genConfigOptionFromKeyValueDict(wr *XmlWriter, proj *Project, name string, kv *KeyValueDict, treatAsPath bool) {
+func (g *MsDevGenerator) genConfigOptionFromKeyValueDict(wr *ccode_utils.XmlWriter, proj *Project, name string, kv *KeyValueDict, treatAsPath bool) {
 	option := kv.Concatenated("", ";", func(k string, v string) string {
 		if treatAsPath {
 			path := PathGetRelativeTo(v, proj.Workspace.GenerateAbsPath)
@@ -449,7 +451,7 @@ func (g *MsDevGenerator) genConfigOptionFromKeyValueDict(wr *XmlWriter, proj *Pr
 	wr.TagWithBody(name, option)
 }
 
-func (g *MsDevGenerator) genConfigOptionFromValueSet(wr *XmlWriter, proj *Project, name string, value *ValueSet, treatAsPath bool) {
+func (g *MsDevGenerator) genConfigOptionFromValueSet(wr *ccode_utils.XmlWriter, proj *Project, name string, value *ValueSet, treatAsPath bool) {
 	option := value.Concatenated("", ";", func(v string) string {
 		if treatAsPath {
 			path := PathGetRelativeTo(v, proj.Workspace.GenerateAbsPath)
@@ -461,13 +463,13 @@ func (g *MsDevGenerator) genConfigOptionFromValueSet(wr *XmlWriter, proj *Projec
 	wr.TagWithBody(name, option)
 }
 
-func (g *MsDevGenerator) genConfigOptionWithModifier(wr *XmlWriter, name string, value *PinnedPathSet, modifier func(string, string) string) {
+func (g *MsDevGenerator) genConfigOptionWithModifier(wr *ccode_utils.XmlWriter, name string, value *PinnedPathSet, modifier func(string, string) string) {
 	option := value.Concatenated("", ";", modifier)
 	option += "%(" + name + ")"
 	wr.TagWithBody(name, option)
 }
 
-func (g *MsDevGenerator) writeSolutionProject(proj *Project, sb *LineWriter) {
+func (g *MsDevGenerator) writeSolutionProject(proj *Project, sb *ccode_utils.LineWriter) {
 	sb.Write("Project(\"{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}\") = ")
 	sb.WriteLine("\"" + proj.Name + "\", \"" + proj.Name + ".vcxproj\", \"" + proj.Resolved.GenDataMsDev.UUID.String(g.Workspace.Config.Dev) + "\"")
 
@@ -486,7 +488,7 @@ func (g *MsDevGenerator) writeSolutionProject(proj *Project, sb *LineWriter) {
 func (g *MsDevGenerator) genWorkspace(ws *ExtraWorkspace) {
 	visualStudioSolutionFilepath := filepath.Join(g.Workspace.GenerateAbsPath, ws.Workspace.WorkspaceName+".sln")
 
-	sb := NewLineWriter(IndentModeSpaces)
+	sb := ccode_utils.NewLineWriter(ccode_utils.IndentModeSpaces)
 
 	sb.WriteManyLines(ws.MsDev.SlnHeader)
 
@@ -560,7 +562,7 @@ func (g *MsDevGenerator) genWorkspace(ws *ExtraWorkspace) {
 func (g *MsDevGenerator) genProjectFilters(proj *Project) {
 	projectFiltersFilepath := filepath.Join(g.Workspace.GenerateAbsPath, proj.ProjectFilename+".vcxproj.filters")
 
-	wr := NewXmlWriter()
+	wr := ccode_utils.NewXmlWriter()
 	{
 		wr.WriteHeader()
 
