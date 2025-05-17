@@ -96,7 +96,7 @@ func (g *MsDevGenerator) genProject(proj *Project) {
 		{
 			tag := wr.TagScope("PropertyGroup")
 			wr.Attr("Label", "Globals")
-			wr.TagWithBody("ProjectGuid", proj.Resolved.GenDataMsDev.UUID.String(g.Workspace.Config.Dev))
+			wr.TagWithBody("ProjectGuid", proj.Resolved.GenDataMsDev.UUID.ForVisualStudio())
 			wr.TagWithBody("Keyword", "Win32Proj")
 			wr.TagWithBody("RootNamespace", proj.Name)
 			wr.TagWithBody("WindowsTargetPlatformVersion", proj.Workspace.Config.MsDev.WindowsTargetPlatformVersion)
@@ -141,7 +141,7 @@ func (g *MsDevGenerator) genProject(proj *Project) {
 					panic("Unsupported compiler")
 				}
 
-				relBuildDir := PathGetRelativeTo(g.Workspace.GenerateAbsPath, g.Workspace.WorkspaceAbsPath)
+				relBuildDir := ccode_utils.PathGetRelativeTo(g.Workspace.GenerateAbsPath, g.Workspace.WorkspaceAbsPath)
 
 				remoteRootDir := "_vsForLinux/" + g.Workspace.MakeTarget.OSAsString() + "/" + relBuildDir
 				wr.TagWithBody("RemoteRootDir", remoteRootDir)
@@ -268,7 +268,7 @@ func (g *MsDevGenerator) genProjectPch(wr *ccode_utils.XmlWriter, proj *Project)
 	}
 
 	filename := proj.Resolved.GeneratedFilesDir + proj.Name + "-precompiledHeader" + pchExt
-	tmp := PathGetRelativeTo(proj.Resolved.PchHeader.Path, proj.Resolved.GeneratedFilesDir)
+	tmp := ccode_utils.PathGetRelativeTo(proj.Resolved.PchHeader.Path, proj.Resolved.GeneratedFilesDir)
 
 	proj.Resolved.PchHeader.Init(filename, true)
 	code := "//-- Auto Generated File for Visual C++ precompiled header\n"
@@ -290,18 +290,18 @@ func (g *MsDevGenerator) genProjectConfig(wr *ccode_utils.XmlWriter, proj *Proje
 		tag := wr.TagScope("PropertyGroup")
 		wr.Attr("Condition", cond)
 
-		outDir := PathDirname(config.Resolved.OutputTarget.Path)
+		outDir := ccode_utils.PathDirname(config.Resolved.OutputTarget.Path)
 		if g.Workspace.MakeTarget.OSIsLinux() {
 			outDir = filepath.Join(outDir, g.Workspace.MakeTarget.OSAsString())
 		}
 
 		intDir := filepath.Join(g.Workspace.GenerateAbsPath, "obj", proj.Name, config.String()+"_"+g.Workspace.MakeTarget.ArchAsString()+"_"+g.Workspace.Config.MsDev.PlatformToolset)
-		targetName := PathFilename(config.Resolved.OutputTarget.Path, false)
-		targetExt := PathFileExtension(config.Resolved.OutputTarget.Path)
+		targetName := ccode_utils.PathFilename(config.Resolved.OutputTarget.Path, false)
+		targetExt := ccode_utils.PathFileExtension(config.Resolved.OutputTarget.Path)
 
 		// Visual Studio wants the following paths to end with a backslash
-		wr.TagWithBody("OutDir", PathNormalize(PathGetRelativeTo(outDir, proj.GenerateAbsPath))+PathSlash())
-		wr.TagWithBody("IntDir", PathNormalize(PathGetRelativeTo(intDir, proj.GenerateAbsPath))+PathSlash())
+		wr.TagWithBody("OutDir", ccode_utils.PathNormalize(ccode_utils.PathGetRelativeTo(outDir, proj.GenerateAbsPath))+ccode_utils.PathSlash())
+		wr.TagWithBody("IntDir", ccode_utils.PathNormalize(ccode_utils.PathGetRelativeTo(intDir, proj.GenerateAbsPath))+ccode_utils.PathSlash())
 		wr.TagWithBody("TargetName", targetName)
 		if targetExt != "" {
 			wr.TagWithBody("TargetExt", targetExt)
@@ -350,7 +350,7 @@ func (g *MsDevGenerator) genProjectConfig(wr *ccode_utils.XmlWriter, proj *Proje
 			g.genConfigOptionFromKeyValueDict(wr, proj, "DisableSpecificWarnings", config.DisableWarning.Vars, false)
 			g.genConfigOptionFromKeyValueDict(wr, proj, "PreprocessorDefinitions", config.CppDefines.Vars, false)
 			g.genConfigOptionWithModifier(wr, "AdditionalIncludeDirectories", config.IncludeDirs, func(_root string, _path string) string {
-				relpath := PathGetRelativeTo(path.Join(_root, _path), proj.Workspace.GenerateAbsPath)
+				relpath := ccode_utils.PathGetRelativeTo(path.Join(_root, _path), proj.Workspace.GenerateAbsPath)
 				return relpath
 			})
 
@@ -384,7 +384,7 @@ func (g *MsDevGenerator) genProjectConfig(wr *ccode_utils.XmlWriter, proj *Proje
 				}
 				tmp := linkLibs.Concatenated("", ";", func(s string) string { return s })
 				tmp += linkFiles.Concatenated(relativeTo, ";", func(value string) string {
-					path := PathGetRelativeTo(value, proj.Workspace.GenerateAbsPath)
+					path := ccode_utils.PathGetRelativeTo(value, proj.Workspace.GenerateAbsPath)
 					return path
 				})
 				tmp += "%(" + optName + ")"
@@ -428,7 +428,7 @@ func (g *MsDevGenerator) genProjectConfig(wr *ccode_utils.XmlWriter, proj *Proje
 		if config.Resolved.OutputTarget.Path != "" {
 			tag := wr.TagScope("RemotePostBuildEvent")
 			{
-				cmd := "mkdir -p \"" + "$(RemoteRootDir)/" + PathDirname(config.Resolved.OutputTarget.Path) + "\";"
+				cmd := "mkdir -p \"" + "$(RemoteRootDir)/" + ccode_utils.PathDirname(config.Resolved.OutputTarget.Path) + "\";"
 				cmd += "cp -f \"$(RemoteProjectDir)/" + config.Resolved.OutputTarget.Path + "\" \"$(RemoteRootDir)/" + config.Resolved.OutputTarget.Path + "\""
 				wr.TagWithBody("Command", cmd)
 			}
@@ -442,7 +442,7 @@ func (g *MsDevGenerator) genProjectConfig(wr *ccode_utils.XmlWriter, proj *Proje
 func (g *MsDevGenerator) genConfigOptionFromKeyValueDict(wr *ccode_utils.XmlWriter, proj *Project, name string, kv *KeyValueDict, treatAsPath bool) {
 	option := kv.Concatenated("", ";", func(k string, v string) string {
 		if treatAsPath {
-			path := PathGetRelativeTo(v, proj.Workspace.GenerateAbsPath)
+			path := ccode_utils.PathGetRelativeTo(v, proj.Workspace.GenerateAbsPath)
 			return path
 		}
 		return v
@@ -454,7 +454,7 @@ func (g *MsDevGenerator) genConfigOptionFromKeyValueDict(wr *ccode_utils.XmlWrit
 func (g *MsDevGenerator) genConfigOptionFromValueSet(wr *ccode_utils.XmlWriter, proj *Project, name string, value *ValueSet, treatAsPath bool) {
 	option := value.Concatenated("", ";", func(v string) string {
 		if treatAsPath {
-			path := PathGetRelativeTo(v, proj.Workspace.GenerateAbsPath)
+			path := ccode_utils.PathGetRelativeTo(v, proj.Workspace.GenerateAbsPath)
 			return path
 		}
 		return v
@@ -471,13 +471,13 @@ func (g *MsDevGenerator) genConfigOptionWithModifier(wr *ccode_utils.XmlWriter, 
 
 func (g *MsDevGenerator) writeSolutionProject(proj *Project, sb *ccode_utils.LineWriter) {
 	sb.Write("Project(\"{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}\") = ")
-	sb.WriteLine("\"" + proj.Name + "\", \"" + proj.Name + ".vcxproj\", \"" + proj.Resolved.GenDataMsDev.UUID.String(g.Workspace.Config.Dev) + "\"")
+	sb.WriteLine("\"" + proj.Name + "\", \"" + proj.Name + ".vcxproj\", \"" + proj.Resolved.GenDataMsDev.UUID.ForVisualStudio() + "\"")
 
 	if len(proj.Dependencies.Values) > 0 {
 		{
 			sb.WriteLine("\tProjectSection(ProjectDependencies) = postProject")
 			for _, dp := range proj.Dependencies.Values {
-				sb.WriteLine("\t\t" + dp.Resolved.GenDataMsDev.UUID.String(g.Workspace.Config.Dev) + " = " + dp.Resolved.GenDataMsDev.UUID.String(g.Workspace.Config.Dev))
+				sb.WriteLine("\t\t" + dp.Resolved.GenDataMsDev.UUID.ForVisualStudio() + " = " + dp.Resolved.GenDataMsDev.UUID.ForVisualStudio())
 			}
 			sb.WriteLine("\tEndProjectSection")
 		}
@@ -511,9 +511,9 @@ func (g *MsDevGenerator) genWorkspace(ws *ExtraWorkspace) {
 			if c == root {
 				continue
 			}
-			c.MsDev.UUID = GenerateUUID()
+			c.MsDev.UUID = ccode_utils.GenerateUUID()
 
-			catName := PathFilename(c.Path, true)
+			catName := ccode_utils.PathFilename(c.Path, true)
 			// sb += "Project(\"{2150E333-8FDC-42A3-9474-1A3956D46DE8}\") = \""
 			// sb += catName + "\", \"" + catName + "\", \"" + c.MsDev.UUID.String() + "\"\n"
 			// sb += "EndProject\n"
@@ -522,7 +522,7 @@ func (g *MsDevGenerator) genWorkspace(ws *ExtraWorkspace) {
 			sb.Write("\", \"")
 			sb.Write(catName)
 			sb.Write("\", \"")
-			sb.Write(c.MsDev.UUID.String(g.Workspace.Config.Dev))
+			sb.Write(c.MsDev.UUID.ForVisualStudio())
 			sb.WriteLine("\"")
 			sb.WriteLine("EndProject")
 		}
@@ -534,9 +534,9 @@ func (g *MsDevGenerator) genWorkspace(ws *ExtraWorkspace) {
 		for _, c := range g.Workspace.ProjectGroups.Values {
 			if c.Parent != nil && c.Parent != root {
 				sb.Write("\t\t")
-				sb.Write(c.MsDev.UUID.String(g.Workspace.Config.Dev))
+				sb.Write(c.MsDev.UUID.ForVisualStudio())
 				sb.Write(" = ")
-				sb.WriteLine(c.Parent.MsDev.UUID.String(g.Workspace.Config.Dev))
+				sb.WriteLine(c.Parent.MsDev.UUID.ForVisualStudio())
 			}
 
 			for _, proj := range c.Projects {
@@ -547,9 +547,9 @@ func (g *MsDevGenerator) genWorkspace(ws *ExtraWorkspace) {
 					continue
 				}
 				sb.Write("\t\t")
-				sb.Write(proj.Resolved.GenDataMsDev.UUID.String(g.Workspace.Config.Dev))
+				sb.Write(proj.Resolved.GenDataMsDev.UUID.ForVisualStudio())
 				sb.Write(" = ")
-				sb.WriteLine(c.MsDev.UUID.String(g.Workspace.Config.Dev))
+				sb.WriteLine(c.MsDev.UUID.ForVisualStudio())
 			}
 		}
 		sb.WriteLine("\tEndGlobalSection")
@@ -581,7 +581,7 @@ func (g *MsDevGenerator) genProjectFilters(proj *Project) {
 					continue
 				}
 				tag := wr.TagScope("Filter")
-				winPath := PathWindowsPath(i.Path)
+				winPath := ccode_utils.PathWindowsPath(i.Path)
 				wr.Attr("Include", winPath)
 				tag.Close()
 			}
@@ -605,10 +605,10 @@ func (g *MsDevGenerator) genProjectFilters(proj *Project) {
 					}
 
 					tag := wr.TagScope(typeName)
-					relPath := PathGetRelativeTo(filepath.Join(proj.VirtualFolders.DiskPath, f.Path), proj.Workspace.GenerateAbsPath)
+					relPath := ccode_utils.PathGetRelativeTo(filepath.Join(proj.VirtualFolders.DiskPath, f.Path), proj.Workspace.GenerateAbsPath)
 					wr.Attr("Include", relPath)
 					if len(vf.Path) > 0 {
-						winPath := PathWindowsPath(vf.Path)
+						winPath := ccode_utils.PathWindowsPath(vf.Path)
 						wr.TagWithBody("Filter", winPath)
 					}
 					tag.Close()

@@ -5,6 +5,7 @@ import (
 	"strings"
 
 	"github.com/jurgen-kluft/ccode/denv"
+	ccode_utils "github.com/jurgen-kluft/ccode/utils"
 )
 
 // -----------------------------------------------------------------------------------------------------
@@ -64,7 +65,7 @@ func (p *ConfigList) Has(t ConfigType) bool {
 
 func (p *ConfigList) CollectByWildcard(name string, list *ConfigList) {
 	for _, p := range p.Values {
-		if PathMatchWildcard(p.String(), name, true) {
+		if ccode_utils.PathMatchWildcard(p.String(), name, true) {
 			list.Add(p)
 		}
 	}
@@ -193,9 +194,9 @@ type Config struct {
 	VisualStudioLink      *KeyValueDict
 
 	GenDataXcode struct {
-		ProjectConfigUuid UUID
-		TargetUuid        UUID
-		TargetConfigUuid  UUID
+		ProjectConfigUuid ccode_utils.UUID
+		TargetUuid        ccode_utils.UUID
+		TargetConfigUuid  ccode_utils.UUID
 	}
 
 	Resolved *ConfigResolved
@@ -219,9 +220,9 @@ func NewConfig(t ConfigType, ws *Workspace, p *Project) *Config {
 	c.VisualStudioClCompile = NewKeyValueDict()
 	c.VisualStudioLink = NewKeyValueDict()
 
-	c.GenDataXcode.ProjectConfigUuid = GenerateUUID()
-	c.GenDataXcode.TargetUuid = GenerateUUID()
-	c.GenDataXcode.TargetConfigUuid = GenerateUUID()
+	c.GenDataXcode.ProjectConfigUuid = ccode_utils.GenerateUUID()
+	c.GenDataXcode.TargetUuid = ccode_utils.GenerateUUID()
+	c.GenDataXcode.TargetConfigUuid = ccode_utils.GenerateUUID()
 
 	c.InitXcodeSettings()
 	c.InitVisualStudioSettings()

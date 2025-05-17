@@ -3,6 +3,8 @@ package axe
 import (
 	"path/filepath"
 	"sort"
+
+	ccode_utils "github.com/jurgen-kluft/ccode/utils"
 )
 
 type FileType int
@@ -32,8 +34,8 @@ type FileEntry struct {
 	Parent            *VirtualDirectory
 	ExcludedFromBuild bool
 	Generated         bool
-	UUID              UUID
-	BuildUUID         UUID
+	UUID              ccode_utils.UUID
+	BuildUUID         ccode_utils.UUID
 }
 
 func NewFileEntry() *FileEntry {
@@ -51,7 +53,7 @@ func (fe *FileEntry) Init(path string, isGenerated bool) {
 	fe.Path = path
 	fe.ExcludedFromBuild = false
 
-	ext := PathFileExtension(fe.Path)
+	ext := ccode_utils.PathFileExtension(fe.Path)
 	switch ext {
 	case ".h", ".hpp", ".inl":
 		fe.Type = FileTypeCppHeader
@@ -148,7 +150,7 @@ func (d *FileEntryDict) GetAbsPath(e *FileEntry) string {
 }
 
 func (d *FileEntryDict) GetRelativePath(e *FileEntry, path string) string {
-	return PathGetRelativeTo(filepath.Join(d.Path, e.Path), path)
+	return ccode_utils.PathGetRelativeTo(filepath.Join(d.Path, e.Path), path)
 }
 
 func (d *FileEntryDict) Add(path string, isGenerated bool) *FileEntry {

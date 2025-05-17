@@ -1,12 +1,16 @@
 package axe
 
+import (
+	ccode_utils "github.com/jurgen-kluft/ccode/utils"
+)
+
 type ProjectGroup struct {
 	Path     string
 	Children []*ProjectGroup
 	Projects []*Project
 	Parent   *ProjectGroup
 	MsDev    struct {
-		UUID UUID
+		UUID ccode_utils.UUID
 	}
 }
 
@@ -46,7 +50,7 @@ func (d *ProjectGroups) Add(p *Project) *ProjectGroup {
 }
 
 func (d *ProjectGroups) GetOrAddParent(path string) *ProjectGroup {
-	parent, _ := PathUp(path)
+	parent, _ := ccode_utils.PathUp(path)
 	if len(parent) == 0 || parent == "." {
 		return d.Root
 	}

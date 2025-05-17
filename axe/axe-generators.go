@@ -7,6 +7,7 @@ import (
 	"strings"
 
 	"github.com/jurgen-kluft/ccode/denv"
+	ccode_utils "github.com/jurgen-kluft/ccode/utils"
 )
 
 // ----------------------------------------------------------------------------------------------
@@ -65,7 +66,7 @@ type ExclusionFilter struct {
 }
 
 func (f *ExclusionFilter) IsExcluded(filepath string) bool {
-	parts := PathSplitRelativeFilePath(filepath, true)
+	parts := ccode_utils.PathSplitRelativeFilePath(filepath, true)
 	for i := 0; i < len(parts)-1; i++ {
 		p := strings.ToLower(parts[i])
 		if f.Filter(p) {

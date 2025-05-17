@@ -1,4 +1,4 @@
-package axe
+package ccode_utils
 
 import (
 	"fmt"
@@ -34,26 +34,27 @@ var generator = &UUIDRandomGenerator{seed: 0xEED1A7370B428D0B, s0: 0x5C6121E0670
 // String returns the UUID as a string depending on the generator type
 // Visual Studio uses the format  {XXXXXXXX-XXXX-XXXX-XXXX-XXXXXXXXXXXX}
 // Xcode uses another format      XXXXXXXXXXXXXXXX
-func (u UUID) String(dev DevEnum) string {
+func (u UUID) ForVisualStudio() string {
 
 	// Random number generation chain depends on what u is
 	g := NewUUIDRandomGenerator(uint64(u))
 	s1 := g.Uint64()
 	s2 := g.Uint64()
 
-	if dev.IsVisualStudio() {
-		return fmt.Sprintf("{%08X-%04X-%04X-%04X-%08X%04X}", uint32(s1>>32), uint16(s1&0xFFFF), uint16(s1>>16), uint16(s2>>16), uint32(s2>>32), uint16(s2&0xFFFF))
-	}
+	return fmt.Sprintf("{%08X-%04X-%04X-%04X-%08X%04X}", uint32(s1>>32), uint16(s1&0xFFFF), uint16(s1>>16), uint16(s2>>16), uint32(s2>>32), uint16(s2&0xFFFF))
+}
 
-	switch dev {
-	case DevXcode:
-		u1 := uint32(s1 >> 32)
-		u2 := uint32(s1 & 0xFFFFFFFF)
-		u3 := uint32(s2 >> 32)
-		return fmt.Sprintf("%08X%08X%08X", u1, u2, u3)
-	}
+func (u UUID) ForXCode() string {
 
-	return "Cannot generate UUID for an unknown generator type"
+	// Random number generation chain depends on what u is
+	g := NewUUIDRandomGenerator(uint64(u))
+	s1 := g.Uint64()
+	s2 := g.Uint64()
+
+	u1 := uint32(s1 >> 32)
+	u2 := uint32(s1 & 0xFFFFFFFF)
+	u3 := uint32(s2 >> 32)
+	return fmt.Sprintf("%08X%08X%08X", u1, u2, u3)
 }
 
 func __mix(_seed uint64) (seed uint64, z uint64) {

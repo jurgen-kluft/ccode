@@ -6,6 +6,7 @@ import (
 	"strings"
 
 	"github.com/jurgen-kluft/ccode/denv"
+	ccode_utils "github.com/jurgen-kluft/ccode/utils"
 )
 
 // -----------------------------------------------------------------------------------------------------
@@ -120,18 +121,18 @@ type XcodeProjectConfig struct {
 	XcodeProj                 *FileEntry
 	PbxProj                   string
 	InfoPlistFile             string
-	Uuid                      UUID
-	TargetUuid                UUID
-	TargetProductUuid         UUID
-	ConfigListUuid            UUID
-	TargetConfigListUuid      UUID
-	DependencyProxyUuid       UUID
-	DependencyTargetUuid      UUID
-	DependencyTargetProxyUuid UUID
+	Uuid                      ccode_utils.UUID
+	TargetUuid                ccode_utils.UUID
+	TargetProductUuid         ccode_utils.UUID
+	ConfigListUuid            ccode_utils.UUID
+	TargetConfigListUuid      ccode_utils.UUID
+	DependencyProxyUuid       ccode_utils.UUID
+	DependencyTargetUuid      ccode_utils.UUID
+	DependencyTargetProxyUuid ccode_utils.UUID
 }
 
 type MsDevProjectConfig struct {
-	UUID UUID
+	UUID ccode_utils.UUID
 }
 
 func NewXcodeProjectConfig() *XcodeProjectConfig {
@@ -182,7 +183,7 @@ func (p *ProjectList) Get(name string) (*Project, bool) {
 
 func (p *ProjectList) CollectByWildcard(name string, list *ProjectList) {
 	for _, p := range p.Values {
-		if PathMatchWildcard(p.Name, name, true) {
+		if ccode_utils.PathMatchWildcard(p.Name, name, true) {
 			list.Add(p)
 		}
 	}
@@ -310,18 +311,18 @@ func (p *Project) FileEntriesGenerateUUIDs() {
 
 	for _, i := range p.FileEntries.Dict {
 		f := p.FileEntries.Values[i]
-		f.UUID = GenerateUUID()
-		f.BuildUUID = GenerateUUID()
+		f.UUID = ccode_utils.GenerateUUID()
+		f.BuildUUID = ccode_utils.GenerateUUID()
 	}
 
 	for _, i := range p.ResourceEntries.Dict {
 		f := p.FileEntries.Values[i]
-		f.UUID = GenerateUUID()
-		f.BuildUUID = GenerateUUID()
+		f.UUID = ccode_utils.GenerateUUID()
+		f.BuildUUID = ccode_utils.GenerateUUID()
 	}
 
 	for _, f := range p.VirtualFolders.Folders {
-		f.UUID = GenerateUUID()
+		f.UUID = ccode_utils.GenerateUUID()
 	}
 }
 
@@ -391,23 +392,23 @@ func (p *ProjectResolved) InitXCodeConfig(prj *Project) {
 
 func (p *ProjectResolved) GenerateUUIDs(dev DevEnum) {
 	if dev.IsXCode() {
-		p.GenDataXcode.Uuid = GenerateUUID()
-		p.GenDataXcode.TargetUuid = GenerateUUID()
-		p.GenDataXcode.TargetProductUuid = GenerateUUID()
-		p.GenDataXcode.ConfigListUuid = GenerateUUID()
-		p.GenDataXcode.TargetConfigListUuid = GenerateUUID()
-		p.GenDataXcode.DependencyProxyUuid = GenerateUUID()
-		p.GenDataXcode.DependencyTargetUuid = GenerateUUID()
-		p.GenDataXcode.DependencyTargetProxyUuid = GenerateUUID()
+		p.GenDataXcode.Uuid = ccode_utils.GenerateUUID()
+		p.GenDataXcode.TargetUuid = ccode_utils.GenerateUUID()
+		p.GenDataXcode.TargetProductUuid = ccode_utils.GenerateUUID()
+		p.GenDataXcode.ConfigListUuid = ccode_utils.GenerateUUID()
+		p.GenDataXcode.TargetConfigListUuid = ccode_utils.GenerateUUID()
+		p.GenDataXcode.DependencyProxyUuid = ccode_utils.GenerateUUID()
+		p.GenDataXcode.DependencyTargetUuid = ccode_utils.GenerateUUID()
+		p.GenDataXcode.DependencyTargetProxyUuid = ccode_utils.GenerateUUID()
 
 		for _, config := range p.Configs.Values {
-			config.GenDataXcode.ProjectConfigUuid = GenerateUUID()
-			config.GenDataXcode.TargetUuid = GenerateUUID()
-			config.GenDataXcode.TargetConfigUuid = GenerateUUID()
+			config.GenDataXcode.ProjectConfigUuid = ccode_utils.GenerateUUID()
+			config.GenDataXcode.TargetUuid = ccode_utils.GenerateUUID()
+			config.GenDataXcode.TargetConfigUuid = ccode_utils.GenerateUUID()
 		}
 	}
 
-	p.GenDataMsDev.UUID = GenerateUUID()
+	p.GenDataMsDev.UUID = ccode_utils.GenerateUUID()
 }
 
 func (p *Project) Resolve(dev DevEnum) error {
@@ -490,8 +491,8 @@ func (p *Project) Resolve(dev DevEnum) error {
 // -----------------------------------------------------------------------------------------------------
 
 func (p *Project) GlobFiles(dir string, pattern string, isExcluded func(string) bool) {
-	dir = PathNormalize(dir)
-	pattern = PathNormalize(pattern)
+	dir = ccode_utils.PathNormalize(dir)
+	pattern = ccode_utils.PathNormalize(pattern)
 	pp := strings.Split(pattern, "^")
 	path := filepath.Join(dir, pp[0])
 	files, err := GlobFiles(path, pp[1])
@@ -517,7 +518,7 @@ func (p *Project) BuildLibraryInformation(dev DevEnum, config *Config, workspace
 
 	// Library directories, these will be relative to the workspace generate path
 	for _, dir := range config.Library.Dirs.Values {
-		relpath := PathGetRelativeTo(dir.String(), workspaceGenerateAbsPath)
+		relpath := ccode_utils.PathGetRelativeTo(dir.String(), workspaceGenerateAbsPath)
 		linkDirs.Add(relpath)
 	}
 
@@ -530,7 +531,7 @@ func (p *Project) BuildLibraryInformation(dev DevEnum, config *Config, workspace
 	if dev.IsVisualStudio() {
 		for _, dep := range p.Dependencies.Values {
 			if cfg, has := dep.Resolved.Configs.Get(config.Type); has {
-				relpath := PathGetRelativeTo(cfg.Resolved.OutputLib.Path, workspaceGenerateAbsPath)
+				relpath := ccode_utils.PathGetRelativeTo(cfg.Resolved.OutputLib.Path, workspaceGenerateAbsPath)
 				linkLibs.Add(relpath)
 			}
 		}

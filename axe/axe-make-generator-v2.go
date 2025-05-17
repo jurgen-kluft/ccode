@@ -316,7 +316,7 @@ func (g *MakeGenerator2) generateProjectTargets(project *Project, isMain bool, m
 	for _, dir := range directories {
 		for _, f := range dir.Files {
 			if !f.ExcludedFromBuild && (f.Is_C_or_CPP() || f.Is_ObjC()) {
-				path := PathGetRelativeTo(dir.DiskPath, PathParent(project.ProjectAbsPath))
+				path := ccode_utils.PathGetRelativeTo(dir.DiskPath, ccode_utils.PathParent(project.ProjectAbsPath))
 				mk.WriteILine(`+`, `@mkdir -p $(DIR_BUILD_TEMP)`, path)
 				break
 			}
@@ -337,7 +337,7 @@ func (g *MakeGenerator2) generateProjectTargets(project *Project, isMain bool, m
 	mk.WriteLine(`$(PRODUCT_FRAMEWORK)$(EXT_FRAMEWORK):     \`)
 
 	project.FileEntries.Enumerate(isCppFileNotExcluded, func(i int, key string, value *FileEntry, last int) {
-		path := PathGetRelativeTo(filepath.Join(project.ProjectAbsPath, value.Path), PathParent(project.ProjectAbsPath))
+		path := ccode_utils.PathGetRelativeTo(filepath.Join(project.ProjectAbsPath, value.Path), ccode_utils.PathParent(project.ProjectAbsPath))
 		mk.WriteILine(`+`, `$(DIR_BUILD_TEMP)`, path, `$(EXT_O)`, lineEnds[last])
 	})
 
@@ -354,7 +354,7 @@ func (g *MakeGenerator2) generateProjectTargets(project *Project, isMain bool, m
 
 	// Example: $(DIR_BUILD_TEMP)ccore/source/main/cpp/c_allocator.cpp.o     \
 	project.FileEntries.Enumerate(isCppFileNotExcluded, func(i int, key string, value *FileEntry, last int) {
-		path := PathGetRelativeTo(filepath.Join(project.ProjectAbsPath, value.Path), PathParent(project.ProjectAbsPath))
+		path := ccode_utils.PathGetRelativeTo(filepath.Join(project.ProjectAbsPath, value.Path), ccode_utils.PathParent(project.ProjectAbsPath))
 		mk.WriteILine(`+`, `$(DIR_BUILD_TEMP)`, path, `$(EXT_O)`, lineEnds[last])
 	})
 
@@ -370,7 +370,7 @@ func (g *MakeGenerator2) generateProjectTargets(project *Project, isMain bool, m
 
 	// Example: $(DIR_BUILD_TEMP)ccore/source/main/cpp/c_allocator.cpp.o     \
 	project.FileEntries.Enumerate(isCppFileNotExcluded, func(i int, key string, value *FileEntry, last int) {
-		path := PathGetRelativeTo(filepath.Join(project.ProjectAbsPath, value.Path), PathParent(project.ProjectAbsPath))
+		path := ccode_utils.PathGetRelativeTo(filepath.Join(project.ProjectAbsPath, value.Path), ccode_utils.PathParent(project.ProjectAbsPath))
 		mk.WriteILine(`+`, `$(DIR_BUILD_TEMP)`, path, `$(EXT_O)`, lineEnds[last])
 	})
 
@@ -386,8 +386,8 @@ func (g *MakeGenerator2) generateProjectTargets(project *Project, isMain bool, m
 	// ----- C
 
 	project.FileEntries.Enumerate(isCFileNotExcluded, func(i int, key string, f *FileEntry, last int) {
-		srcfile := PathGetRelativeTo(filepath.Join(project.ProjectAbsPath, f.Path), filepath.Join(g.TargetAbsPath, project.Name))
-		buildfile := PathGetRelativeTo(filepath.Join(project.ProjectAbsPath, f.Path), PathParent(project.ProjectAbsPath))
+		srcfile := ccode_utils.PathGetRelativeTo(filepath.Join(project.ProjectAbsPath, f.Path), filepath.Join(g.TargetAbsPath, project.Name))
+		buildfile := ccode_utils.PathGetRelativeTo(filepath.Join(project.ProjectAbsPath, f.Path), ccode_utils.PathParent(project.ProjectAbsPath))
 		mk.WriteLine(`-include $(DIR_BUILD_TEMP)`, buildfile+`.d`)
 		mk.WriteLine(`$(DIR_BUILD_TEMP)`, buildfile+`.o: `, srcfile)
 		mk.WriteILine(`+`, `@echo -e $(call PRINT,compiling C,`, buildfile, `)`)
@@ -398,8 +398,8 @@ func (g *MakeGenerator2) generateProjectTargets(project *Project, isMain bool, m
 	// ----- C++
 
 	project.FileEntries.Enumerate(isCppFileNotExcluded, func(i int, key string, f *FileEntry, last int) {
-		srcfile := PathGetRelativeTo(filepath.Join(project.ProjectAbsPath, f.Path), filepath.Join(g.TargetAbsPath, project.Name))
-		buildfile := PathGetRelativeTo(filepath.Join(project.ProjectAbsPath, f.Path), PathParent(project.ProjectAbsPath))
+		srcfile := ccode_utils.PathGetRelativeTo(filepath.Join(project.ProjectAbsPath, f.Path), filepath.Join(g.TargetAbsPath, project.Name))
+		buildfile := ccode_utils.PathGetRelativeTo(filepath.Join(project.ProjectAbsPath, f.Path), ccode_utils.PathParent(project.ProjectAbsPath))
 		mk.WriteLine(`-include $(DIR_BUILD_TEMP)`, buildfile+`.d`)
 		mk.WriteLine(`$(DIR_BUILD_TEMP)`, buildfile+`.o: `, srcfile)
 		mk.WriteILine(`+`, `@echo -e $(call PRINT,compiling C++,`, buildfile, `)`)
@@ -410,8 +410,8 @@ func (g *MakeGenerator2) generateProjectTargets(project *Project, isMain bool, m
 	// ----- Objective-C
 
 	project.FileEntries.Enumerate(isObjCFileNotExcluded, func(i int, key string, f *FileEntry, last int) {
-		srcfile := PathGetRelativeTo(filepath.Join(project.ProjectAbsPath, f.Path), filepath.Join(g.TargetAbsPath, project.Name))
-		buildfile := PathGetRelativeTo(filepath.Join(project.ProjectAbsPath, f.Path), PathParent(project.ProjectAbsPath))
+		srcfile := ccode_utils.PathGetRelativeTo(filepath.Join(project.ProjectAbsPath, f.Path), filepath.Join(g.TargetAbsPath, project.Name))
+		buildfile := ccode_utils.PathGetRelativeTo(filepath.Join(project.ProjectAbsPath, f.Path), ccode_utils.PathParent(project.ProjectAbsPath))
 		mk.WriteLine(`-include $(DIR_BUILD_TEMP)`, buildfile+`.d`)
 		mk.WriteLine(`$(DIR_BUILD_TEMP)`, buildfile+`.o: `, srcfile)
 		mk.WriteILine(`+`, `@echo -e $(call PRINT,compiling objective-c,`, buildfile, `)`)
@@ -422,8 +422,8 @@ func (g *MakeGenerator2) generateProjectTargets(project *Project, isMain bool, m
 	// ----- Objective-C++
 
 	project.FileEntries.Enumerate(isObjCppFileNotExcluded, func(i int, key string, f *FileEntry, last int) {
-		srcfile := PathGetRelativeTo(filepath.Join(project.ProjectAbsPath, f.Path), filepath.Join(g.TargetAbsPath, project.Name))
-		buildfile := PathGetRelativeTo(filepath.Join(project.ProjectAbsPath, f.Path), PathParent(project.ProjectAbsPath))
+		srcfile := ccode_utils.PathGetRelativeTo(filepath.Join(project.ProjectAbsPath, f.Path), filepath.Join(g.TargetAbsPath, project.Name))
+		buildfile := ccode_utils.PathGetRelativeTo(filepath.Join(project.ProjectAbsPath, f.Path), ccode_utils.PathParent(project.ProjectAbsPath))
 		mk.WriteLine(`-include $(DIR_BUILD_TEMP)`, buildfile+`.d`)
 		mk.WriteLine(`$(DIR_BUILD_TEMP)`, buildfile+`.o: `, srcfile)
 		mk.WriteILine(`+`, `@echo -e $(call PRINT,compiling objective-c++,`, buildfile, `)`)

@@ -6,6 +6,7 @@ import (
 	"strings"
 
 	"github.com/jurgen-kluft/ccode/denv"
+	ccode_utils "github.com/jurgen-kluft/ccode/utils"
 )
 
 // -----------------------------------------------------------------------------------------------------
@@ -271,7 +272,7 @@ func (ew *ExtraWorkspace) resolve() {
 
 	for _, name := range ew.Config.Groups {
 		for _, g := range ew.Workspace.ProjectGroups.Values {
-			if PathMatchWildcard(g.Path, name, true) {
+			if ccode_utils.PathMatchWildcard(g.Path, name, true) {
 				for _, gp := range g.Projects {
 					projectToAdd.Add(gp)
 				}
@@ -281,7 +282,7 @@ func (ew *ExtraWorkspace) resolve() {
 
 	for _, name := range ew.Config.ExcludeProjects {
 		for _, p := range ew.Workspace.ProjectList.Values {
-			if PathMatchWildcard(p.Name, name, true) {
+			if ccode_utils.PathMatchWildcard(p.Name, name, true) {
 				projectToRemove.Add(p)
 			}
 		}
@@ -289,7 +290,7 @@ func (ew *ExtraWorkspace) resolve() {
 
 	for _, name := range ew.Config.ExcludeGroups {
 		for _, g := range ew.Workspace.ProjectGroups.Values {
-			if PathMatchWildcard(g.Path, name, true) {
+			if ccode_utils.PathMatchWildcard(g.Path, name, true) {
 				for _, gp := range g.Projects {
 					projectToRemove.Add(gp)
 				}
