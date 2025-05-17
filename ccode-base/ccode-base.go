@@ -6,7 +6,7 @@ import (
 	"runtime"
 	"strings"
 
-	"github.com/jurgen-kluft/ccode/axe"
+	ccode_gen "github.com/jurgen-kluft/ccode/ccode-gen"
 	"github.com/jurgen-kluft/ccode/denv"
 	"github.com/jurgen-kluft/ccode/embedded"
 )
@@ -53,7 +53,7 @@ func Init() bool {
 
 	fmt.Println("ccode, a tool to generate C/C++ workspace and project files")
 
-	if axe.DevEnumFromString(ccode_dev) == axe.DevInvalid {
+	if ccode_gen.DevEnumFromString(ccode_dev) == ccode_gen.DevInvalid {
 		fmt.Println()
 		fmt.Println("Error, wrong parameter for '-dev', '", ccode_dev, "' is not recognized")
 		fmt.Println()
@@ -72,7 +72,7 @@ func Init() bool {
 // Generate is the main function that requires 'arguments' to then generate
 // workspace and project files for a specified IDE.
 func Generate(pkg *denv.Package) error {
-	generator := axe.NewGenerator(ccode_dev, ccode_os, ccode_arch, ccode_verbose)
+	generator := ccode_gen.NewGenerator(ccode_dev, ccode_os, ccode_arch, ccode_verbose)
 	return generator.Generate(pkg)
 }
 

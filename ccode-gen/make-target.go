@@ -1,4 +1,4 @@
-package axe
+package ccode_gen
 
 import (
 	"runtime"

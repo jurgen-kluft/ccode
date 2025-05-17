@@ -1,7 +1,7 @@
-package axe
+package ccode_gen
 
 import (
-	ccode_utils "github.com/jurgen-kluft/ccode/utils"
+	ccode_utils "github.com/jurgen-kluft/ccode/ccode-utils"
 )
 
 type ProjectGroup struct {

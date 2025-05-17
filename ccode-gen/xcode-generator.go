@@ -1,11 +1,11 @@
-package axe
+package ccode_gen
 
 import (
 	"fmt"
 	"path/filepath"
 	"strings"
 
-	ccode_utils "github.com/jurgen-kluft/ccode/utils"
+	ccode_utils "github.com/jurgen-kluft/ccode/ccode-utils"
 )
 
 type XcodeGenerator struct {

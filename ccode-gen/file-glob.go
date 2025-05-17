@@ -1,10 +1,10 @@
-package axe
+package ccode_gen
 
 import (
 	"os"
 	"path/filepath"
 
-	ccode_utils "github.com/jurgen-kluft/ccode/utils"
+	ccode_utils "github.com/jurgen-kluft/ccode/ccode-utils"
 )
 
 func GlobFiles(dirpath string, glob string) (filepaths []string, err error) {

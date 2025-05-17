@@ -1,9 +1,9 @@
-package axe
+package ccode_gen
 
 import (
 	"fmt"
 
-	ccode_utils "github.com/jurgen-kluft/ccode/utils"
+	ccode_utils "github.com/jurgen-kluft/ccode/ccode-utils"
 )
 
 type LevelType int8

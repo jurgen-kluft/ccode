@@ -1,10 +1,10 @@
-package axe
+package ccode_gen
 
 import (
 	"path/filepath"
 	"sort"
 
-	ccode_utils "github.com/jurgen-kluft/ccode/utils"
+	ccode_utils "github.com/jurgen-kluft/ccode/ccode-utils"
 )
 
 type VirtualDirectory struct {

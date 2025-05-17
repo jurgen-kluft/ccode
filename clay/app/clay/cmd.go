@@ -152,7 +152,7 @@ func ListFlashSizes(cpuName string, boardName string) error {
 // !!Project!!
 
 func CreateProject() *clay.Project {
-	prjName := "axe"
+	prjName := "ccode_gen"
 	prjVersion := "0.1.0"
 	prj := &clay.Project{
 		Name:       prjName,

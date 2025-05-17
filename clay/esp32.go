@@ -11,7 +11,7 @@ import (
 	"strconv"
 	"strings"
 
-	ccode_utils "github.com/jurgen-kluft/ccode/utils"
+	ccode_utils "github.com/jurgen-kluft/ccode/ccode-utils"
 )
 
 //

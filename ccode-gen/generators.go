@@ -1,4 +1,4 @@
-package axe
+package ccode_gen
 
 import (
 	"fmt"
@@ -6,8 +6,8 @@ import (
 	"path/filepath"
 	"strings"
 
+	ccode_utils "github.com/jurgen-kluft/ccode/ccode-utils"
 	"github.com/jurgen-kluft/ccode/denv"
-	ccode_utils "github.com/jurgen-kluft/ccode/utils"
 )
 
 // ----------------------------------------------------------------------------------------------
