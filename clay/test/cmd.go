@@ -14,12 +14,14 @@ func main() {
 	project := clay.NewProject("TestProject", "1.0.0", "build")
 
 	// Initialize the project core
-	project.InitCore(esp32)
+	project.SetBuildEnvironment(esp32)
 
 	// Add a test library
-	testLib := clay.NewCLibrary("TestLib", "1.0.0", "testlib", "libtestlib.a")
-	testLib.IncludeDirs.Add("testlib/include", false)
-	testLib.AddSourceFilesFrom("testlib/src", clay.OptionAddCppFiles)
+	testLib := clay.NewCLibrary("Test_Lib", "1.0.0", "test_lib", "libtest_lib.a")
+	testLib.IncludeDirs.Add("test_lib/include", false)
+	testLib.AddSourceFilesFrom("test_lib/src", clay.OptionAddCppFiles)
+	testLib.PrepareOutput(project.BuildPath)
+
 	project.AddUserLibrary(testLib)
 
 	project.Build(esp32)
