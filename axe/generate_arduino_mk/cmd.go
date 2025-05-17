@@ -23,13 +23,17 @@ func main() {
 	espRoot := os.Args[1]
 	boardName := os.Args[3]
 	ardEspRoot := os.Args[2] + "/packages/" + boardName
-	flashSize := os.Args[4]
+	flashSize := []string{os.Args[4]}
 	osType := os.Args[5]
-	lwipVariant := os.Args[6]
+	lwipVariant := []string{os.Args[6]}
 
-	err := axe.GenerateArduinoMake(espRoot, ardEspRoot, boardName, flashSize, osType, lwipVariant)
+	result, err := axe.GenerateArduinoMake(espRoot, ardEspRoot, boardName, flashSize, osType, lwipVariant)
 	if err != nil {
 		fmt.Println(err)
 		return
+	}
+
+	for _, line := range result {
+		fmt.Println(line)
 	}
 }

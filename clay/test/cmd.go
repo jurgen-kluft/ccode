@@ -5,19 +5,22 @@ import "github.com/jurgen-kluft/ccode/clay"
 // Test clay package
 
 func main() {
-	esp32 := clay.NewTargetEsp32("build")
+	esp32 := clay.NewBuildEnvironmentEsp32("build")
 	if esp32 == nil {
 		panic("Failed to create ESP32 target")
 	}
 
-	if err := esp32.Init(); err != nil {
-		panic("Failed to initialize ESP32 compiler package: " + err.Error())
-	}
-	if err := esp32.Prebuild(); err != nil {
-		panic("Failed to prebuild ESP32 compiler package: " + err.Error())
-	}
+	// Create a new test project
+	project := clay.NewProject("TestProject", "1.0.0", "build")
 
-	if err := esp32.Build(); err != nil {
-		panic("Failed to build ESP32 compiler package: " + err.Error())
-	}
+	// Initialize the project core
+	project.InitCore(esp32)
+
+	// Add a test library
+	testLib := clay.NewCLibrary("TestLib", "1.0.0", "testlib", "libtestlib.a")
+	testLib.IncludeDirs.Add("testlib/include", false)
+	testLib.AddSourceFilesFrom("testlib/src", clay.OptionAddCppFiles)
+	project.AddUserLibrary(testLib)
+
+	project.Build(esp32)
 }

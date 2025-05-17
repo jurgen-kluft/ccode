@@ -10,20 +10,15 @@ import (
 
 // Project represents a C/C++ project that can be built using the Clay build system.
 
-type TargetEsp32 struct {
-	benv *BuildEnvironment
-}
+type BuildEnvironmentEsp32 BuildEnvironment
 
-func NewTargetEsp32(buildPath string) *TargetEsp32 {
+func NewBuildEnvironmentEsp32(buildPath string) *BuildEnvironment {
 
-	benv := NewBuildEnvironment("esp32", "v1.0.0")
-	benv.ArchiverPath = "/Users/obnosis5/sdk/arduino/esp32/tools/xtensa-esp-elf/bin/xtensa-esp32-elf-gcc-ar"
-	benv.LinkerPath = "/Users/obnosis5/sdk/arduino/esp32/tools/xtensa-esp-elf/bin/xtensa-esp32-elf-g++"
+	ESP_ROOT := "/Users/obnosis5/sdk/arduino/esp32"
+	be := (*BuildEnvironmentEsp32)(NewBuildEnvironment("esp32", "v1.0.0", ESP_ROOT))
 
 	// C specific
-	cc := &Compiler{}
-
-	cc.CompilerPath = "/Users/obnosis5/sdk/arduino/esp32/tools/xtensa-esp-elf/bin/xtensa-esp32-elf-gcc"
+	cc := NewCompiler(ESP_ROOT + "/tools/xtensa-esp-elf/bin/xtensa-esp32-elf-gcc")
 
 	cc.Defines = NewValueMap()
 	cc.Defines.Add("F_CPU=240000000L")
@@ -39,15 +34,15 @@ func NewTargetEsp32(buildPath string) *TargetEsp32 {
 	cc.Defines.Add("CORE_DEBUG_LEVEL=0")
 	cc.Defines.Add("ARDUINO_USB_CDC_ON_BOOT=0")
 
-	cc.AtFlagsFile = "/Users/obnosis5/sdk/arduino/esp32/tools/esp32-arduino-libs/esp32/flags/c_flags"
-	cc.AtDefinesFile = "/Users/obnosis5/sdk/arduino/esp32/tools/esp32-arduino-libs/esp32/flags/defines"
-	cc.AtIncludesFile = "/Users/obnosis5/sdk/arduino/esp32/tools/esp32-arduino-libs/esp32/flags/includes"
+	cc.AtFlagsFile = ESP_ROOT + "/tools/esp32-arduino-libs/esp32/flags/c_flags"
+	cc.AtDefinesFile = ESP_ROOT + "/tools/esp32-arduino-libs/esp32/flags/defines"
+	cc.AtIncludesFile = ESP_ROOT + "/tools/esp32-arduino-libs/esp32/flags/includes"
 
 	cc.IncludePaths = NewIncludeMap()
-	cc.IncludePaths.Add("/Users/obnosis5/sdk/arduino/esp32/tools/esp32-arduino-libs/esp32/include/", true)
-	cc.IncludePaths.Add("/Users/obnosis5/sdk/arduino/esp32/cores/esp32", false)
-	cc.IncludePaths.Add("/Users/obnosis5/sdk/arduino/esp32/variants/esp32", false)
-	cc.IncludePaths.Add("/Users/obnosis5/sdk/arduino/esp32/tools/esp32-arduino-libs/esp32/dio_qspi/include", false)
+	cc.IncludePaths.Add(ESP_ROOT+"/tools/esp32-arduino-libs/esp32/include/", true)
+	cc.IncludePaths.Add(ESP_ROOT+"/cores/esp32", false)
+	cc.IncludePaths.Add(ESP_ROOT+"/variants/esp32", false)
+	cc.IncludePaths.Add(ESP_ROOT+"/tools/esp32-arduino-libs/esp32/dio_qspi/include", false)
 
 	cc.Switches = NewValueMap()
 	cc.Switches.Add("-w")  // Suppress all warnings
@@ -60,8 +55,7 @@ func NewTargetEsp32(buildPath string) *TargetEsp32 {
 
 	// C++ specific
 
-	cxc := &Compiler{}
-	cxc.CompilerPath = "/Users/obnosis5/sdk/arduino/esp32/tools/xtensa-esp-elf/bin/xtensa-esp32-elf-g++"
+	cxc := NewCompiler(ESP_ROOT + "/tools/xtensa-esp-elf/bin/xtensa-esp32-elf-g++")
 
 	cxc.Defines = NewValueMap()
 	cxc.Defines.Add("F_CPU=240000000L")
@@ -77,15 +71,15 @@ func NewTargetEsp32(buildPath string) *TargetEsp32 {
 	cxc.Defines.Add("CORE_DEBUG_LEVEL=0")
 	cxc.Defines.Add("ARDUINO_USB_CDC_ON_BOOT=0")
 
-	cxc.AtFlagsFile = "/Users/obnosis5/sdk/arduino/esp32/tools/esp32-arduino-libs/esp32/flags/cpp_flags"
-	cxc.AtDefinesFile = "/Users/obnosis5/sdk/arduino/esp32/tools/esp32-arduino-libs/esp32/flags/defines"
-	cxc.AtIncludesFile = "/Users/obnosis5/sdk/arduino/esp32/tools/esp32-arduino-libs/esp32/flags/includes"
+	cxc.AtFlagsFile = ESP_ROOT + "/tools/esp32-arduino-libs/esp32/flags/cpp_flags"
+	cxc.AtDefinesFile = ESP_ROOT + "/tools/esp32-arduino-libs/esp32/flags/defines"
+	cxc.AtIncludesFile = ESP_ROOT + "/tools/esp32-arduino-libs/esp32/flags/includes"
 
 	cxc.IncludePaths = NewIncludeMap()
-	cxc.IncludePaths.Add("/Users/obnosis5/sdk/arduino/esp32/tools/esp32-arduino-libs/esp32/include/", true)
-	cxc.IncludePaths.Add("/Users/obnosis5/sdk/arduino/esp32/cores/esp32", false)
-	cxc.IncludePaths.Add("/Users/obnosis5/sdk/arduino/esp32/variants/esp32", false)
-	cxc.IncludePaths.Add("/Users/obnosis5/sdk/arduino/esp32/tools/esp32-arduino-libs/esp32/dio_qspi/include", false)
+	cxc.IncludePaths.Add(ESP_ROOT+"/tools/esp32-arduino-libs/esp32/include/", true)
+	cxc.IncludePaths.Add(ESP_ROOT+"/cores/esp32", false)
+	cxc.IncludePaths.Add(ESP_ROOT+"/variants/esp32", false)
+	cxc.IncludePaths.Add(ESP_ROOT+"/tools/esp32-arduino-libs/esp32/dio_qspi/include", false)
 
 	cxc.Switches = NewValueMap()
 	cxc.Switches.Add("-w")  // Suppress all warnings
@@ -98,26 +92,124 @@ func NewTargetEsp32(buildPath string) *TargetEsp32 {
 
 	// Compilers
 
-	benv.CCompiler = cc
-	benv.CppCompiler = cxc
+	be.CCompiler = cc
+	be.CppCompiler = cxc
+
+	// Archiver specific
+
+	ar := NewArchiver(ESP_ROOT + "/tools/xtensa-esp-elf/bin/xtensa-esp32-elf-ar")
+	be.Archiver = ar
+
+	ar.BuildArgs = func(ar *Archiver, lib *Library, outputPath string) []string {
+		args := make([]string, 0)
+
+		args = append(args, "cr")
+		args = append(args, filepath.Join(outputPath, lib.BuildSubDir, lib.OutputFilename))
+		for _, src := range lib.SourceFiles {
+			args = append(args, src.ObjRelPath)
+		}
+
+		return args
+	}
 
 	// Linker specific
 
-	// ...
+	lnk := NewLinker(ESP_ROOT + "/tools/xtensa-esp-elf/bin/xtensa-esp32-elf-g++")
+	be.Linker = lnk
 
-	// Functions to be implemented
+	lnk.BuildArgs = func(l *Linker, exe Executable, outputPath string) []string {
+		args := make([]string, 0)
 
-	benv.PreBuild = func() error { return nil }
-	benv.Setup = func() error { return nil }
-	benv.Compile = func(srcFile *SourceFile, outputPath string) error {
+		if l.OutputMapFile != nil {
+			args = append(args, "-Wl,--Map="+*l.OutputMapFile)
+		}
+
+		for _, libPath := range l.LibraryPaths {
+			args = append(args, "-L")
+			args = append(args, libPath)
+		}
+
+		args = append(args, "-Wl,--wrap=esp_panic_handler")
+
+		if len(l.AtLdFlagsFile) > 0 {
+			args = append(args, "@"+l.AtLdFlagsFile)
+		}
+		if len(l.AtLdScriptsFile) > 0 {
+			args = append(args, "-T"+l.AtLdScriptsFile)
+		}
+
+		args = append(args, "-Wl,--start-group")
+		for _, lib := range exe.Libraries {
+			args = append(args, filepath.Join(outputPath, lib.BuildSubDir, lib.OutputFilename))
+		}
+		if len(l.AtLdLibsFile) > 0 {
+			args = append(args, "@"+l.AtLdLibsFile)
+		}
+		args = append(args, "-Wl,--end-group")
+		args = append(args, "-Wl,-EL")
+		args = append(args, "-o")
+		args = append(args, filepath.Join(outputPath, exe.OutputFilePath))
+
+		return args
+	}
+
+	// Image Generation
+
+	img := NewImageGenerator("python3", ESP_ROOT+"/tools/gen_esp32part.py")
+
+	img.PartitionCsvFile = ESP_ROOT + "/tools/partitions/default.csv"
+	img.PartitionsBinOutputFile = ""
+	img.EspToolPath = ESP_ROOT + "/tools/esptool/esptool"
+	img.Chip = "esp32"          // --chip esp32
+	img.FlashMode = "dio"       // --flash_mode dio
+	img.FlashFrequency = "40m"  // --flash_freq 40m
+	img.FlashSize = "4MB"       // --flash_size 4MB
+	img.ElfShareOffset = "0xb0" // --flash_offset 0xb0
+
+	img.GenArgs = func(img *ImageGenerator, exe *Executable, buildPath string) []string {
+
+		img.PartitionsBinOutputFile = filepath.Join(buildPath, FileChangeExtension(exe.OutputFilePath, ".partitions.bin"))
+
+		args := make([]string, 0)
+		args = append(args, img.EspToolPath)
+		args = append(args, img.GenScript)
+		args = append(args, "-q")
+		args = append(args, img.PartitionCsvFile)
+		args = append(args, img.PartitionsBinOutputFile)
+		args = append(args, img.EspToolPath)
+		args = append(args, "--chip")
+		args = append(args, img.Chip)
+		args = append(args, "elf2image")
+		args = append(args, "--flash_mode")
+		args = append(args, img.FlashMode)
+		args = append(args, "--flash_freq")
+		args = append(args, img.FlashFrequency)
+		args = append(args, "--flash_size")
+		args = append(args, img.FlashSize)
+		args = append(args, "--elf-sha256-offset")
+		args = append(args, img.ElfShareOffset)
+
+		args = append(args, "-o")
+		args = append(args, filepath.Join(buildPath, FileChangeExtension(exe.OutputFilePath, ".bin")))
+		args = append(args, filepath.Join(buildPath, exe.OutputFilePath))
+
+		return args
+	}
+
+	// Functions
+
+	be.SetupFunc = func(be *BuildEnvironment) error { return nil }
+	be.BuildFunc = be.Build
+
+	be.CompileFunc = func(be *BuildEnvironment, srcFile *SourceFile, outputPath string) error {
 		var args []string
 		var cl string
 		if srcFile.IsCpp {
-			args = benv.CppCompiler.BuildArgs(benv.CppCompiler, srcFile, outputPath)
-			cl = benv.CppCompiler.CompilerPath
+			args = be.CppCompiler.BuildArgs(be.CppCompiler, srcFile, outputPath)
+			cl = be.CppCompiler.CompilerPath
 		} else {
-			args = benv.CCompiler.BuildArgs(benv.CCompiler, srcFile, outputPath)
-			cl = benv.CCompiler.CompilerPath
+			args = be.CCompiler.BuildArgs(be.CCompiler, srcFile, outputPath)
+			cl = be.CCompiler.CompilerPath
 		}
 		cmd := exec.Command(cl, args...)
 		out, err := cmd.CombinedOutput()
@@ -129,31 +221,53 @@ func NewTargetEsp32(buildPath string) *TargetEsp32 {
 		}
 		return nil
 	}
-	benv.PreArchive = func() error { return nil }
-	benv.Archive = func(lib *Library, outputPath string) error { return nil }
-	benv.PreLink = func() error { return nil }
-	benv.Link = func(exe Executable) error { return nil }
 
-	return &TargetEsp32{benv: benv}
-}
+	// Archiver
 
-func (t *TargetEsp32) Init() error {
-	// Initialize the compiler package
-	if t.benv == nil {
-		return fmt.Errorf("compiler package is not initialized")
+	be.ArchiveFunc = func(be *BuildEnvironment, lib *Library, outputPath string) error {
+		var args []string
+		var ar string
+
+		args = be.Archiver.BuildArgs(be.Archiver, lib, outputPath)
+		ar = be.Archiver.ArchiverPath
+
+		cmd := exec.Command(ar, args...)
+		out, err := cmd.CombinedOutput()
+		if err != nil {
+			return fmt.Errorf("Archive failed with %s\n", err)
+		}
+		if len(out) > 0 {
+			log.Printf("Archive output:\n%s\n", string(out))
+		}
+
+		return nil
 	}
 
-	// Set up the compiler package
-	if err := t.benv.Setup(); err != nil {
-		return fmt.Errorf("failed to set up compiler package: %w", err)
+	// Linker
+
+	be.LinkFunc = func(be *BuildEnvironment, exe Executable, outputPath string) error {
+		var args []string
+		var lnk string
+
+		args = be.Linker.BuildArgs(be.Linker, exe, outputPath)
+		lnk = be.Linker.LinkerPath
+
+		cmd := exec.Command(lnk, args...)
+		out, err := cmd.CombinedOutput()
+		if err != nil {
+			return fmt.Errorf("Link failed with %s\n", err)
+		}
+		if len(out) > 0 {
+			log.Printf("Link output:\n%s\n", string(out))
+		}
+
+		return nil
 	}
 
-	return nil
+	return (*BuildEnvironment)(be)
 }
 
 func BuildCompilerArgs(cl *Compiler, srcFile *SourceFile, outputPath string) []string {
-	//exeBin := cl.CompilerPath
-
 	// -MMD, this is to generate a dependency file
 	// -c, this is to compile the source file to an object file
 	args := make([]string, 0)
@@ -205,79 +319,66 @@ func BuildCompilerArgs(cl *Compiler, srcFile *SourceFile, outputPath string) []s
 	return args
 }
 
-func (t *TargetEsp32) Prebuild() error {
+func (*BuildEnvironmentEsp32) PreBuild(be *BuildEnvironment) error {
 
 	// Call the pre-build function if it exists
-	if err := t.benv.PreBuild(); err != nil {
-		return fmt.Errorf("failed to run prebuild: %w", err)
+	if err := be.PrebuildFunc(be); err != nil {
+		return fmt.Errorf("failure running prebuild: %w", err)
 	}
 
 	return nil
 }
 
-func (t *TargetEsp32) Build() error {
+func (*BuildEnvironmentEsp32) Build(be *BuildEnvironment) error {
 
-	// System Library is at '/Users/obnosis5/sdk/arduino/esp32/cores/esp32/', collect
+	// System Library is at ESP_ROOT+'/cores/esp32/', collect
 	// all the C and Cpp source files in this directory and create a Library.
-	coreLibPath := "/Users/obnosis5/sdk/arduino/esp32/cores/esp32/"
+	coreLibPath := be.SdkRoot + "/cores/esp32/"
 	buildPath := "build"
 
-	coreCLib := &Library{
-		Name:              "esp32-core-c",
-		Version:           "1.0.0",
-		IsSystemLibrary:   true,
-		IsCppLibrary:      false,
-		OutputRelFilePath: "core/libesp32-core-c",
-		IncludeDirs:       NewIncludeMap(),
-		SourceFiles:       []*SourceFile{},
-		Libraries:         []*Library{},
-	}
+	coreCLib := NewCLibrary("esp32-core-c", "1.0.0", "esp32-core", "libesp32-core-c.a")
+	coreCLib.IsSystemLibrary = true
+
 	coreCLib.IncludeDirs.Add(coreLibPath, false)
-	coreCLib.IncludeDirs.Add("/Users/obnosis5/sdk/arduino/esp32/tools/esp32-arduino-libs/esp32/include/", true)
-	coreCLib.IncludeDirs.Add("/Users/obnosis5/sdk/arduino/esp32/tools/esp32-arduino-libs/esp32/dio_qspi/include", false)
-	coreCLib.IncludeDirs.Add("/Users/obnosis5/sdk/arduino/esp32/cores/esp32", false)
-	coreCLib.IncludeDirs.Add("/Users/obnosis5/sdk/arduino/esp32/variants/esp32", false)
+	coreCLib.IncludeDirs.Add(be.SdkRoot+"/tools/esp32-arduino-libs/esp32/include/", true)
+	coreCLib.IncludeDirs.Add(be.SdkRoot+"/tools/esp32-arduino-libs/esp32/dio_qspi/include", false)
+	coreCLib.IncludeDirs.Add(be.SdkRoot+"/cores/esp32", false)
+	coreCLib.IncludeDirs.Add(be.SdkRoot+"/variants/esp32", false)
 
 	// Get all the .c files from the core library path
-	coreCLib.AddSourceFilesFrom(coreLibPath, buildPath, false, false)
+	coreCLib.AddSourceFilesFrom(coreLibPath, OptionAddCFiles)
 
 	// Compile C source files
-	buildPathC := filepath.Join(buildPath, coreCLib.OutputRelFilePath)
+	buildPathC := filepath.Join(buildPath, coreCLib.BuildSubDir)
 	MakeDir(buildPathC)
 	for _, src := range coreCLib.SourceFiles {
-		if err := t.benv.Compile(src, buildPathC); err != nil {
+		if err := be.CompileFunc(be, src, buildPathC); err != nil {
 			return fmt.Errorf("failed to compile C source file %s: %w", src.SrcAbsPath, err)
 		}
 	}
 
-	coreCppLib := &Library{
-		Name:              "esp32-core-cpp",
-		Version:           "1.0.0",
-		IsSystemLibrary:   true,
-		IsCppLibrary:      true,
-		OutputRelFilePath: "core/libesp32-core-cpp",
-		Defines:           NewValueMap(),
-		IncludeDirs:       NewIncludeMap(),
-		SourceFiles:       []*SourceFile{},
-		Libraries:         []*Library{},
-	}
+	coreCppLib := NewCppLibrary("esp32-core-cpp", "1.0.0", "esp32-core", "libesp32-core-cpp.a")
+	coreCppLib.IsSystemLibrary = true
+
 	coreCppLib.IncludeDirs.Add(coreLibPath, false)
-	coreCppLib.IncludeDirs.Add("/Users/obnosis5/sdk/arduino/esp32/tools/esp32-arduino-libs/esp32/include/", true)
-	coreCppLib.IncludeDirs.Add("/Users/obnosis5/sdk/arduino/esp32/tools/esp32-arduino-libs/esp32/dio_qspi/include", false)
-	coreCppLib.IncludeDirs.Add("/Users/obnosis5/sdk/arduino/esp32/cores/esp32", false)
-	coreCppLib.IncludeDirs.Add("/Users/obnosis5/sdk/arduino/esp32/variants/esp32", false)
+	coreCppLib.IncludeDirs.Add(be.SdkRoot+"/tools/esp32-arduino-libs/esp32/include/", true)
+	coreCppLib.IncludeDirs.Add(be.SdkRoot+"/tools/esp32-arduino-libs/esp32/dio_qspi/include", false)
+	coreCppLib.IncludeDirs.Add(be.SdkRoot+"/cores/esp32", false)
+	coreCppLib.IncludeDirs.Add(be.SdkRoot+"/variants/esp32", false)
 
 	// Get all the .cpp files from the core library path
-	coreCppLib.AddSourceFilesFrom(coreLibPath, buildPath, false, true)
+	coreCppLib.AddSourceFilesFrom(coreLibPath, OptionAddCppFiles)
 
 	// Compile C++ source files
-	buildPathCpp := filepath.Join(buildPath, coreCppLib.OutputRelFilePath)
+	buildPathCpp := filepath.Join(buildPath, coreCppLib.BuildSubDir)
 	MakeDir(buildPathCpp)
 	for _, src := range coreCppLib.SourceFiles {
-		if err := t.benv.Compile(src, buildPathCpp); err != nil {
+		if err := be.CompileFunc(be, src, buildPathCpp); err != nil {
 			return fmt.Errorf("failed to compile C++ source file %s: %w", src.SrcAbsPath, err)
 		}
 	}
+
+	// Create the library archives
 
 	return nil
 }
