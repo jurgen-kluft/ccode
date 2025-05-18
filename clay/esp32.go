@@ -136,6 +136,8 @@ func NewBuildEnvironmentEsp32(buildPath string) *BuildEnvironment {
 	// Flashing specific
 	be.EspTool = NewEspTool(filepath.Join(ESP_ROOT, "tools/esptool/esptool"))
 	be.EspTool.Chip = "esp32"          // --chip esp32
+	be.EspTool.Port = ""               // --port /dev/ttyUSB0
+	be.EspTool.Baud = "921600"         // --baud 921600
 	be.EspTool.FlashMode = "dio"       // --flash_mode dio
 	be.EspTool.FlashFrequency = "40m"  // --flash_freq 40m
 	be.EspTool.FlashSize = "4MB"       // --flash_size 4MB
@@ -165,11 +167,13 @@ func NewBuildEnvironmentEsp32(buildPath string) *BuildEnvironment {
 
 	be.BootLoaderCompiler = NewBootLoaderCompiler(be.EspTool)
 	be.BootLoaderCompiler.Variables.Add("BootLoaderElfPath", filepath.Join(ESP_ROOT, "tools/esp32-arduino-libs/esp32/bin/bootloader_dio_40m.elf"))
+	be.BootLoaderCompiler.Args = be.GenerateBootLoaderArgs
+	be.BootLoaderCompiler.Execute = be.CreateBootLoader
 
 	be.FlashTool = NewFlashTool(be.EspTool)
 	be.FlashTool.Args = be.FlashToolArgs
 	be.FlashTool.Flash = be.FlashToolFlash
-	be.FlashTool.Variables.Add("BootApp0BinFile", filepath.Join(ESP_ROOT, "tools/esp32-arduino-libs/esp32/bin/boot_app0.bin"))
+	be.FlashTool.Variables.Add("BootApp0BinFile", filepath.Join(ESP_ROOT, "tools/partitions/boot_app0.bin"))
 	be.FlashFunc = be.Flash
 
 	return (*BuildEnvironment)(be)
@@ -231,7 +235,7 @@ func (*BuildEnvironmentEsp32) PreBuild(be *BuildEnvironment, buildPath string) e
 
 	// Copy sdkconfig in the build path from $(SDKROOT)/tools/esp32-arduino-libs/esp32/sdkconfig
 	sdkconfigFilepath := filepath.Join(buildPath, "sdkconfig")
-	if ccode_utils.FileExists(sdkconfigFilepath) {
+	if !ccode_utils.FileExists(sdkconfigFilepath) {
 		ccode_utils.CopyFiles(filepath.Join(be.SdkRoot, "tools/esp32-arduino-libs/esp32/sdkconfig"), sdkconfigFilepath)
 	}
 
@@ -280,7 +284,10 @@ func (*BuildEnvironmentEsp32) Build(be *BuildEnvironment, exe *Executable, build
 }
 
 func (*BuildEnvironmentEsp32) BuildLib(be *BuildEnvironment, lib *Library, buildPath string) error {
+
 	// Compile all source files to object files
+	lib.PrepareOutput(buildPath)
+
 	for _, src := range lib.SourceFiles {
 
 		libBuildPath := filepath.Join(buildPath, lib.BuildSubDir, filepath.Dir(src.SrcRelPath))
@@ -296,7 +303,7 @@ func (*BuildEnvironmentEsp32) BuildLib(be *BuildEnvironment, lib *Library, build
 }
 
 func (*BuildEnvironmentEsp32) GenerateBootLoaderArgs(bl *BootLoaderCompiler, exe *Executable, buildPath string) []string {
-	// Generate a bootloader image if 'SKETCH_NAME.bootloader.bin' not found in the buildPath:
+	// Generate a bootloader image if 'NAME.bootloader.bin' not found in the buildPath:
 	//     $(ESP_SDK)/tools/esptool/esptool
 	//     --chip
 	//     esp32
@@ -308,7 +315,7 @@ func (*BuildEnvironmentEsp32) GenerateBootLoaderArgs(bl *BootLoaderCompiler, exe
 	//     --flash_size
 	//     4MB
 	//     -o
-	//     "$(buildPath) + SKETCH_NAME.bootloader.bin"
+	//     "$(buildPath) + NAME.bootloader.bin"
 	//     $(ESP_SDK)/tools/esp32-arduino-libs/esp32/bin/bootloader_dio_40m.elf
 
 	// This is just here as a note to self:
@@ -341,7 +348,7 @@ func (*BuildEnvironmentEsp32) CreateBootLoader(bl *BootLoaderCompiler, exe *Exec
 	// Generate the bootloader image
 	{
 		imgPath := bl.EspTool.ToolPath
-		args := bl.GenerateArgs(bl, exe, buildPath)
+		args := bl.Args(bl, exe, buildPath)
 
 		cmd := exec.Command(imgPath, args...)
 		log.Printf("Generating bootloader '%s'\n", exe.Name+".bootloader.bin")
@@ -377,19 +384,22 @@ func (be *BuildEnvironmentEsp32) FlashToolArgs(ft *FlashTool, exe *Executable, o
 	args = append(args, "write_flash")
 	args = append(args, "-z")
 	args = append(args, "--flash_mode")
+	//args = append(args, ft.Tool.FlashMode)
 	args = append(args, "keep")
 	args = append(args, "--flash_freq")
+	//args = append(args, ft.Tool.FlashFrequency)
 	args = append(args, "keep")
 	args = append(args, "--flash_size")
+	//args = append(args, ft.Tool.FlashSize)
 	args = append(args, "keep")
 	args = append(args, "0x1000")
 	args = append(args, filepath.Join(outputPath, ccode_utils.FileChangeExtension(exe.OutputFilePath, ".bootloader.bin")))
 	args = append(args, "0x8000")
 	args = append(args, filepath.Join(outputPath, ccode_utils.FileChangeExtension(exe.OutputFilePath, ".partitions.bin")))
 	args = append(args, "0xe000")
-	args = append(args, filepath.Join(be.SdkRoot, ft.Variables.Get("BootApp0BinFile")))
+	args = append(args, ft.Variables.Get("BootApp0BinFile"))
 	args = append(args, "0x10000")
-	args = append(args, filepath.Join(outputPath, exe.OutputFilePath))
+	args = append(args, filepath.Join(outputPath, ccode_utils.FileChangeExtension(exe.OutputFilePath, ".bin")))
 
 	return args
 }
@@ -416,28 +426,12 @@ func (*BuildEnvironmentEsp32) FlashToolFlash(ft *FlashTool, exe *Executable, out
 
 func (*BuildEnvironmentEsp32) Flash(be *BuildEnvironment, exe *Executable, buildPath string) error {
 
-	// Generate the bootloader image
-	bootLoaderCompilerArgs := be.BootLoaderCompiler.GenerateArgs(be.BootLoaderCompiler, exe, buildPath)
-	bootLoaderCmd := exec.Command(be.BootLoaderCompiler.EspTool.ToolPath, bootLoaderCompilerArgs...)
-	log.Printf("Generating bootloader '%s'\n", exe.Name+".bootloader.bin")
-	out, err := bootLoaderCmd.CombinedOutput()
-	if err != nil {
-		return fmt.Errorf("Bootloader generation failed with %s\n", err)
-	}
-	if len(out) > 0 {
-		log.Printf("Bootloader generation output:\n%s\n", string(out))
+	if err := be.BootLoaderCompiler.Execute(be.BootLoaderCompiler, exe, buildPath); err != nil {
+		return fmt.Errorf("failed to create bootloader: %w", err)
 	}
 
-	// Flash
-	flashToolArgs := be.FlashTool.Args(be.FlashTool, exe, buildPath)
-	flashToolCmd := exec.Command(be.FlashTool.Tool.ToolPath, flashToolArgs...)
-	log.Printf("Flashing '%s'...\n", exe.Name+".bin")
-	out, err = flashToolCmd.CombinedOutput()
-	if err != nil {
-		return fmt.Errorf("Flashing failed with %s\n", err)
-	}
-	if len(out) > 0 {
-		log.Printf("Flashing output:\n%s\n", string(out))
+	if err := be.FlashTool.Flash(be.FlashTool, exe, buildPath); err != nil {
+		return fmt.Errorf("failed to flash: %w", err)
 	}
 
 	return nil

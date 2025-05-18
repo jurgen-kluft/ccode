@@ -13,22 +13,28 @@ import (
 
 // Clay cli app
 //    Commands:
-//    - build --board (esp32, esp32s3)
-//    - build-info
-//    - clean
-//    - flash
+//    - build board (esp32, esp32s3)
+//    - build-info board (esp32, esp32s3)
+//    - clean board (esp32, esp32s3)
+//    - flash board (esp32, esp32s3)
 //    - list libraries
 //    - list boards (fuzzy search)
 //    - list flash sizes
 
 var EspSdkPath = "/Users/obnosis5/sdk/arduino/esp32"
-var BuildPath = "build"
 
 func GetArgv(i int, _default string) string {
 	if i < len(os.Args) {
 		return os.Args[i]
 	}
 	return _default
+}
+
+func GetBuildPath(board string) string {
+	// /build/esp32
+	// /build/esp32s3
+	buildPath := filepath.Join("build", board)
+	return buildPath
 }
 
 func main() {
@@ -39,11 +45,14 @@ func main() {
 		boardName := GetArgv(2, "esp32")
 		Build(boardName)
 	case "build-info":
-		GenerateBuildInfo()
+		boardName := GetArgv(2, "esp32")
+		GenerateBuildInfo(boardName)
 	case "clean":
-		Clean()
+		boardName := GetArgv(2, "esp32")
+		Clean(boardName)
 	case "flash":
-		Flash()
+		boardName := GetArgv(2, "esp32")
+		Flash(boardName)
 	case "list-libraries":
 		ListLibraries()
 	case "list-boards":
@@ -85,30 +94,34 @@ func PrintUsage() {
 	fmt.Println("  clay list-boards esp32 5")
 }
 
-func Build(Board string) error {
+func Build(board string) error {
 	// Note: We should be running this from the "target/esp" directory
 	// Create the build directory
-	os.MkdirAll("/"+BuildPath+"/", os.ModePerm)
+	buildPath := GetBuildPath(board)
+	os.MkdirAll(buildPath+"/", os.ModePerm)
 
 	var buildEnv *clay.BuildEnvironment
-	switch Board {
+	switch board {
 	case "esp32":
-		buildEnv = clay.NewBuildEnvironmentEsp32(BuildPath)
+		buildEnv = clay.NewBuildEnvironmentEsp32(buildPath)
 	case "esp32s3":
 		//buildEnv = clay.NewBuildEnvironmentEsp32S3(BuildPath)
 	}
 
 	if buildEnv == nil {
-		return fmt.Errorf("Unsupported board: " + Board)
+		return fmt.Errorf("Unsupported board: " + board)
 	}
 
-	prj := CreateProject()
-	return prj.Build(buildEnv)
+	prj := CreateProject(buildPath)
+	prj.SetBuildEnvironment(buildEnv)
+	return prj.Build()
 }
 
-func GenerateBuildInfo() error {
+func GenerateBuildInfo(board string) error {
+	buildPath := GetBuildPath(board)
+
 	appPath, _ := os.Getwd()
-	if err := clay.GenerateBuildInfo(BuildPath, appPath, EspSdkPath, "buildinfo.h", "buildinfo.cpp"); err == nil {
+	if err := clay.GenerateBuildInfo(buildPath, appPath, EspSdkPath, "buildinfo.h", "buildinfo.cpp"); err == nil {
 		log.Println("Ok, build info generated Ok")
 	} else {
 		log.Printf("Error, build info failed: %v\n", err)
@@ -116,27 +129,44 @@ func GenerateBuildInfo() error {
 	return nil
 }
 
-func Clean() error {
+func Clean(board string) error {
+	buildPath := GetBuildPath(board)
+
 	// Note: We should be running this from the "target/esp" directory
 	// Remove all folders and files from "build/"
-	if err := os.RemoveAll(BuildPath + "/"); err != nil {
+	if err := os.RemoveAll(buildPath + "/"); err != nil {
 		return fmt.Errorf("Failed to remove build directory: %v", err)
 	}
 
-	if err := os.MkdirAll(BuildPath+"/", os.ModePerm); err != nil {
+	if err := os.MkdirAll(buildPath+"/", os.ModePerm); err != nil {
 		return fmt.Errorf("Failed to create build directory: %v", err)
 	}
 
 	return nil
 }
 
-func Flash() error {
+func Flash(board string) error {
+	buildPath := GetBuildPath(board)
 
-	return nil
+	var buildEnv *clay.BuildEnvironment
+	switch board {
+	case "esp32":
+		buildEnv = clay.NewBuildEnvironmentEsp32(buildPath)
+	case "esp32s3":
+		//buildEnv = clay.NewBuildEnvironmentEsp32S3(buildPath)
+	}
+
+	if buildEnv == nil {
+		return fmt.Errorf("Unsupported board: " + board)
+	}
+
+	prj := CreateProject(buildPath)
+	prj.SetBuildEnvironment(buildEnv)
+	return prj.Flash()
 }
 
 func ListLibraries() error {
-	prj := CreateProject()
+	prj := CreateProject("")
 	fmt.Printf("Project: %s\n", prj.Name)
 	for _, lib := range prj.Executable.Libraries {
 		fmt.Printf("Library: %s\n", lib.Name)
@@ -165,58 +195,31 @@ func ListFlashSizes(cpuName string, boardName string) error {
 
 // !!Project!!
 
-func CreateProject() *clay.Project {
-	prjName := "ccode_gen"
+func CreateProject(buildPath string) *clay.Project {
+	prjName := "test_project"
 	prjVersion := "0.1.0"
-	prj := &clay.Project{
-		Name:       prjName,
-		Version:    prjVersion,
-		BuildPath:  filepath.Join(BuildPath, prjName),
-		Executable: clay.NewExecutable(prjName, prjVersion, BuildPath),
-	}
+	prj := clay.NewProject(prjName, prjVersion, buildPath)
 	AddLibraries(prj.Executable)
 	return prj
 }
 
 func AddLibraries(exe *clay.Executable) {
-	{ // chash library
-		name := "chash"
+	{
+		name := "test_lib"
 		library := clay.NewCppLibrary(name, "0.1.0", name, name+".a")
 
 		// Include directories
-		library.IncludeDirs.Add("/Users/obnosis5/dev.go/src/github.com/jurgen-kluft/chash/source/main/include", false)
-		library.IncludeDirs.Add("/Users/obnosis5/dev.go/src/github.com/jurgen-kluft/cbase/source/main/include", false)
-		library.IncludeDirs.Add("/Users/obnosis5/dev.go/src/github.com/jurgen-kluft/ccore/source/main/include", false)
+		library.IncludeDirs.Add("/Users/obnosis5/dev.go/src/github.com/jurgen-kluft/ccode/clay/app/clay/test_lib/include", false)
 
 		// Define macros
 		library.Defines.Add("TARGET_DEBUG")
 		library.Defines.Add("TARGET_ESP32")
 
 		// Source files of chash
-		library.AddSourceFile("/Users/obnosis5/dev.go/src/github.com/jurgen-kluft/chash/source/main/cpp/c_crc.cpp", "c_crc.cpp", false)
-		library.AddSourceFile("/Users/obnosis5/dev.go/src/github.com/jurgen-kluft/chash/source/main/cpp/c_hash.cpp", "c_hash.cpp", false)
+		library.AddSourceFile("/Users/obnosis5/dev.go/src/github.com/jurgen-kluft/ccode/clay/app/clay/test_lib/src/test.cpp", "test.cpp", true)
 		// etc..
 
 		exe.AddLibrary(library)
 	}
 
-	{ // cbase library
-		name := "cbase"
-		library := clay.NewCppLibrary(name, "0.1.0", name, name+".a")
-
-		// Include directories
-		library.IncludeDirs.Add("/Users/obnosis5/dev.go/src/github.com/jurgen-kluft/cbase/source/main/include", false)
-		library.IncludeDirs.Add("/Users/obnosis5/dev.go/src/github.com/jurgen-kluft/ccore/source/main/include", false)
-
-		// Define macros
-		library.Defines.Add("TARGET_DEBUG")
-		library.Defines.Add("TARGET_ESP32")
-
-		// Source files of cbase
-		library.AddSourceFile("/Users/obnosis5/dev.go/src/github.com/jurgen-kluft/cbase/source/main/cpp/c_allocator_system_esp32.cpp", "c_allocator_system_esp32.cpp", false)
-		library.AddSourceFile("/Users/obnosis5/dev.go/src/github.com/jurgen-kluft/cbase/source/main/cpp/c_base.cpp", "c_base.cpp", false)
-		// etc..
-
-		exe.AddLibrary(library)
-	}
 }

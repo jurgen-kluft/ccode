@@ -268,17 +268,17 @@ func NewImageStatsTool(elfSizeToolPath string) *ImageStatsTool {
 type BootLoaderCompiler struct {
 	EspTool *EspTool //
 	// BootLoaderElfPath = $(ESP_SDK)/tools/esp32-arduino-libs/esp32/bin/bootloader_dio_40m.elf
-	Variables        *KeyValueSet // e.g. BootApp0
-	GenerateArgs     func(*BootLoaderCompiler, *Executable, string) []string
-	CreateBootLoader func(*BootLoaderCompiler, *Executable, string) error
+	Variables *KeyValueSet // e.g. BootApp0
+	Args      func(*BootLoaderCompiler, *Executable, string) []string
+	Execute   func(*BootLoaderCompiler, *Executable, string) error
 }
 
 func NewBootLoaderCompiler(espToolSettings *EspTool) *BootLoaderCompiler {
 	return &BootLoaderCompiler{
-		EspTool:          espToolSettings,
-		Variables:        NewKeyValueSet(),
-		GenerateArgs:     func(g *BootLoaderCompiler, exe *Executable, outputPath string) []string { return nil },
-		CreateBootLoader: func(g *BootLoaderCompiler, exe *Executable, outputPath string) error { return nil },
+		EspTool:   espToolSettings,
+		Variables: NewKeyValueSet(),
+		Args:      func(g *BootLoaderCompiler, exe *Executable, outputPath string) []string { return nil },
+		Execute:   func(g *BootLoaderCompiler, exe *Executable, outputPath string) error { return nil },
 	}
 }
 

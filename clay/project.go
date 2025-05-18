@@ -26,11 +26,13 @@ import (
 type Project struct {
 	Name       string
 	Version    string
-	BuildPath  string      // Path to the build directory
-	Executable *Executable // Executable that this project builds (if any)
+	BuildPath  string            // Path to the build directory
+	BuildEnv   *BuildEnvironment // Build environment for this project
+	Executable *Executable       // Executable that this project builds (if any)
 }
 
 func NewProject(name string, version string, buildPath string) *Project {
+    buildPath = filepath.Join(buildPath, name)
 	exe := NewExecutable(name, version, buildPath)
 	return &Project{
 		Name:       name,
@@ -48,6 +50,8 @@ func (p *Project) GetExecutable() *Executable {
 }
 
 func (p *Project) SetBuildEnvironment(be *BuildEnvironment) error {
+
+    p.BuildEnv = be
 
 	sdkRoot := be.SdkRoot
 
@@ -79,10 +83,10 @@ func (p *Project) AddUserLibrary(lib *Library) {
 	p.Executable.Libraries = append(p.Executable.Libraries, lib)
 }
 
-func (p *Project) Build(be *BuildEnvironment) error {
-	return be.BuildFunc(be, p.Executable, p.BuildPath)
+func (p *Project) Build() error {
+	return p.BuildEnv.BuildFunc(p.BuildEnv, p.Executable, p.BuildPath)
 }
 
-func (p *Project) Flash(be *BuildEnvironment) error {
-	return be.FlashFunc(be, p.Executable, p.BuildPath)
+func (p *Project) Flash() error {
+	return p.BuildEnv.FlashFunc(p.BuildEnv, p.Executable, p.BuildPath)
 }
