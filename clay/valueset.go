@@ -2,19 +2,19 @@ package clay
 
 import "strings"
 
-type ValueMap struct {
+type ValueSet struct {
 	Values []string
 	Keys   map[string]int
 }
 
-func NewValueMap() *ValueMap {
-	return &ValueMap{
+func NewValueSet() *ValueSet {
+	return &ValueSet{
 		Values: make([]string, 0),
 		Keys:   make(map[string]int),
 	}
 }
 
-func (kv *ValueMap) Add(value string) {
+func (kv *ValueSet) Add(value string) {
 	// Convert key to lowercase for case-insensitive comparison
 	lcValue := strings.ToLower(value)
 	if index, exists := kv.Keys[lcValue]; !exists {
@@ -27,14 +27,14 @@ func (kv *ValueMap) Add(value string) {
 	}
 }
 
-func (kv *ValueMap) Has(value string) bool {
+func (kv *ValueSet) Has(value string) bool {
 	// Convert value to lowercase for case-insensitive comparison
 	lcValue := strings.ToLower(value)
 	_, exists := kv.Keys[lcValue]
 	return exists
 }
 
-func (kv *ValueMap) HasGet(value string) (string, bool) {
+func (kv *ValueSet) HasGet(value string) (string, bool) {
 	// Convert value to lowercase for case-insensitive comparison
 	lcValue := strings.ToLower(value)
 	if index, exists := kv.Keys[lcValue]; exists {
@@ -43,9 +43,9 @@ func (kv *ValueMap) HasGet(value string) (string, bool) {
 	return "", false
 }
 
-func (kv *ValueMap) Get(key string) string {
-	// Convert key to lowercase for case-insensitive comparison
-	lcValue := strings.ToLower(key)
+func (kv *ValueSet) Get(value string) string {
+	// Convert value to lowercase for case-insensitive comparison
+	lcValue := strings.ToLower(value)
 	if index, exists := kv.Keys[lcValue]; exists {
 		return kv.Values[index]
 	}

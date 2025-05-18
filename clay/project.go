@@ -82,3 +82,7 @@ func (p *Project) AddUserLibrary(lib *Library) {
 func (p *Project) Build(be *BuildEnvironment) error {
 	return be.BuildFunc(be, p.Executable, p.BuildPath)
 }
+
+func (p *Project) Flash(be *BuildEnvironment) error {
+	return be.FlashFunc(be, p.Executable, p.BuildPath)
+}

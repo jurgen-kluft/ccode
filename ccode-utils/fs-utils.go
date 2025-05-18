@@ -25,6 +25,14 @@ func FileChangeExtension(filename, newExt string) string {
 	return filename[:lastDot] + newExt
 }
 
+func FileExists(path string) bool {
+	// Check if the file exists
+	if _, err := os.Stat(path); os.IsNotExist(err) {
+		return false
+	}
+	return true
+}
+
 func MakeDir(path string) error {
 	// Create the directory if it doesn't exist
 	if _, err := os.Stat(path); os.IsNotExist(err) {

@@ -23,7 +23,7 @@ type Library struct {
 	BuildSubDir     string // Subdirectory for the library build (optional)
 	OutputFilename  string // Relative filepath to the build output (.lib, .a)
 
-	Defines     *ValueMap     // Compiler defines (macros) for the library
+	Defines     *ValueSet     // Compiler defines (macros) for the library
 	IncludeDirs *IncludeMap   // Include paths for the library (system)
 	SourceFiles []*SourceFile // C/C++ Source files for the library
 }
@@ -36,7 +36,7 @@ func NewLibrary(name string, version string, buildSubDir string, outputFilename 
 		IsCppLibrary:    false,
 		BuildSubDir:     buildSubDir,
 		OutputFilename:  outputFilename,
-		Defines:         NewValueMap(),
+		Defines:         NewValueSet(),
 		IncludeDirs:     NewIncludeMap(),
 		SourceFiles:     make([]*SourceFile, 0),
 	}
@@ -141,9 +141,9 @@ func (exe *Executable) AddLibrary(lib *Library) {
 
 type Compiler struct {
 	CompilerPath    string                                                          // FilePath to the compiler
-	Defines         *ValueMap                                                       // Compiler defines (macros) for the compiler
-	Switches        *ValueMap                                                       // Compiler switches (flags) for the compiler
-	WarningSwitches *ValueMap                                                       // Warning switches (flags) for the compiler
+	Defines         *ValueSet                                                       // Compiler defines (macros) for the compiler
+	Switches        *ValueSet                                                       // Compiler switches (flags) for the compiler
+	WarningSwitches *ValueSet                                                       // Warning switches (flags) for the compiler
 	AtFlagsFile     string                                                          // FilePath to the C compiler flags file (optional)
 	AtDefinesFile   string                                                          // FilePath to the C compiler defines file (optional)
 	AtIncludesFile  string                                                          // FilePath to the C compiler includes file (optional)
@@ -154,9 +154,9 @@ type Compiler struct {
 func NewCompiler(compilerPath string) *Compiler {
 	return &Compiler{
 		CompilerPath:    compilerPath,
-		Defines:         NewValueMap(),
-		Switches:        NewValueMap(),
-		WarningSwitches: NewValueMap(),
+		Defines:         NewValueSet(),
+		Switches:        NewValueSet(),
+		WarningSwitches: NewValueSet(),
 		AtFlagsFile:     "",
 		AtDefinesFile:   "",
 		AtIncludesFile:  "",
@@ -179,9 +179,9 @@ func NewArchiver(arPath string) *Archiver {
 
 type Linker struct {
 	LinkerPath    string    // FilePath to the linker package
-	Defines       *ValueMap // Compiler defines (macros) for the compiler
-	Switches      *ValueMap // Linker switches (flags) for the linker
-	LibraryPaths  *ValueMap // Library paths for the linker (system)
+	Defines       *ValueSet // Compiler defines (macros) for the compiler
+	Switches      *ValueSet // Linker switches (flags) for the linker
+	LibraryPaths  *ValueSet // Library paths for the linker (system)
 	OutputMapFile bool      //
 
 	AtLdFlagsFile   string // FilePath to the linker flags file (optional)
@@ -194,52 +194,55 @@ type Linker struct {
 func NewLinker(linkerPath string) *Linker {
 	return &Linker{
 		LinkerPath:    linkerPath,
-		Defines:       NewValueMap(),
-		Switches:      NewValueMap(),
-		LibraryPaths:  NewValueMap(),
+		Defines:       NewValueSet(),
+		Switches:      NewValueSet(),
+		LibraryPaths:  NewValueSet(),
 		OutputMapFile: false,
 		BuildArgs:     func(l *Linker, exe *Executable, outputPath string) []string { return nil },
 	}
 }
 
 type ImageGenerator struct {
-	EspPartitionsToolPath   string                                                                 // 'python'
-	EspPartitionsToolScript string                                                                 // FilePath to the image generator script (optional)
-	PartitionCsvFile        string                                                                 // FilePath to the partitions file
-	PartitionsBinOutputFile string                                                                 // FilePath to the partitions binary file
-	GenEspPartArgs          func(img *ImageGenerator, exe *Executable, outputPath string) []string // Function to build the image generator arguments
-	EspTool                 *EspToolSettings
-	GenEspToolArgs          func(img *ImageGenerator, exe *Executable, outputPath string) []string // Function to build the image generator arguments
+	PartitionsBinToolPath       string                                                                 // 'python'
+	PartitionsBinToolScript     string                                                                 // FilePath to the image generator script (optional)
+	PartitionsBinToolOutputFile string                                                                 // FilePath to the partitions binary file
+	PartitionsBinToolArgs       func(img *ImageGenerator, exe *Executable, outputPath string) []string // Function to build the image generator arguments
+	ImageBinToolArgs            func(img *ImageGenerator, exe *Executable, outputPath string) []string // Function to build the image generator arguments
+	ImageBinTool                *EspTool
 }
 
-func NewImageGenerator(genPartitionsToolPath string, genPartitionsToolScript string, espTool *EspToolSettings) *ImageGenerator {
+func NewImageGenerator(genPartitionsToolPath string, genPartitionsToolScript string, espToolSettings *EspTool) *ImageGenerator {
 	return &ImageGenerator{
-		EspPartitionsToolPath:   genPartitionsToolPath,
-		EspPartitionsToolScript: genPartitionsToolScript,
-		PartitionCsvFile:        "",
-		PartitionsBinOutputFile: "",
-		EspTool:                 espTool,
-		GenEspPartArgs:          func(img *ImageGenerator, exe *Executable, outputPath string) []string { return nil },
+		PartitionsBinToolPath:       genPartitionsToolPath,
+		PartitionsBinToolScript:     genPartitionsToolScript,
+		PartitionsBinToolOutputFile: "",
+		PartitionsBinToolArgs:       func(img *ImageGenerator, exe *Executable, outputPath string) []string { return nil },
+		ImageBinTool:                espToolSettings,
+		ImageBinToolArgs:            func(img *ImageGenerator, exe *Executable, outputPath string) []string { return nil },
 	}
 }
 
-type EspToolSettings struct {
-	EspImageToolPath string // FilePath to the ESP tool
+type EspTool struct {
+	ToolPath         string // FilePath to the ESP tool
 	Chip             string // Chip name (e.g., ESP32, ESP32S3)
+	Port             string // Port name (e.g., /dev/ttyUSB0, COM3) (optional)
+	Baud             string // Baud rate (e.g., 115200, 921600) (optional)
 	FlashMode        string // Flash mode (e.g., DIO, QIO)
 	FlashFrequency   string // Flash frequency (e.g., 40m, 80m)
 	FlashSize        string // Flash size (e.g., 4MB, 8MB)
 	ElfShareOffset   string // ELF share offset (e.g., 0xb0)
+	PartitionCsvFile string // FilePath to the partitions file
 }
 
-func NewEspToolSettings(espImageToolPath string) *EspToolSettings {
-	return &EspToolSettings{
-		EspImageToolPath: espImageToolPath,
+func NewEspTool(espImageToolPath string) *EspTool {
+	return &EspTool{
+		ToolPath:         espImageToolPath,
 		Chip:             "",
 		FlashMode:        "",
 		FlashFrequency:   "",
 		FlashSize:        "",
 		ElfShareOffset:   "",
+		PartitionCsvFile: "",
 	}
 }
 
@@ -250,15 +253,77 @@ type ImageStats struct {
 
 type ImageStatsTool struct {
 	ElfSizeToolPath string                                                                // FilePath to the ELF size tool
-	GenArgs         func(es *ImageStatsTool, exe *Executable, outputPath string) []string // Function to build the ELF size tool arguments
+	ToolArgs        func(es *ImageStatsTool, exe *Executable, outputPath string) []string // Function to build the ELF size tool arguments
 	ParseStats      func(s string, exe *Executable) (*ImageStats, error)                  // Function to print the ELF size stats
 }
 
 func NewImageStatsTool(elfSizeToolPath string) *ImageStatsTool {
 	return &ImageStatsTool{
 		ElfSizeToolPath: elfSizeToolPath,
-		GenArgs:         func(es *ImageStatsTool, exe *Executable, outputPath string) []string { return nil },
+		ToolArgs:        func(es *ImageStatsTool, exe *Executable, outputPath string) []string { return nil },
 		ParseStats:      func(s string, exe *Executable) (*ImageStats, error) { return &ImageStats{}, nil },
+	}
+}
+
+type BootLoaderCompiler struct {
+	EspTool *EspTool //
+	// BootLoaderElfPath = $(ESP_SDK)/tools/esp32-arduino-libs/esp32/bin/bootloader_dio_40m.elf
+	Variables        *KeyValueSet // e.g. BootApp0
+	GenerateArgs     func(*BootLoaderCompiler, *Executable, string) []string
+	CreateBootLoader func(*BootLoaderCompiler, *Executable, string) error
+}
+
+func NewBootLoaderCompiler(espToolSettings *EspTool) *BootLoaderCompiler {
+	return &BootLoaderCompiler{
+		EspTool:          espToolSettings,
+		Variables:        NewKeyValueSet(),
+		GenerateArgs:     func(g *BootLoaderCompiler, exe *Executable, outputPath string) []string { return nil },
+		CreateBootLoader: func(g *BootLoaderCompiler, exe *Executable, outputPath string) error { return nil },
+	}
+}
+
+// Flash the device with the images:
+//    "/Users/obnosis5/sdk/arduino/esp32/tools/esptool//esptool"
+//    --chip
+//    esp32
+//    --port
+//    "/dev/tty.wchusbserial510"
+//    --baud
+//    921600
+//    --before
+//    default_reset
+//    --after
+//    hard_reset
+//    write_flash
+//    -z
+//    --flash_mode
+//    keep
+//    --flash_freq
+//    keep
+//    --flash_size
+//    keep
+//    0x1000
+//    "../target/mkESP/WiFiScan_esp32/WiFiScan.bootloader.bin"
+//    0x8000
+//    "../target/mkESP/WiFiScan_esp32/WiFiScan.partitions.bin"
+//    0xe000
+//    "/Users/obnosis5/sdk/arduino/esp32/tools/partitions/boot_app0.bin"
+//    0x10000
+//    "../target/mkESP/WiFiScan_esp32/WiFiScan.bin"
+
+type FlashTool struct {
+	Tool      *EspTool                                                         // FilePath to the ESP tool
+	Variables *KeyValueSet                                                     // e.g. BootApp0
+	Args      func(ft *FlashTool, exe *Executable, outputPath string) []string // Function to build the flash tool arguments
+	Flash     func(ft *FlashTool, exe *Executable, outputPath string) error    // Function to flash the image to the device
+}
+
+func NewFlashTool(espToolSettings *EspTool) *FlashTool {
+	return &FlashTool{
+		Tool:      espToolSettings,
+		Variables: NewKeyValueSet(),
+		Args:      func(ft *FlashTool, exe *Executable, outputPath string) []string { return nil },
+		Flash:     func(ft *FlashTool, exe *Executable, outputPath string) error { return nil },
 	}
 }
 
@@ -267,17 +332,18 @@ type BuildEnvironment struct {
 	Version string // Version of the compiler package
 	SdkRoot string // Path to the SDK root directory
 
-	CCompiler      *Compiler
-	CppCompiler    *Compiler
-	Archiver       *Archiver
-	Linker         *Linker
-	ImageGenerator *ImageGenerator
-	ImageStatsTool *ImageStatsTool
+	CCompiler          *Compiler
+	CppCompiler        *Compiler
+	Archiver           *Archiver
+	Linker             *Linker
+	ImageGenerator     *ImageGenerator
+	ImageStatsTool     *ImageStatsTool
+	BootLoaderCompiler *BootLoaderCompiler
+	FlashTool          *FlashTool
 
-	EspToolSettings *EspToolSettings
+	EspTool *EspTool
 
-	SetupFunc         func(be *BuildEnvironment) error                                                    // Function that does initial setup for the compiler package
-	PrebuildFunc      func(be *BuildEnvironment) error                                                    // Function that does prebuild for the compiler package
+	PrebuildFunc      func(be *BuildEnvironment, outputPath string) error                                 // Function that does prebuild for the compiler package
 	BuildFunc         func(be *BuildEnvironment, exe *Executable, outputPath string) error                // Function that does all, compile, archive, link, and generate image
 	BuildLibFunc      func(be *BuildEnvironment, lib *Library, outputPath string) error                   // Function to build a library
 	CompileFunc       func(be *BuildEnvironment, src *SourceFile, outputPath string) error                // Function to compile a source file
@@ -299,8 +365,7 @@ func NewBuildEnvironment(name string, version string, sdkRoot string) *BuildEnvi
 		Linker:            nil,
 		ImageGenerator:    nil,
 		ImageStatsTool:    nil,
-		SetupFunc:         func(be *BuildEnvironment) error { return nil },
-		PrebuildFunc:      func(be *BuildEnvironment) error { return nil },
+		PrebuildFunc:      func(be *BuildEnvironment, outputPath string) error { return nil },
 		BuildFunc:         func(be *BuildEnvironment, exe *Executable, outputPath string) error { return nil },
 		BuildLibFunc:      func(be *BuildEnvironment, lib *Library, outputPath string) error { return nil },
 		CompileFunc:       func(be *BuildEnvironment, src *SourceFile, outputPath string) error { return nil },
@@ -310,5 +375,6 @@ func NewBuildEnvironment(name string, version string, sdkRoot string) *BuildEnvi
 		GenerateStatsFunc: func(be *BuildEnvironment, exe *Executable, outputPath string) (*ImageStats, error) {
 			return &ImageStats{}, nil
 		},
+		FlashFunc: func(be *BuildEnvironment, exe *Executable, outputPath string) error { return nil },
 	}
 }
