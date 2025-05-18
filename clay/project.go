@@ -9,7 +9,6 @@ import (
 //          90%
 //          Next: emit the project and library info in the cmd.go, build
 //                the app and copy/release it in the build directory
-// - MINOR: Add Build Info as a Library to the Executable when BuildDir/buildinfo.h/.cpp exist
 // - MEDIOR: Parse the boards.txt file and be able to extract compiler, linker and other info
 // - MINOR: ESP32 S3 Target (could be automatic if we are able to fully parse the boards.txt file)
 // - MAJOR: To reduce compile/link time we need Dependency Tracking (Database)
