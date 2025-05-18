@@ -5,7 +5,6 @@ import (
 	"bytes"
 	"fmt"
 	"log"
-	"os"
 	"os/exec"
 	"path/filepath"
 	"strconv"
@@ -38,7 +37,7 @@ func NewBuildEnvironmentEsp32(buildPath string) *BuildEnvironment {
 
 	be := (*BuildEnvironmentEsp32)(NewBuildEnvironment("esp32", "v1.0.0", ESP_ROOT))
 
-	{ // C specific
+	{ // C Compiler specific
 		cc := NewCompiler(ESP_ROOT + "/tools/xtensa-esp-elf/bin/xtensa-esp32-elf-gcc")
 
 		cc.Defines = NewValueMap()
@@ -72,11 +71,10 @@ func NewBuildEnvironmentEsp32(buildPath string) *BuildEnvironment {
 		cc.WarningSwitches = NewValueMap()
 		cc.WarningSwitches.Add("-Werror=return-type")
 
-		cc.BuildArgs = BuildCompilerArgs
-
 		be.CCompiler = cc
 	}
-	{ // C++ specific
+
+	{ // C++ Compiler specific
 
 		cxc := NewCompiler(ESP_ROOT + "/tools/xtensa-esp-elf/bin/xtensa-esp32-elf-g++")
 
@@ -111,30 +109,23 @@ func NewBuildEnvironmentEsp32(buildPath string) *BuildEnvironment {
 		cxc.WarningSwitches = NewValueMap()
 		cxc.WarningSwitches.Add("-Werror=return-type")
 
-		cxc.BuildArgs = BuildCompilerArgs
-
 		be.CppCompiler = cxc
 	}
+
+	// Compiler specific
+	be.CompileFunc = be.Compile
+	be.CCompiler.BuildArgs = BuildCompilerArgs
+	be.CppCompiler.BuildArgs = BuildCompilerArgs
 
 	// Archiver specific
 
 	be.Archiver = NewArchiver(ESP_ROOT + "/tools/xtensa-esp-elf/bin/xtensa-esp32-elf-gcc-ar")
-	be.Archiver.BuildArgs = func(ar *Archiver, lib *Library, outputPath string) []string {
-		args := make([]string, 0)
-
-		args = append(args, "cr")
-		args = append(args, filepath.Join(outputPath, lib.BuildSubDir, lib.OutputFilename))
-		for _, src := range lib.SourceFiles {
-			args = append(args, src.ObjRelPath)
-		}
-
-		return args
-	}
+	be.Archiver.BuildArgs = be.BuildArchiverArgs
+	be.ArchiveFunc = be.Archive
 
 	// Linker specific
 
 	be.Linker = NewLinker(ESP_ROOT + "/tools/xtensa-esp-elf/bin/xtensa-esp32-elf-g++")
-
 	be.Linker.OutputMapFile = true
 
 	be.Linker.LibraryPaths.Add(filepath.Join(ESP_ROOT, "tools/esp32-arduino-libs/esp32/lib"))
@@ -145,336 +136,37 @@ func NewBuildEnvironmentEsp32(buildPath string) *BuildEnvironment {
 	be.Linker.AtLdScriptsFile = filepath.Join(ESP_ROOT, "tools/esp32-arduino-libs/esp32/flags/ld_scripts")
 	be.Linker.AtLdLibsFile = filepath.Join(ESP_ROOT, "tools/esp32-arduino-libs/esp32/flags/ld_libs")
 
-	be.Linker.BuildArgs = func(l *Linker, exe *Executable, outputPath string) []string {
-		args := make([]string, 0)
+	be.Linker.BuildArgs = be.BuildLinkerArgs
+	be.LinkFunc = be.Link
 
-		if l.OutputMapFile {
-			mapFilePath := filepath.Join(outputPath, FileChangeExtension(exe.OutputFilePath, ".map"))
-			args = append(args, "-Wl,--Map="+mapFilePath)
-		}
-
-		for _, libPath := range l.LibraryPaths.Values {
-			args = append(args, "-L")
-			args = append(args, libPath)
-		}
-
-		args = append(args, "-Wl,--wrap=esp_panic_handler")
-
-		if len(l.AtLdFlagsFile) > 0 {
-			args = append(args, "@"+l.AtLdFlagsFile)
-		}
-		if len(l.AtLdScriptsFile) > 0 {
-			args = append(args, "@"+l.AtLdScriptsFile)
-		}
-
-		args = append(args, "-Wl,--start-group")
-		for _, lib := range exe.Libraries {
-			args = append(args, filepath.Join(outputPath, lib.BuildSubDir, lib.OutputFilename))
-		}
-		if len(l.AtLdLibsFile) > 0 {
-			args = append(args, "@"+l.AtLdLibsFile)
-		}
-		args = append(args, "-Wl,--end-group")
-		args = append(args, "-Wl,-EL")
-		args = append(args, "-o")
-		args = append(args, filepath.Join(outputPath, exe.OutputFilePath))
-
-		return args
-	}
+	// Flashing specific
+	be.EspToolSettings = NewEspToolSettings(ESP_ROOT + "/tools/esptool/esptool")
+	be.EspToolSettings.Chip = "esp32"          // --chip esp32
+	be.EspToolSettings.FlashMode = "dio"       // --flash_mode dio
+	be.EspToolSettings.FlashFrequency = "40m"  // --flash_freq 40m
+	be.EspToolSettings.FlashSize = "4MB"       // --flash_size 4MB
+	be.EspToolSettings.ElfShareOffset = "0xb0" // --flash_offset 0xb0
 
 	// Image Generation
-
-	be.ImageGenerator = NewImageGenerator("python3", ESP_ROOT+"/tools/gen_esp32part.py", ESP_ROOT+"/tools/esptool/esptool")
+	be.ImageGenerator = NewImageGenerator("python3", ESP_ROOT+"/tools/gen_esp32part.py", be.EspToolSettings)
 
 	// Partitions generation specific
 	be.ImageGenerator.PartitionCsvFile = ESP_ROOT + "/tools/partitions/default.csv"
 	be.ImageGenerator.PartitionsBinOutputFile = ""
-
-	// Image generation specific
-	be.ImageGenerator.Chip = "esp32"          // --chip esp32
-	be.ImageGenerator.FlashMode = "dio"       // --flash_mode dio
-	be.ImageGenerator.FlashFrequency = "40m"  // --flash_freq 40m
-	be.ImageGenerator.FlashSize = "4MB"       // --flash_size 4MB
-	be.ImageGenerator.ElfShareOffset = "0xb0" // --flash_offset 0xb0
-
-	be.ImageGenerator.GenEspPartArgs = func(img *ImageGenerator, exe *Executable, buildPath string) []string {
-
-		img.PartitionsBinOutputFile = filepath.Join(buildPath, FileChangeExtension(exe.OutputFilePath, ".partitions.bin"))
-
-		args := make([]string, 0)
-		args = append(args, img.EspPartitionsToolScript)
-		args = append(args, "-q")
-		args = append(args, img.PartitionCsvFile)
-		args = append(args, img.PartitionsBinOutputFile)
-
-		return args
-	}
-
-	be.ImageGenerator.GenEspToolArgs = func(img *ImageGenerator, exe *Executable, buildPath string) []string {
-
-		args := make([]string, 0)
-		args = append(args, "--chip")
-		args = append(args, img.Chip)
-		args = append(args, "elf2image")
-		args = append(args, "--flash_mode")
-		args = append(args, img.FlashMode)
-		args = append(args, "--flash_freq")
-		args = append(args, img.FlashFrequency)
-		args = append(args, "--flash_size")
-		args = append(args, img.FlashSize)
-		args = append(args, "--elf-sha256-offset")
-		args = append(args, img.ElfShareOffset)
-
-		args = append(args, "-o")
-		args = append(args, filepath.Join(buildPath, FileChangeExtension(exe.OutputFilePath, ".bin")))
-		args = append(args, filepath.Join(buildPath, exe.OutputFilePath))
-
-		return args
-	}
+	be.ImageGenerator.GenEspPartArgs = be.GenEspPartArgs
+	be.ImageGenerator.GenEspToolArgs = be.GenEspToolArgs
 
 	be.ImageStatsTool = NewImageStatsTool(filepath.Join(ESP_ROOT, "/tools/xtensa-esp-elf/bin/xtensa-esp32-elf-size"))
-	be.ImageStatsTool.GenArgs = func(img *ImageStatsTool, exe *Executable, buildPath string) []string {
-		args := make([]string, 0, 2)
-		args = append(args, "-A")
-		args = append(args, filepath.Join(buildPath, exe.OutputFilePath))
-		return args
-	}
-
-	be.ImageStatsTool.ParseStats = func(s string, exe *Executable) (*ImageStats, error) {
-		stats := &ImageStats{
-			FlashSize: 0,
-			RAMSize:   0,
-		}
-
-		// Example Output:
-		//     build/TestProject.elf  :
-		//     section                 size         addr
-		//     .rtc.text                  0   1074528256
-		//     .rtc.dummy                 0   1073217536
-		//     .rtc.force_fast           28   1073217536
-		//     .rtc_noinit                0   1342177792
-		//     .rtc.force_slow            0   1342177792
-		//     .rtc_fast_reserved        16   1073225712
-		//     .rtc_slow_reserved        24   1342185448
-		//     .iram0.vectors          1027   1074266112
-		//     .iram0.text            58615   1074267140
-		//     .dram0.data            15284   1073470304
-		//     .ext_ram_noinit            0   1065353216
-		//     .noinit                    0   1073485588
-		//     .ext_ram.bss               0   1065353216
-		//     .dram0.bss              5224   1073485592
-		//     .flash.appdesc           256   1061158944
-		//     .flash.rodata          69160   1061159200
-		//     .flash.text           135512   1074593824
-		//     .iram0.text_end            1   1074325755
-		//     .iram0.data                0   1074325756
-		//     .iram0.bss                 0   1074325756
-		//     .dram0.heap_start          0   1073490816
-		//     .debug_aranges         33920            0
-		//     .debug_info          2191837            0
-		//     .debug_abbrev         281430            0
-		//     .debug_line          1342862            0
-		//     .debug_frame           85216            0
-		//     .debug_str            361642            0
-		//     .debug_loc            438423            0
-		//     .debug_ranges          67832            0
-		//     .debug_line_str        12428            0
-		//     .debug_loclists       113443            0
-		//     .debug_rnglists        10220            0
-		//     .comment                 169            0
-		//     .xtensa.info              56            0
-		//     .xt.prop                2220            0
-		//     .xt.lit                   80            0
-		//     Total                5226925
-
-		// Flash sections:
-		//    "^(?:\.iram0\.text|\.iram0\.vectors|\.dram0\.data|\.dram1\.data|\.flash\.text|\.flash\.rodata|\.flash\.appdesc|\.flash\.init_array|\.eh_frame|)\s+([0-9]+).*"
-		// RAM sections:
-		//    "^(?:\.dram0\.data|\.dram0\.bss|\.dram1\.data|\.dram1\.bss|\.noinit)\s+([0-9]+).*"
-
-		// Check if the section is a flash section
-		patterns_RAM := make([]string, 0, 5)
-		patterns_RAM = append(patterns_RAM, ".iram?.text")
-		patterns_RAM = append(patterns_RAM, ".iram?.vectors")
-		patterns_RAM = append(patterns_RAM, ".dram?.data")
-		patterns_RAM = append(patterns_RAM, ".dram?.data")
-
-		patterns_FLASH := make([]string, 0, 5)
-		patterns_FLASH = append(patterns_FLASH, ".flash.text")
-		patterns_FLASH = append(patterns_FLASH, ".flash.rodata")
-		patterns_FLASH = append(patterns_FLASH, ".flash.appdesc")
-		patterns_FLASH = append(patterns_FLASH, ".flash.init_array")
-		patterns_FLASH = append(patterns_FLASH, ".eh_frame")
-
-		scanner := bufio.NewScanner(bytes.NewBufferString(s))
-		for scanner.Scan() {
-			line := scanner.Text()
-			if len(line) == 0 {
-				continue
-			}
-
-			// Split the line into fields
-			fields := strings.Fields(line)
-			if len(fields) < 2 {
-				continue
-			}
-
-			section := fields[0]
-
-			for _, pattern := range patterns_FLASH {
-				if ccode_utils.GlobMatching(section, pattern) {
-					if size, err := strconv.ParseInt(fields[1], 10, 64); err == nil {
-						stats.FlashSize += size
-					}
-					goto found_match
-				}
-			}
-			for _, pattern := range patterns_RAM {
-				if ccode_utils.GlobMatching(section, pattern) {
-					if size, err := strconv.ParseInt(fields[1], 10, 64); err == nil {
-						stats.RAMSize += size
-					}
-					goto found_match
-				}
-			}
-		found_match:
-		}
-		if err := scanner.Err(); err != nil {
-			return nil, fmt.Errorf("failed to read output: %w", err)
-		}
-
-		return stats, nil
-	}
-
-	// Functions
+	be.ImageStatsTool.GenArgs = be.ImageStatsGenArgs
+	be.ImageStatsTool.ParseStats = be.ImageStatsParser
 
 	be.SetupFunc = func(be *BuildEnvironment) error { return nil }
 	be.BuildFunc = be.Build
 	be.BuildLibFunc = be.BuildLib
 
-	be.CompileFunc = func(be *BuildEnvironment, srcFile *SourceFile, outputPath string) error {
-		var args []string
-		var cl string
-		if srcFile.IsCpp {
-			args = be.CppCompiler.BuildArgs(be.CppCompiler, srcFile, outputPath)
-			cl = be.CppCompiler.CompilerPath
-			fmt.Printf("Compiling C++ file, %s\n", srcFile.SrcRelPath)
-		} else {
-			args = be.CCompiler.BuildArgs(be.CCompiler, srcFile, outputPath)
-			cl = be.CCompiler.CompilerPath
-			fmt.Printf("Compiling C file, %s\n", srcFile.SrcRelPath)
-		}
-		cmd := exec.Command(cl, args...)
-		out, err := cmd.CombinedOutput()
-		if err != nil {
-			return fmt.Errorf("Compile failed with %s\n", err)
-		}
-		if len(out) > 0 {
-			log.Printf("Compile output:\n%s\n", string(out))
-		}
-		return nil
-	}
-
-	// Archiver
-
-	be.ArchiveFunc = func(be *BuildEnvironment, lib *Library, outputPath string) error {
-		var args []string
-		var ar string
-
-		args = be.Archiver.BuildArgs(be.Archiver, lib, outputPath)
-		ar = be.Archiver.ArchiverPath
-
-		cmd := exec.Command(ar, args...)
-		log.Printf("Archiving %s\n", lib.OutputFilename)
-		out, err := cmd.CombinedOutput()
-		if err != nil {
-			return fmt.Errorf("Archive failed with %s\n", err)
-		}
-		if len(out) > 0 {
-			log.Printf("Archive output:\n%s\n", string(out))
-		}
-
-		return nil
-	}
-
-	// Linker
-
-	be.LinkFunc = func(be *BuildEnvironment, exe *Executable, outputPath string) error {
-		var args []string
-		var lnk string
-
-		args = be.Linker.BuildArgs(be.Linker, exe, outputPath)
-		lnk = be.Linker.LinkerPath
-
-		cmd := exec.Command(lnk, args...)
-		log.Printf("Linking '%s'...\n", exe.Name+".elf")
-		out, err := cmd.CombinedOutput()
-		if err != nil {
-			return fmt.Errorf("Link failed with %s\n", err)
-		}
-		if len(out) > 0 {
-			log.Printf("Link output:\n%s\n", string(out))
-		}
-
-		return nil
-	}
-
-	// Generate Image
-	be.GenerateImageFunc = func(be *BuildEnvironment, exe *Executable, buildPath string) error {
-		{
-			img, _ := exec.LookPath(be.ImageGenerator.EspPartitionsToolPath)
-			args := be.ImageGenerator.GenEspPartArgs(be.ImageGenerator, exe, buildPath)
-
-			cmd := exec.Command(img, args...)
-			log.Printf("Creating image partitions '%s' ...\n", exe.Name+".partitions.bin")
-			out, err := cmd.CombinedOutput()
-			if err != nil {
-				return fmt.Errorf("Creating image partitions failed with %s\n", err)
-			}
-			if len(out) > 0 {
-				log.Printf("Image partitions output:\n%s\n", string(out))
-			}
-		}
-		{
-			imgPath := be.ImageGenerator.EspImageToolPath
-			args := be.ImageGenerator.GenEspToolArgs(be.ImageGenerator, exe, buildPath)
-
-			cmd := exec.Command(imgPath, args...)
-			log.Printf("Generating image '%s'\n", exe.Name+".bin")
-			out, err := cmd.CombinedOutput()
-			if err != nil {
-				return fmt.Errorf("Image generation failed with %s\n", err)
-			}
-			if len(out) > 0 {
-				log.Printf("Image generation output:\n%s\n", string(out))
-			}
-		}
-
-		return nil
-	}
-
-	be.GenerateStatsFunc = func(be *BuildEnvironment, exe *Executable, buildPath string) (*ImageStats, error) {
-
-		statsToolPath := be.ImageStatsTool.ElfSizeToolPath
-		statsToolArgs := be.ImageStatsTool.GenArgs(be.ImageStatsTool, exe, buildPath)
-
-		cmd := exec.Command(statsToolPath, statsToolArgs...)
-		log.Printf("Generating ELF size stats for '%s'\n", exe.Name+".elf")
-		out, err := cmd.CombinedOutput()
-		if err != nil {
-			return nil, fmt.Errorf("ELF size stats query failed with %s\n", err)
-		}
-		if len(out) > 0 {
-			stats, err := be.ImageStatsTool.ParseStats(string(out), exe)
-			if err != nil {
-				return nil, fmt.Errorf("failed to parse ELF size stats: %w", err)
-			}
-
-			return stats, nil
-		}
-
-		return nil, fmt.Errorf("failed to generate ELF size stats: %s", string(out))
-	}
+	be.GenerateImageFunc = be.GenerateImage
+	be.GenerateStatsFunc = be.GenerateElfSizeStats
+	be.FlashFunc = be.FlashToDevice // Set our Flash function on the BuildEnvironment
 
 	return (*BuildEnvironment)(be)
 }
@@ -579,7 +271,7 @@ func (*BuildEnvironmentEsp32) BuildLib(be *BuildEnvironment, lib *Library, build
 	for _, src := range lib.SourceFiles {
 
 		libBuildPath := filepath.Join(buildPath, lib.BuildSubDir, filepath.Dir(src.SrcRelPath))
-		MakeDir(libBuildPath)
+		ccode_utils.MakeDir(libBuildPath)
 
 		if err := be.CompileFunc(be, src, libBuildPath); err != nil {
 			return fmt.Errorf("failed to compile source file %s: %w", src.SrcAbsPath, err)
@@ -590,12 +282,334 @@ func (*BuildEnvironmentEsp32) BuildLib(be *BuildEnvironment, lib *Library, build
 	return be.ArchiveFunc(be, lib, buildPath)
 }
 
-func MakeDir(path string) error {
-	// Create the directory if it doesn't exist
-	if _, err := os.Stat(path); os.IsNotExist(err) {
-		if err := os.MkdirAll(path, 0755); err != nil {
-			return fmt.Errorf("failed to create directory %s: %w", path, err)
+func (*BuildEnvironmentEsp32) FlashToDevice(be *BuildEnvironment, exe *Executable, buildPath string) error {
+
+	// If a buildPath/partitions.csv not found, generate it:
+	//     1. If a buildPath/partitions.img not found, generate it:
+	//         a. "$(ESP_SDK)/esptool/esptool" read_flash 0x9000 0xc00 partitions.img
+	//     2. "python3" $(ESP_SDK)/tools/gen_esp32part.py partitions.img > partitions.csv
+
+	// Generate a bootloader image if 'SKETCH_NAME.bootloader.bin' not found in the buildPath:
+	//     $(ESP_SDK)/tools/esptool/esptool
+	//     --chip
+	//     esp32
+	//     elf2image
+	//     --flash_mode
+	//     dio
+	//     --flash_freq
+	//     40m
+	//     --flash_size
+	//     4MB
+	//     -o
+	//     "$(buildPath) + SKETCH_NAME.bootloader.bin"
+	//     $(ESP_SDK)/tools/esp32-arduino-libs/esp32/bin/bootloader_dio_40m.elf
+
+	// && cp -f "/Users/obnosis5/sdk/arduino/esp32/tools/esp32-arduino-libs/esp32"/sdkconfig "../target/mkESP/WiFiScan_esp32"/sdkconfig
+
+	// If in the buildPath there is no 'build_opt.h' file, then:
+	// - first try and copy a 'build_opt.h' file from the sketch directory
+	// - if that fails, then create a empty 'build_opt.h' file in the buildPath
+
+	// Copy the 'sdkconfig' file from the ESP_SDK to the buildPath
+
+	// Flash the device with the images:
+	//    "/Users/obnosis5/sdk/arduino/esp32/tools/esptool//esptool"
+	//    --chip
+	//    esp32
+	//    --port
+	//    "/dev/tty.wchusbserial510"
+	//    --baud
+	//    921600
+	//    --before
+	//    default_reset
+	//    --after
+	//    hard_reset
+	//    write_flash
+	//    -z
+	//    --flash_mode
+	//    keep
+	//    --flash_freq
+	//    keep
+	//    --flash_size
+	//    keep
+	//    0x1000
+	//    "../target/mkESP/WiFiScan_esp32/WiFiScan.bootloader.bin"
+	//    0x8000
+	//    "../target/mkESP/WiFiScan_esp32/WiFiScan.partitions.bin"
+	//    0xe000
+	//    "/Users/obnosis5/sdk/arduino/esp32/tools/partitions/boot_app0.bin"
+	//    0x10000
+	//    "../target/mkESP/WiFiScan_esp32/WiFiScan.bin"
+
+	return nil
+}
+
+func (*BuildEnvironmentEsp32) BuildLinkerArgs(l *Linker, exe *Executable, outputPath string) []string {
+	args := make([]string, 0)
+
+	if l.OutputMapFile {
+		mapFilePath := filepath.Join(outputPath, ccode_utils.FileChangeExtension(exe.OutputFilePath, ".map"))
+		args = append(args, "-Wl,--Map="+mapFilePath)
+	}
+
+	for _, libPath := range l.LibraryPaths.Values {
+		args = append(args, "-L")
+		args = append(args, libPath)
+	}
+
+	args = append(args, "-Wl,--wrap=esp_panic_handler")
+
+	if len(l.AtLdFlagsFile) > 0 {
+		args = append(args, "@"+l.AtLdFlagsFile)
+	}
+	if len(l.AtLdScriptsFile) > 0 {
+		args = append(args, "@"+l.AtLdScriptsFile)
+	}
+
+	args = append(args, "-Wl,--start-group")
+	for _, lib := range exe.Libraries {
+		args = append(args, filepath.Join(outputPath, lib.BuildSubDir, lib.OutputFilename))
+	}
+	if len(l.AtLdLibsFile) > 0 {
+		args = append(args, "@"+l.AtLdLibsFile)
+	}
+	args = append(args, "-Wl,--end-group")
+	args = append(args, "-Wl,-EL")
+	args = append(args, "-o")
+	args = append(args, filepath.Join(outputPath, exe.OutputFilePath))
+
+	return args
+}
+
+func (*BuildEnvironmentEsp32) ImageStatsGenArgs(statsTool *ImageStatsTool, exe *Executable, buildPath string) []string {
+	args := make([]string, 0, 2)
+	args = append(args, "-A")
+	args = append(args, filepath.Join(buildPath, exe.OutputFilePath))
+	return args
+}
+
+func (*BuildEnvironmentEsp32) ImageStatsParser(s string, exe *Executable) (*ImageStats, error) {
+	stats := &ImageStats{
+		FlashSize: 0,
+		RAMSize:   0,
+	}
+
+	// Check if the section is a flash section
+	patterns_RAM := make([]string, 0, 5)
+	patterns_RAM = append(patterns_RAM, ".iram?.text")
+	patterns_RAM = append(patterns_RAM, ".iram?.vectors")
+	patterns_RAM = append(patterns_RAM, ".dram?.data")
+	patterns_RAM = append(patterns_RAM, ".dram?.data")
+
+	patterns_FLASH := make([]string, 0, 5)
+	patterns_FLASH = append(patterns_FLASH, ".flash.text")
+	patterns_FLASH = append(patterns_FLASH, ".flash.rodata")
+	patterns_FLASH = append(patterns_FLASH, ".flash.appdesc")
+	patterns_FLASH = append(patterns_FLASH, ".flash.init_array")
+	patterns_FLASH = append(patterns_FLASH, ".eh_frame")
+
+	scanner := bufio.NewScanner(bytes.NewBufferString(s))
+	for scanner.Scan() {
+		line := scanner.Text()
+		if len(line) == 0 {
+			continue
+		}
+
+		// Split the line into fields
+		fields := strings.Fields(line)
+		if len(fields) < 2 {
+			continue
+		}
+
+		section := fields[0]
+
+		for _, pattern := range patterns_FLASH {
+			if ccode_utils.GlobMatching(section, pattern) {
+				if size, err := strconv.ParseInt(fields[1], 10, 64); err == nil {
+					stats.FlashSize += size
+				}
+				goto found_match
+			}
+		}
+		for _, pattern := range patterns_RAM {
+			if ccode_utils.GlobMatching(section, pattern) {
+				if size, err := strconv.ParseInt(fields[1], 10, 64); err == nil {
+					stats.RAMSize += size
+				}
+				goto found_match
+			}
+		}
+	found_match:
+	}
+	if err := scanner.Err(); err != nil {
+		return nil, fmt.Errorf("failed to read output: %w", err)
+	}
+
+	return stats, nil
+}
+
+func (*BuildEnvironmentEsp32) GenEspPartArgs(img *ImageGenerator, exe *Executable, buildPath string) []string {
+	img.PartitionsBinOutputFile = filepath.Join(buildPath, ccode_utils.FileChangeExtension(exe.OutputFilePath, ".partitions.bin"))
+	args := make([]string, 0)
+	args = append(args, img.EspPartitionsToolScript)
+	args = append(args, "-q")
+	args = append(args, img.PartitionCsvFile)
+	args = append(args, img.PartitionsBinOutputFile)
+	return args
+}
+
+func (*BuildEnvironmentEsp32) GenEspToolArgs(img *ImageGenerator, exe *Executable, buildPath string) []string {
+	args := make([]string, 0)
+	args = append(args, "--chip")
+	args = append(args, img.EspTool.Chip)
+	args = append(args, "elf2image")
+	args = append(args, "--flash_mode")
+	args = append(args, img.EspTool.FlashMode)
+	args = append(args, "--flash_freq")
+	args = append(args, img.EspTool.FlashFrequency)
+	args = append(args, "--flash_size")
+	args = append(args, img.EspTool.FlashSize)
+	args = append(args, "--elf-sha256-offset")
+	args = append(args, img.EspTool.ElfShareOffset)
+
+	args = append(args, "-o")
+	args = append(args, filepath.Join(buildPath, ccode_utils.FileChangeExtension(exe.OutputFilePath, ".bin")))
+	args = append(args, filepath.Join(buildPath, exe.OutputFilePath))
+
+	return args
+}
+
+func (*BuildEnvironmentEsp32) GenerateImage(be *BuildEnvironment, exe *Executable, buildPath string) error {
+
+	// Generate the image partitions bin file
+	{
+		img, _ := exec.LookPath(be.ImageGenerator.EspPartitionsToolPath)
+		args := be.ImageGenerator.GenEspPartArgs(be.ImageGenerator, exe, buildPath)
+
+		cmd := exec.Command(img, args...)
+		log.Printf("Creating image partitions '%s' ...\n", exe.Name+".partitions.bin")
+		out, err := cmd.CombinedOutput()
+		if err != nil {
+			return fmt.Errorf("Creating image partitions failed with %s\n", err)
+		}
+		if len(out) > 0 {
+			log.Printf("Image partitions output:\n%s\n", string(out))
 		}
 	}
+
+	// Generate the image bin file
+	{
+		imgPath := be.ImageGenerator.EspTool.EspImageToolPath
+		args := be.ImageGenerator.GenEspToolArgs(be.ImageGenerator, exe, buildPath)
+
+		cmd := exec.Command(imgPath, args...)
+		log.Printf("Generating image '%s'\n", exe.Name+".bin")
+		out, err := cmd.CombinedOutput()
+		if err != nil {
+			return fmt.Errorf("Image generation failed with %s\n", err)
+		}
+		if len(out) > 0 {
+			log.Printf("Image generation output:\n%s\n", string(out))
+		}
+	}
+
+	return nil
+}
+
+func (*BuildEnvironmentEsp32) GenerateElfSizeStats(be *BuildEnvironment, exe *Executable, buildPath string) (*ImageStats, error) {
+
+	statsToolPath := be.ImageStatsTool.ElfSizeToolPath
+	statsToolArgs := be.ImageStatsTool.GenArgs(be.ImageStatsTool, exe, buildPath)
+
+	cmd := exec.Command(statsToolPath, statsToolArgs...)
+	log.Printf("Generating ELF size stats for '%s'\n", exe.Name+".elf")
+	out, err := cmd.CombinedOutput()
+	if err != nil {
+		return nil, fmt.Errorf("ELF size stats query failed with %s\n", err)
+	}
+	if len(out) > 0 {
+		stats, err := be.ImageStatsTool.ParseStats(string(out), exe)
+		if err != nil {
+			return nil, fmt.Errorf("failed to parse ELF size stats: %w", err)
+		}
+
+		return stats, nil
+	}
+
+	return nil, fmt.Errorf("failed to generate ELF size stats: %s", string(out))
+}
+
+func (*BuildEnvironmentEsp32) Compile(be *BuildEnvironment, srcFile *SourceFile, outputPath string) error {
+	var args []string
+	var cl string
+	if srcFile.IsCpp {
+		args = be.CppCompiler.BuildArgs(be.CppCompiler, srcFile, outputPath)
+		cl = be.CppCompiler.CompilerPath
+		fmt.Printf("Compiling C++ file, %s\n", srcFile.SrcRelPath)
+	} else {
+		args = be.CCompiler.BuildArgs(be.CCompiler, srcFile, outputPath)
+		cl = be.CCompiler.CompilerPath
+		fmt.Printf("Compiling C file, %s\n", srcFile.SrcRelPath)
+	}
+	cmd := exec.Command(cl, args...)
+	out, err := cmd.CombinedOutput()
+	if err != nil {
+		return fmt.Errorf("Compile failed with %s\n", err)
+	}
+	if len(out) > 0 {
+		log.Printf("Compile output:\n%s\n", string(out))
+	}
+	return nil
+}
+
+func (*BuildEnvironmentEsp32) BuildArchiverArgs(ar *Archiver, lib *Library, outputPath string) []string {
+	args := make([]string, 0)
+
+	args = append(args, "cr")
+	args = append(args, filepath.Join(outputPath, lib.BuildSubDir, lib.OutputFilename))
+	for _, src := range lib.SourceFiles {
+		args = append(args, src.ObjRelPath)
+	}
+
+	return args
+}
+
+func (*BuildEnvironmentEsp32) Archive(be *BuildEnvironment, lib *Library, outputPath string) error {
+	var args []string
+	var ar string
+
+	args = be.Archiver.BuildArgs(be.Archiver, lib, outputPath)
+	ar = be.Archiver.ArchiverPath
+
+	cmd := exec.Command(ar, args...)
+	log.Printf("Archiving %s\n", lib.OutputFilename)
+	out, err := cmd.CombinedOutput()
+	if err != nil {
+		return fmt.Errorf("Archive failed with %s\n", err)
+	}
+	if len(out) > 0 {
+		log.Printf("Archive output:\n%s\n", string(out))
+	}
+
+	return nil
+}
+
+func (*BuildEnvironmentEsp32) Link(be *BuildEnvironment, exe *Executable, outputPath string) error {
+	var args []string
+	var lnk string
+
+	args = be.Linker.BuildArgs(be.Linker, exe, outputPath)
+	lnk = be.Linker.LinkerPath
+
+	cmd := exec.Command(lnk, args...)
+	log.Printf("Linking '%s'...\n", exe.Name+".elf")
+	out, err := cmd.CombinedOutput()
+	if err != nil {
+		return fmt.Errorf("Link failed with %s\n", err)
+	}
+	if len(out) > 0 {
+		log.Printf("Link output:\n%s\n", string(out))
+	}
+
 	return nil
 }

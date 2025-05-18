@@ -9,12 +9,9 @@ import (
 //          flash
 // - MINOR: Add Build Info as a Library to the Executable when BuildDir/buildinfo.h/.cpp exist
 // - MINOR: ESP32 S3 Target
+// - MAJOR: Parse the boards.txt file and be able to extract compiler, linker and other info
 // - MAJOR: To reduce compile/link time we need Dependency Tracking (Database)
-//   - source file -> object file
-//     + args (excluding '<src> + -o <obj>')
-//     + response files, they should be a dependency
-//     + header files
-//     + tool(s) used
+//   - source file <-> [command-line args], [object-file + header-files], [tools?]
 
 // DONE:
 // - MINOR: Clay build CLI-APP for the user

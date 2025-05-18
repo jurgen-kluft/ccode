@@ -39,8 +39,8 @@ package clay
 // Dep (16 bytes)
 //   - int32, index to '.c'/'.cpp' File
 //   - int32, index to '.d' File
+//   - int32, index to Hash-Node (hash of command-line arguments)
 //   - int32, index to Node (list of dependencies, e.g. '.o' file and '.h' files)
-//   - int32, padding
 
 // A dependency represents the dependency description of a source file.
 

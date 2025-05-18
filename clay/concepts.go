@@ -208,32 +208,38 @@ type ImageGenerator struct {
 	PartitionCsvFile        string                                                                 // FilePath to the partitions file
 	PartitionsBinOutputFile string                                                                 // FilePath to the partitions binary file
 	GenEspPartArgs          func(img *ImageGenerator, exe *Executable, outputPath string) []string // Function to build the image generator arguments
+	EspTool                 *EspToolSettings
+	GenEspToolArgs          func(img *ImageGenerator, exe *Executable, outputPath string) []string // Function to build the image generator arguments
+}
 
+func NewImageGenerator(genPartitionsToolPath string, genPartitionsToolScript string, espTool *EspToolSettings) *ImageGenerator {
+	return &ImageGenerator{
+		EspPartitionsToolPath:   genPartitionsToolPath,
+		EspPartitionsToolScript: genPartitionsToolScript,
+		PartitionCsvFile:        "",
+		PartitionsBinOutputFile: "",
+		EspTool:                 espTool,
+		GenEspPartArgs:          func(img *ImageGenerator, exe *Executable, outputPath string) []string { return nil },
+	}
+}
+
+type EspToolSettings struct {
 	EspImageToolPath string // FilePath to the ESP tool
 	Chip             string // Chip name (e.g., ESP32, ESP32S3)
 	FlashMode        string // Flash mode (e.g., DIO, QIO)
 	FlashFrequency   string // Flash frequency (e.g., 40m, 80m)
 	FlashSize        string // Flash size (e.g., 4MB, 8MB)
 	ElfShareOffset   string // ELF share offset (e.g., 0xb0)
-
-	GenEspToolArgs func(img *ImageGenerator, exe *Executable, outputPath string) []string // Function to build the image generator arguments
 }
 
-func NewImageGenerator(genPartitionsToolPath string, genPartitionsToolScript string, genImageToolPath string) *ImageGenerator {
-	return &ImageGenerator{
-		EspPartitionsToolPath:   genPartitionsToolPath,
-		EspPartitionsToolScript: genPartitionsToolScript,
-		PartitionCsvFile:        "",
-		PartitionsBinOutputFile: "",
-		GenEspPartArgs:          func(img *ImageGenerator, exe *Executable, outputPath string) []string { return nil },
-
-		EspImageToolPath: genImageToolPath,
+func NewEspToolSettings(espImageToolPath string) *EspToolSettings {
+	return &EspToolSettings{
+		EspImageToolPath: espImageToolPath,
 		Chip:             "",
 		FlashMode:        "",
 		FlashFrequency:   "",
 		FlashSize:        "",
 		ElfShareOffset:   "",
-		GenEspToolArgs:   func(img *ImageGenerator, exe *Executable, outputPath string) []string { return nil },
 	}
 }
 
@@ -268,6 +274,8 @@ type BuildEnvironment struct {
 	ImageGenerator *ImageGenerator
 	ImageStatsTool *ImageStatsTool
 
+	EspToolSettings *EspToolSettings
+
 	SetupFunc         func(be *BuildEnvironment) error                                                    // Function that does initial setup for the compiler package
 	PrebuildFunc      func(be *BuildEnvironment) error                                                    // Function that does prebuild for the compiler package
 	BuildFunc         func(be *BuildEnvironment, exe *Executable, outputPath string) error                // Function that does all, compile, archive, link, and generate image
@@ -277,6 +285,7 @@ type BuildEnvironment struct {
 	LinkFunc          func(be *BuildEnvironment, exe *Executable, outputPath string) error                // Function to link libraries/object-files into an executable
 	GenerateImageFunc func(be *BuildEnvironment, exe *Executable, outputPath string) error                // Function to generate an image from the executable
 	GenerateStatsFunc func(be *BuildEnvironment, exe *Executable, outputPath string) (*ImageStats, error) // Function to get the ELF size stats
+	FlashFunc         func(be *BuildEnvironment, exe *Executable, outputPath string) error                // Function to flash the image to the device
 }
 
 func NewBuildEnvironment(name string, version string, sdkRoot string) *BuildEnvironment {
