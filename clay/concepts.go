@@ -140,28 +140,28 @@ func (exe *Executable) AddLibrary(lib *Library) {
 }
 
 type Compiler struct {
-	CompilerPath    string                                                                        // FilePath to the compiler
-	Defines         *ValueSet                                                                     // Compiler defines (macros) for the compiler
-	Switches        *ValueSet                                                                     // Compiler switches (flags) for the compiler
-	WarningSwitches *ValueSet                                                                     // Warning switches (flags) for the compiler
-	AtFlagsFile     string                                                                        // FilePath to the C compiler flags file (optional)
-	AtDefinesFile   string                                                                        // FilePath to the C compiler defines file (optional)
-	AtIncludesFile  string                                                                        // FilePath to the C compiler includes file (optional)
-	IncludePaths    *IncludeMap                                                                   // Include paths for the compiler (system level)
-	BuildArgs       func(cl *Compiler, lib *Library, src *SourceFile, outputPath string) []string // Function to build the compiler arguments
+	CompilerPath         string                                                                        // FilePath to the compiler
+	Defines              *ValueSet                                                                     // Compiler defines (macros) for the compiler
+	Switches             *ValueSet                                                                     // Compiler switches (flags) for the compiler
+	WarningSwitches      *ValueSet                                                                     // Warning switches (flags) for the compiler
+	ResponseFileFlags    string                                                                        // FilePath to the C compiler flags file (optional)
+	ResponseFileDefines  string                                                                        // FilePath to the C compiler defines file (optional)
+	ResponseFileIncludes string                                                                        // FilePath to the C compiler includes file (optional)
+	IncludePaths         *IncludeMap                                                                   // Include paths for the compiler (system level)
+	BuildArgs            func(cl *Compiler, lib *Library, src *SourceFile, outputPath string) []string // Function to build the compiler arguments
 }
 
 func NewCompiler(compilerPath string) *Compiler {
 	return &Compiler{
-		CompilerPath:    compilerPath,
-		Defines:         NewValueSet(),
-		Switches:        NewValueSet(),
-		WarningSwitches: NewValueSet(),
-		AtFlagsFile:     "",
-		AtDefinesFile:   "",
-		AtIncludesFile:  "",
-		IncludePaths:    NewIncludeMap(),
-		BuildArgs:       func(cl *Compiler, lib *Library, src *SourceFile, outputPath string) []string { return nil },
+		CompilerPath:         compilerPath,
+		Defines:              NewValueSet(),
+		Switches:             NewValueSet(),
+		WarningSwitches:      NewValueSet(),
+		ResponseFileFlags:    "",
+		ResponseFileDefines:  "",
+		ResponseFileIncludes: "",
+		IncludePaths:         NewIncludeMap(),
+		BuildArgs:            func(cl *Compiler, lib *Library, src *SourceFile, outputPath string) []string { return nil },
 	}
 }
 
@@ -184,21 +184,24 @@ type Linker struct {
 	LibraryPaths  *ValueSet // Library paths for the linker (system)
 	OutputMapFile bool      //
 
-	AtLdFlagsFile   string // FilePath to the linker flags file (optional)
-	AtLdScriptsFile string // FilePath to the linker scripts file (optional)
-	AtLdLibsFile    string // FilePath to the linker libraries file (optional)
+	ResponseFileLdFlags   string // FilePath to the linker flags file (optional)
+	ResponseFileLdScripts string // FilePath to the linker scripts file (optional)
+	ResponseFileLdLibs    string // FilePath to the linker libraries file (optional)
 
 	BuildArgs func(l *Linker, exe *Executable, outputPath string) []string // Function to build the linker arguments
 }
 
 func NewLinker(linkerPath string) *Linker {
 	return &Linker{
-		LinkerPath:    linkerPath,
-		Defines:       NewValueSet(),
-		Switches:      NewValueSet(),
-		LibraryPaths:  NewValueSet(),
-		OutputMapFile: false,
-		BuildArgs:     func(l *Linker, exe *Executable, outputPath string) []string { return nil },
+		LinkerPath:            linkerPath,
+		Defines:               NewValueSet(),
+		Switches:              NewValueSet(),
+		LibraryPaths:          NewValueSet(),
+		OutputMapFile:         false,
+		ResponseFileLdFlags:   "",
+		ResponseFileLdScripts: "",
+		ResponseFileLdLibs:    "",
+		BuildArgs:             func(l *Linker, exe *Executable, outputPath string) []string { return nil },
 	}
 }
 

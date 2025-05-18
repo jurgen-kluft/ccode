@@ -5,6 +5,7 @@ import (
 	"bytes"
 	"fmt"
 	"log"
+	"os"
 	"os/exec"
 	"path/filepath"
 	"strconv"
@@ -14,54 +15,55 @@ import (
 )
 
 //
-// This is a build environment for a generic ESP32 board.
+// This is a build environment for ESP32 boards.
 // It uses the ESP32 Arduino core and the ESP32 toolchain.
 //
-// The YD ESP32 board is such a generic ESP32 board.
+// An example of a generic ESP32 board is the YD ESP32 board.
 //
 // NOTE: Currently a lot of paths and details are hardcoded,
-// the next step is to have some functions that can read the
 // necessary information from the boards.txt file and with that
-// generate the necessary paths and flags.
+// generate the necessary paths and flags is planned.
 //
-// However, it should not be too much effort to add support for
-// a ESP32 S3 board.
+// With that, it should not be too much effort to add support for
+// any ESP32 board.
 //
 
 type BuildEnvironmentEsp32 BuildEnvironment
 
 func NewBuildEnvironmentEsp32(buildPath string) *BuildEnvironment {
 
-	// TODO Hard-coded, this should likely be read as a environment variable
-	ESP_ROOT := "/Users/obnosis5/sdk/arduino/esp32"
+	EspSdk := "/Users/obnosis5/sdk/arduino/esp32"
+	if sdk := os.Getenv("ESP_SDK"); sdk != "" {
+		EspSdk = sdk
+	}
 
-	be := (*BuildEnvironmentEsp32)(NewBuildEnvironment("esp32", "v1.0.0", ESP_ROOT))
+	be := (*BuildEnvironmentEsp32)(NewBuildEnvironment("esp32", "v1.0.0", EspSdk))
 
 	{ // C Compiler specific
-		cc := NewCompiler(ESP_ROOT + "/tools/xtensa-esp-elf/bin/xtensa-esp32-elf-gcc")
+		cc := NewCompiler(EspSdk + "/tools/xtensa-esp-elf/bin/xtensa-esp32-elf-gcc")
 
 		cc.Defines.Add("F_CPU=240000000L")
 		cc.Defines.Add("ARDUINO=10605")
 		cc.Defines.Add("ARDUINO_ESP32_DEV")
 		cc.Defines.Add("ARDUINO_ARCH_ESP32")
-		cc.Defines.Add("ARDUINO_BOARD=\"ESP32_DEV\"")
-		cc.Defines.Add("ARDUINO_VARIANT=\"esp32\"")
+		cc.Defines.Add(`ARDUINO_BOARD="ESP32_DEV"`)
+		cc.Defines.Add(`ARDUINO_VARIANT="esp32"`)
 		cc.Defines.Add("ARDUINO_PARTITION_default")
-		cc.Defines.Add("ARDUINO_HOST_OS=\"Darwin\"")
-		cc.Defines.Add("ARDUINO_FQBN=\"generic\"")
+		cc.Defines.Add(`ARDUINO_HOST_OS="Darwin"`)
+		cc.Defines.Add(`ARDUINO_FQBN="generic"`)
 		cc.Defines.Add("ESP32=ESP32")
 		cc.Defines.Add("CORE_DEBUG_LEVEL=0")
 		cc.Defines.Add("ARDUINO_USB_CDC_ON_BOOT=0")
 
-		cc.AtFlagsFile = filepath.Join(ESP_ROOT, "tools/esp32-arduino-libs/esp32/flags/c_flags")
-		cc.AtDefinesFile = filepath.Join(ESP_ROOT, "tools/esp32-arduino-libs/esp32/flags/defines")
-		cc.AtIncludesFile = filepath.Join(ESP_ROOT, "tools/esp32-arduino-libs/esp32/flags/includes")
+		cc.ResponseFileFlags = filepath.Join(EspSdk, "tools/esp32-arduino-libs/esp32/flags/c_flags")
+		cc.ResponseFileDefines = filepath.Join(EspSdk, "tools/esp32-arduino-libs/esp32/flags/defines")
+		cc.ResponseFileIncludes = filepath.Join(EspSdk, "tools/esp32-arduino-libs/esp32/flags/includes")
 
 		cc.IncludePaths = NewIncludeMap()
-		cc.IncludePaths.Add(filepath.Join(ESP_ROOT, "tools/esp32-arduino-libs/esp32/include/"), true)
-		cc.IncludePaths.Add(filepath.Join(ESP_ROOT, "cores/esp32"), false)
-		cc.IncludePaths.Add(filepath.Join(ESP_ROOT, "variants/esp32"), false)
-		cc.IncludePaths.Add(filepath.Join(ESP_ROOT, "tools/esp32-arduino-libs/esp32/dio_qspi/include"), false)
+		cc.IncludePaths.Add(filepath.Join(EspSdk, "tools/esp32-arduino-libs/esp32/include/"), true)
+		cc.IncludePaths.Add(filepath.Join(EspSdk, "cores/esp32"), false)
+		cc.IncludePaths.Add(filepath.Join(EspSdk, "variants/esp32"), false)
+		cc.IncludePaths.Add(filepath.Join(EspSdk, "tools/esp32-arduino-libs/esp32/dio_qspi/include"), false)
 
 		cc.Switches.Add("-w")  // Suppress all warnings
 		cc.Switches.Add("-Os") // Optimize for size
@@ -73,7 +75,7 @@ func NewBuildEnvironmentEsp32(buildPath string) *BuildEnvironment {
 
 	{ // C++ Compiler specific
 
-		cxc := NewCompiler(filepath.Join(ESP_ROOT, "tools/xtensa-esp-elf/bin/xtensa-esp32-elf-g++"))
+		cxc := NewCompiler(filepath.Join(EspSdk, "tools/xtensa-esp-elf/bin/xtensa-esp32-elf-g++"))
 
 		cxc.Defines.Add("F_CPU=240000000L")
 		cxc.Defines.Add("ARDUINO=10605")
@@ -88,15 +90,15 @@ func NewBuildEnvironmentEsp32(buildPath string) *BuildEnvironment {
 		cxc.Defines.Add("CORE_DEBUG_LEVEL=0")
 		cxc.Defines.Add("ARDUINO_USB_CDC_ON_BOOT=0")
 
-		cxc.AtFlagsFile = filepath.Join(ESP_ROOT, "tools/esp32-arduino-libs/esp32/flags/cpp_flags")
-		cxc.AtDefinesFile = filepath.Join(ESP_ROOT, "tools/esp32-arduino-libs/esp32/flags/defines")
-		cxc.AtIncludesFile = filepath.Join(ESP_ROOT, "tools/esp32-arduino-libs/esp32/flags/includes")
+		cxc.ResponseFileFlags = filepath.Join(EspSdk, "tools/esp32-arduino-libs/esp32/flags/cpp_flags")
+		cxc.ResponseFileDefines = filepath.Join(EspSdk, "tools/esp32-arduino-libs/esp32/flags/defines")
+		cxc.ResponseFileIncludes = filepath.Join(EspSdk, "tools/esp32-arduino-libs/esp32/flags/includes")
 
 		cxc.IncludePaths = NewIncludeMap()
-		cxc.IncludePaths.Add(filepath.Join(ESP_ROOT, "tools/esp32-arduino-libs/esp32/include/"), true)
-		cxc.IncludePaths.Add(filepath.Join(ESP_ROOT, "cores/esp32"), false)
-		cxc.IncludePaths.Add(filepath.Join(ESP_ROOT, "variants/esp32"), false)
-		cxc.IncludePaths.Add(filepath.Join(ESP_ROOT, "tools/esp32-arduino-libs/esp32/dio_qspi/include"), false)
+		cxc.IncludePaths.Add(filepath.Join(EspSdk, "tools/esp32-arduino-libs/esp32/include/"), true)
+		cxc.IncludePaths.Add(filepath.Join(EspSdk, "cores/esp32"), false)
+		cxc.IncludePaths.Add(filepath.Join(EspSdk, "variants/esp32"), false)
+		cxc.IncludePaths.Add(filepath.Join(EspSdk, "tools/esp32-arduino-libs/esp32/dio_qspi/include"), false)
 
 		cxc.Switches.Add("-w")  // Suppress all warnings
 		cxc.Switches.Add("-Os") // Optimize for size
@@ -113,28 +115,28 @@ func NewBuildEnvironmentEsp32(buildPath string) *BuildEnvironment {
 
 	// Archiver specific
 
-	be.Archiver = NewArchiver(filepath.Join(ESP_ROOT, "tools/xtensa-esp-elf/bin/xtensa-esp32-elf-gcc-ar"))
+	be.Archiver = NewArchiver(filepath.Join(EspSdk, "tools/xtensa-esp-elf/bin/xtensa-esp32-elf-gcc-ar"))
 	be.Archiver.BuildArgs = be.BuildArchiverArgs
 	be.ArchiveFunc = be.Archive
 
 	// Linker specific
 
-	be.Linker = NewLinker(ESP_ROOT + "/tools/xtensa-esp-elf/bin/xtensa-esp32-elf-g++")
+	be.Linker = NewLinker(EspSdk + "/tools/xtensa-esp-elf/bin/xtensa-esp32-elf-g++")
 	be.Linker.OutputMapFile = true
 
-	be.Linker.LibraryPaths.Add(filepath.Join(ESP_ROOT, "tools/esp32-arduino-libs/esp32/lib"))
-	be.Linker.LibraryPaths.Add(filepath.Join(ESP_ROOT, "tools/esp32-arduino-libs/esp32/ld"))
-	be.Linker.LibraryPaths.Add(filepath.Join(ESP_ROOT, "tools/esp32-arduino-libs/esp32/dio_qspi"))
+	be.Linker.LibraryPaths.Add(filepath.Join(EspSdk, "tools/esp32-arduino-libs/esp32/lib"))
+	be.Linker.LibraryPaths.Add(filepath.Join(EspSdk, "tools/esp32-arduino-libs/esp32/ld"))
+	be.Linker.LibraryPaths.Add(filepath.Join(EspSdk, "tools/esp32-arduino-libs/esp32/dio_qspi"))
 
-	be.Linker.AtLdFlagsFile = filepath.Join(ESP_ROOT, "tools/esp32-arduino-libs/esp32/flags/ld_flags")
-	be.Linker.AtLdScriptsFile = filepath.Join(ESP_ROOT, "tools/esp32-arduino-libs/esp32/flags/ld_scripts")
-	be.Linker.AtLdLibsFile = filepath.Join(ESP_ROOT, "tools/esp32-arduino-libs/esp32/flags/ld_libs")
+	be.Linker.ResponseFileLdFlags = filepath.Join(EspSdk, "tools/esp32-arduino-libs/esp32/flags/ld_flags")
+	be.Linker.ResponseFileLdScripts = filepath.Join(EspSdk, "tools/esp32-arduino-libs/esp32/flags/ld_scripts")
+	be.Linker.ResponseFileLdLibs = filepath.Join(EspSdk, "tools/esp32-arduino-libs/esp32/flags/ld_libs")
 
 	be.Linker.BuildArgs = be.BuildLinkerArgs
 	be.LinkFunc = be.Link
 
 	// Flashing specific
-	be.EspTool = NewEspTool(filepath.Join(ESP_ROOT, "tools/esptool/esptool"))
+	be.EspTool = NewEspTool(filepath.Join(EspSdk, "tools/esptool/esptool"))
 	be.EspTool.Chip = "esp32"          // --chip esp32
 	be.EspTool.Port = ""               // --port /dev/ttyUSB0
 	be.EspTool.Baud = "921600"         // --baud 921600
@@ -142,10 +144,10 @@ func NewBuildEnvironmentEsp32(buildPath string) *BuildEnvironment {
 	be.EspTool.FlashFrequency = "40m"  // --flash_freq 40m
 	be.EspTool.FlashSize = "4MB"       // --flash_size 4MB
 	be.EspTool.ElfShareOffset = "0xb0" // --flash_offset 0xb0
-	be.EspTool.PartitionCsvFile = filepath.Join(ESP_ROOT, "tools/partitions/default.csv")
+	be.EspTool.PartitionCsvFile = filepath.Join(EspSdk, "tools/partitions/default.csv")
 
 	// Image Generation
-	be.ImageGenerator = NewImageGenerator("python3", filepath.Join(ESP_ROOT, "tools/gen_esp32part.py"), be.EspTool)
+	be.ImageGenerator = NewImageGenerator("python3", filepath.Join(EspSdk, "tools/gen_esp32part.py"), be.EspTool)
 
 	// Partitions generation specific
 	be.ImageGenerator.PartitionsBinToolOutputFile = ""
@@ -153,7 +155,7 @@ func NewBuildEnvironmentEsp32(buildPath string) *BuildEnvironment {
 	be.ImageGenerator.ImageBinToolArgs = be.GenerateImageBinArgs
 	be.ImageGenerator.ImageBinTool = be.EspTool
 
-	be.ImageStatsTool = NewImageStatsTool(filepath.Join(ESP_ROOT, "/tools/xtensa-esp-elf/bin/xtensa-esp32-elf-size"))
+	be.ImageStatsTool = NewImageStatsTool(filepath.Join(EspSdk, "/tools/xtensa-esp-elf/bin/xtensa-esp32-elf-size"))
 	be.ImageStatsTool.ToolArgs = be.ImageStatsToolArgs
 	be.ImageStatsTool.ParseStats = be.ImageStatsParser
 
@@ -166,14 +168,14 @@ func NewBuildEnvironmentEsp32(buildPath string) *BuildEnvironment {
 	be.GenerateStatsFunc = be.GenerateElfSizeStats
 
 	be.BootLoaderCompiler = NewBootLoaderCompiler(be.EspTool)
-	be.BootLoaderCompiler.Variables.Add("BootLoaderElfPath", filepath.Join(ESP_ROOT, "tools/esp32-arduino-libs/esp32/bin/bootloader_dio_40m.elf"))
+	be.BootLoaderCompiler.Variables.Add("BootLoaderElfPath", filepath.Join(EspSdk, "tools/esp32-arduino-libs/esp32/bin/bootloader_dio_40m.elf"))
 	be.BootLoaderCompiler.Args = be.GenerateBootLoaderArgs
 	be.BootLoaderCompiler.Execute = be.CreateBootLoader
 
 	be.FlashTool = NewFlashTool(be.EspTool)
 	be.FlashTool.Args = be.FlashToolArgs
 	be.FlashTool.Flash = be.FlashToolFlash
-	be.FlashTool.Variables.Add("BootApp0BinFile", filepath.Join(ESP_ROOT, "tools/partitions/boot_app0.bin"))
+	be.FlashTool.Variables.Add("BootApp0BinFile", filepath.Join(EspSdk, "tools/partitions/boot_app0.bin"))
 	be.FlashFunc = be.Flash
 
 	return (*BuildEnvironment)(be)
@@ -187,8 +189,8 @@ func BuildCompilerArgs(cl *Compiler, lib *Library, srcFile *SourceFile, outputPa
 	args = append(args, "-c")
 	args = append(args, "-MMD")
 
-	if len(cl.AtFlagsFile) > 0 {
-		args = append(args, "@"+cl.AtFlagsFile+"")
+	if len(cl.ResponseFileFlags) > 0 {
+		args = append(args, "@"+cl.ResponseFileFlags+"")
 	}
 
 	for _, s := range cl.Switches.Values {
@@ -208,8 +210,8 @@ func BuildCompilerArgs(cl *Compiler, lib *Library, srcFile *SourceFile, outputPa
 		args = append(args, define)
 	}
 
-	if len(cl.AtDefinesFile) > 0 {
-		args = append(args, "@"+cl.AtDefinesFile+"")
+	if len(cl.ResponseFileDefines) > 0 {
+		args = append(args, "@"+cl.ResponseFileDefines+"")
 	}
 
 	// Compiler system include paths
@@ -229,8 +231,8 @@ func BuildCompilerArgs(cl *Compiler, lib *Library, srcFile *SourceFile, outputPa
 		args = append(args, include.IncludePath)
 	}
 
-	if len(cl.AtIncludesFile) > 0 {
-		args = append(args, "@"+cl.AtIncludesFile+"")
+	if len(cl.ResponseFileIncludes) > 0 {
+		args = append(args, "@"+cl.ResponseFileIncludes+"")
 	}
 
 	// The source file and the output object file
@@ -317,25 +319,6 @@ func (*BuildEnvironmentEsp32) BuildLib(be *BuildEnvironment, lib *Library, build
 
 func (*BuildEnvironmentEsp32) GenerateBootLoaderArgs(bl *BootLoaderCompiler, exe *Executable, buildPath string) []string {
 	// Generate a bootloader image if 'NAME.bootloader.bin' not found in the buildPath:
-	//     $(ESP_SDK)/tools/esptool/esptool
-	//     --chip
-	//     esp32
-	//     elf2image
-	//     --flash_mode
-	//     dio
-	//     --flash_freq
-	//     40m
-	//     --flash_size
-	//     4MB
-	//     -o
-	//     "$(buildPath) + NAME.bootloader.bin"
-	//     $(ESP_SDK)/tools/esp32-arduino-libs/esp32/bin/bootloader_dio_40m.elf
-
-	// This is just here as a note to self:
-	// If a buildPath/partitions.csv not found, generate it:
-	//     1. If a buildPath/partitions.img not found, generate it:
-	//         a. "$(ESP_SDK)/esptool/esptool" read_flash 0x9000 0xc00 partitions.img
-	//     2. "python3" $(ESP_SDK)/tools/gen_esp32part.py partitions.img > partitions.csv
 
 	args := make([]string, 0)
 	args = append(args, "--chip")
@@ -397,13 +380,10 @@ func (be *BuildEnvironmentEsp32) FlashToolArgs(ft *FlashTool, exe *Executable, o
 	args = append(args, "write_flash")
 	args = append(args, "-z")
 	args = append(args, "--flash_mode")
-	//args = append(args, ft.Tool.FlashMode)
 	args = append(args, "keep")
 	args = append(args, "--flash_freq")
-	//args = append(args, ft.Tool.FlashFrequency)
 	args = append(args, "keep")
 	args = append(args, "--flash_size")
-	//args = append(args, ft.Tool.FlashSize)
 	args = append(args, "keep")
 	args = append(args, "0x1000")
 	args = append(args, filepath.Join(outputPath, ccode_utils.FileChangeExtension(exe.OutputFilePath, ".bootloader.bin")))
@@ -465,19 +445,19 @@ func (*BuildEnvironmentEsp32) BuildLinkerArgs(l *Linker, exe *Executable, output
 
 	args = append(args, "-Wl,--wrap=esp_panic_handler")
 
-	if len(l.AtLdFlagsFile) > 0 {
-		args = append(args, "@"+l.AtLdFlagsFile)
+	if len(l.ResponseFileLdFlags) > 0 {
+		args = append(args, "@"+l.ResponseFileLdFlags)
 	}
-	if len(l.AtLdScriptsFile) > 0 {
-		args = append(args, "@"+l.AtLdScriptsFile)
+	if len(l.ResponseFileLdScripts) > 0 {
+		args = append(args, "@"+l.ResponseFileLdScripts)
 	}
 
 	args = append(args, "-Wl,--start-group")
 	for _, lib := range exe.Libraries {
 		args = append(args, filepath.Join(outputPath, lib.BuildSubDir, lib.OutputFilename))
 	}
-	if len(l.AtLdLibsFile) > 0 {
-		args = append(args, "@"+l.AtLdLibsFile)
+	if len(l.ResponseFileLdLibs) > 0 {
+		args = append(args, "@"+l.ResponseFileLdLibs)
 	}
 	args = append(args, "-Wl,--end-group")
 	args = append(args, "-Wl,-EL")
@@ -500,19 +480,8 @@ func (*BuildEnvironmentEsp32) ImageStatsParser(s string, exe *Executable) (*Imag
 		RAMSize:   0,
 	}
 
-	// Check if the section is a flash section
-	patterns_RAM := make([]string, 0, 5)
-	patterns_RAM = append(patterns_RAM, ".iram?.text")
-	patterns_RAM = append(patterns_RAM, ".iram?.vectors")
-	patterns_RAM = append(patterns_RAM, ".dram?.data")
-	patterns_RAM = append(patterns_RAM, ".dram?.data")
-
-	patterns_FLASH := make([]string, 0, 5)
-	patterns_FLASH = append(patterns_FLASH, ".flash.text")
-	patterns_FLASH = append(patterns_FLASH, ".flash.rodata")
-	patterns_FLASH = append(patterns_FLASH, ".flash.appdesc")
-	patterns_FLASH = append(patterns_FLASH, ".flash.init_array")
-	patterns_FLASH = append(patterns_FLASH, ".eh_frame")
+	patterns_RAM := []string{".iram?.text", ".iram?.vectors", ".dram?.data", ".dram?.bss"}
+	patterns_FLASH := []string{".flash.text", ".flash.rodata", ".flash.appdesc", ".flash.init_array", ".eh_frame"}
 
 	scanner := bufio.NewScanner(bytes.NewBufferString(s))
 	for scanner.Scan() {
