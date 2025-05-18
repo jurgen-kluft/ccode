@@ -179,7 +179,8 @@ func NewBuildEnvironmentEsp32(buildPath string) *BuildEnvironment {
 	return (*BuildEnvironment)(be)
 }
 
-func BuildCompilerArgs(cl *Compiler, srcFile *SourceFile, outputPath string) []string {
+// BuildCompilerArgs returns the C and C++ compiler arguments for the requested source file under the provided library.
+func BuildCompilerArgs(cl *Compiler, lib *Library, srcFile *SourceFile, outputPath string) []string {
 	// -MMD, this is to generate a dependency file
 	// -c, this is to compile the source file to an object file
 	args := make([]string, 0)
@@ -201,6 +202,12 @@ func BuildCompilerArgs(cl *Compiler, srcFile *SourceFile, outputPath string) []s
 		args = append(args, d)
 	}
 
+	// Compiler (user/library) defines
+	for _, define := range lib.Defines.Values {
+		args = append(args, "-D")
+		args = append(args, define)
+	}
+
 	if len(cl.AtDefinesFile) > 0 {
 		args = append(args, "@"+cl.AtDefinesFile+"")
 	}
@@ -214,6 +221,12 @@ func BuildCompilerArgs(cl *Compiler, srcFile *SourceFile, outputPath string) []s
 			args = append(args, "-I")
 			args = append(args, include.IncludePath)
 		}
+	}
+
+	// Compiler (user/library) include paths
+	for _, include := range lib.IncludeDirs.Values {
+		args = append(args, "-I")
+		args = append(args, include.IncludePath)
 	}
 
 	if len(cl.AtIncludesFile) > 0 {
@@ -293,7 +306,7 @@ func (*BuildEnvironmentEsp32) BuildLib(be *BuildEnvironment, lib *Library, build
 		libBuildPath := filepath.Join(buildPath, lib.BuildSubDir, filepath.Dir(src.SrcRelPath))
 		ccode_utils.MakeDir(libBuildPath)
 
-		if err := be.CompileFunc(be, src, libBuildPath); err != nil {
+		if err := be.CompileFunc(be, lib, src, libBuildPath); err != nil {
 			return fmt.Errorf("failed to compile source file %s: %w", src.SrcAbsPath, err)
 		}
 	}
@@ -632,15 +645,15 @@ func (*BuildEnvironmentEsp32) GenerateElfSizeStats(be *BuildEnvironment, exe *Ex
 	return nil, fmt.Errorf("failed to generate ELF size stats: %s", string(out))
 }
 
-func (*BuildEnvironmentEsp32) Compile(be *BuildEnvironment, srcFile *SourceFile, outputPath string) error {
+func (*BuildEnvironmentEsp32) Compile(be *BuildEnvironment, lib *Library, srcFile *SourceFile, outputPath string) error {
 	var args []string
 	var cl string
 	if srcFile.IsCpp {
-		args = be.CppCompiler.BuildArgs(be.CppCompiler, srcFile, outputPath)
+		args = be.CppCompiler.BuildArgs(be.CppCompiler, lib, srcFile, outputPath)
 		cl = be.CppCompiler.CompilerPath
 		fmt.Printf("Compiling C++ file, %s\n", srcFile.SrcRelPath)
 	} else {
-		args = be.CCompiler.BuildArgs(be.CCompiler, srcFile, outputPath)
+		args = be.CCompiler.BuildArgs(be.CCompiler, lib, srcFile, outputPath)
 		cl = be.CCompiler.CompilerPath
 		fmt.Printf("Compiling C file, %s\n", srcFile.SrcRelPath)
 	}

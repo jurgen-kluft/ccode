@@ -50,11 +50,31 @@ func (g *EspMakeGenerator) Generate() error {
 
 	// Output Example:
 	//
-	// var Project *clay.Project = &clay.Project{
-	//     Name:       "ccode_gen",
-	//     Version:    "0.1.0",
-	//     BuildPath:  BuildPath,
-	//     Executable: clay.NewExecutable("ccode_gen", "0.1.0", BuildPath),
+	// // !!Project!!
+	//
+	// func CreateProject(buildPath string) *clay.Project {
+	// 	   prjName := "test_project"
+	// 	   prjVersion := "0.1.0"
+	// 	   prj := clay.NewProject(prjName, prjVersion, buildPath)
+	// 	   AddLibraries(prj)
+	// 	   return prj
+	// }
+	//
+	// func AddLibraries(prj *clay.Project) {
+	// 		name := "test_lib"
+	// 		library := clay.NewCppLibrary(name, "0.1.0", name, name+".a")
+	//
+	// 		// Include directories
+	// 		library.IncludeDirs.Add("/Users/obnosis5/dev.go/src/github.com/jurgen-kluft/ccode/clay/app/clay/test_lib/include", false)
+	//
+	// 		// Define macros
+	// 		library.Defines.Add("TARGET_DEBUG")
+	// 		library.Defines.Add("TARGET_ESP32")
+	//
+	// 		// Source files of chash
+	// 		library.AddSourceFile("/Users/obnosis5/dev.go/src/github.com/jurgen-kluft/ccode/clay/app/clay/test_lib/src/test.cpp", "test.cpp", true)
+	// 		// etc..
+	// 		prj.Executable.AddLibrary(library)
 	// }
 
 	return nil

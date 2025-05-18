@@ -140,15 +140,15 @@ func (exe *Executable) AddLibrary(lib *Library) {
 }
 
 type Compiler struct {
-	CompilerPath    string                                                          // FilePath to the compiler
-	Defines         *ValueSet                                                       // Compiler defines (macros) for the compiler
-	Switches        *ValueSet                                                       // Compiler switches (flags) for the compiler
-	WarningSwitches *ValueSet                                                       // Warning switches (flags) for the compiler
-	AtFlagsFile     string                                                          // FilePath to the C compiler flags file (optional)
-	AtDefinesFile   string                                                          // FilePath to the C compiler defines file (optional)
-	AtIncludesFile  string                                                          // FilePath to the C compiler includes file (optional)
-	IncludePaths    *IncludeMap                                                     // Include paths for the compiler (system level)
-	BuildArgs       func(cl *Compiler, src *SourceFile, outputPath string) []string // Function to build the compiler arguments
+	CompilerPath    string                                                                        // FilePath to the compiler
+	Defines         *ValueSet                                                                     // Compiler defines (macros) for the compiler
+	Switches        *ValueSet                                                                     // Compiler switches (flags) for the compiler
+	WarningSwitches *ValueSet                                                                     // Warning switches (flags) for the compiler
+	AtFlagsFile     string                                                                        // FilePath to the C compiler flags file (optional)
+	AtDefinesFile   string                                                                        // FilePath to the C compiler defines file (optional)
+	AtIncludesFile  string                                                                        // FilePath to the C compiler includes file (optional)
+	IncludePaths    *IncludeMap                                                                   // Include paths for the compiler (system level)
+	BuildArgs       func(cl *Compiler, lib *Library, src *SourceFile, outputPath string) []string // Function to build the compiler arguments
 }
 
 func NewCompiler(compilerPath string) *Compiler {
@@ -161,7 +161,7 @@ func NewCompiler(compilerPath string) *Compiler {
 		AtDefinesFile:   "",
 		AtIncludesFile:  "",
 		IncludePaths:    NewIncludeMap(),
-		BuildArgs:       func(cl *Compiler, src *SourceFile, outputPath string) []string { return nil },
+		BuildArgs:       func(cl *Compiler, lib *Library, src *SourceFile, outputPath string) []string { return nil },
 	}
 }
 
@@ -346,7 +346,7 @@ type BuildEnvironment struct {
 	PrebuildFunc      func(be *BuildEnvironment, outputPath string) error                                 // Function that does prebuild for the compiler package
 	BuildFunc         func(be *BuildEnvironment, exe *Executable, outputPath string) error                // Function that does all, compile, archive, link, and generate image
 	BuildLibFunc      func(be *BuildEnvironment, lib *Library, outputPath string) error                   // Function to build a library
-	CompileFunc       func(be *BuildEnvironment, src *SourceFile, outputPath string) error                // Function to compile a source file
+	CompileFunc       func(be *BuildEnvironment, lib *Library, src *SourceFile, outputPath string) error  // Function to compile a source file
 	ArchiveFunc       func(be *BuildEnvironment, lib *Library, outputPath string) error                   // Function to create an archive (for libraries)
 	LinkFunc          func(be *BuildEnvironment, exe *Executable, outputPath string) error                // Function to link libraries/object-files into an executable
 	GenerateImageFunc func(be *BuildEnvironment, exe *Executable, outputPath string) error                // Function to generate an image from the executable
@@ -368,7 +368,7 @@ func NewBuildEnvironment(name string, version string, sdkRoot string) *BuildEnvi
 		PrebuildFunc:      func(be *BuildEnvironment, outputPath string) error { return nil },
 		BuildFunc:         func(be *BuildEnvironment, exe *Executable, outputPath string) error { return nil },
 		BuildLibFunc:      func(be *BuildEnvironment, lib *Library, outputPath string) error { return nil },
-		CompileFunc:       func(be *BuildEnvironment, src *SourceFile, outputPath string) error { return nil },
+		CompileFunc:       func(be *BuildEnvironment, lib *Library, src *SourceFile, outputPath string) error { return nil },
 		ArchiveFunc:       func(be *BuildEnvironment, lib *Library, outputPath string) error { return nil },
 		LinkFunc:          func(be *BuildEnvironment, exe *Executable, outputPath string) error { return nil },
 		GenerateImageFunc: func(be *BuildEnvironment, exe *Executable, outputPath string) error { return nil },
