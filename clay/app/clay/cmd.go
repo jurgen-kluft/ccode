@@ -2,6 +2,7 @@ package main
 
 import (
 	"fmt"
+	"log"
 	"os"
 	"path/filepath"
 	"strconv"
@@ -13,10 +14,11 @@ import (
 // Clay cli app
 //    Commands:
 //    - build --board (esp32, esp32s3)
+//    - build-info
 //    - clean
 //    - flash
 //    - list libraries
-//    - list boards (fuzzy searc)
+//    - list boards (fuzzy search)
 //    - list flash sizes
 
 var EspSdkPath = "/Users/obnosis5/sdk/arduino/esp32"
@@ -36,6 +38,8 @@ func main() {
 	case "build":
 		boardName := GetArgv(2, "esp32")
 		Build(boardName)
+	case "build-info":
+		GenerateBuildInfo()
 	case "clean":
 		Clean()
 	case "flash":
@@ -100,6 +104,16 @@ func Build(Board string) error {
 
 	prj := CreateProject()
 	return prj.Build(buildEnv)
+}
+
+func GenerateBuildInfo() error {
+	appPath, _ := os.Getwd()
+	if err := clay.GenerateBuildInfo(BuildPath, appPath, EspSdkPath, "buildinfo.h", "buildinfo.cpp"); err == nil {
+		log.Println("Ok, build info generated Ok")
+	} else {
+		log.Printf("Error, build info failed: %v\n", err)
+	}
+	return nil
 }
 
 func Clean() error {

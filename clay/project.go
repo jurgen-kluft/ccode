@@ -5,9 +5,9 @@ import (
 )
 
 // TODO:
-// - MINOR: Clay build CLI-APP for the user to build/clean/flash the project
-// - MINOR: Build Info (build_info.h and build_info.cpp as a Library)
-// - MINOR: Elf Size Stats
+// - MINOR: Clay build CLI-APP for the user
+//          flash
+// - MINOR: Add Build Info as a Library to the Executable when BuildDir/buildinfo.h/.cpp exist
 // - MINOR: ESP32 S3 Target
 // - MAJOR: To reduce compile/link time we need Dependency Tracking (Database)
 //   - source file -> object file
@@ -17,9 +17,13 @@ import (
 //     + tool(s) used
 
 // DONE:
+// - MINOR: Clay build CLI-APP for the user
+//          build, clean, build-info, list libraries, list boards,  list flash sizes
+// - MINOR: Build Info (build_info.h and build_info.cpp as a Library)
 // - MINOR: Archiver
 // - MINOR: Linker
 // - MINOR: Image Generator
+// - MINOR: Elf Size Stats
 
 // Project represents a C/C++ project that can be built using the Clay build system.
 type Project struct {
