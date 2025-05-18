@@ -6,16 +6,19 @@ import (
 
 // TODO:
 // - MINOR: Clay build CLI-APP for the user
-//          flash
+//          90%
+//          Next: emit the project and library info in the cmd.go, build
+//                the app and copy/release it in the build directory
 // - MINOR: Add Build Info as a Library to the Executable when BuildDir/buildinfo.h/.cpp exist
-// - MINOR: ESP32 S3 Target
-// - MAJOR: Parse the boards.txt file and be able to extract compiler, linker and other info
+// - MEDIOR: Parse the boards.txt file and be able to extract compiler, linker and other info
+// - MINOR: ESP32 S3 Target (could be automatic if we are able to fully parse the boards.txt file)
 // - MAJOR: To reduce compile/link time we need Dependency Tracking (Database)
 //   - source file <-> [command-line args], [object-file + header-files], [tools?]
 
 // DONE:
 // - MINOR: Clay build CLI-APP for the user
-//          build, clean, build-info, list libraries, list boards,  list flash sizes
+//          build, clean, build-info, list libraries, list boards, list flash sizes (done)
+//          flash (done)
 // - MINOR: Build Info (build_info.h and build_info.cpp as a Library)
 // - MINOR: Archiver
 // - MINOR: Linker
@@ -32,7 +35,7 @@ type Project struct {
 }
 
 func NewProject(name string, version string, buildPath string) *Project {
-    buildPath = filepath.Join(buildPath, name)
+	buildPath = filepath.Join(buildPath, name)
 	exe := NewExecutable(name, version, buildPath)
 	return &Project{
 		Name:       name,
@@ -51,7 +54,7 @@ func (p *Project) GetExecutable() *Executable {
 
 func (p *Project) SetBuildEnvironment(be *BuildEnvironment) error {
 
-    p.BuildEnv = be
+	p.BuildEnv = be
 
 	sdkRoot := be.SdkRoot
 

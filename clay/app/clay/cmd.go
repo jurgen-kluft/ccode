@@ -7,6 +7,7 @@ import (
 	"path/filepath"
 	"strconv"
 
+	ccode_utils "github.com/jurgen-kluft/ccode/ccode-utils"
 	"github.com/jurgen-kluft/ccode/clay"
 	"github.com/jurgen-kluft/ccode/clay/app/boards"
 )
@@ -21,6 +22,7 @@ import (
 //    - list boards (fuzzy search)
 //    - list flash sizes
 
+var BuildInfoFilenameWithoutExt = "buildinfo"
 var EspSdkPath = "/Users/obnosis5/sdk/arduino/esp32"
 
 func GetArgv(i int, _default string) string {
@@ -72,24 +74,25 @@ func main() {
 func PrintUsage() {
 	fmt.Println("Usage: clay [command] [options]")
 	fmt.Println("Commands:")
+	fmt.Println("  build-info <boardName> (generates buildinfo.h and buildinfo.cpp)")
 	fmt.Println("  build <boardName>")
-	fmt.Println("  clean")
-	fmt.Println("  flash")
+	fmt.Println("  clean <boardName>")
+	fmt.Println("  flash <boardName>")
 	fmt.Println("  list-libraries")
-	fmt.Println("  list-boards [fuzzy] [max]")
+	fmt.Println("  list-boards [boardName] [matches]")
 	fmt.Println("  list-flash-sizes <cpuName> <boardName>")
 	fmt.Println("Options:")
-	fmt.Println("  fuzzy             Fuzzy search string for listing boards")
-	fmt.Println("  max               Maximum number of boards to list")
+	fmt.Println("  matches           Maximum number of boards to list")
 	fmt.Println("  cpuName           CPU name for listing flash sizes")
 	fmt.Println("  boardName         Board name (e.g. esp32, esp32s3) ")
 	fmt.Println("  --help            Show this help message")
 	fmt.Println("  --version         Show version information")
 
 	fmt.Println("Examples:")
+	fmt.Println("  clay build-info esp32 (generates buildinfo.h and buildinfo.cpp)")
 	fmt.Println("  clay build esp32")
-	fmt.Println("  clay clean")
-	fmt.Println("  clay flash")
+	fmt.Println("  clay clean esp32")
+	fmt.Println("  clay flash esp32")
 	fmt.Println("  clay list-libraries")
 	fmt.Println("  clay list-boards esp32 5")
 }
@@ -114,6 +117,7 @@ func Build(board string) error {
 
 	prj := CreateProject(buildPath)
 	prj.SetBuildEnvironment(buildEnv)
+	AddBuildInfoAsCppLibrary(prj)
 	return prj.Build()
 }
 
@@ -121,7 +125,7 @@ func GenerateBuildInfo(board string) error {
 	buildPath := GetBuildPath(board)
 
 	appPath, _ := os.Getwd()
-	if err := clay.GenerateBuildInfo(buildPath, appPath, EspSdkPath, "buildinfo.h", "buildinfo.cpp"); err == nil {
+	if err := clay.GenerateBuildInfo(buildPath, appPath, EspSdkPath, BuildInfoFilenameWithoutExt); err == nil {
 		log.Println("Ok, build info generated Ok")
 	} else {
 		log.Printf("Error, build info failed: %v\n", err)
@@ -162,6 +166,7 @@ func Flash(board string) error {
 
 	prj := CreateProject(buildPath)
 	prj.SetBuildEnvironment(buildEnv)
+	AddBuildInfoAsCppLibrary(prj)
 	return prj.Flash()
 }
 
@@ -175,17 +180,31 @@ func ListLibraries() error {
 	return nil
 }
 
-func ListBoards(fuzzy string, max int) error {
-	if max == 0 {
-		max = 10
+func ListBoards(boardName string, matches int) error {
+	if matches <= 0 {
+		matches = 10
 	}
 	boardsFilePath := filepath.Join(EspSdkPath, "boards.txt")
-	return boards.PrintAllMatchingBoards(boardsFilePath, fuzzy, max)
+	return boards.PrintAllMatchingBoards(boardsFilePath, boardName, matches)
 }
 
 func ListFlashSizes(cpuName string, boardName string) error {
 	boardsFilePath := filepath.Join(EspSdkPath, "boards.txt")
 	return boards.PrintAllFlashSizes(boardsFilePath, cpuName, boardName)
+}
+
+// AddBuildInfoAsCppLibrary checks if 'buildinfo.h' and 'buildinfo.cpp' exist,
+// if so it creates a C++ library and adds it to the project
+func AddBuildInfoAsCppLibrary(prj *clay.Project) {
+	name := BuildInfoFilenameWithoutExt
+	hdrFilepath := filepath.Join(prj.BuildPath, name, BuildInfoFilenameWithoutExt+".h")
+	srcFilepath := filepath.Join(prj.BuildPath, name, BuildInfoFilenameWithoutExt+".cpp")
+	if ccode_utils.FileExists(hdrFilepath) && ccode_utils.FileExists(srcFilepath) {
+		library := clay.NewCppLibrary(name, "0.1.0", name, name+".a")
+		library.IncludeDirs.Add(filepath.Dir(hdrFilepath), false)
+		library.AddSourceFile(srcFilepath, srcFilepath, true)
+		prj.Executable.AddLibrary(library)
+	}
 }
 
 // --------------------------------------------------------------------
@@ -199,11 +218,11 @@ func CreateProject(buildPath string) *clay.Project {
 	prjName := "test_project"
 	prjVersion := "0.1.0"
 	prj := clay.NewProject(prjName, prjVersion, buildPath)
-	AddLibraries(prj.Executable)
+	AddLibraries(prj)
 	return prj
 }
 
-func AddLibraries(exe *clay.Executable) {
+func AddLibraries(prj *clay.Project) {
 	{
 		name := "test_lib"
 		library := clay.NewCppLibrary(name, "0.1.0", name, name+".a")
@@ -219,7 +238,7 @@ func AddLibraries(exe *clay.Executable) {
 		library.AddSourceFile("/Users/obnosis5/dev.go/src/github.com/jurgen-kluft/ccode/clay/app/clay/test_lib/src/test.cpp", "test.cpp", true)
 		// etc..
 
-		exe.AddLibrary(library)
+		prj.Executable.AddLibrary(library)
 	}
 
 }
