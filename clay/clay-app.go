@@ -1,37 +1,35 @@
 package clay
 
 import (
+	"flag"
 	"fmt"
 	"log"
 	"os"
 	"path/filepath"
-	"strconv"
 
 	ccode_utils "github.com/jurgen-kluft/ccode/ccode-utils"
 )
 
-// Clay Aapp
+// Clay App
+//    <project>: name of a project (if you have more than one project)
+//    <config>: debug, release (default), final
+//    <board>: esp32 (default), esp32s3
+//    <cpuName>: esp32 (default), esp32s3
+//
 //    Commands:
-//    - build board (esp32, esp32s3)
-//    - build-info board (esp32, esp32s3)
-//    - clean board (esp32, esp32s3)
-//    - flash board (esp32, esp32s3)
-//    - list libraries
-//    - list boards (fuzzy search)
-//    - list flash sizes
+//    - build -b <board> -p <project> -x <config>
+//    - build-info -b <board> -p <project> -x <config>
+//    - clean -b <board> -p <project> -x <config>
+//    - flash -b <board> -p <project> -x <config>
+//    - list-libraries
+//    - list-boards <board>
+//    - list-flash-sizes -c <cpuName> -b <board>
 
 const (
 	BuildInfoFilenameWithoutExt = "buildinfo"
 )
 
 var ClayAppCreateProjectsFunc func(buildPath string) []*Project
-
-func GetArgv(i int, _default string) string {
-	if i < len(os.Args) {
-		return os.Args[i]
-	}
-	return _default
-}
 
 func GetBuildPath(board string) string {
 	// /build/esp32
@@ -40,65 +38,102 @@ func GetBuildPath(board string) string {
 	return buildPath
 }
 
+func ParseBoardNameAndMax() (string, int) {
+	var boardName string
+	var matches int
+	flag.StringVar(&boardName, "b", "esp32", "Board name (esp32, esp32s3)")
+	flag.IntVar(&matches, "m", 10, "Maximum number of boards to list")
+	flag.Parse()
+	return boardName, matches
+}
+
+func ParseCpuAndBoardName() (string, string) {
+	var cpu string
+	var boardName string
+	flag.StringVar(&cpu, "c", "esp32", "CPU name (esp32, esp32s3)")
+	flag.StringVar(&boardName, "b", "esp32", "Board name (esp32, esp32s3)")
+	flag.Parse()
+	return cpu, boardName
+}
+
+func ParseProjectNameBoardNameAndConfig() (string, string, string) {
+	var projectName string
+	var projectConfig string
+	var boardName string
+	flag.StringVar(&projectName, "p", "", "Name of the project")
+	flag.StringVar(&projectConfig, "x", "release", "Build configuration (debug, release, final)")
+	flag.StringVar(&boardName, "b", "esp32", "Board name (esp32, esp32s3)")
+	flag.Parse()
+	return projectName, projectConfig, boardName
+}
+
 func ClayAppMain() {
+	// Consume the first argument as the command
+	command := os.Args[1]
+	os.Args = os.Args[1:]
+
 	// Parse command line arguments
-	command := GetArgv(1, "build")
+	var err error
 	switch command {
 	case "build":
-		boardName := GetArgv(2, "esp32")
-		Build(boardName)
+		err = Build(ParseProjectNameBoardNameAndConfig())
 	case "build-info":
-		boardName := GetArgv(2, "esp32")
-		BuildInfo(boardName)
+		err = BuildInfo(ParseProjectNameBoardNameAndConfig())
 	case "clean":
-		boardName := GetArgv(2, "esp32")
-		Clean(boardName)
+		err = Clean(ParseProjectNameBoardNameAndConfig())
 	case "flash":
-		boardName := GetArgv(2, "esp32")
-		Flash("", boardName)
+		err = Flash(ParseProjectNameBoardNameAndConfig())
 	case "list-libraries":
-		ListLibraries()
+		err = ListLibraries()
 	case "list-boards":
-		fuzzyBoardName := GetArgv(2, "esp32")
-		if max, err := strconv.Atoi(GetArgv(3, "0")); err == nil {
-			ListBoards(fuzzyBoardName, max)
-		}
+		err = ListBoards(ParseBoardNameAndMax())
 	case "list-flash-sizes":
-		cpuName := GetArgv(2, "esp32")
-		boardName := GetArgv(3, "esp32")
-		ListFlashSizes(cpuName, boardName)
+		err = ListFlashSizes(ParseCpuAndBoardName())
+	case "version":
+		version := ccode_utils.NewVersionInfo()
+		fmt.Printf("Version: %s\n", version.Version)
 	default:
-		PrintUsage()
+		Usage()
+	}
+
+	if err != nil {
+		log.Printf("Error: %v\n", err)
+		os.Exit(1)
 	}
 }
 
-func PrintUsage() {
+func Usage() {
 	fmt.Println("Usage: clay [command] [options]")
 	fmt.Println("Commands:")
-	fmt.Println("  build-info <boardName> (generates buildinfo.h and buildinfo.cpp)")
-	fmt.Println("  build <boardName>")
-	fmt.Println("  clean <boardName>")
-	fmt.Println("  flash <boardName>")
+	fmt.Println("  build-info -p <projectName> -x <projectConfig> -b <boardName>")
+	fmt.Println("  build -p <projectName> -x <projectConfig> -b <boardName>")
+	fmt.Println("  clean -p <projectName> -x <projectConfig> -b <boardName>")
+	fmt.Println("  flash -p <projectName> -x <projectConfig> -b <boardName>")
 	fmt.Println("  list-libraries")
-	fmt.Println("  list-boards [boardName] [matches]")
-	fmt.Println("  list-flash-sizes <cpuName> <boardName>")
+	fmt.Println("  list-boards -b <boardName> -m <matches>")
+	fmt.Println("  list-flash-sizes -c <cpuName> -b <boardName>")
 	fmt.Println("Options:")
+	fmt.Println("  projectName       Project name (if more than one) ")
+	fmt.Println("  configName        Config name (debug, release, final) ")
+	fmt.Println("  boardName         Board name (e.g. esp32, esp32s3) ")
 	fmt.Println("  matches           Maximum number of boards to list")
 	fmt.Println("  cpuName           CPU name for listing flash sizes")
-	fmt.Println("  boardName         Board name (e.g. esp32, esp32s3) ")
 	fmt.Println("  --help            Show this help message")
 	fmt.Println("  --version         Show version information")
 
 	fmt.Println("Examples:")
-	fmt.Println("  clay build-info esp32 (generates buildinfo.h and buildinfo.cpp)")
-	fmt.Println("  clay build esp32")
-	fmt.Println("  clay clean esp32")
-	fmt.Println("  clay flash esp32")
+	fmt.Println("  clay build-info (generates buildinfo.h and buildinfo.cpp)")
+	fmt.Println("  clay build-info -x debug -b esp32s3")
+	fmt.Println("  clay build")
+	fmt.Println("  clay build -x debug -b esp32s3")
+	fmt.Println("  clay clean -x debug -b esp32s3")
+	fmt.Println("  clay flash -x debug -b esp32s3")
 	fmt.Println("  clay list-libraries")
-	fmt.Println("  clay list-boards esp32 5")
+	fmt.Println("  clay list-boards -b esp32 -m 5")
+	fmt.Println("  clay list-flash-sizes -c esp32 -b esp32")
 }
 
-func Build(board string) error {
+func Build(projectName string, projectConfig string, board string) error {
 	// Note: We should be running this from the "target/esp" directory
 	// Create the build directory
 	buildPath := GetBuildPath(board)
@@ -127,7 +162,7 @@ func Build(board string) error {
 	return nil
 }
 
-func BuildInfo(board string) error {
+func BuildInfo(projectName string, projectConfig string, board string) error {
 	EspSdkPath := "/Users/obnosis5/sdk/arduino/esp32"
 	if env := os.Getenv("ESP_SDK"); env != "" {
 		EspSdkPath = env
@@ -144,7 +179,7 @@ func BuildInfo(board string) error {
 	return nil
 }
 
-func Clean(board string) error {
+func Clean(projectName string, projectConfig string, board string) error {
 	buildPath := GetBuildPath(board)
 
 	// Note: We should be running this from the "target/esp" directory
@@ -160,7 +195,7 @@ func Clean(board string) error {
 	return nil
 }
 
-func Flash(project string, board string) error {
+func Flash(project string, board string, config string) error {
 	buildPath := GetBuildPath(board)
 
 	var buildEnv *BuildEnvironment
