@@ -6,6 +6,7 @@ import (
 	"log"
 	"os"
 	"path/filepath"
+	"strings"
 
 	ccode_utils "github.com/jurgen-kluft/ccode/ccode-utils"
 )
@@ -61,7 +62,7 @@ func ParseProjectNameBoardNameAndConfig() (string, string, string) {
 	var projectConfig string
 	var boardName string
 	flag.StringVar(&projectName, "p", "", "Name of the project")
-	flag.StringVar(&projectConfig, "x", "release", "Build configuration (debug, release, final)")
+	flag.StringVar(&projectConfig, "x", "", "Build configuration (debug, release, final)")
 	flag.StringVar(&boardName, "b", "esp32", "Board name (esp32, esp32s3)")
 	flag.Parse()
 	return projectName, projectConfig, boardName
@@ -153,10 +154,16 @@ func Build(projectName string, projectConfig string, board string) error {
 
 	prjs := ClayAppCreateProjectsFunc(buildPath)
 	for _, prj := range prjs {
-		prj.SetBuildEnvironment(buildEnv)
-		AddBuildInfoAsCppLibrary(prj)
-		if err := prj.Build(); err != nil {
-			return fmt.Errorf("Build failed: %v", err)
+		if projectName == "" || projectName == prj.Name {
+			if projectConfig == "" || strings.EqualFold(prj.Config, projectConfig) {
+				prj.SetBuildEnvironment(buildEnv)
+				log.Printf("Building project: %s, config: %s\n", prj.Name, prj.Config)
+				if err := prj.Build(); err != nil {
+					return fmt.Errorf("Build failed: %v", err)
+				}
+				log.Printf("Building done ...\n")
+				log.Println()
+			}
 		}
 	}
 	return nil
@@ -168,28 +175,42 @@ func BuildInfo(projectName string, projectConfig string, board string) error {
 		EspSdkPath = env
 	}
 
-	buildPath := GetBuildPath(board)
-
-	appPath, _ := os.Getwd()
-	if err := GenerateBuildInfo(buildPath, appPath, EspSdkPath, BuildInfoFilenameWithoutExt); err == nil {
-		log.Println("Ok, build info generated Ok")
-	} else {
-		log.Printf("Error, build info failed: %v\n", err)
+	prjs := ClayAppCreateProjectsFunc(GetBuildPath(board))
+	for _, prj := range prjs {
+		if projectName == "" || projectName == prj.Name {
+			if projectConfig == "" || projectConfig == prj.Config {
+				buildPath := prj.BuildPath
+				appPath, _ := os.Getwd()
+				if err := GenerateBuildInfo(buildPath, appPath, EspSdkPath, BuildInfoFilenameWithoutExt); err != nil {
+					return err
+				}
+			}
+		}
 	}
+	log.Println("Ok, build info generated Ok")
 	return nil
 }
 
 func Clean(projectName string, projectConfig string, board string) error {
 	buildPath := GetBuildPath(board)
 
-	// Note: We should be running this from the "target/esp" directory
-	// Remove all folders and files from "build/"
-	if err := os.RemoveAll(buildPath + "/"); err != nil {
-		return fmt.Errorf("Failed to remove build directory: %v", err)
-	}
+	prjs := ClayAppCreateProjectsFunc(buildPath)
+	for _, prj := range prjs {
+		if projectName == "" || projectName == prj.Name {
+			if projectConfig == "" || projectConfig == prj.Config {
+				buildPath = filepath.Join(buildPath, prj.Name, projectConfig)
 
-	if err := os.MkdirAll(buildPath+"/", os.ModePerm); err != nil {
-		return fmt.Errorf("Failed to create build directory: %v", err)
+				// Note: We should be running this from the "target/esp" directory
+				// Remove all folders and files from "build/"
+				if err := os.RemoveAll(buildPath + "/"); err != nil {
+					return fmt.Errorf("Failed to remove build directory: %v", err)
+				}
+
+				if err := os.MkdirAll(buildPath+"/", os.ModePerm); err != nil {
+					return fmt.Errorf("Failed to create build directory: %v", err)
+				}
+			}
+		}
 	}
 
 	return nil
@@ -263,8 +284,8 @@ func ListFlashSizes(cpuName string, boardName string) error {
 // if so it creates a C++ library and adds it to the project
 func AddBuildInfoAsCppLibrary(prj *Project) {
 	name := BuildInfoFilenameWithoutExt
-	hdrFilepath := filepath.Join(prj.BuildPath, name, BuildInfoFilenameWithoutExt+".h")
-	srcFilepath := filepath.Join(prj.BuildPath, name, BuildInfoFilenameWithoutExt+".cpp")
+	hdrFilepath := filepath.Join(prj.BuildPath, name+".h")
+	srcFilepath := filepath.Join(prj.BuildPath, name+".cpp")
 	if ccode_utils.FileExists(hdrFilepath) && ccode_utils.FileExists(srcFilepath) {
 		library := NewCppLibrary(name, "0.1.0", name, name+".a")
 		library.IncludeDirs.Add(filepath.Dir(hdrFilepath), false)

@@ -28,13 +28,14 @@ import (
 type Project struct {
 	Name       string
 	Version    string
+	Config     string            // Build configuration (debug, release, final)
 	BuildPath  string            // Path to the build directory
 	BuildEnv   *BuildEnvironment // Build environment for this project
 	Executable *Executable       // Executable that this project builds (if any)
 }
 
-func NewProject(name string, version string, buildPath string) *Project {
-	buildPath = filepath.Join(buildPath, name)
+func NewProject(name string, version string, config string, buildPath string) *Project {
+	buildPath = filepath.Join(buildPath, name, config)
 	exe := NewExecutable(name, version, buildPath)
 	return &Project{
 		Name:       name,
