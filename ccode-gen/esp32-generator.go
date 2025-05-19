@@ -93,20 +93,27 @@ func (g *Esp32Generator) generateProjectFile(out *ccode_utils.LineWriter) {
 	out.WriteILine("", "projects := []*clay.Project{}")
 
 	// TODO Remove version, it is not used
+	cfgs := make([]*Config, 0, 16)
+	deps := make([]*Project, 0, 16)
 
 	for _, p := range g.Workspace.ProjectList.Values {
 		if p.Type.IsExecutable() && p.SupportedTargets.Contains(g.BuildTarget) {
 			for _, cfg := range p.Resolved.Configs.Values {
+				cfgName := cfg.Type.String()
+
 				out.WriteILine("", "{")
 				out.WriteILine("+", "prjName := ", `"`, p.Name, `"`)
 				out.WriteILine("+", "prjVersion := ", `"`, p.Version, `"`)
 				out.WriteILine("+", "prjConfig := ", `"`, cfg.Type.String(), `"`)
 				out.WriteILine("+", "prj := clay.NewProject(prjName, prjVersion, prjConfig, buildPath)")
 
-				out.WriteILine("+", "add__", p.Name, "__library(prj)")
-
+				out.WriteILine("+", "add_", p.Name, "_", cfgName, "_library(prj)")
+				cfgs = append(cfgs, cfg)
+				deps = append(deps, p)
 				for _, dep := range p.Dependencies.Values {
-					out.WriteILine("+", "add__", dep.Name, "__library(prj)")
+					cfgs = append(cfgs, cfg)
+					deps = append(deps, dep)
+					out.WriteILine("+", "add_", dep.Name, "_", cfgName, "_library(prj)")
 				}
 
 				out.WriteILine("+", "projects = append(projects, prj)")
@@ -120,58 +127,52 @@ func (g *Esp32Generator) generateProjectFile(out *ccode_utils.LineWriter) {
 	out.WriteLine()
 
 	// Emit the 'library' projects
-	for _, p := range g.Workspace.ProjectList.Values {
-		if p.SupportedTargets.Contains(g.BuildTarget) {
-			if p.Type.IsStaticLibrary() {
-				g.generateLibrary(p, out)
-			} else if p.Type.IsExecutable() {
-				// An 'executable' project also has source files, so we also emit it as a library
-				g.generateLibrary(p, out)
-			}
-		}
+	for i, p := range deps {
+		g.generateLibrary(p, cfgs[i], out)
 	}
 }
 
-func (g *Esp32Generator) generateLibrary(p *Project, out *ccode_utils.LineWriter) {
+func (g *Esp32Generator) generateLibrary(p *Project, cfg *Config, out *ccode_utils.LineWriter) {
 	units := out
 
-	units.WriteLine("func add__", p.Name, "__library(prj *clay.Project) {")
-	name := p.Name
-	version := "0.1.0"
-	units.WriteILine("", "name := \"", name, "\"")
-	units.WriteILine("", "library := clay.NewCppLibrary(name, \"", version, "\", name, name+\".a\")")
-	units.WriteLine()
+	{
+		units.WriteLine("func add_", p.Name, "_", cfg.Type.String(), "_library(prj *clay.Project) {")
+		name := p.Name
+		version := "0.1.0"
+		units.WriteILine("", "name := \"", name, "\"")
+		units.WriteILine("", "library := clay.NewCppLibrary(name, \"", version, "\", name, name+\".a\")")
+		units.WriteLine()
 
-	units.WriteILine("", "// Include directories")
-	pcfg, _ := p.Resolved.Configs.Get(ConfigTypeRelease)
-	for _, inc := range pcfg.IncludeDirs.Values {
-		includePath := filepath.Join(inc.Root, inc.Path)
-		includePath = strings.Replace(includePath, "\\", "/", -1)
-		units.WriteILine("", "library.IncludeDirs.Add(", `"`, includePath, `", false)`)
-	}
-	units.WriteLine()
-
-	units.WriteILine("", "// Define macros")
-	for _, def := range pcfg.CppDefines.Vars.Values {
-		escapedDef := strings.Replace(def, `"`, `\"`, -1)
-		units.WriteILine("", "library.Defines.Add(", `"`, escapedDef, `")`)
-	}
-	units.WriteLine()
-
-	units.WriteILine("", "// Source files")
-	for _, src := range p.FileEntries.Values {
-		if src.Is_SourceFile() {
-			path := filepath.Join(p.ProjectAbsPath, src.Path)
-			path = strings.Replace(path, "\\", "/", -1)
-			units.WriteILine("", "library.AddSourceFile(", `"`, path, `", "`, filepath.Base(path), `", true)`)
+		units.WriteILine("", "// Include directories")
+		for _, inc := range cfg.IncludeDirs.Values {
+			includePath := filepath.Join(inc.Root, inc.Path)
+			includePath = strings.Replace(includePath, "\\", "/", -1)
+			units.WriteILine("", "library.IncludeDirs.Add(", `"`, includePath, `", false)`)
 		}
-	}
-	units.WriteLine()
+		units.WriteLine()
 
-	units.WriteILine("", "// Add the library to the project")
-	units.WriteILine("", "prj.Executable.AddLibrary(library)")
-	units.WriteLine("}")
-	units.WriteLine()
+		units.WriteILine("", "// Define macros")
+		for _, def := range cfg.CppDefines.Vars.Values {
+			escapedDef := strings.Replace(def, `"`, `\"`, -1)
+			units.WriteILine("", "library.Defines.Add(", `"`, escapedDef, `")`)
+		}
+		units.WriteLine()
+
+		units.WriteILine("", "// Source files")
+		for _, src := range p.FileEntries.Values {
+			if src.Is_SourceFile() {
+				path := filepath.Join(p.ProjectAbsPath, src.Path)
+				path = strings.Replace(path, "\\", "/", -1)
+				units.WriteILine("", "library.AddSourceFile(", `"`, path, `", "`, filepath.Base(path), `", true)`)
+			}
+		}
+		units.WriteLine()
+
+		units.WriteILine("", "// Add the library to the project")
+		units.WriteILine("", "prj.Executable.AddLibrary(library)")
+		units.WriteLine("}")
+		units.WriteLine()
+	}
 
 	return
 }
