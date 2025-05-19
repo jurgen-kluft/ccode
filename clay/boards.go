@@ -1,6 +1,10 @@
 package clay
 
-// Analyze the 'boards.txt' file to extract board information.
+// Parse the 'boards.txt' file to extract board basic information.
+// Then 'platform.txt', contains information for building
+// - compiler, archive, linker
+// - image, partitions, bootloader
+// - flashing
 
 // esp32:
 // -esp32

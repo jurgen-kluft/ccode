@@ -2,8 +2,8 @@ package clay
 
 // Open Questions:
 //
-// - How do identify stale entries that should be pruned?
-//
+// - Q: How do identify stale entries that should be pruned?
+//   A: We use reference counting to identify stale entries.
 
 // Design and Implementation Notes:
 // - Fully custom database
@@ -24,11 +24,19 @@ package clay
 // dependencies of the source file.
 //
 
-// file.db.clay
-// File (16 bytes)
-//   - int32, index to Hash-Node, hash(ToLower(absolute filepath))
-//   - int32, index to String (absolute filepath)
-//   - int32, index to Hash (content/modification time hash)
+// API:
+// - Load
+// - Save
+// - Register a file and its dependencies
+// - Unregister a file
+// - Query a file and return the state (up-to-date, out-of-date).
+//   Possibly returning []*Item that have contributed to the out-of-date state.
+
+// item.db.clay
+// Item (16 bytes)
+//   - int32, index to Hash-Node, this is the ID of the item (filepath, label (e.g. 'MSVC C++ compiler cmd-line arguments))
+//   - int32, index to Hash-Node, this identifies the 'change' (modification-time, file-size, file-content, command-line arguments, string, etc..)
+//   - int32, ref-count, for identifying stale entries
 //   - int32, padding
 
 // A file represents a source file, header file or any other file that is
@@ -37,38 +45,53 @@ package clay
 
 // dep.db.clay
 // Dep (16 bytes)
-//   - int32, index to '.c'/'.cpp' File
-//   - int32, index to '.d' File
-//   - int32, index to Hash-Node (hash of command-line arguments)
-//   - int32, index to Node (list of dependencies, e.g. '.o' file and '.h' files)
+//   - int32, index to Item
+//   - int32, index to Node (list of dependencies, e.g. '.d', '.o' file and '.h' files)
+//            this list should be sorted by Item.ID
+//   - int32, ref-count, for identifying stale entries
+//   - int32, padding
 
-// A dependency represents the dependency description of a source file.
+// A dependency represents the dependency description of:
+// - a file (.cpp, .c, .exe, .lib, .a, etc..)
+// - a command line argument (e.g. MSVC C++ compiler cmd-line arguments)
+// - a version of a something (e.g. Visual Studio, GCC, Arduino, etc..)
 
 // node.db.clay
 // Node (16 bytes)
-//   - int32, index to File
-//   - int32, next list node
-//   - int32, prev list node
-//   - int32, padding
+//   - int32, index to Item
+//   - int32, next Node
+//   - int32, prev Node
+//   - int32, ref-count, for identifying stale entries
 
 // hash-node.db.clay
-// Hash-Node (16 bytes, freelist)
-//   - int64, index to Tree-Node or File
-//   - int32, index to byte[20] (SHA1)
-//   - int32, padding
+// Hash-Node (16 bytes)
+//   - int32, index to Data (string, byte-array, or 0 if no Data (e.g. modification-time, file-size))
+//   - int32, index to byte[20] (SHA1 of Data)
+//   - int32, ref-count, for identifying stale entries
+//   - int32, flags, for identifying the type of data (e.g. string, byte-array, etc..)
 
-// We separate hash-node and the actual hash, so that we can sort on the
+// Note: item.db.clay + dep.db.clay + node.db.clay + hash-node.db.clay
+//       can all be in the same file?
+//
+// So then we have three files:
+// - clay.db.clay (for the item, dep, node, hash-node)
+// - hash.db.clay (for the hash of the data)
+// - data.db.clay (for the hash of the data)
+
+// We decouple hash-node and the actual hash, so that we can sort on the
 // hash-node and not the hash. When sorting we can 'update' the Hash-Node
-// index of the File or Tree-Node.
+// index of the Item or Node.
 //
 
 // hash.db.clay
-// Hash-DB
-//   - freelist
-//   Array of byte[20]
+// Hash (32 bytes)
+//   - ref-count is for identifying stale entries
+//   - ref-count, padding, padding, hash ([byte[4], byte[4], byte[4], byte[20])
 
-// string.db.clay
-// String
-//   - strings have a length prefix of uint32
-//   - [length][bytes[length]]{padding}
+// data.db.clay
+// Data
+//   - useful to have for debugging
+//   - has a length prefix of uint32
+//   - ref-count is for identifying stale entries
+//   - [ref-count][length][bytes[length]]{padding}
 //   - aligned to 8 bytes
