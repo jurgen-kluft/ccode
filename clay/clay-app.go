@@ -1,4 +1,4 @@
-package main
+package clay
 
 import (
 	"fmt"
@@ -8,11 +8,9 @@ import (
 	"strconv"
 
 	ccode_utils "github.com/jurgen-kluft/ccode/ccode-utils"
-	"github.com/jurgen-kluft/ccode/clay"
-	"github.com/jurgen-kluft/ccode/clay/app/boards"
 )
 
-// Clay cli app
+// Clay Aapp
 //    Commands:
 //    - build board (esp32, esp32s3)
 //    - build-info board (esp32, esp32s3)
@@ -22,8 +20,11 @@ import (
 //    - list boards (fuzzy search)
 //    - list flash sizes
 
-var BuildInfoFilenameWithoutExt = "buildinfo"
-var EspSdkPath = "/Users/obnosis5/sdk/arduino/esp32"
+const (
+	BuildInfoFilenameWithoutExt = "buildinfo"
+)
+
+var ClayAppCreateProjectsFunc func(buildPath string) []*Project
 
 func GetArgv(i int, _default string) string {
 	if i < len(os.Args) {
@@ -39,7 +40,7 @@ func GetBuildPath(board string) string {
 	return buildPath
 }
 
-func main() {
+func ClayAppMain() {
 	// Parse command line arguments
 	command := GetArgv(1, "build")
 	switch command {
@@ -48,13 +49,13 @@ func main() {
 		Build(boardName)
 	case "build-info":
 		boardName := GetArgv(2, "esp32")
-		GenerateBuildInfo(boardName)
+		BuildInfo(boardName)
 	case "clean":
 		boardName := GetArgv(2, "esp32")
 		Clean(boardName)
 	case "flash":
 		boardName := GetArgv(2, "esp32")
-		Flash(boardName)
+		Flash("", boardName)
 	case "list-libraries":
 		ListLibraries()
 	case "list-boards":
@@ -103,10 +104,10 @@ func Build(board string) error {
 	buildPath := GetBuildPath(board)
 	os.MkdirAll(buildPath+"/", os.ModePerm)
 
-	var buildEnv *clay.BuildEnvironment
+	var buildEnv *BuildEnvironment
 	switch board {
 	case "esp32":
-		buildEnv = clay.NewBuildEnvironmentEsp32(buildPath)
+		buildEnv = NewBuildEnvironmentEsp32(buildPath)
 	case "esp32s3":
 		//buildEnv = clay.NewBuildEnvironmentEsp32S3(BuildPath)
 	}
@@ -115,17 +116,27 @@ func Build(board string) error {
 		return fmt.Errorf("Unsupported board: " + board)
 	}
 
-	prj := CreateProject(buildPath)
-	prj.SetBuildEnvironment(buildEnv)
-	AddBuildInfoAsCppLibrary(prj)
-	return prj.Build()
+	prjs := ClayAppCreateProjectsFunc(buildPath)
+	for _, prj := range prjs {
+		prj.SetBuildEnvironment(buildEnv)
+		AddBuildInfoAsCppLibrary(prj)
+		if err := prj.Build(); err != nil {
+			return fmt.Errorf("Build failed: %v", err)
+		}
+	}
+	return nil
 }
 
-func GenerateBuildInfo(board string) error {
+func BuildInfo(board string) error {
+	EspSdkPath := "/Users/obnosis5/sdk/arduino/esp32"
+	if env := os.Getenv("ESP_SDK"); env != "" {
+		EspSdkPath = env
+	}
+
 	buildPath := GetBuildPath(board)
 
 	appPath, _ := os.Getwd()
-	if err := clay.GenerateBuildInfo(buildPath, appPath, EspSdkPath, BuildInfoFilenameWithoutExt); err == nil {
+	if err := GenerateBuildInfo(buildPath, appPath, EspSdkPath, BuildInfoFilenameWithoutExt); err == nil {
 		log.Println("Ok, build info generated Ok")
 	} else {
 		log.Printf("Error, build info failed: %v\n", err)
@@ -149,13 +160,13 @@ func Clean(board string) error {
 	return nil
 }
 
-func Flash(board string) error {
+func Flash(project string, board string) error {
 	buildPath := GetBuildPath(board)
 
-	var buildEnv *clay.BuildEnvironment
+	var buildEnv *BuildEnvironment
 	switch board {
 	case "esp32":
-		buildEnv = clay.NewBuildEnvironmentEsp32(buildPath)
+		buildEnv = NewBuildEnvironmentEsp32(buildPath)
 	case "esp32s3":
 		//buildEnv = clay.NewBuildEnvironmentEsp32S3(buildPath)
 	}
@@ -164,18 +175,28 @@ func Flash(board string) error {
 		return fmt.Errorf("Unsupported board: " + board)
 	}
 
-	prj := CreateProject(buildPath)
-	prj.SetBuildEnvironment(buildEnv)
-	AddBuildInfoAsCppLibrary(prj)
-	return prj.Flash()
+	prjs := ClayAppCreateProjectsFunc(buildPath)
+	for _, prj := range prjs {
+		if project == prj.Name || project == "" {
+			prj.SetBuildEnvironment(buildEnv)
+			AddBuildInfoAsCppLibrary(prj)
+			if err := prj.Flash(); err != nil {
+				return fmt.Errorf("Build failed: %v", err)
+			}
+		}
+	}
+	return nil
 }
 
 func ListLibraries() error {
-	prj := CreateProject("")
-	fmt.Printf("Project: %s\n", prj.Name)
-	for _, lib := range prj.Executable.Libraries {
-		fmt.Printf("Library: %s\n", lib.Name)
-		fmt.Printf("  Version: %s\n", lib.Version)
+	buildPath := ""
+	prjs := ClayAppCreateProjectsFunc(buildPath)
+	for _, prj := range prjs {
+		fmt.Printf("Project: %s\n", prj.Name)
+		for _, lib := range prj.Executable.Libraries {
+			fmt.Printf("Library: %s\n", lib.Name)
+			fmt.Printf("  Version: %s\n", lib.Version)
+		}
 	}
 	return nil
 }
@@ -184,61 +205,35 @@ func ListBoards(boardName string, matches int) error {
 	if matches <= 0 {
 		matches = 10
 	}
+	EspSdkPath := "/Users/obnosis5/sdk/arduino/esp32"
+	if env := os.Getenv("ESP_SDK"); env != "" {
+		EspSdkPath = env
+	}
+
 	boardsFilePath := filepath.Join(EspSdkPath, "boards.txt")
-	return boards.PrintAllMatchingBoards(boardsFilePath, boardName, matches)
+	return PrintAllMatchingBoards(boardsFilePath, boardName, matches)
 }
 
 func ListFlashSizes(cpuName string, boardName string) error {
+	EspSdkPath := "/Users/obnosis5/sdk/arduino/esp32"
+	if env := os.Getenv("ESP_SDK"); env != "" {
+		EspSdkPath = env
+	}
+
 	boardsFilePath := filepath.Join(EspSdkPath, "boards.txt")
-	return boards.PrintAllFlashSizes(boardsFilePath, cpuName, boardName)
+	return PrintAllFlashSizes(boardsFilePath, cpuName, boardName)
 }
 
 // AddBuildInfoAsCppLibrary checks if 'buildinfo.h' and 'buildinfo.cpp' exist,
 // if so it creates a C++ library and adds it to the project
-func AddBuildInfoAsCppLibrary(prj *clay.Project) {
+func AddBuildInfoAsCppLibrary(prj *Project) {
 	name := BuildInfoFilenameWithoutExt
 	hdrFilepath := filepath.Join(prj.BuildPath, name, BuildInfoFilenameWithoutExt+".h")
 	srcFilepath := filepath.Join(prj.BuildPath, name, BuildInfoFilenameWithoutExt+".cpp")
 	if ccode_utils.FileExists(hdrFilepath) && ccode_utils.FileExists(srcFilepath) {
-		library := clay.NewCppLibrary(name, "0.1.0", name, name+".a")
+		library := NewCppLibrary(name, "0.1.0", name, name+".a")
 		library.IncludeDirs.Add(filepath.Dir(hdrFilepath), false)
 		library.AddSourceFile(srcFilepath, srcFilepath, true)
 		prj.Executable.AddLibrary(library)
 	}
-}
-
-// --------------------------------------------------------------------
-// --------------------------------------------------------------------
-// --------------------------------------------------------------------
-// Note: Everything below here is generated from the package definition
-
-// !!Project!!
-
-func CreateProject(buildPath string) *clay.Project {
-	prjName := "test_project"
-	prjVersion := "0.1.0"
-	prj := clay.NewProject(prjName, prjVersion, buildPath)
-	AddLibraries(prj)
-	return prj
-}
-
-func AddLibraries(prj *clay.Project) {
-	{
-		name := "test_lib"
-		library := clay.NewCppLibrary(name, "0.1.0", name, name+".a")
-
-		// Include directories
-		library.IncludeDirs.Add("/Users/obnosis5/dev.go/src/github.com/jurgen-kluft/ccode/clay/app/clay/test_lib/include", false)
-
-		// Define macros
-		library.Defines.Add("TARGET_DEBUG")
-		library.Defines.Add("TARGET_ESP32")
-
-		// Source files of chash
-		library.AddSourceFile("/Users/obnosis5/dev.go/src/github.com/jurgen-kluft/ccode/clay/app/clay/test_lib/src/test.cpp", "test.cpp", true)
-		// etc..
-
-		prj.Executable.AddLibrary(library)
-	}
-
 }

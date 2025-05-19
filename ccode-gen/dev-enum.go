@@ -14,7 +14,7 @@ const (
 	DevVs2017       DevEnum = DevVisualStudio | 2017
 	DevVs2019       DevEnum = DevVisualStudio | 2019
 	DevVs2022       DevEnum = DevVisualStudio | 2022
-	DevEspMake      DevEnum = 0x400000
+	DevEsp32        DevEnum = 0x400000
 	DevInvalid      DevEnum = 0xFFFFFFFF
 )
 
@@ -33,8 +33,8 @@ func (d DevEnum) IsMake() bool {
 func (d DevEnum) IsXCode() bool {
 	return d == DevXcode
 }
-func (d DevEnum) IsEspMake() bool {
-	return d == DevEspMake
+func (d DevEnum) IsEsp32() bool {
+	return d == DevEsp32
 }
 
 var DevEnumToStrMap = map[DevEnum]string{
@@ -46,7 +46,7 @@ var DevEnumToStrMap = map[DevEnum]string{
 	DevVs2017:       "vs2017",
 	DevVs2019:       "vs2019",
 	DevVs2022:       "vs2022",
-	DevEspMake:      "espmake",
+	DevEsp32:        "esp32",
 }
 
 var DevStrToEnumMap = map[string]DevEnum{
@@ -57,7 +57,7 @@ var DevStrToEnumMap = map[string]DevEnum{
 	"vs2015":       DevVs2015,
 	"vs2017":       DevVs2017,
 	"vs2019":       DevVs2019,
-	"espmake":      DevEspMake,
+	"esp32":        DevEsp32,
 	"visualstudio": DevVisualStudio,
 }
 

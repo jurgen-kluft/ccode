@@ -13,50 +13,61 @@ import (
 // ----------------------------------------------------------------------------------------------
 // Exclusion filter
 // ----------------------------------------------------------------------------------------------
+var gValidSuffixDefault = 0
+var gValidSuffixWindows = 1
+var gValidSuffixMac = 2
+var gValidSuffixIOs = 3
+var gValidSuffixLinux = 4
+var gValidSuffixArduino = 5
+
+var gValidSuffixDB = [][]string{
+	[]string{"_nob", "_null", "_nill"},
+	[]string{"_win", "_pc", "_win32", "_win64", "_windows", "_d3d11", "_d3d12"},
+	[]string{"_mac", "_macos", "_darwin", "_cocoa", "_metal", "_osx"},
+	[]string{"_ios", "_iphone", "_ipad", "_ipod"},
+	[]string{"_linux", "_unix"},
+	[]string{"arduino", "esp32"},
+}
+
+func IsExcludedOn(str string, os int) bool {
+	for i, l := range gValidSuffixDB {
+		if i == os {
+			continue
+		}
+		for _, e := range l {
+			if strings.HasSuffix(str, e) {
+				return true
+			}
+		}
+	}
+	return false
+}
+
 func IsExcludedOnMac(str string) bool {
-	exclude := []string{"win", "pc", "win32", "win64", "windows", "d3d11", "d3d12", "linux", "unix", "nob", "ios"}
-	for _, e := range exclude {
-		if strings.HasPrefix(str, e+"_") || strings.HasSuffix(str, "_"+e) || strings.EqualFold(str, e) {
-			return true
-		}
-	}
-	return false
+	return IsExcludedOn(str, gValidSuffixMac)
 }
-
 func IsExcludedOnWindows(str string) bool {
-	exclude := []string{"mac", "macos", "darwin", "linux", "unix", "nob", "cocoa", "metal", "osx", "ios"}
-	for _, e := range exclude {
-		if strings.HasPrefix(str, e+"_") || strings.HasSuffix(str, "_"+e) || strings.EqualFold(str, e) {
-			return true
-		}
-	}
-	return false
+	return IsExcludedOn(str, gValidSuffixWindows)
 }
-
 func IsExcludedOnLinux(str string) bool {
-	exclude := []string{"mac", "macos", "darwin", "win", "pc", "win32", "win64", "windows", "d3d11", "d3d12", "cocoa", "metal", "osx", "ios", "nob"}
-	for _, e := range exclude {
-		if strings.HasPrefix(str, e+"_") || strings.HasSuffix(str, "_"+e) || strings.EqualFold(str, e) {
-			return true
-		}
-	}
-	return false
+	return IsExcludedOn(str, gValidSuffixLinux)
 }
-
+func IsExcludedOnIOs(str string) bool {
+	return IsExcludedOn(str, gValidSuffixIOs)
+}
 func IsExcludedDefault(str string) bool {
-	if strings.HasSuffix(str, "_nob") {
-		return true
-	}
-	return false
+	return IsExcludedOn(str, gValidSuffixDefault)
 }
 
-func NewExclusionFilter(target MakeTarget) *ExclusionFilter {
+func NewExclusionFilter(target *MakeTarget) *ExclusionFilter {
 	if target.OSIsMac() {
 		return &ExclusionFilter{Filter: IsExcludedOnMac}
 	} else if target.OSIsWindows() {
 		return &ExclusionFilter{Filter: IsExcludedOnWindows}
 	} else if target.OSIsLinux() {
 		return &ExclusionFilter{Filter: IsExcludedOnLinux}
+	} else if target.OSIsIos() {
+		return &ExclusionFilter{Filter: IsExcludedOnIOs}
 	}
 	return &ExclusionFilter{Filter: IsExcludedDefault}
 }
@@ -118,8 +129,8 @@ func (g *Generator) Generate(pkg *denv.Package) error {
 	case DevVs2015, DevVs2017, DevVs2019, DevVs2022:
 		gg := NewMsDevGenerator(ws)
 		gg.Generate()
-	case DevEspMake:
-		gg := NewEspMakeGenerator(ws, g.Verbose)
+	case DevEsp32:
+		gg := NewEsp32Generator(ws, g.Verbose)
 		err = gg.Generate()
 	}
 
@@ -129,88 +140,84 @@ func (g *Generator) Generate(pkg *denv.Package) error {
 func (g *Generator) GenerateWorkspace(pkg *denv.Package, _dev DevEnum, _os string, _arch string) (*Workspace, error) {
 	g.GoPathAbs = filepath.Join(os.Getenv("GOPATH"), "src")
 
-	mainLib := pkg.GetMainLib()
-	mainApp := pkg.GetMainApp()
-	mainTest := pkg.GetUnittest()
+	mainApps := pkg.GetMainApp()
+	mainTests := pkg.GetUnittest()
+	mainLibs := pkg.GetMainLib()
 
-	if mainApp == nil && mainTest == nil && mainLib == nil {
-		return nil, fmt.Errorf("this package has no main app, main lib or unittest")
+	if (len(mainApps) == 0 && len(mainTests) == 0) && len(mainLibs) == 0 {
+		return nil, fmt.Errorf("this package has no application(s), unittest(s) or main lib(s)")
 	}
 
-	app := mainTest
-	if app == nil {
-		app = mainApp
-	}
-	if app == nil {
-		app = mainLib
-	}
-
-	wsc := NewWorkspaceConfig(_dev, _os, _arch, g.GoPathAbs, app.Name)
-	wsc.StartupProject = app.Name
+	wsc := NewWorkspaceConfig(_dev, _os, _arch, g.GoPathAbs, pkg.Name)
+	wsc.StartupProject = mainApps[0].Name
 	wsc.MultiThreadedBuild = true
 
 	ws := NewWorkspace(wsc)
-	ws.WorkspaceName = app.Name
+	ws.WorkspaceName = pkg.Name
 	ws.WorkspaceAbsPath = g.GoPathAbs
-	ws.GenerateAbsPath = filepath.Join(g.GoPathAbs, app.PackageURL, "target", ws.Config.Dev.String())
+	ws.GenerateAbsPath = filepath.Join(g.GoPathAbs, mainApps[0].PackageURL, "target", ws.Config.Dev.String())
 
 	g.ExclusionFilter = NewExclusionFilter(ws.MakeTarget)
 
-	// Create the main and dependency projects and also set up the list of dependencies of each project
+	for _, mainTest := range mainTests {
+		if mainTest.Type.IsUnitTest() {
+			mainTestProject := g.getOrCreateProject(mainTest, ws)
+			mainTestProject.AddConfigurations(mainTest.Configs)
 
-	if mainTest != nil {
-		mainTestProject := g.getOrCreateProject(mainTest, ws)
-		mainTestProject.AddConfigurations(mainTest.Configs)
+			mainTestDependencies := mainTest.CollectProjectDependencies()
+			for _, dp := range mainTestDependencies {
+				dpProject := g.getOrCreateProject(dp, ws)
+				mainTestProject.Dependencies.Add(dpProject)
 
-		mainTestDependencies := mainTest.CollectProjectDependencies()
-		for _, dp := range mainTestDependencies {
-			dpProject := g.getOrCreateProject(dp, ws)
-			mainTestProject.Dependencies.Add(dpProject)
+				dpProject.AddConfigurations(dp.Configs)
 
-			dpProject.AddConfigurations(dp.Configs)
-
-			dpDependencies := dp.CollectProjectDependencies()
-			for _, dpd := range dpDependencies {
-				dpdProject := g.getOrCreateProject(dpd, ws)
-				dpProject.Dependencies.Add(dpdProject)
+				dpDependencies := dp.CollectProjectDependencies()
+				for _, dpd := range dpDependencies {
+					dpdProject := g.getOrCreateProject(dpd, ws)
+					dpProject.Dependencies.Add(dpdProject)
+				}
 			}
 		}
 	}
 
-	if mainApp != nil {
-		mainAppProject := g.getOrCreateProject(mainApp, ws)
-		mainAppProject.AddConfigurations(mainApp.Configs)
+	for _, mainApp := range mainApps {
+		if mainApp.Type.IsApplication() {
+			mainAppProject := g.getOrCreateProject(mainApp, ws)
+			mainAppProject.AddConfigurations(mainApp.Configs)
 
-		mainAppDependencies := mainApp.CollectProjectDependencies()
-		for _, dp := range mainAppDependencies {
-			depProject := g.getOrCreateProject(dp, ws)
-			mainAppProject.Dependencies.Add(depProject)
+			mainAppDependencies := mainApp.CollectProjectDependencies()
+			for _, dp := range mainAppDependencies {
+				depProject := g.getOrCreateProject(dp, ws)
+				mainAppProject.Dependencies.Add(depProject)
 
-			depProject.AddConfigurations(dp.Configs)
+				depProject.AddConfigurations(dp.Configs)
 
-			dpDependencies := dp.CollectProjectDependencies()
-			for _, dpd := range dpDependencies {
-				dpdProject := g.getOrCreateProject(dpd, ws)
-				depProject.Dependencies.Add(dpdProject)
+				dpDependencies := dp.CollectProjectDependencies()
+				for _, dpd := range dpDependencies {
+					dpdProject := g.getOrCreateProject(dpd, ws)
+					depProject.Dependencies.Add(dpdProject)
+				}
 			}
 		}
 	}
 
-	if mainLib != nil {
-		mainLibProject := g.getOrCreateProject(mainLib, ws)
-		mainLibProject.AddConfigurations(mainLib.Configs)
+	for _, mainLib := range mainLibs {
+		if mainLib.Type.IsLibrary() {
+			mainLibProject := g.getOrCreateProject(mainLib, ws)
+			mainLibProject.AddConfigurations(mainLib.Configs)
 
-		mainLibDependencies := mainLib.CollectProjectDependencies()
-		for _, dp := range mainLibDependencies {
-			depProject := g.getOrCreateProject(dp, ws)
-			mainLibProject.Dependencies.Add(depProject)
+			mainLibDependencies := mainLib.CollectProjectDependencies()
+			for _, dp := range mainLibDependencies {
+				depProject := g.getOrCreateProject(dp, ws)
+				mainLibProject.Dependencies.Add(depProject)
 
-			depProject.AddConfigurations(dp.Configs)
+				depProject.AddConfigurations(dp.Configs)
 
-			dpDependencies := dp.CollectProjectDependencies()
-			for _, dpd := range dpDependencies {
-				dpdProject := g.getOrCreateProject(dpd, ws)
-				depProject.Dependencies.Add(dpdProject)
+				dpDependencies := dp.CollectProjectDependencies()
+				for _, dpd := range dpDependencies {
+					dpdProject := g.getOrCreateProject(dpd, ws)
+					depProject.Dependencies.Add(dpdProject)
+				}
 			}
 		}
 	}
@@ -252,7 +259,7 @@ func (g *Generator) getOrCreateProject(devProj *denv.Project, ws *Workspace) *Pr
 		projectConfig.CppAsObjCpp = false
 
 		projAbsPath := filepath.Join(g.GoPathAbs, devProj.PackageURL)
-		newProject := ws.NewProject(devProj.Name, projAbsPath, devProj.Type, projectConfig)
+		newProject := ws.NewProject(devProj.Name, projAbsPath, devProj.Type, devProj.BuildTargets, projectConfig)
 		newProject.ProjectFilename = devProj.Name
 
 		exclusionFilter := func(_filepath string) bool { return g.ExclusionFilter.IsExcluded(_filepath) }

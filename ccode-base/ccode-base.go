@@ -31,9 +31,15 @@ func Init() bool {
 	flag.BoolVar(&ccode_verbose, "verbose", false, "verbose output")
 	flag.Parse()
 
-	if ccode_dev == "espmake" {
-		ccode_os = "arduino"
-		ccode_arch = "esp32"
+    // Currently supported: esp32, esp32s3
+	if strings.HasPrefix(ccode_dev, "esp32") {
+        ccode_os = "arduino"
+        ccode_arch = "invalid"
+        if strings.EqualFold(ccode_dev, "esp32") {
+            ccode_arch = "esp32"
+        } else if strings.EqualFold(ccode_dev, "esp32s3") {
+            ccode_arch = "esp32s3"
+        }
 	}
 
 	if ccode_os == "" {

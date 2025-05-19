@@ -422,7 +422,14 @@ func (c *Config) BuildResolved(otherConfigs []*Config) *Config {
 	}
 
 	// TODO Only do this if this project is ccore or has a dependency on ccore
-	if c.Project != nil {
+	emitCoreDefines := false
+	for _, deps := range c.Project.Dependencies.Values {
+		if deps.Name == "ccore" {
+			emitCoreDefines = true
+			break
+		}
+	}
+	if emitCoreDefines {
 		configMerged.CppDefines.AddOrSet("CCORE_GEN_CPU", "CCORE_GEN_CPU_"+strings.ToUpper(c.Workspace.MakeTarget.ArchAsString()))
 		configMerged.CppDefines.AddOrSet("CCORE_GEN_OS", "CCORE_GEN_OS_"+strings.ToUpper(c.Workspace.MakeTarget.OSAsString()))
 		configMerged.CppDefines.AddOrSet("CCORE_GEN_COMPILER", "CCORE_GEN_COMPILER_"+strings.ToUpper(c.Workspace.MakeTarget.CompilerAsString()))

@@ -75,7 +75,7 @@ func (cat CppAdvancedType) ToString() string {
 	}
 	return ""
 }
-func (cat CppAdvancedType) Tundra(t MakeTarget) string {
+func (cat CppAdvancedType) Tundra(t *MakeTarget) string {
 	if t.CompilerIsVc() && cat.IsEnabled() {
 		return "/arch:" + cat.ToString()
 	} else if t.CompilerIsClang() || t.CompilerIsGcc() {
@@ -157,7 +157,8 @@ type Workspace struct {
 	WorkspaceName    string                     // The name of the workspace (e.g. For VisualStudio -> "cbase.sln", for Xcode -> "cbase.xcworkspace")
 	WorkspaceAbsPath string                     // The workspace directory is the path where all the projects and workspace are to be generated
 	GenerateAbsPath  string                     // Where to generate the workspace and project files
-	MakeTarget       MakeTarget                 // The make target for the workspace (e.g. contains details like OS, Compiler, Arch, etc.)
+	MakeHost         MakeHost                   // The make target for the workspace (e.g. contains details like OS, Compiler, Arch, etc.)
+	MakeTarget       *MakeTarget                // The make target for the workspace (e.g. contains details like OS, Compiler, Arch, etc.)
 	StartupProject   *Project                   // The project instance that will be marked as the startup project
 	ProjectList      *ProjectList               // The project list
 	ProjectGroups    *ProjectGroups             // The project groups that are part of the workspace
@@ -173,6 +174,7 @@ func NewWorkspace(wsc *WorkspaceConfig) *Workspace {
 		ExtraWorkspaces: make(map[string]*ExtraWorkspace),
 	}
 	ws.MakeTarget = NewDefaultMakeTarget(ws.Config.Dev, ws.Config.OS, ws.Config.Arch)
+	ws.MakeHost = NewMakeHost(ws.MakeTarget.Compiler)
 	ws.GenerateAbsPath = ws.Config.GenerateAbsPath
 
 	if ws.MakeTarget.OSIsWindows() {
@@ -194,8 +196,8 @@ func NewWorkspace(wsc *WorkspaceConfig) *Workspace {
 	return ws
 }
 
-func (ws *Workspace) NewProject(name string, projectAbsPath string, projectType denv.ProjectType, settings *ProjectConfig) *Project {
-	p := newProject(ws, name, projectAbsPath, projectType, settings)
+func (ws *Workspace) NewProject(name string, projectAbsPath string, projectType denv.ProjectType, supportedTargets []denv.BuildTarget, settings *ProjectConfig) *Project {
+	p := newProject(ws, name, projectAbsPath, projectType, supportedTargets, settings)
 	ws.ProjectList.Add(p)
 	return p
 }

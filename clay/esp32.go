@@ -10,8 +10,6 @@ import (
 	"path/filepath"
 	"strconv"
 	"strings"
-
-	ccode_utils "github.com/jurgen-kluft/ccode/ccode-utils"
 )
 
 //
@@ -246,12 +244,12 @@ func BuildCompilerArgs(cl *Compiler, lib *Library, srcFile *SourceFile, outputPa
 func (*BuildEnvironmentEsp32) PreBuild(be *BuildEnvironment, buildPath string) error {
 
 	// Make sure our buildPath exists
-	ccode_utils.MakeDir(buildPath)
+	MakeDir(buildPath)
 
 	// Copy sdkconfig in the build path from $(SDKROOT)/tools/esp32-arduino-libs/esp32/sdkconfig
 	sdkconfigFilepath := filepath.Join(buildPath, "sdkconfig")
-	if !ccode_utils.FileExists(sdkconfigFilepath) {
-		ccode_utils.CopyFiles(filepath.Join(be.SdkRoot, "tools/esp32-arduino-libs/esp32/sdkconfig"), sdkconfigFilepath)
+	if !FileExists(sdkconfigFilepath) {
+		CopyFiles(filepath.Join(be.SdkRoot, "tools/esp32-arduino-libs/esp32/sdkconfig"), sdkconfigFilepath)
 	}
 
 	return nil
@@ -306,7 +304,7 @@ func (*BuildEnvironmentEsp32) BuildLib(be *BuildEnvironment, lib *Library, build
 	for _, src := range lib.SourceFiles {
 
 		libBuildPath := filepath.Join(buildPath, lib.BuildSubDir, filepath.Dir(src.SrcRelPath))
-		ccode_utils.MakeDir(libBuildPath)
+		MakeDir(libBuildPath)
 
 		if err := be.CompileFunc(be, lib, src, libBuildPath); err != nil {
 			return fmt.Errorf("failed to compile source file %s: %w", src.SrcAbsPath, err)
@@ -331,7 +329,7 @@ func (*BuildEnvironmentEsp32) GenerateBootLoaderArgs(bl *BootLoaderCompiler, exe
 	args = append(args, "--flash_size")
 	args = append(args, bl.EspTool.FlashSize)
 
-	bootloaderBinFile := filepath.Join(buildPath, ccode_utils.FileChangeExtension(exe.OutputFilePath, ".bootloader.bin"))
+	bootloaderBinFile := filepath.Join(buildPath, FileChangeExtension(exe.OutputFilePath, ".bootloader.bin"))
 
 	args = append(args, "-o")
 	args = append(args, bootloaderBinFile)
@@ -386,13 +384,13 @@ func (be *BuildEnvironmentEsp32) FlashToolArgs(ft *FlashTool, exe *Executable, o
 	args = append(args, "--flash_size")
 	args = append(args, "keep")
 	args = append(args, "0x1000")
-	args = append(args, filepath.Join(outputPath, ccode_utils.FileChangeExtension(exe.OutputFilePath, ".bootloader.bin")))
+	args = append(args, filepath.Join(outputPath, FileChangeExtension(exe.OutputFilePath, ".bootloader.bin")))
 	args = append(args, "0x8000")
-	args = append(args, filepath.Join(outputPath, ccode_utils.FileChangeExtension(exe.OutputFilePath, ".partitions.bin")))
+	args = append(args, filepath.Join(outputPath, FileChangeExtension(exe.OutputFilePath, ".partitions.bin")))
 	args = append(args, "0xe000")
 	args = append(args, ft.Variables.Get("BootApp0BinFile"))
 	args = append(args, "0x10000")
-	args = append(args, filepath.Join(outputPath, ccode_utils.FileChangeExtension(exe.OutputFilePath, ".bin")))
+	args = append(args, filepath.Join(outputPath, FileChangeExtension(exe.OutputFilePath, ".bin")))
 
 	return args
 }
@@ -434,7 +432,7 @@ func (*BuildEnvironmentEsp32) BuildLinkerArgs(l *Linker, exe *Executable, output
 	args := make([]string, 0)
 
 	if l.OutputMapFile {
-		mapFilePath := filepath.Join(outputPath, ccode_utils.FileChangeExtension(exe.OutputFilePath, ".map"))
+		mapFilePath := filepath.Join(outputPath, FileChangeExtension(exe.OutputFilePath, ".map"))
 		args = append(args, "-Wl,--Map="+mapFilePath)
 	}
 
@@ -474,14 +472,28 @@ func (*BuildEnvironmentEsp32) ImageStatsToolArgs(statsTool *ImageStatsTool, exe 
 	return args
 }
 
+var gPatternsRAM = []string{".iram?.text", ".iram?.vectors", ".dram?.data", ".dram?.bss"}
+var gPatternsFLASH = []string{".flash.text", ".flash.rodata", ".flash.appdesc", ".flash.init_array", ".eh_frame"}
+
+// Match does a direct string match, and for the '?' character it will match any character.
+func Match(pattern string, str string) bool {
+	if len(pattern) != len(str) {
+		return false
+	}
+	for i := 0; i < len(pattern); i++ {
+		if pattern[i] == str[i] || pattern[i] == '?' {
+			continue
+		}
+		return false
+	}
+	return true
+}
+
 func (*BuildEnvironmentEsp32) ImageStatsParser(s string, exe *Executable) (*ImageStats, error) {
 	stats := &ImageStats{
 		FlashSize: 0,
 		RAMSize:   0,
 	}
-
-	patterns_RAM := []string{".iram?.text", ".iram?.vectors", ".dram?.data", ".dram?.bss"}
-	patterns_FLASH := []string{".flash.text", ".flash.rodata", ".flash.appdesc", ".flash.init_array", ".eh_frame"}
 
 	scanner := bufio.NewScanner(bytes.NewBufferString(s))
 	for scanner.Scan() {
@@ -495,19 +507,17 @@ func (*BuildEnvironmentEsp32) ImageStatsParser(s string, exe *Executable) (*Imag
 		if len(fields) < 2 {
 			continue
 		}
-
 		section := fields[0]
-
-		for _, pattern := range patterns_FLASH {
-			if ccode_utils.GlobMatching(section, pattern) {
+		for _, pattern := range gPatternsFLASH {
+			if Match(pattern, section) {
 				if size, err := strconv.ParseInt(fields[1], 10, 64); err == nil {
 					stats.FlashSize += size
 				}
 				goto found_match
 			}
 		}
-		for _, pattern := range patterns_RAM {
-			if ccode_utils.GlobMatching(section, pattern) {
+		for _, pattern := range gPatternsRAM {
+			if Match(pattern, section) {
 				if size, err := strconv.ParseInt(fields[1], 10, 64); err == nil {
 					stats.RAMSize += size
 				}
@@ -524,7 +534,7 @@ func (*BuildEnvironmentEsp32) ImageStatsParser(s string, exe *Executable) (*Imag
 }
 
 func (*BuildEnvironmentEsp32) GeneratePartitionsBinArgs(img *ImageGenerator, exe *Executable, buildPath string) []string {
-	img.PartitionsBinToolOutputFile = filepath.Join(buildPath, ccode_utils.FileChangeExtension(exe.OutputFilePath, ".partitions.bin"))
+	img.PartitionsBinToolOutputFile = filepath.Join(buildPath, FileChangeExtension(exe.OutputFilePath, ".partitions.bin"))
 	args := make([]string, 0)
 	args = append(args, img.PartitionsBinToolScript)
 	args = append(args, "-q")
@@ -548,7 +558,7 @@ func (*BuildEnvironmentEsp32) GenerateImageBinArgs(img *ImageGenerator, exe *Exe
 	args = append(args, img.ImageBinTool.ElfShareOffset)
 
 	args = append(args, "-o")
-	args = append(args, filepath.Join(buildPath, ccode_utils.FileChangeExtension(exe.OutputFilePath, ".bin")))
+	args = append(args, filepath.Join(buildPath, FileChangeExtension(exe.OutputFilePath, ".bin")))
 	args = append(args, filepath.Join(buildPath, exe.OutputFilePath))
 
 	return args
@@ -629,6 +639,7 @@ func (*BuildEnvironmentEsp32) Compile(be *BuildEnvironment, lib *Library, srcFil
 	cmd := exec.Command(cl, args...)
 	out, err := cmd.CombinedOutput()
 	if err != nil {
+		log.Printf("Compile failed, output:\n%s\n", string(out))
 		return fmt.Errorf("Compile failed with %s\n", err)
 	}
 	if len(out) > 0 {
@@ -680,6 +691,7 @@ func (*BuildEnvironmentEsp32) Link(be *BuildEnvironment, exe *Executable, output
 	log.Printf("Linking '%s'...\n", exe.Name+".elf")
 	out, err := cmd.CombinedOutput()
 	if err != nil {
+		log.Printf("Link failed, output:\n%s\n", string(out))
 		return fmt.Errorf("Link failed with %s\n", err)
 	}
 	if len(out) > 0 {

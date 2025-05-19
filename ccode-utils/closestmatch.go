@@ -1,4 +1,4 @@
-package closestmatch
+package ccode_utils
 
 import (
 	"math/rand"

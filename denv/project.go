@@ -60,9 +60,24 @@ func (pt ProjectType) IsHeaders() bool {
 type Project struct {
 	Name         string
 	Type         ProjectType
+	BuildTargets []BuildTarget
 	PackageURL   string
 	Configs      []*Config
 	Dependencies []*Project
+}
+
+func (prj *Project) AddDependency(dep *Project) {
+	if dep != nil {
+		prj.Dependencies = append(prj.Dependencies, dep)
+	}
+}
+
+func (prj *Project) AddDependencies(deps ...*Project) {
+	for _, dep := range deps {
+		if dep != nil {
+			prj.Dependencies = append(prj.Dependencies, dep)
+		}
+	}
 }
 
 // AddDefine adds a define
@@ -130,7 +145,7 @@ func (proj *Project) CollectProjectDependencies() []*Project {
 // Example:
 //
 //	SetupDefaultCppLibProject("cbase", "github.com/jurgen-kluft")
-func SetupDefaultCppLibProject(name string, URL string) *Project {
+func SetupDefaultCppLibProject(name string, URL string, dir string) *Project {
 	project := &Project{Name: name}
 	project.Type = StaticLibrary | Library | CppLanguage
 	if os.PathSeparator == '\\' {
@@ -146,19 +161,41 @@ func SetupDefaultCppLibProject(name string, URL string) *Project {
 	project.Dependencies = []*Project{}
 
 	for _, cfg := range project.Configs {
-		configureProjectBasicConfiguration(project, cfg)
-		configureProjectPlatformConfiguration(project, cfg)
-		configureProjectLocalizedConfiguration(project, cfg)
-		configureProjectLibConfiguration(cfg)
+		configureProjectBasicConfiguration(cfg)
+		configureProjectPlatformConfiguration(cfg)
+		configureProjectLocalizedConfiguration(cfg)
+		configureProjectLibConfiguration(cfg, dir)
 	}
 
 	return project
 }
 
-func SetupDefaultCppLibProjectWithLibs(name string, URL string, Libs []*Lib) *Project {
-	prj := SetupDefaultCppLibProject(name, URL)
-	prj.AddLibs(Libs)
-	return prj
+func SetupCppLibProject(name string, URL string) *Project {
+	// All platforms
+	project := SetupDefaultCppLibProject(name, URL, "main")
+	project.BuildTargets = BuildTargetsAll
+	return project
+}
+
+func SetupCppLibProjectForDesktop(name string, URL string) *Project {
+	// Windows, Mac and Linux project
+	project := SetupDefaultCppLibProject(name, URL, "main")
+	project.BuildTargets = BuildTargetsDesktop
+	return project
+}
+
+func SetupCppLibProjectForArduino(name string, URL string) *Project {
+	// Arduino project
+	project := SetupDefaultCppLibProject(name, URL, "main")
+	project.BuildTargets = BuildTargetsArduino
+	return project
+}
+
+func SetupCppLibProjectWithLibs(name string, URL string, Libs []*Lib) *Project {
+	project := SetupDefaultCppLibProject(name, URL, "main")
+	project.AddLibs(Libs)
+	project.BuildTargets = BuildTargetsArduino
+	return project
 }
 
 // SetupDefaultCppTestProject returns a default C++ project
@@ -168,6 +205,7 @@ func SetupDefaultCppLibProjectWithLibs(name string, URL string, Libs []*Lib) *Pr
 func SetupDefaultCppTestProject(name string, URL string) *Project {
 	project := &Project{Name: name}
 	project.Type = Executable | UnitTest | CppLanguage
+	project.BuildTargets = BuildTargetsDesktop
 	if os.PathSeparator == '\\' {
 		project.PackageURL = strings.Replace(URL, "/", "\\", -1)
 	} else {
@@ -178,12 +216,19 @@ func SetupDefaultCppTestProject(name string, URL string) *Project {
 	project.Dependencies = []*Project{}
 
 	for _, cfg := range project.Configs {
-		configureProjectBasicConfiguration(project, cfg)
-		configureProjectPlatformConfiguration(project, cfg)
-		configureProjectLocalizedConfiguration(project, cfg)
+		configureProjectBasicConfiguration(cfg)
+		configureProjectPlatformConfiguration(cfg)
+		configureProjectLocalizedConfiguration(cfg)
 		configureProjectTestConfiguration(cfg)
 	}
 
+	return project
+}
+
+func SetupCppTestProjectForDesktop(name string, URL string) *Project {
+	// Windows, Mac and Linux project
+	project := SetupDefaultCppTestProject(name, URL)
+	project.BuildTargets = BuildTargetsDesktop
 	return project
 }
 
@@ -194,6 +239,7 @@ func SetupDefaultCppTestProject(name string, URL string) *Project {
 func SetupDefaultCppCliProject(name string, URL string) *Project {
 	project := &Project{Name: name}
 	project.Type = Executable | Application | CppLanguage
+	project.BuildTargets = BuildTargetsDesktop
 	if os.PathSeparator == '\\' {
 		project.PackageURL = strings.Replace(URL, "/", "\\", -1)
 	} else {
@@ -204,10 +250,10 @@ func SetupDefaultCppCliProject(name string, URL string) *Project {
 	project.Dependencies = []*Project{}
 
 	for _, cfg := range project.Configs {
-		configureProjectBasicConfiguration(project, cfg)
-		configureProjectPlatformConfiguration(project, cfg)
-		configureProjectLocalizedConfiguration(project, cfg)
-		configureProjectCliConfiguration(project, cfg)
+		configureProjectBasicConfiguration(cfg)
+		configureProjectPlatformConfiguration(cfg)
+		configureProjectLocalizedConfiguration(cfg)
+		configureProjectCliConfiguration(cfg)
 	}
 
 	return project
@@ -220,6 +266,7 @@ func SetupDefaultCppCliProject(name string, URL string) *Project {
 func SetupDefaultCppAppProject(name string, URL string) *Project {
 	project := &Project{Name: name}
 	project.Type = Executable | Application | CppLanguage
+	project.BuildTargets = BuildTargetsDesktop
 	if os.PathSeparator == '\\' {
 		project.PackageURL = strings.Replace(URL, "/", "\\", -1)
 	} else {
@@ -230,39 +277,61 @@ func SetupDefaultCppAppProject(name string, URL string) *Project {
 	project.Dependencies = []*Project{}
 
 	for _, cfg := range project.Configs {
-		configureProjectBasicConfiguration(project, cfg)
-		configureProjectPlatformConfiguration(project, cfg)
-		configureProjectLocalizedConfiguration(project, cfg)
-		configureProjectAppConfiguration(project, cfg)
+		configureProjectBasicConfiguration(cfg)
+		configureProjectPlatformConfiguration(cfg)
+		configureProjectLocalizedConfiguration(cfg)
+		configureProjectAppConfiguration(cfg)
 	}
 
 	return project
 }
 
-func configureProjectLibConfiguration(config *Config) {
-	config.IncludeDirs = []string{"source/main/include"}
-	config.SourceDirs = []string{"source/main/cpp"}
+func SetupCppAppProject(name string, URL string) *Project {
+	// All platforms
+	project := SetupDefaultCppAppProject(name, URL)
+	project.BuildTargets = BuildTargetsAll
+	return project
+}
+
+func SetupCppAppProjectForDesktop(name string, URL string) *Project {
+	// Windows, Mac and Linux project
+	project := SetupDefaultCppAppProject(name, URL)
+	project.BuildTargets = BuildTargetsDesktop
+	return project
+}
+
+func SetupCppAppProjectForArduino(name string, URL string) *Project {
+	// Arduino project
+	project := SetupDefaultCppAppProject(name, URL)
+	project.BuildTargets = BuildTargetsArduino
+	return project
+}
+
+func configureProjectLibConfiguration(config *Config, name string) {
+	config.IncludeDirs = append(config.IncludeDirs, "source/"+name+"/include")
+	config.SourceDirs = append(config.SourceDirs, "source/"+name+"/cpp")
+}
+
+func configureProjectProgramConfiguration(prg string, libs []string, config *Config) {
+	configureProjectLibConfiguration(config, prg)
+	for _, lib := range libs {
+		configureProjectLibConfiguration(config, lib)
+	}
 }
 
 func configureProjectTestConfiguration(config *Config) {
-	config.IncludeDirs = []string{"source/main/include", "source/test/include"}
-	config.SourceDirs = []string{"source/test/cpp"}
+	configureProjectProgramConfiguration("test", []string{}, config)
 }
 
-func configureProjectProgramConfiguration(dir string, config *Config) {
-	config.IncludeDirs = []string{"source/main/include", "source/" + dir + "/include"}
-	config.SourceDirs = []string{"source/" + dir + "/cpp"}
+func configureProjectCliConfiguration(config *Config) {
+	configureProjectProgramConfiguration("cli", []string{}, config)
 }
 
-func configureProjectCliConfiguration(project *Project, config *Config) {
-	configureProjectProgramConfiguration("cli", config)
+func configureProjectAppConfiguration(config *Config) {
+	configureProjectProgramConfiguration("app", []string{}, config)
 }
 
-func configureProjectAppConfiguration(project *Project, config *Config) {
-	configureProjectProgramConfiguration("app", config)
-}
-
-func configureProjectBasicConfiguration(project *Project, config *Config) {
+func configureProjectBasicConfiguration(config *Config) {
 	configType := config.ConfigType
 	if configType.IsDebug() {
 		config.Defines.AddMany("TARGET_DEBUG", "_DEBUG")
@@ -281,7 +350,7 @@ func configureProjectBasicConfiguration(project *Project, config *Config) {
 	}
 }
 
-func configureProjectPlatformConfiguration(project *Project, config *Config) {
+func configureProjectPlatformConfiguration(config *Config) {
 	if IsWindows() {
 		config.Defines.Add("TARGET_PC")
 	} else if IsLinux() {
@@ -305,6 +374,6 @@ func configureProjectPlatformConfiguration(project *Project, config *Config) {
 	}
 }
 
-func configureProjectLocalizedConfiguration(project *Project, config *Config) {
+func configureProjectLocalizedConfiguration(config *Config) {
 	config.Defines.AddMany("_UNICODE", "UNICODE")
 }

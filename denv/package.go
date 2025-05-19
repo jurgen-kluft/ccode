@@ -49,13 +49,13 @@ func (p *Package) Libraries() []*Project {
 func (p *Package) MainProjects() []*Project {
 	projects := make([]*Project, 0)
 	if p.GetMainLib() != nil {
-		projects = append(projects, p.GetMainLib())
+		projects = append(projects, p.GetMainLib()...)
 	}
 	if p.GetMainApp() != nil {
-		projects = append(projects, p.GetMainApp())
+		projects = append(projects, p.GetMainApp()...)
 	}
 	if p.GetUnittest() != nil {
-		projects = append(projects, p.GetUnittest())
+		projects = append(projects, p.GetUnittest()...)
 	}
 	return projects
 }
@@ -88,17 +88,17 @@ func (p *Package) AddPackage(pkg *Package) {
 
 // AddMainApp adds a project to this package as 'mainapp' the main application
 func (p *Package) AddMainApp(prj *Project) {
-	p.Projects["mainapp"] = prj
+	p.Projects[strings.ToLower(prj.Name)+".mainapp"] = prj
 }
 
 // AddMainLib adds a project to this package as 'mainlib' the main library
 func (p *Package) AddMainLib(prj *Project) {
-	p.Projects["mainlib"] = prj
+	p.Projects[strings.ToLower(prj.Name)+".mainlib"] = prj
 }
 
 // AddUnittest adds a project to this package as 'unittest' the unittest app
 func (p *Package) AddUnittest(prj *Project) {
-	p.Projects["unittest"] = prj
+	p.Projects[prj.Name+".unittest"] = prj
 }
 
 // AddProject adds a project to this package
@@ -112,20 +112,35 @@ func (p *Package) GetProject(name string) *Project {
 	return prj
 }
 
-// GetMainLib returns the project that is registered as the main library
-func (p *Package) GetMainLib() *Project {
-	prj := p.Projects["mainlib"]
-	return prj
+// GetMainLib returns the projects that are registered as a main library
+func (p *Package) GetMainLib() []*Project {
+	mainlibs := make([]*Project, 0)
+	for id, prj := range p.Projects {
+		if strings.HasSuffix(id, ".mainlib") {
+			mainlibs = append(mainlibs, prj)
+		}
+	}
+	return mainlibs
 }
 
-// GetUnittest returns the project that is registered as the unittest
-func (p *Package) GetUnittest() *Project {
-	prj := p.Projects["unittest"]
-	return prj
+// GetUnittest returns the projects that are registered as a unittest
+func (p *Package) GetUnittest() []*Project {
+	unittests := make([]*Project, 0)
+	for id, prj := range p.Projects {
+		if strings.HasSuffix(id, ".unittest") {
+			unittests = append(unittests, prj)
+		}
+	}
+	return unittests
 }
 
-// GetMainApp returns the project that is registered as the main application
-func (p *Package) GetMainApp() *Project {
-	prj := p.Projects["mainapp"]
-	return prj
+// GetMainApp returns the projects that are registered as a main application
+func (p *Package) GetMainApp() []*Project {
+	mainapps := make([]*Project, 0)
+	for id, prj := range p.Projects {
+		if strings.HasSuffix(id, ".mainapp") {
+			mainapps = append(mainapps, prj)
+		}
+	}
+	return mainapps
 }

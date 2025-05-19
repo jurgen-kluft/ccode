@@ -229,37 +229,40 @@ func (p *ProjectList) TopoSort() error {
 // -----------------------------------------------------------------------------------------------------
 
 type Project struct {
-	Workspace       *Workspace  // The workspace this project is part of
-	Name            string      // The name of the project
-	Type            ProjectType // The type of the project
-	ProjectAbsPath  string      // The path where the project is located on disk, under the workspace directory
-	GenerateAbsPath string      // Where the project will be saved on disk
-	Settings        *ProjectConfig
-	Group           *ProjectGroup // Set when project is added into ProjectGroups
-	FileEntries     *FileEntryDict
-	ResourceEntries *FileEntryDict
-	VirtualFolders  *VirtualDirectories
-	PchCpp          *FileEntry
-	ProjectFilename string
-	ConfigsLocal    *ConfigList
-	Dependencies    *ProjectList
+	Workspace        *Workspace         // The workspace this project is part of
+	Name             string             // The name of the project
+	Version          string             // The version of the project
+	Type             ProjectType        // The type of the project
+	SupportedTargets denv.BuildTargets // The targets that this project supports
+	ProjectAbsPath   string             // The path where the project is located on disk, under the workspace directory
+	GenerateAbsPath  string             // Where the project will be saved on disk
+	Settings         *ProjectConfig
+	Group            *ProjectGroup // Set when project is added into ProjectGroups
+	FileEntries      *FileEntryDict
+	ResourceEntries  *FileEntryDict
+	VirtualFolders   *VirtualDirectories
+	PchCpp           *FileEntry
+	ProjectFilename  string
+	ConfigsLocal     *ConfigList
+	Dependencies     *ProjectList
 
 	Resolved *ProjectResolved
 }
 
-func newProject(ws *Workspace, name string, projectAbsPath string, projectType denv.ProjectType, settings *ProjectConfig) *Project {
+func newProject(ws *Workspace, name string, projectAbsPath string, projectType denv.ProjectType, supportedTargets denv.BuildTargets, settings *ProjectConfig) *Project {
 	p := &Project{
-		Workspace:       ws,
-		Name:            name,
-		Type:            MakeProjectType(projectType),
-		ProjectAbsPath:  projectAbsPath,
-		GenerateAbsPath: ws.GenerateAbsPath,
-		Settings:        settings,
-		Group:           nil,
-		FileEntries:     NewFileEntryDict(ws, projectAbsPath),
-		ResourceEntries: NewFileEntryDict(ws, projectAbsPath),
-		ConfigsLocal:    NewConfigList(),
-		Dependencies:    NewProjectList(),
+		Workspace:        ws,
+		Name:             name,
+		Type:             MakeProjectType(projectType),
+		SupportedTargets: supportedTargets,
+		ProjectAbsPath:   projectAbsPath,
+		GenerateAbsPath:  ws.GenerateAbsPath,
+		Settings:         settings,
+		Group:            nil,
+		FileEntries:      NewFileEntryDict(ws, projectAbsPath),
+		ResourceEntries:  NewFileEntryDict(ws, projectAbsPath),
+		ConfigsLocal:     NewConfigList(),
+		Dependencies:     NewProjectList(),
 	}
 	p.VirtualFolders = NewVirtualFolders(p.ProjectAbsPath) // The path that is the root path of the virtual folder/file structure
 

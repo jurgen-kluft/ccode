@@ -29,11 +29,11 @@ const (
 // -----------------------------------------------------------------------------------------------
 
 type FileEntry struct {
-	Path              string
-	Type              FileType
-	Parent            *VirtualDirectory
-	ExcludedFromBuild bool
-	Generated         bool
+	Path              string            // Relative to the workspace
+	Type              FileType          // File type
+	Parent            *VirtualDirectory // Parent directory
+	ExcludedFromBuild bool              // Excluded from build
+	Generated         bool              // Generated file
 	UUID              ccode_utils.UUID
 	BuildUUID         ccode_utils.UUID
 }
