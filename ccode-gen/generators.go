@@ -149,14 +149,25 @@ func (g *Generator) GenerateWorkspace(pkg *denv.Package, _dev DevEnum, _os strin
 	}
 
 	wsc := NewWorkspaceConfig(_dev, _os, _arch, g.GoPathAbs, pkg.Name)
-	wsc.StartupProject = mainApps[0].Name
+    if len(mainApps) > 0 {
+        wsc.StartupProject = mainApps[0].Name
+    } else if len(mainTests) > 0 {
+        wsc.StartupProject = mainTests[0].Name
+    } else if len(mainLibs) > 0 {
+        wsc.StartupProject = mainLibs[0].Name
+    }
 	wsc.MultiThreadedBuild = true
 
 	ws := NewWorkspace(wsc)
 	ws.WorkspaceName = pkg.Name
 	ws.WorkspaceAbsPath = g.GoPathAbs
-	ws.GenerateAbsPath = filepath.Join(g.GoPathAbs, mainApps[0].PackageURL, "target", ws.Config.Dev.String())
-
+    if len(mainApps) > 0 {
+        ws.GenerateAbsPath = filepath.Join(g.GoPathAbs, mainApps[0].PackageURL, "target", ws.Config.Dev.String())
+    } else if len(mainTests) > 0 {
+        ws.GenerateAbsPath = filepath.Join(g.GoPathAbs, mainTests[0].PackageURL, "target", ws.Config.Dev.String())
+    } else if len(mainLibs) > 0 {
+        ws.GenerateAbsPath = filepath.Join(g.GoPathAbs, mainLibs[0].PackageURL, "target", ws.Config.Dev.String())
+    }
 	g.ExclusionFilter = NewExclusionFilter(ws.MakeTarget)
 
 	for _, mainTest := range mainTests {
