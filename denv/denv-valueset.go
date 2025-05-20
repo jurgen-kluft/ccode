@@ -14,6 +14,12 @@ func (d *DevValueSet) Merge(other *DevValueSet) {
 	}
 }
 
+func (d *DevValueSet) Copy() *DevValueSet {
+	c := NewDevValueSet()
+	c.Merge(d)
+	return c
+}
+
 func NewDevValueSet() *DevValueSet {
 	d := &DevValueSet{}
 	d.Entries = make(map[string]int)

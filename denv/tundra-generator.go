@@ -103,7 +103,7 @@ func (g *TundraGenerator) writeUnit(units *cutils.LineWriter, p *Project, isProg
 	units.WriteILine("++", `CPPDEFS = {`)
 	for _, cfg := range p.Resolved.Configs.Values {
 		units.WriteILine("+++", `{`)
-		for _, def := range cfg.CppDefines.Vars.Values {
+		for _, def := range cfg.CppDefines.Values {
 			escapedDef := g.escapeString(def)
 			units.WriteILine("++++", `"`, escapedDef, `",`)
 		}

@@ -340,8 +340,8 @@ func (g *MsDevGenerator) genProjectConfig(wr *cutils.XmlWriter, proj *Project, c
 				wr.TagWithBody("PrecompiledHeader", "NotUsing")
 			}
 
-			g.genConfigOptionFromKeyValueDict(wr, proj, "DisableSpecificWarnings", config.DisableWarning.Vars, false)
-			g.genConfigOptionFromKeyValueDict(wr, proj, "PreprocessorDefinitions", config.CppDefines.Vars, false)
+			g.genConfigOptionFromKeyValueDict(wr, proj, "DisableSpecificWarnings", config.DisableWarning, false)
+			g.genConfigOptionFromKeyValueDict(wr, proj, "PreprocessorDefinitions", config.CppDefines, false)
 			g.genConfigOptionWithModifier(wr, "AdditionalIncludeDirectories", config.IncludeDirs, func(_root string, _path string) string {
 				relpath := cutils.PathGetRelativeTo(path.Join(_root, _path), proj.Workspace.GenerateAbsPath)
 				return relpath
@@ -387,7 +387,7 @@ func (g *MsDevGenerator) genProjectConfig(wr *cutils.XmlWriter, proj *Project, c
 			if g.Workspace.BuildTarget.OSIsLinux() {
 				wr.TagWithBody("VerboseOutput", "true")
 
-				tmp := config.LinkFlags.Vars.Concatenated(" -Wl,", "", func(string, s string) string { return s })
+				tmp := config.LinkFlags.Concatenated(" -Wl,", "", func(string, s string) string { return s })
 				wr.TagWithBody("AdditionalOptions", tmp)
 
 				if config.Type.IsDebug() {
@@ -400,7 +400,7 @@ func (g *MsDevGenerator) genProjectConfig(wr *cutils.XmlWriter, proj *Project, c
 				wr.TagWithBody("SubSystem", "Console")
 				wr.TagWithBody("GenerateDebugInformation", "true")
 
-				tmp := config.LinkFlags.Vars.Concatenated(" ", "", func(string, s string) string { return s })
+				tmp := config.LinkFlags.Concatenated(" ", "", func(string, s string) string { return s })
 				if len(tmp) > 0 {
 					wr.TagWithBody("AdditionalOptions", tmp)
 				}
@@ -444,7 +444,7 @@ func (g *MsDevGenerator) genConfigOptionFromKeyValueDict(wr *cutils.XmlWriter, p
 	wr.TagWithBody(name, option)
 }
 
-func (g *MsDevGenerator) genConfigOptionFromValueSet(wr *cutils.XmlWriter, proj *Project, name string, value *ValueSet, treatAsPath bool) {
+func (g *MsDevGenerator) genConfigOptionFromValueSet(wr *cutils.XmlWriter, proj *Project, name string, value *DevValueSet, treatAsPath bool) {
 	option := value.Concatenated("", ";", func(v string) string {
 		if treatAsPath {
 			path := cutils.PathGetRelativeTo(v, proj.Workspace.GenerateAbsPath)

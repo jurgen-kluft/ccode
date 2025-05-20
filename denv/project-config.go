@@ -79,16 +79,16 @@ type Config struct {
 	Workspace *Workspace
 	Project   *Project
 
-	CppDefines        *VarSettings
-	CppFlags          *VarSettings
+	CppDefines        *KeyValueDict
+	CppFlags          *KeyValueDict
 	IncludeDirs       *PinnedPathSet
 	IncludeFiles      *PinnedPathSet
-	LibraryFrameworks *ValueSet // MacOS specific
-	LibraryFiles      *ValueSet
-	LibraryLibs       *ValueSet
+	LibraryFrameworks *DevValueSet // MacOS specific
+	LibraryFiles      *DevValueSet
+	LibraryLibs       *DevValueSet
 	LibraryDirs       *PinnedPathSet
-	LinkFlags         *VarSettings
-	DisableWarning    *VarSettings
+	LinkFlags         *KeyValueDict
+	DisableWarning    *KeyValueDict
 
 	XcodeSettings         *KeyValueDict
 	VisualStudioClCompile *KeyValueDict
@@ -109,18 +109,18 @@ func NewConfig(t DevConfigType, ws *Workspace, p *Project) *Config {
 	c.Workspace = ws
 	c.Project = p
 
-	c.CppDefines = NewVarDict("CppDefines") // e.g. "DEBUG" "PROFILE"
-	c.CppFlags = NewVarDict("CppFlags")     // e.g. "-g"
-	c.IncludeDirs = NewPinnedPathSet()      // e.g. "source/main/include", "source/test/include"
-	c.IncludeFiles = NewPinnedPathSet()     // e.g. "source/main/include/file.h", "source/test/include/file.h"
+	c.CppDefines = NewKeyValueDict()    // e.g. "DEBUG" "PROFILE"
+	c.CppFlags = NewKeyValueDict()      // e.g. "-g"
+	c.IncludeDirs = NewPinnedPathSet()  // e.g. "source/main/include", "source/test/include"
+	c.IncludeFiles = NewPinnedPathSet() // e.g. "source/main/include/file.h", "source/test/include/file.h"
 
-	c.LibraryFrameworks = NewValueSet() // e.g. "Foundation", "Cocoa"
-	c.LibraryFiles = NewValueSet()      // e.g. "libfoo.a", "libbar.a"
-	c.LibraryLibs = NewValueSet()       // e.g. "libfoo.a", "libbar.a"
-	c.LibraryDirs = NewPinnedPathSet()  // e.g. "source/main/lib", "source/test/lib"
+	c.LibraryFrameworks = NewDevValueSet() // e.g. "Foundation", "Cocoa"
+	c.LibraryFiles = NewDevValueSet()      // e.g. "libfoo.a", "libbar.a"
+	c.LibraryLibs = NewDevValueSet()       // e.g. "libfoo.a", "libbar.a"
+	c.LibraryDirs = NewPinnedPathSet()     // e.g. "source/main/lib", "source/test/lib"
 
-	c.LinkFlags = NewVarDict("LinkFlags")           // e.g. "-lstdc++"
-	c.DisableWarning = NewVarDict("DisableWarning") // e.g. "unused-variable"
+	c.LinkFlags = NewKeyValueDict()      // e.g. "-lstdc++"
+	c.DisableWarning = NewKeyValueDict() // e.g. "unused-variable"
 
 	c.XcodeSettings = NewKeyValueDict()
 	c.VisualStudioClCompile = NewKeyValueDict()

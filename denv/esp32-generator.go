@@ -165,7 +165,7 @@ func (g *Esp32Generator) generateLibrary(p *Project, cfg *Config, description st
 		units.WriteLine()
 
 		units.WriteILine("", "// Define macros")
-		for _, def := range cfg.CppDefines.Vars.Values {
+		for _, def := range cfg.CppDefines.Values {
 			escapedDef := strings.Replace(def, `"`, `\"`, -1)
 			units.WriteILine("", "library.Defines.Add(", `"`, escapedDef, `")`)
 		}

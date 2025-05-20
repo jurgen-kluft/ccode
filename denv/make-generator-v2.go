@@ -177,7 +177,7 @@ func (g *MakeGenerator2) generateProjectMakefile(project *Project, isMain bool) 
 	// The compiler preprocessor defines
 	for _, cfg := range project.Resolved.Configs.Values {
 		mk.WriteAligned(`DEFINES_CPP_`, strings.ToLower(cfg.String()), cutils.TabStop(0), `:=`)
-		for _, define := range cfg.CppDefines.Vars.Values {
+		for _, define := range cfg.CppDefines.Values {
 			mk.Write(` -D`, define)
 		}
 		mk.NewLine()
@@ -198,7 +198,7 @@ func (g *MakeGenerator2) generateProjectMakefile(project *Project, isMain bool) 
 	// compiler warnings per config
 	for _, cfg := range project.Resolved.Configs.Values {
 		mk.WriteAligned(`FLAGS_WARN_`, strings.ToLower(cfg.String()), cutils.TabStop(0), `:=`)
-		for _, warn := range cfg.DisableWarning.Vars.Values {
+		for _, warn := range cfg.DisableWarning.Values {
 			mk.Write(` `, warn)
 		}
 		mk.NewLine()
@@ -207,7 +207,7 @@ func (g *MakeGenerator2) generateProjectMakefile(project *Project, isMain bool) 
 	// compiler flags per config
 	for _, cfg := range project.Resolved.Configs.Values {
 		mk.WriteAligned(`FLAGS_CPP_`, strings.ToLower(cfg.String()), cutils.TabStop(0), `:=`)
-		for _, flag := range cfg.CppFlags.Vars.Values {
+		for _, flag := range cfg.CppFlags.Values {
 			mk.Write(` `, flag)
 		}
 		mk.NewLine()

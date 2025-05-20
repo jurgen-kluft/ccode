@@ -434,10 +434,10 @@ func (p *Project) GlobFiles(dir string, pattern string, isExcluded func(string) 
 // -----------------------------------------------------------------------------------------------------
 // -----------------------------------------------------------------------------------------------------
 
-func (p *Project) BuildLibraryInformation(dev DevEnum, config *Config, workspaceGenerateAbsPath string) (linkDirs, linkFiles, linkLibs *ValueSet) {
-	linkDirs = NewValueSet()
-	linkFiles = NewValueSet()
-	linkLibs = NewValueSet()
+func (p *Project) BuildLibraryInformation(dev DevEnum, config *Config, workspaceGenerateAbsPath string) (linkDirs, linkFiles, linkLibs *DevValueSet) {
+	linkDirs = NewDevValueSet()
+	linkFiles = NewDevValueSet()
+	linkLibs = NewDevValueSet()
 
 	// Library directories, these will be relative to the workspace generate path
 	for _, dir := range config.LibraryDirs.Values {
@@ -468,8 +468,8 @@ func (p *Project) BuildLibraryInformation(dev DevEnum, config *Config, workspace
 	return
 }
 
-func (p *Project) BuildFrameworkInformation(config *Config) (frameworks *ValueSet) {
-	frameworks = NewValueSet()
+func (p *Project) BuildFrameworkInformation(config *Config) (frameworks *DevValueSet) {
+	frameworks = NewDevValueSet()
 
 	// Library directories and files
 	for _, fw := range config.LibraryFrameworks.Values {

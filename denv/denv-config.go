@@ -120,8 +120,8 @@ type DevConfig struct {
 	LocalIncludeDirs    []string // Relative paths
 	ExternalIncludeDirs []string // Absolute paths
 	SourceDirs          []string
-	Defines             *ValueSet
-	LinkFlags           *ValueSet
+	Defines             *DevValueSet
+	LinkFlags           *DevValueSet
 	Libs                []*DevLib
 }
 
@@ -134,8 +134,8 @@ func NewDevConfig(configType DevConfigType) *DevConfig {
 		LocalIncludeDirs:    []string{},
 		ExternalIncludeDirs: []string{},
 		SourceDirs:          []string{},
-		Defines:             NewValueSet(),
-		LinkFlags:           NewValueSet(),
+		Defines:             NewDevValueSet(),
+		LinkFlags:           NewDevValueSet(),
 		Libs:                []*DevLib{},
 	}
 

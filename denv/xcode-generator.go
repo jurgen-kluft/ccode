@@ -694,7 +694,7 @@ func (g *XcodeGenerator) genProjectXCBuildConfiguration(wr *XcodeWriter, proj *P
 
 				{
 					scope := wr.NewArrayScope("GCC_PREPROCESSOR_DEFINITIONS")
-					for _, q := range config.CppDefines.Vars.Values {
+					for _, q := range config.CppDefines.Values {
 						wr.newline(0)
 						wr.write(g.quoteString(q))
 					}
@@ -715,7 +715,7 @@ func (g *XcodeGenerator) genProjectXCBuildConfiguration(wr *XcodeWriter, proj *P
 				}
 				{
 					scope := wr.NewArrayScope("OTHER_CFLAGS")
-					for _, q := range config.CppFlags.Vars.Values {
+					for _, q := range config.CppFlags.Values {
 						wr.newline(0)
 						wr.write(g.quoteString(q))
 					}
@@ -723,7 +723,7 @@ func (g *XcodeGenerator) genProjectXCBuildConfiguration(wr *XcodeWriter, proj *P
 				}
 				{
 					scope := wr.NewArrayScope("OTHER_CPLUSPLUSFLAGS")
-					for _, q := range config.CppFlags.Vars.Values {
+					for _, q := range config.CppFlags.Values {
 						wr.newline(0)
 						wr.write(g.quoteString(q))
 					}
@@ -732,7 +732,7 @@ func (g *XcodeGenerator) genProjectXCBuildConfiguration(wr *XcodeWriter, proj *P
 
 				{
 					scope := wr.NewArrayScope("OTHER_LDFLAGS")
-					for _, q := range config.LinkFlags.Vars.Values {
+					for _, q := range config.LinkFlags.Values {
 						wr.newline(0)
 						wr.write(g.quoteString(q))
 					}

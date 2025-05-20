@@ -147,16 +147,16 @@ func (prj *DevProject) AddLibs(libs []*DevLib) {
 }
 
 // Used by IncludeFixer
-func (proj *DevProject) CollectLocalIncludeDirs() *ValueSet {
-	includeDirs := NewValueSet()
+func (proj *DevProject) CollectLocalIncludeDirs() *DevValueSet {
+	includeDirs := NewDevValueSet()
 	for _, cfg := range proj.Configs {
 		includeDirs.AddMany(cfg.LocalIncludeDirs...)
 	}
 	return includeDirs
 }
 
-func (proj *DevProject) CollectSourceDirs() *ValueSet {
-	sourceDirs := NewValueSet()
+func (proj *DevProject) CollectSourceDirs() *DevValueSet {
+	sourceDirs := NewDevValueSet()
 	for _, cfg := range proj.Configs {
 		sourceDirs.AddMany(cfg.SourceDirs...)
 	}
