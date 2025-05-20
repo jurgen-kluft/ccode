@@ -9,9 +9,8 @@ func CreateProjects(buildPath string) []*clay.Project {
 	projects := []*clay.Project{}
 
 	prjName := "test_project"
-	prjVersion := "0.1.0"
 	prjConfig := "release"
-	prj := clay.NewProject(prjName, prjVersion, prjConfig, buildPath)
+	prj := clay.NewProject(prjName, prjConfig, buildPath)
 	clay.AddBuildInfoAsCppLibrary(prj)
 	AddLibraries(prj)
 

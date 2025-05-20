@@ -17,7 +17,7 @@ type SourceFile struct {
 // Library represents a C/C++ library that can be linked with an executable
 type Library struct {
 	Name            string // Name of the library
-	Version         string // Version of the library
+	Config          string // Config to identify the library
 	IsSystemLibrary bool   // Is this a system library (true) or a user-defined library (false)
 	IsCppLibrary    bool   // Is this a C++ library (true) or a C library (false)
 	BuildSubDir     string // Subdirectory for the library build (optional)
@@ -28,10 +28,10 @@ type Library struct {
 	SourceFiles []*SourceFile // C/C++ Source files for the library
 }
 
-func NewLibrary(name string, version string, buildSubDir string, outputFilename string) *Library {
+func NewLibrary(name string, config string, buildSubDir string, outputFilename string) *Library {
 	return &Library{
 		Name:            name,
-		Version:         version,
+		Config:          config,
 		IsSystemLibrary: false,
 		IsCppLibrary:    false,
 		BuildSubDir:     buildSubDir,
@@ -42,14 +42,14 @@ func NewLibrary(name string, version string, buildSubDir string, outputFilename 
 	}
 }
 
-func NewCLibrary(name string, version string, buildSubDir string, outputFilename string) *Library {
-	lib := NewLibrary(name, version, buildSubDir, outputFilename)
+func NewCLibrary(name string, config string, buildSubDir string, outputFilename string) *Library {
+	lib := NewLibrary(name, config, buildSubDir, outputFilename)
 	lib.IsCppLibrary = false
 	return lib
 }
 
-func NewCppLibrary(name string, version string, buildSubDir string, outputFilename string) *Library {
-	lib := NewLibrary(name, version, buildSubDir, outputFilename)
+func NewCppLibrary(name string, config string, buildSubDir string, outputFilename string) *Library {
+	lib := NewLibrary(name, config, buildSubDir, outputFilename)
 	lib.IsCppLibrary = true
 	return lib
 }
@@ -118,17 +118,15 @@ func (lib *Library) PrepareOutput(buildDir string) {
 // Executable represents a C/C++ executable that can be built using the Clay build system.
 type Executable struct {
 	Name           string        // Name of the executable
-	Version        string        // Version of the executable
 	OutputFilePath string        // FilePath to the executable
 	ObjectFiles    []*SourceFile // Object files that this executable is linking with (optional)
 	Libraries      []*Library    // Libraries that this executable is linking with
 }
 
-func NewExecutable(name string, version string, outputPath string) *Executable {
+func NewExecutable(name string, outputPath string) *Executable {
 	executableFilepath := name + ".elf"
 	return &Executable{
 		Name:           name,
-		Version:        version,
 		OutputFilePath: executableFilepath,
 		ObjectFiles:    make([]*SourceFile, 0),
 		Libraries:      make([]*Library, 0),

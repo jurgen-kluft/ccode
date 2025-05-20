@@ -27,19 +27,18 @@ import (
 // Project represents a C/C++ project that can be built using the Clay build system.
 type Project struct {
 	Name       string
-	Version    string
 	Config     string            // Build configuration (debug, release, final)
 	BuildPath  string            // Path to the build directory
 	BuildEnv   *BuildEnvironment // Build environment for this project
 	Executable *Executable       // Executable that this project builds (if any)
 }
 
-func NewProject(name string, version string, config string, buildPath string) *Project {
+func NewProject(name string, config string, buildPath string) *Project {
 	buildPath = filepath.Join(buildPath, name, config)
-	exe := NewExecutable(name, version, buildPath)
+	exe := NewExecutable(name, buildPath)
 	return &Project{
 		Name:       name,
-		Version:    version,
+		Config:     config,
 		BuildPath:  buildPath,
 		Executable: exe,
 	}
@@ -47,7 +46,7 @@ func NewProject(name string, version string, config string, buildPath string) *P
 
 func (p *Project) GetExecutable() *Executable {
 	if p.Executable == nil {
-		p.Executable = NewExecutable(p.Name, p.Version, p.BuildPath)
+		p.Executable = NewExecutable(p.Name, p.BuildPath)
 	}
 	return p.Executable
 }
@@ -62,7 +61,7 @@ func (p *Project) SetBuildEnvironment(be *BuildEnvironment) error {
 	//// all the C and Cpp source files in this directory and create a Library.
 	coreLibPath := filepath.Join(sdkRoot, "cores/esp32/")
 
-	coreCppLib := NewCppLibrary("esp32-core-cpp", "1.0.0", "esp32-core", "libesp32-core-cpp.a")
+	coreCppLib := NewCppLibrary("esp32-core-cpp", "esp32-core, "+p.Config, "esp32-core", "libesp32-core-cpp.a")
 	coreCppLib.IsSystemLibrary = true
 
 	coreCppLib.IncludeDirs.Add(coreLibPath, false)

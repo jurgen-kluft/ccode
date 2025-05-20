@@ -92,25 +92,34 @@ func (g *Esp32Generator) generateProjectFile(out *ccode_utils.LineWriter) {
 	out.WriteLine("func CreateProjects(buildPath string) []*clay.Project {")
 	out.WriteILine("", "projects := []*clay.Project{}")
 
-	// TODO Remove version, it is not used
 	cfgs := make([]*Config, 0, 16)
 	deps := make([]*Project, 0, 16)
 
-	for _, p := range g.Workspace.ProjectList.Values {
-		if p.Type.IsExecutable() && p.SupportedTargets.Contains(g.BuildTarget) {
-			for _, cfg := range p.Resolved.Configs.Values {
+	// Here we create a clay.Project per ccode_gen.Project+Config:
+	// clay.Project = ucore + debug
+	// clay.Project = ucore + release
+	// clay.Project = ublinky + debug
+	// clay.Project = ublinky + release
+
+	for _, prj := range g.Workspace.ProjectList.Values {
+		if prj.Type.IsExecutable() && prj.SupportedTargets.Contains(g.BuildTarget) {
+
+			// Get the version info for this project
+			depVersionInfo := ccode_utils.NewGitVersionInfo(prj.ProjectAbsPath)
+			prj.Version = depVersionInfo.Commit
+
+			for _, cfg := range prj.Resolved.Configs.Values {
 				cfgName := cfg.Type.String()
 
 				out.WriteILine("", "{")
-				out.WriteILine("+", "prjName := ", `"`, p.Name, `"`)
-				out.WriteILine("+", "prjVersion := ", `"`, p.Version, `"`)
+				out.WriteILine("+", "prjName := ", `"`, prj.Name, `"`)
 				out.WriteILine("+", "prjConfig := ", `"`, cfg.Type.String(), `"`)
-				out.WriteILine("+", "prj := clay.NewProject(prjName, prjVersion, prjConfig, buildPath)")
+				out.WriteILine("+", "prj := clay.NewProject(prjName, prjConfig, buildPath)")
 
-				out.WriteILine("+", "add_", p.Name, "_", cfgName, "_library(prj)")
+				out.WriteILine("+", "add_", prj.Name, "_", cfgName, "_library(prj)")
 				cfgs = append(cfgs, cfg)
-				deps = append(deps, p)
-				for _, dep := range p.Dependencies.Values {
+				deps = append(deps, prj)
+				for _, dep := range prj.Dependencies.Values {
 					cfgs = append(cfgs, cfg)
 					deps = append(deps, dep)
 					out.WriteILine("+", "add_", dep.Name, "_", cfgName, "_library(prj)")
@@ -126,21 +135,25 @@ func (g *Esp32Generator) generateProjectFile(out *ccode_utils.LineWriter) {
 	out.WriteLine("}")
 	out.WriteLine()
 
-	// Emit the 'library' projects
+	// Emit the 'library' projects, avoid duplicates
+	duplicateTracking := make(map[string]bool)
 	for i, p := range deps {
-		g.generateLibrary(p, cfgs[i], out)
+		if _, ok := duplicateTracking[p.Name]; !ok {
+			g.generateLibrary(p, cfgs[i], p.Name+","+cfgs[i].Type.String(), out)
+			duplicateTracking[p.Name+":"+cfgs[i].Type.String()] = true
+			continue
+		}
 	}
 }
 
-func (g *Esp32Generator) generateLibrary(p *Project, cfg *Config, out *ccode_utils.LineWriter) {
+func (g *Esp32Generator) generateLibrary(p *Project, cfg *Config, description string, out *ccode_utils.LineWriter) {
 	units := out
 
 	{
 		units.WriteLine("func add_", p.Name, "_", cfg.Type.String(), "_library(prj *clay.Project) {")
 		name := p.Name
-		version := "0.1.0"
 		units.WriteILine("", "name := \"", name, "\"")
-		units.WriteILine("", "library := clay.NewCppLibrary(name, \"", version, "\", name, name+\".a\")")
+		units.WriteILine("", "library := clay.NewCppLibrary(name, \"", description, "\", name, name+\".a\")")
 		units.WriteLine()
 
 		units.WriteILine("", "// Include directories")

@@ -7,6 +7,7 @@ import (
 	"os"
 	"path/filepath"
 	"strings"
+	"time"
 
 	ccode_utils "github.com/jurgen-kluft/ccode/ccode-utils"
 )
@@ -156,12 +157,16 @@ func Build(projectName string, projectConfig string, board string) error {
 	for _, prj := range prjs {
 		if projectName == "" || projectName == prj.Name {
 			if projectConfig == "" || strings.EqualFold(prj.Config, projectConfig) {
-				prj.SetBuildEnvironment(buildEnv)
 				log.Printf("Building project: %s, config: %s\n", prj.Name, prj.Config)
-				if err := prj.Build(); err != nil {
-					return fmt.Errorf("Build failed: %v", err)
+				startTime := time.Now()
+				{
+					prj.SetBuildEnvironment(buildEnv)
+					AddBuildInfoAsCppLibrary(prj)
+					if err := prj.Build(); err != nil {
+						return fmt.Errorf("Build failed on project %s with config %s: %v", prj.Name, prj.Config, err)
+					}
 				}
-				log.Printf("Building done ...\n")
+				log.Printf("Building done ... (duration %s s)\n", time.Since(startTime).Round(time.Second))
 				log.Println()
 			}
 		}
@@ -235,7 +240,6 @@ func Flash(project string, board string, config string) error {
 	for _, prj := range prjs {
 		if project == prj.Name || project == "" {
 			prj.SetBuildEnvironment(buildEnv)
-			AddBuildInfoAsCppLibrary(prj)
 			if err := prj.Flash(); err != nil {
 				return fmt.Errorf("Build failed: %v", err)
 			}
@@ -247,13 +251,33 @@ func Flash(project string, board string, config string) error {
 func ListLibraries() error {
 	buildPath := ""
 	prjs := ClayAppCreateProjectsFunc(buildPath)
+
+	configs := make([]string, 0, 16)
+	nameToIndex := make(map[string]int)
 	for _, prj := range prjs {
-		fmt.Printf("Project: %s\n", prj.Name)
-		for _, lib := range prj.Executable.Libraries {
-			fmt.Printf("Library: %s\n", lib.Name)
-			fmt.Printf("  Version: %s\n", lib.Version)
+		if idx, ok := nameToIndex[prj.Name]; !ok {
+			idx = len(configs)
+			nameToIndex[prj.Name] = idx
+			configs = append(configs, prj.Config)
+		} else {
+			configs[idx] += ", " + prj.Config
 		}
 	}
+
+	for _, prj := range prjs {
+		if i, ok := nameToIndex[prj.Name]; ok {
+			fmt.Printf("Project: %s\n", prj.Name)
+			fmt.Printf("Configs: %s\n", configs[i])
+			fmt.Printf("  Libraries:\n")
+			for _, lib := range prj.Executable.Libraries {
+				fmt.Printf("  - %s\n", lib.Name)
+			}
+
+			// Remove the entry from the map to avoid duplicates
+			delete(nameToIndex, prj.Name)
+		}
+	}
+
 	return nil
 }
 
@@ -289,7 +313,7 @@ func AddBuildInfoAsCppLibrary(prj *Project) {
 	if ccode_utils.FileExists(hdrFilepath) && ccode_utils.FileExists(srcFilepath) {
 		library := NewCppLibrary(name, "0.1.0", name, name+".a")
 		library.IncludeDirs.Add(filepath.Dir(hdrFilepath), false)
-		library.AddSourceFile(srcFilepath, srcFilepath, true)
+		library.AddSourceFile(srcFilepath, filepath.Base(srcFilepath), true)
 		prj.Executable.AddLibrary(library)
 	}
 }

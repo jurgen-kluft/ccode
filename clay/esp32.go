@@ -630,11 +630,11 @@ func (*BuildEnvironmentEsp32) Compile(be *BuildEnvironment, lib *Library, srcFil
 	if srcFile.IsCpp {
 		args = be.CppCompiler.BuildArgs(be.CppCompiler, lib, srcFile, outputPath)
 		cl = be.CppCompiler.CompilerPath
-		fmt.Printf("Compiling C++ file, %s\n", srcFile.SrcRelPath)
+		fmt.Printf("Compiling (%s) %s\n", lib.Config, srcFile.SrcRelPath)
 	} else {
 		args = be.CCompiler.BuildArgs(be.CCompiler, lib, srcFile, outputPath)
 		cl = be.CCompiler.CompilerPath
-		fmt.Printf("Compiling C file, %s\n", srcFile.SrcRelPath)
+		fmt.Printf("Compiling (%s) %s\n", lib.Config, srcFile.SrcRelPath)
 	}
 	cmd := exec.Command(cl, args...)
 	out, err := cmd.CombinedOutput()
