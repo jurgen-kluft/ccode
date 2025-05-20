@@ -9,7 +9,7 @@ import (
 	"strings"
 	"time"
 
-	ccode_utils "github.com/jurgen-kluft/ccode/ccode-utils"
+	cutils "github.com/jurgen-kluft/ccode/cutils"
 )
 
 // Clay App
@@ -92,7 +92,7 @@ func ClayAppMain() {
 	case "list-flash-sizes":
 		err = ListFlashSizes(ParseCpuAndBoardName())
 	case "version":
-		version := ccode_utils.NewVersionInfo()
+		version := cutils.NewVersionInfo()
 		fmt.Printf("Version: %s\n", version.Version)
 	default:
 		Usage()
@@ -310,7 +310,7 @@ func AddBuildInfoAsCppLibrary(prj *Project) {
 	name := BuildInfoFilenameWithoutExt
 	hdrFilepath := filepath.Join(prj.BuildPath, name+".h")
 	srcFilepath := filepath.Join(prj.BuildPath, name+".cpp")
-	if ccode_utils.FileExists(hdrFilepath) && ccode_utils.FileExists(srcFilepath) {
+	if cutils.FileExists(hdrFilepath) && cutils.FileExists(srcFilepath) {
 		library := NewCppLibrary(name, "0.1.0", name, name+".a")
 		library.IncludeDirs.Add(filepath.Dir(hdrFilepath), false)
 		library.AddSourceFile(srcFilepath, filepath.Base(srcFilepath), true)

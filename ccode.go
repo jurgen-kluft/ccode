@@ -1,7 +1,7 @@
 package ccode
 
 import (
-	base "github.com/jurgen-kluft/ccode/ccode-base"
+	base "github.com/jurgen-kluft/ccode/cbase"
 	"github.com/jurgen-kluft/ccode/denv"
 )
 

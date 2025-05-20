@@ -27,7 +27,7 @@ import (
 	"regexp"
 	"strings"
 
-	ccode_utils "github.com/jurgen-kluft/ccode/ccode-utils"
+	cutils "github.com/jurgen-kluft/ccode/cutils"
 )
 
 // opName: Any of the following:
@@ -248,7 +248,7 @@ func PrintAllMatchingBoards(boardsFilePath string, fuzzy string, max int) error 
 		names = append(names, board.Name)
 	}
 
-	cm := ccode_utils.NewClosestMatch(names, []int{2})
+	cm := cutils.NewClosestMatch(names, []int{2})
 	closest := cm.ClosestN(fuzzy, max)
 	if len(closest) > 0 {
 
@@ -276,7 +276,7 @@ func PrintAllMatchingBoards(boardsFilePath string, fuzzy string, max int) error 
 		for _, board := range boards {
 			descriptions = append(descriptions, board.Description)
 		}
-		cm = ccode_utils.NewClosestMatch(descriptions, []int{2})
+		cm = cutils.NewClosestMatch(descriptions, []int{2})
 		closest = cm.ClosestN(fuzzy, max-len(closest))
 		if len(closest) > 0 {
 
