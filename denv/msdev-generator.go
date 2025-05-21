@@ -32,11 +32,7 @@ func (g *MsDevGenerator) Generate() {
 }
 
 func (g *MsDevGenerator) init(ws *Workspace) {
-	if ws.BuildTarget == nil {
-		ws.BuildTarget = NewDefaultMakeTarget(ws.Config.Dev, ws.Config.OS, ws.Config.Arch)
-	}
-
-	if ws.BuildTarget.ArchIsX64() {
+	if ws.BuildTarget.X64() {
 		g.VcxProjCpu = "x64"
 	} else {
 		g.VcxProjCpu = "Win32"
@@ -129,12 +125,12 @@ func (g *MsDevGenerator) genProject(proj *Project) {
 			wr.TagWithBody("ConfigurationType", productType)
 			wr.TagWithBody("CharacterSet", "Unicode")
 
-			if g.Workspace.BuildTarget.OSIsLinux() {
+			if g.Workspace.BuildTarget.Linux() {
 				wr.TagWithBody("PlatformToolset", "Remote_GCC_1_0")
-				if g.Workspace.BuildTarget.CompilerIsGcc() {
+				if g.Workspace.Config.Dev.CompilerIsGcc() {
 					wr.TagWithBody("RemoteCCompileToolExe", "gcc")
 					wr.TagWithBody("RemoteCppCompileToolExe", "g++")
-				} else if g.Workspace.BuildTarget.CompilerIsClang() {
+				} else if g.Workspace.Config.Dev.CompilerIsClang() {
 					wr.TagWithBody("RemoteCCompileToolExe", "clang")
 					wr.TagWithBody("RemoteCppCompileToolExe", "clang++")
 				} else {
@@ -175,7 +171,7 @@ func (g *MsDevGenerator) genProject(proj *Project) {
 			tag.Close()
 		}
 
-		if g.Workspace.BuildTarget.OSIsLinux() {
+		if g.Workspace.BuildTarget.Linux() {
 			{
 				tag := wr.TagScope("ImportGroup")
 				wr.Attr("Label", "ExtensionSettings")
@@ -284,7 +280,7 @@ func (g *MsDevGenerator) genProjectConfig(wr *cutils.XmlWriter, proj *Project, c
 		wr.Attr("Condition", cond)
 
 		outDir := cutils.PathDirname(config.Resolved.OutputTarget.Path)
-		if g.Workspace.BuildTarget.OSIsLinux() {
+		if g.Workspace.BuildTarget.Linux() {
 			outDir = filepath.Join(outDir, g.Workspace.BuildTarget.OSAsString())
 		}
 
@@ -324,7 +320,7 @@ func (g *MsDevGenerator) genProjectConfig(wr *cutils.XmlWriter, proj *Project, c
 				wr.TagWithBody("EnableEnhancedInstructionSet", cppAdvanced)
 			}
 
-			if g.Workspace.BuildTarget.OSIsLinux() {
+			if g.Workspace.BuildTarget.Linux() {
 				wr.TagWithBody("Verbose", "true")
 			} else {
 				wr.TagWithBody("SDLCheck", "true")
@@ -372,7 +368,7 @@ func (g *MsDevGenerator) genProjectConfig(wr *cutils.XmlWriter, proj *Project, c
 
 				optName := "AdditionalDependencies"
 				relativeTo := ""
-				if g.Workspace.BuildTarget.OSIsLinux() {
+				if g.Workspace.BuildTarget.Linux() {
 					relativeTo = "$(RemoteRootDir)/"
 				}
 				tmp := linkLibs.Concatenated("", ";", func(s string) string { return s })
@@ -384,7 +380,7 @@ func (g *MsDevGenerator) genProjectConfig(wr *cutils.XmlWriter, proj *Project, c
 				wr.TagWithBody(optName, tmp)
 			}
 
-			if g.Workspace.BuildTarget.OSIsLinux() {
+			if g.Workspace.BuildTarget.Linux() {
 				wr.TagWithBody("VerboseOutput", "true")
 
 				tmp := config.LinkFlags.Concatenated(" -Wl,", "", func(string, s string) string { return s })

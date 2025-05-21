@@ -220,14 +220,14 @@ func SetupDefaultCppLibProject(name string, URL string, dir string, buildTarget 
 
 func SetupCppLibProject(name string, URL string) *DevProject {
 	// Windows, Mac and Linux, build for the Host platform
-	project := SetupDefaultCppLibProject(name, URL, "main", HostBuildTarget())
+	project := SetupDefaultCppLibProject(name, URL, "main", GetBuildTarget())
 	project.BuildTargets = append(project.BuildTargets, BuildTargetsAll...)
 	return project
 }
 
 func SetupCppLibProjectForDesktop(name string, URL string) *DevProject {
 	// Windows, Mac and Linux, build for the Host platform
-	project := SetupDefaultCppLibProject(name, URL, "main", HostBuildTarget())
+	project := SetupDefaultCppLibProject(name, URL, "main", GetBuildTarget())
 	project.BuildTargets = append(project.BuildTargets, BuildTargetsDesktop...)
 	return project
 }
@@ -240,7 +240,7 @@ func SetupCppLibProjectForArduino(name string, URL string) *DevProject {
 }
 
 func SetupCppLibProjectWithLibs(name string, URL string, Libs []*DevLib) *DevProject {
-	project := SetupDefaultCppLibProject(name, URL, "main", HostBuildTarget())
+	project := SetupDefaultCppLibProject(name, URL, "main", GetBuildTarget())
 	project.AddLibs(Libs)
 	project.BuildTargets = append(project.BuildTargets, BuildTargetsArduino...)
 	return project
@@ -269,14 +269,14 @@ func SetupDefaultCppTestProject(name string, URL string, buildTarget BuildTarget
 
 func SetupCppTestProject(name string, URL string) *DevProject {
 	// Windows, Mac and Linux, build for the Host platform
-	project := SetupDefaultCppTestProject(name, URL, HostBuildTarget())
+	project := SetupDefaultCppTestProject(name, URL, GetBuildTarget())
 	project.BuildTargets = append(project.BuildTargets, BuildTargetsDesktop...)
 	return project
 }
 
 func SetupCppTestProjectForDesktop(name string, URL string) *DevProject {
 	// Windows, Mac and Linux, build for the Host platform
-	project := SetupDefaultCppTestProject(name, URL, HostBuildTarget())
+	project := SetupDefaultCppTestProject(name, URL, GetBuildTarget())
 	project.BuildTargets = append(project.BuildTargets, BuildTargetsDesktop...)
 	return project
 }
@@ -333,14 +333,14 @@ func SetupDefaultCppAppProject(name string, URL string, buildTarget BuildTarget)
 
 func SetupCppAppProject(name string, URL string) *DevProject {
 	// Windows, Mac and Linux, build for the Host platform
-	project := SetupDefaultCppAppProject(name, URL, HostBuildTarget())
+	project := SetupDefaultCppAppProject(name, URL, GetBuildTarget())
 	project.BuildTargets = append(project.BuildTargets, BuildTargetsAll...)
 	return project
 }
 
 func SetupCppAppProjectForDesktop(name string, URL string) *DevProject {
 	// Windows, Mac and Linux, build for the Host platform
-	project := SetupDefaultCppAppProject(name, URL, HostBuildTarget())
+	project := SetupDefaultCppAppProject(name, URL, GetBuildTarget())
 	project.BuildTargets = append(project.BuildTargets, BuildTargetsDesktop...)
 	return project
 }

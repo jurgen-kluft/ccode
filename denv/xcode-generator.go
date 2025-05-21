@@ -110,7 +110,7 @@ func (g *XcodeGenerator) genProjectGenUuid(proj *Project) {
 
 func (g *XcodeGenerator) genProject(proj *Project) error {
 	if proj.TypeIsExeOrDll() {
-		if g.Workspace.BuildTarget.OSIsiOS() {
+		if g.Workspace.BuildTarget.AppleiOS() {
 			//g.GenInfoPlistIOS(proj)
 		} else {
 			if err := g.genInfoPlistMacOSX(proj); err != nil {
@@ -556,7 +556,7 @@ func (g *XcodeGenerator) genProjectPBXNativeTarget(wr *XcodeWriter, proj *Projec
 
 	productType := ""
 	if proj.TypeIsExe() {
-		if proj.Settings.IsGuiApp || g.Workspace.BuildTarget.OSIsiOS() {
+		if proj.Settings.IsGuiApp || g.Workspace.BuildTarget.AppleiOS() {
 			productType = XcodeProductTypeApplication.String()
 		} else {
 			productType = XcodeProductTypeTool.String()

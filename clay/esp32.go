@@ -348,6 +348,7 @@ func (*BuildEnvironmentEsp32) CreateBootLoader(bl *BootLoaderCompiler, exe *Exec
 		log.Printf("Generating bootloader '%s'\n", exe.Name+".bootloader.bin")
 		out, err := cmd.CombinedOutput()
 		if err != nil {
+			log.Printf("Bootloader generation failed, output:\n%s\n", string(out))
 			return fmt.Errorf("Bootloader generation failed with %s\n", err)
 		}
 		if len(out) > 0 {

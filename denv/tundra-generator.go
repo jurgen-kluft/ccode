@@ -191,7 +191,7 @@ func (g *TundraGenerator) writeUnit(units *cutils.LineWriter, p *Project, isProg
 		units.WriteILine("+", "},")
 
 		// if the platform is Mac also write out the Frameworks we are using
-		if p.Workspace.BuildTarget.OSIsMac() {
+		if p.Workspace.BuildTarget.Mac() {
 			units.WriteILine("+", `Frameworks = {`)
 			for _, cfg := range p.Resolved.Configs.Values {
 				frameworks := p.BuildFrameworkInformation(cfg)
@@ -243,7 +243,7 @@ func (g *TundraGenerator) generateTundraLua(ws *Workspace) {
 	tundra.WriteLine(`            mac_opts,`)
 	tundra.WriteLine(`            "-std=`, ws.Config.CppStd.String(), `",`)
 	if ws.Config.CppAdvanced.IsEnabled() {
-		tundra.WriteLine(`    "`, ws.Config.CppAdvanced.Tundra(ws.BuildTarget), `",`)
+		tundra.WriteLine(`    "`, ws.Config.CppAdvanced.Tundra(ws.Config.Dev, ws.BuildTarget), `",`)
 	}
 	if runtime.GOARCH == "amd64" {
 		tundra.WriteLine(`			"-arch x86_64",`)
@@ -303,7 +303,7 @@ func (g *TundraGenerator) generateTundraLua(ws *Workspace) {
 	tundra.WriteLine(`    "-Wall",`)
 	tundra.WriteLine(`    "-fPIC",`)
 	if ws.Config.CppAdvanced.IsEnabled() {
-		tundra.WriteLine(`    "`, ws.Config.CppAdvanced.Tundra(ws.BuildTarget), `",`)
+		tundra.WriteLine(`    "`, ws.Config.CppAdvanced.Tundra(ws.Config.Dev, ws.BuildTarget), `",`)
 	}
 	tundra.WriteLine(`    { "-O2", "-g"; Config = "*-*-*-test" },`)
 	tundra.WriteLine(`    { "-O0", "-g"; Config = "*-*-debug-*" },`)
@@ -335,7 +335,7 @@ func (g *TundraGenerator) generateTundraLua(ws *Workspace) {
 	tundra.WriteLine(`local win64_opts = {`)
 	tundra.WriteLine(`    "/std:`, ws.Config.CppStd.String(), `",`)
 	if ws.Config.CppAdvanced.IsEnabled() {
-		tundra.WriteLine(`    "`, ws.Config.CppAdvanced.Tundra(ws.BuildTarget), `",`)
+		tundra.WriteLine(`    "`, ws.Config.CppAdvanced.Tundra(ws.Config.Dev, ws.BuildTarget), `",`)
 	}
 	tundra.WriteLine(`    "/EHsc", "/FS", "/W3", "/I.", "/DUNICODE", "/D_UNICODE", "/DWIN32", "/D_CRT_SECURE_NO_WARNINGS",`)
 	tundra.WriteLine(`    "\"/DOBJECT_DIR=$(OBJECTDIR:#)\"",`)

@@ -49,6 +49,15 @@ func ParseBoardNameAndMax() (string, int) {
 	return boardName, matches
 }
 
+func ParsePortAndBaud() (string, int) {
+	var port string
+	var baud int
+	flag.StringVar(&port, "p", "/dev/ttyUSB0", "Serial port (e.g. /dev/ttyUSB0)")
+	flag.IntVar(&baud, "b", 115200, "Baud rate (e.g. 115200)")
+	flag.Parse()
+	return port, baud
+}
+
 func ParseCpuAndBoardName() (string, string) {
 	var cpu string
 	var boardName string
@@ -63,7 +72,7 @@ func ParseProjectNameBoardNameAndConfig() (string, string, string) {
 	var projectConfig string
 	var boardName string
 	flag.StringVar(&projectName, "p", "", "Name of the project")
-	flag.StringVar(&projectConfig, "x", "", "Build configuration (debug, release, final)")
+	flag.StringVar(&projectConfig, "c", "ReleaseDev", "Build configuration (DebugDev, ReleaseDev, FinalDev)")
 	flag.StringVar(&boardName, "b", "esp32", "Board name (esp32, esp32s3)")
 	flag.Parse()
 	return projectName, projectConfig, boardName
@@ -85,6 +94,8 @@ func ClayAppMain() {
 		err = Clean(ParseProjectNameBoardNameAndConfig())
 	case "flash":
 		err = Flash(ParseProjectNameBoardNameAndConfig())
+	case "monitor":
+		err = SerialMonitor(ParsePortAndBaud())
 	case "list-libraries":
 		err = ListLibraries()
 	case "list-boards":
@@ -166,7 +177,7 @@ func Build(projectName string, projectConfig string, board string) error {
 						return fmt.Errorf("Build failed on project %s with config %s: %v", prj.Name, prj.Config, err)
 					}
 				}
-				log.Printf("Building done ... (duration %s s)\n", time.Since(startTime).Round(time.Second))
+				log.Printf("Building done ... (duration %s)\n", time.Since(startTime).Round(time.Second))
 				log.Println()
 			}
 		}
@@ -221,7 +232,7 @@ func Clean(projectName string, projectConfig string, board string) error {
 	return nil
 }
 
-func Flash(project string, board string, config string) error {
+func Flash(projectName string, projectConfig string, board string) error {
 	buildPath := GetBuildPath(board)
 
 	var buildEnv *BuildEnvironment
@@ -238,13 +249,41 @@ func Flash(project string, board string, config string) error {
 
 	prjs := ClayAppCreateProjectsFunc(buildPath)
 	for _, prj := range prjs {
-		if project == prj.Name || project == "" {
-			prj.SetBuildEnvironment(buildEnv)
-			if err := prj.Flash(); err != nil {
-				return fmt.Errorf("Build failed: %v", err)
+		if projectName == prj.Name || projectName == "" {
+			if projectConfig == "" || strings.EqualFold(prj.Config, projectConfig) {
+				log.Printf("Flashing project: %s, config: %s\n", prj.Name, prj.Config)
+				startTime := time.Now()
+				{
+					prj.SetBuildEnvironment(buildEnv)
+					if err := prj.Flash(); err != nil {
+						return fmt.Errorf("Build failed: %v", err)
+					}
+				}
+				log.Printf("Flashing done ... (duration %s)\n", time.Since(startTime).Round(time.Second))
+				log.Println()
 			}
 		}
 	}
+	return nil
+}
+
+func SerialMonitor(port string, baud int) error {
+	c := &SerialConfig{Name: port, Baud: baud}
+	s, err := SerialOpenPort(c)
+	if err != nil {
+		return err
+	}
+
+	for {
+		buf := make([]byte, 128)
+		n, err := s.Read(buf)
+		if err != nil {
+			return err
+		}
+		line := string(buf[:n])
+		line = strings.Trim(line, "\r\n")
+	}
+
 	return nil
 }
 

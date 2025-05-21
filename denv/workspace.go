@@ -74,10 +74,10 @@ func (cat CppAdvancedType) ToString() string {
 	}
 	return ""
 }
-func (cat CppAdvancedType) Tundra(t *MakeTarget) string {
-	if t.CompilerIsVc() && cat.IsEnabled() {
+func (cat CppAdvancedType) Tundra(d DevEnum, t BuildTarget) string {
+	if d.IsVisualStudio() && cat.IsEnabled() {
 		return "/arch:" + cat.ToString()
-	} else if t.CompilerIsClang() || t.CompilerIsGcc() {
+	} else if d.CompilerIsClang() || d.CompilerIsGcc() {
 		return "-m" + strings.ToLower(cat.ToString())
 	}
 	return ""
@@ -116,8 +116,7 @@ func (cat CppAdvancedType) VisualStudio() string {
 
 type WorkspaceConfig struct {
 	Dev                DevEnum             // The development environment (tundra, make, xcode, vs2022, espmake)
-	OS                 string              // The operating system (windows, linux, macos, arduino)
-	Arch               string              // The architecture (x86, x64, arm, arm64, esp32)
+	BuildTarget        BuildTarget         // The build target (windows, linux, macos, etc.)
 	GenerateAbsPath    string              // The directory where the workspace and project files will be generated
 	StartupProject     string              // The name of the project that will be marked as the startup project
 	CppStd             CppStdType          // The C++ standard to use for this workspace and all projects
@@ -133,11 +132,10 @@ type WorkspaceConfig struct {
 	LibTargetSuffix string
 }
 
-func NewWorkspaceConfig(_dev DevEnum, _os string, _arch string, workspacePath string, projectName string) *WorkspaceConfig {
+func NewWorkspaceConfig(_dev DevEnum, _buildTarget BuildTarget, workspacePath string, projectName string) *WorkspaceConfig {
 	wsc := &WorkspaceConfig{}
 	wsc.Dev = _dev
-	wsc.OS = _os
-	wsc.Arch = _arch
+	wsc.BuildTarget = _buildTarget
 	wsc.GenerateAbsPath = filepath.Join(workspacePath, projectName, "target")
 	wsc.StartupProject = projectName
 	wsc.CppStd = CppStd17
@@ -152,17 +150,18 @@ func NewWorkspaceConfig(_dev DevEnum, _os string, _arch string, workspacePath st
 // -----------------------------------------------------------------------------------------------------
 
 type Workspace struct {
-	Config           *WorkspaceConfig           // The configuration for the workspace
-	WorkspaceName    string                     // The name of the workspace (e.g. For VisualStudio -> "cbase.sln", for Xcode -> "cbase.xcworkspace")
-	WorkspaceAbsPath string                     // The workspace directory is the path where all the projects and workspace are to be generated
-	GenerateAbsPath  string                     // Where to generate the workspace and project files
-	MakeHost         MakeHost                   // The make target for the workspace (e.g. contains details like OS, Compiler, Arch, etc.)
-	BuildTarget      *MakeTarget                // The make target for the workspace (e.g. contains details like OS, Compiler, Arch, etc.)
-	StartupProject   *Project                   // The project instance that will be marked as the startup project
-	ProjectList      *ProjectList               // The project list
-	ProjectGroups    *ProjectGroups             // The project groups that are part of the workspace
-	MasterWorkspace  *ExtraWorkspace            // The master workspace that contains all projects
-	ExtraWorkspaces  map[string]*ExtraWorkspace // The extra workspaces that contain a subset of the projects
+	Config            *WorkspaceConfig           // The configuration for the workspace
+	WorkspaceName     string                     // The name of the workspace (e.g. For VisualStudio -> "cbase.sln", for Xcode -> "cbase.xcworkspace")
+	WorkspaceAbsPath  string                     // The workspace directory is the path where all the projects and workspace are to be generated
+	GenerateAbsPath   string                     // Where to generate the workspace and project files
+	HostAsBuildTarget BuildTarget                // The make target for the workspace (e.g. contains details like OS, Compiler, Arch, etc.)
+	BuildTarget       BuildTarget                // The make target for the workspace (e.g. contains details like OS, Compiler, Arch, etc.)
+	Compiler          string                     // The compiler to use for the workspace (e.g. "gcc", "clang", "msvc", etc.)
+	StartupProject    *Project                   // The project instance that will be marked as the startup project
+	ProjectList       *ProjectList               // The project list
+	ProjectGroups     *ProjectGroups             // The project groups that are part of the workspace
+	MasterWorkspace   *ExtraWorkspace            // The master workspace that contains all projects
+	ExtraWorkspaces   map[string]*ExtraWorkspace // The extra workspaces that contain a subset of the projects
 }
 
 func NewWorkspace(wsc *WorkspaceConfig) *Workspace {
@@ -172,11 +171,11 @@ func NewWorkspace(wsc *WorkspaceConfig) *Workspace {
 		ProjectGroups:   NewProjectGroups(),
 		ExtraWorkspaces: make(map[string]*ExtraWorkspace),
 	}
-	ws.BuildTarget = NewDefaultMakeTarget(ws.Config.Dev, ws.Config.OS, ws.Config.Arch)
-	ws.MakeHost = NewMakeHost(ws.BuildTarget.Compiler)
+	ws.BuildTarget = ws.Config.BuildTarget
+	ws.HostAsBuildTarget = GetBuildTargetTargettingHost()
 	ws.GenerateAbsPath = ws.Config.GenerateAbsPath
 
-	if ws.BuildTarget.OSIsWindows() {
+	if ws.BuildTarget.Windows() {
 		wsc.ExeTargetSuffix = ".exe"
 		wsc.DllTargetSuffix = ".dll"
 	} else {
@@ -184,7 +183,7 @@ func NewWorkspace(wsc *WorkspaceConfig) *Workspace {
 		wsc.DllTargetSuffix = ".so"
 	}
 
-	if ws.BuildTarget.CompilerIsVc() {
+	if ws.Config.Dev.IsVisualStudio() {
 		wsc.LibTargetPrefix = ""
 		wsc.LibTargetSuffix = ".lib"
 	} else {

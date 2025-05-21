@@ -1,28 +1,43 @@
 package denv
 
+import "runtime"
+
 // BuildTarget defines the type of build target
 type BuildTarget uint32
 type BuildTargets []BuildTarget
 
 const (
-	BuildTargetArchX64   BuildTarget = 0x00010000
-	BuildTargetArchX86   BuildTarget = 0x00020000
-	BuildTargetArchArm64 BuildTarget = 0x00040000
-	BuildTargetArchArm32 BuildTarget = 0x00080000
-	BuildTargetArchEsp32 BuildTarget = 0x00100000
+	BuildTargetNotSupported BuildTarget = 0x00000000
 
-	BuildTargetOsWindows BuildTarget = 0x00000001
-	BuildTargetOsMac     BuildTarget = 0x00000002
-	BuildTargetOsLinux   BuildTarget = 0x00000004
-	BuildTargetOsiOS     BuildTarget = 0x00000008
-	BuildTargetOsArduino BuildTarget = 0x00000010
+	BuildTargetXXBitMask BuildTarget = 0x000000ff
+	BuildTarget32Bit     BuildTarget = 0x00000001
+	BuildTarget64Bit     BuildTarget = 0x00000002
 
-	BuildTargetNone         BuildTarget = 0x00000000
+	BuildTargetOsMask    BuildTarget = 0x00000ff00
+	BuildTargetOsWindows BuildTarget = 0x000000100
+	BuildTargetOsMac     BuildTarget = 0x000000200
+	BuildTargetOsLinux   BuildTarget = 0x000000400
+	BuildTargetOsiOS     BuildTarget = 0x000000800
+	BuildTargetOsArduino BuildTarget = 0x000001000
+
+	BuildTargetArchMask  BuildTarget = 0x00ff0000
+	BuildTargetArchX86   BuildTarget = 0x00010000 | BuildTarget32Bit
+	BuildTargetArchX64   BuildTarget = 0x00020000 | BuildTarget64Bit
+	BuildTargetArchAmd64 BuildTarget = 0x00040000 | BuildTarget64Bit
+	BuildTargetArchArm64 BuildTarget = 0x00080000 | BuildTarget64Bit
+	BuildTargetArchArm32 BuildTarget = 0x00100000 | BuildTarget32Bit
+	BuildTargetArchEsp32 BuildTarget = 0x00200000 | BuildTarget32Bit
+
+	BuildTargetMask         BuildTarget = BuildTargetXXBitMask | BuildTargetOsMask | BuildTargetArchMask
+	BuildTargetWindowsX86   BuildTarget = BuildTargetOsWindows | BuildTargetArchX86
 	BuildTargetWindowsX64   BuildTarget = BuildTargetOsWindows | BuildTargetArchX64
+	BuildTargetWindowsAmd64 BuildTarget = BuildTargetOsWindows | BuildTargetArchAmd64
 	BuildTargetMacX64       BuildTarget = BuildTargetOsMac | BuildTargetArchX64
 	BuildTargetMacArm64     BuildTarget = BuildTargetOsMac | BuildTargetArchArm64
+	BuildTargetLinuxX86     BuildTarget = BuildTargetOsLinux | BuildTargetArchX86
 	BuildTargetLinuxX64     BuildTarget = BuildTargetOsLinux | BuildTargetArchX64
 	BuildTargetLinuxArm64   BuildTarget = BuildTargetOsLinux | BuildTargetArchArm64
+	BuildTargetLinuxArm32   BuildTarget = BuildTargetOsLinux | BuildTargetArchArm32
 	BuildTargetAppleiOS     BuildTarget = BuildTargetOsiOS | BuildTargetArchArm64
 	BuildTargetArduinoEsp32 BuildTarget = BuildTargetOsArduino | BuildTargetArchEsp32
 )
@@ -48,16 +63,57 @@ var BuildTargetsArduino = []BuildTarget{
 	BuildTargetArduinoEsp32,
 }
 
-func HostBuildTarget() BuildTarget {
+var CurrentBuildTarget BuildTarget = BuildTargetNotSupported
+
+func SetBuildTarget(os string, arch string) BuildTarget {
+
+	// Set the build target based on the provided dev, os, and arch
+	CurrentBuildTarget = BuildTargetNotSupported
+
+	if os == "arduino" {
+		CurrentBuildTarget = BuildTargetArduinoEsp32
+	} else if os == "windows" && arch == "x64" {
+		CurrentBuildTarget = BuildTargetWindowsX64
+	} else if os == "mac" && arch == "x64" {
+		CurrentBuildTarget = BuildTargetMacX64
+	} else if os == "mac" && arch == "arm64" {
+		CurrentBuildTarget = BuildTargetMacArm64
+	} else if os == "linux" && arch == "x64" {
+		CurrentBuildTarget = BuildTargetLinuxX64
+	} else if os == "linux" && arch == "arm64" {
+		CurrentBuildTarget = BuildTargetLinuxArm64
+	}
+
+	return CurrentBuildTarget
+}
+
+func GetBuildTarget() BuildTarget {
+	return CurrentBuildTarget
+}
+
+func GetBuildTargetTargettingHost() BuildTarget {
+	// Just looking at the host OS and arch
 	switch {
-	case IsWindows():
+	case runtime.GOOS == "windows" && runtime.GOARCH == "amd64":
+		return BuildTargetWindowsAmd64
+	case runtime.GOOS == "windows" && runtime.GOARCH == "x64":
 		return BuildTargetWindowsX64
-	case IsMacOS():
+	case runtime.GOOS == "windows" && runtime.GOARCH == "x86":
+		return BuildTargetWindowsX86
+	case runtime.GOOS == "darwin" && runtime.GOARCH == "amd64":
 		return BuildTargetMacX64
-	case IsLinux():
+	case runtime.GOOS == "darwin" && runtime.GOARCH == "arm64":
+		return BuildTargetMacArm64
+	case runtime.GOOS == "linux" && runtime.GOARCH == "amd64":
 		return BuildTargetLinuxX64
+	case runtime.GOOS == "linux" && runtime.GOARCH == "arm64":
+		return BuildTargetLinuxArm64
+	case runtime.GOOS == "linux" && runtime.GOARCH == "x86":
+		return BuildTargetLinuxX86
+	case runtime.GOOS == "linux" && runtime.GOARCH == "arm":
+		return BuildTargetLinuxArm32
 	default:
-		return BuildTargetNone
+		return BuildTargetNotSupported
 	}
 }
 
@@ -75,43 +131,47 @@ func (bt BuildTargets) Contains(target BuildTarget) bool {
 }
 
 func (pt BuildTarget) Windows() bool {
-	return pt&(BuildTargetOsWindows) != 0
+	return pt&BuildTargetOsMask == BuildTargetOsWindows
 }
 
 func (pt BuildTarget) Mac() bool {
-	return pt&(BuildTargetOsMac) != 0
+	return pt&BuildTargetOsMask == BuildTargetOsMac
 }
 
 func (pt BuildTarget) AppleiOS() bool {
-	return pt&(BuildTargetOsiOS) != 0
+	return pt&BuildTargetOsMask == BuildTargetOsiOS
 }
 
 func (pt BuildTarget) Linux() bool {
-	return pt&(BuildTargetOsLinux) != 0
+	return pt&BuildTargetOsMask == BuildTargetOsLinux
 }
 
 func (pt BuildTarget) Arduino() bool {
-	return pt&BuildTargetOsArduino != 0
+	return pt&BuildTargetOsMask == BuildTargetOsArduino
 }
 
 func (pt BuildTarget) X64() bool {
-	return pt&(BuildTargetArchX64) != 0
+	return pt&BuildTargetArchMask == BuildTargetArchX64
+}
+
+func (pt BuildTarget) Amd64() bool {
+	return pt&BuildTargetArchMask == BuildTargetArchAmd64
 }
 
 func (pt BuildTarget) X86() bool {
-	return pt&(BuildTargetArchX86) != 0
+	return pt&BuildTargetArchMask == BuildTargetArchX86
 }
 
 func (pt BuildTarget) Arm64() bool {
-	return pt&(BuildTargetArchArm64) != 0
+	return pt&BuildTargetArchMask == BuildTargetArchArm64
 }
 
 func (pt BuildTarget) Arm32() bool {
-	return pt&(BuildTargetArchArm32) != 0
+	return pt&BuildTargetArchMask == BuildTargetArchArm32
 }
 
 func (pt BuildTarget) Esp32() bool {
-	return pt&(BuildTargetArchEsp32) != 0
+	return pt&BuildTargetArchMask == BuildTargetArchEsp32
 }
 
 func (pt BuildTarget) OSAsString() string {

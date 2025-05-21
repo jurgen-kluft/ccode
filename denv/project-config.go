@@ -164,17 +164,17 @@ func (c *Config) AddLibrary(projectDirectory string, lib *DevLib) {
 
 func (c *Config) InitTargetSettings() {
 
-	makeTarget := c.Workspace.BuildTarget
+	buildTarget := c.Workspace.BuildTarget
 
-	if makeTarget.OSIsWindows() {
+	if buildTarget.Windows() {
 		c.CppDefines.AddOrSet("TARGET_PC", "TARGET_PC")
 		c.CppDefines.AddOrSet("UNICODE", "UNICODE")
 		c.CppDefines.AddOrSet("_UNICODE", "_UNICODE")
-	} else if makeTarget.OSIsLinux() {
+	} else if buildTarget.Linux() {
 		c.CppDefines.AddOrSet("TARGET_LINUX", "TARGET_LINUX")
 		c.CppDefines.AddOrSet("UNICODE", "UNICODE")
 		c.CppDefines.AddOrSet("_UNICODE", "_UNICODE")
-	} else if makeTarget.OSIsMac() {
+	} else if buildTarget.Mac() {
 		c.CppDefines.AddOrSet("TARGET_MAC", "TARGET_MAC")
 		c.CppDefines.AddOrSet("UNICODE", "UNICODE")
 		c.CppDefines.AddOrSet("_UNICODE", "_UNICODE")
@@ -190,7 +190,7 @@ func (c *Config) InitTargetSettings() {
 		// 	l.Dirs.Merge(other.Dirs)
 		// }
 
-	} else if makeTarget.OSIsArduino() {
+	} else if buildTarget.Arduino() {
 		c.CppDefines.AddOrSet("TARGET_ESP32", "TARGET_ESP32")
 	}
 }
@@ -199,11 +199,11 @@ func (c *Config) InitXcodeSettings() {
 
 	settings := make(map[string]string)
 
-	if c.Workspace.BuildTarget.OSIsMac() {
+	if c.Workspace.BuildTarget.Mac() {
 		settings["SDKROOT"] = "iphoneos"
 		settings["SUPPORTED_PLATFORMS"] = "iphonesimulator iphoneos"
 		settings["IPHONEOS_DEPLOYMENT_TARGET"] = "10.1"
-	} else if c.Workspace.BuildTarget.OSIsMac() {
+	} else if c.Workspace.BuildTarget.Mac() {
 		settings["SDKROOT"] = "macosx"
 		settings["SUPPORTED_PLATFORMS"] = "macosx"
 		settings["MACOSX_DEPLOYMENT_TARGET"] = "10.15" // c++11 require 10.10+
@@ -291,7 +291,7 @@ func (c *Config) InitVisualStudioSettings() {
 	c.VisualStudioClCompile.AddOrSet("TreatWarningAsError", "true")
 	c.VisualStudioClCompile.AddOrSet("WarningLevel", "Level3") // Level0, Level1, Level2, Level3, Level4
 
-	if c.Workspace.BuildTarget.CompilerIsClang() {
+	if c.Workspace.Config.Dev.CompilerIsClang() {
 		c.VisualStudioClCompile.AddOrSet("DebugInformationFormat", "None")
 	} else {
 		if c.Type.IsFinal() == false {
@@ -394,8 +394,8 @@ func (c *Config) BuildResolved(otherConfigs []*Config) *Config {
 	if emitCoreDefines {
 		configMerged.CppDefines.AddOrSet("CCORE_GEN_CPU", "CCORE_GEN_CPU_"+strings.ToUpper(c.Workspace.BuildTarget.ArchAsString()))
 		configMerged.CppDefines.AddOrSet("CCORE_GEN_OS", "CCORE_GEN_OS_"+strings.ToUpper(c.Workspace.BuildTarget.OSAsString()))
-		configMerged.CppDefines.AddOrSet("CCORE_GEN_COMPILER", "CCORE_GEN_COMPILER_"+strings.ToUpper(c.Workspace.BuildTarget.CompilerAsString()))
-		configMerged.CppDefines.AddOrSet("CCORE_GEN_GENERATOR", "CCORE_GEN_GENERATOR_"+strings.ToUpper(c.Workspace.Config.Dev.String()))
+		configMerged.CppDefines.AddOrSet("CCORE_GEN_COMPILER", "CCORE_GEN_COMPILER_"+strings.ToUpper(c.Workspace.Config.Dev.CompilerAsString()))
+		configMerged.CppDefines.AddOrSet("CCORE_GEN_GENERATOR", "CCORE_GEN_GENERATOR_"+strings.ToUpper(c.Workspace.Config.Dev.ToString()))
 		configMerged.CppDefines.AddOrSet("CCORE_GEN_CONFIG", "CCORE_GEN_CONFIG_"+strings.ToUpper(c.String()))
 		configMerged.CppDefines.AddOrSet("CCORE_GEN_PLATFORM_NAME", "CCORE_GEN_PLATFORM_NAME=\""+strings.ToUpper(c.Workspace.BuildTarget.OSAsString()+"\""))
 		configMerged.CppDefines.AddOrSet("CCORE_GEN_PROJECT", "CCORE_GEN_PROJECT_"+strings.ToUpper(c.Project.Name))
@@ -413,7 +413,7 @@ func (c *Config) BuildResolved(otherConfigs []*Config) *Config {
 		} else if c.Project.TypeIsDll() {
 			dllFilename := c.Workspace.Config.DllTargetPrefix + c.Project.Name + c.Workspace.Config.DllTargetSuffix
 			outputTarget = filepath.Join(BINDIR, dllFilename)
-			if c.Workspace.BuildTarget.OSIsWindows() {
+			if c.Workspace.BuildTarget.Windows() {
 				libFilename := c.Workspace.Config.LibTargetPrefix + c.Project.Name + c.Workspace.Config.LibTargetSuffix
 				configResolved.OutputLib = NewFileEntryInit(filepath.Join(LIBDIR, libFilename), false)
 			} else {

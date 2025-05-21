@@ -143,9 +143,9 @@ func (g *MakeGenerator2) generateProjectMakefile(project *Project, isMain bool) 
 	mk.WriteLine(`# Include Platform Specifics`)
 	mk.WriteLine(`#-------------------------------------------------------------------------------`)
 	mk.NewLine()
-	if g.Workspace.BuildTarget.OSIsMac() {
+	if g.Workspace.BuildTarget.Mac() {
 		mk.WriteLine(`include ../makelib/platform/macos.mk`)
-	} else if g.Workspace.BuildTarget.OSIsLinux() {
+	} else if g.Workspace.BuildTarget.Linux() {
 		mk.WriteLine(`include ../makelib/platform/linux.mk`)
 	}
 	mk.NewLine()
@@ -168,9 +168,9 @@ func (g *MakeGenerator2) generateProjectMakefile(project *Project, isMain bool) 
 		mk.NewLine()
 	}
 
-	if g.Workspace.BuildTarget.CompilerIsClang() {
+	if g.Workspace.Config.Dev.CompilerIsClang() {
 		mk.WriteAlignedLine(`CC`, cutils.TabStop(0), `:= clang++`)
-	} else if g.Workspace.BuildTarget.CompilerIsGcc() {
+	} else if g.Workspace.Config.Dev.CompilerIsGcc() {
 		mk.WriteAlignedLine(`CC`, cutils.TabStop(0), `:= gcc`)
 	}
 
@@ -438,12 +438,12 @@ func (g *MakeGenerator2) generateLibMake() error {
 	if err := g.generateLibMakeCommonMk(); err != nil {
 		return err
 	}
-	if g.Workspace.BuildTarget.OSIsMac() {
+	if g.Workspace.BuildTarget.Mac() {
 		if err := g.generateLibMakePlatformMac(); err != nil {
 			return err
 		}
 	}
-	if g.Workspace.BuildTarget.OSIsLinux() {
+	if g.Workspace.BuildTarget.Linux() {
 		if err := g.generateLibMakePlatformLinux(); err != nil {
 			return err
 		}

@@ -5,7 +5,7 @@ import (
 	"path/filepath"
 	"strings"
 
-	base "github.com/jurgen-kluft/ccode/ccode-base"
+	base "github.com/jurgen-kluft/ccode/cbase"
 	"github.com/jurgen-kluft/ccode/denv"
 	fixr "github.com/jurgen-kluft/ccode/include-fixer"
 )

@@ -55,12 +55,12 @@ func IsExcludedDefault(str string) bool {
 	return IsExcludedOn(str, gValidSuffixDefault)
 }
 
-func NewExclusionFilter(target *MakeTarget) *ExclusionFilter {
-	if target.OSIsMac() {
+func NewExclusionFilter(target BuildTarget) *ExclusionFilter {
+	if target.Mac() {
 		return &ExclusionFilter{Filter: IsExcludedOnMac}
-	} else if target.OSIsWindows() {
+	} else if target.Windows() {
 		return &ExclusionFilter{Filter: IsExcludedOnWindows}
-	} else if target.OSIsLinux() {
+	} else if target.Linux() {
 		return &ExclusionFilter{Filter: IsExcludedOnLinux}
 	}
 	return &ExclusionFilter{Filter: IsExcludedDefault}
@@ -86,18 +86,16 @@ func (f *ExclusionFilter) IsExcluded(filepath string) bool {
 // ----------------------------------------------------------------------------------------------
 type Generator struct {
 	Dev             DevEnum
-	Os              string
-	Arch            string
+	BuildTarget     BuildTarget
 	Verbose         bool
 	GoPathAbs       string // $(GOPATH)/src, absolute path
 	ExclusionFilter *ExclusionFilter
 }
 
-func NewGenerator(dev string, os string, arch string, verbose bool) *Generator {
+func NewGenerator(dev string, buildTarget BuildTarget, verbose bool) *Generator {
 	g := &Generator{}
-	g.Dev = DevEnumFromString(dev)
-	g.Os = strings.ToLower(os)
-	g.Arch = strings.ToLower(arch)
+	g.Dev = NewDevEnum(dev)
+	g.BuildTarget = buildTarget
 	g.Verbose = verbose
 	return g
 }
@@ -106,7 +104,7 @@ func (g *Generator) Generate(pkg *Package) error {
 	var ws *Workspace
 	var err error
 
-	if ws, err = g.GenerateWorkspace(pkg, g.Dev, g.Os, g.Arch); err != nil {
+	if ws, err = g.GenerateWorkspace(pkg, g.Dev, g.BuildTarget); err != nil {
 		return err
 	}
 
@@ -131,7 +129,7 @@ func (g *Generator) Generate(pkg *Package) error {
 	return err
 }
 
-func (g *Generator) GenerateWorkspace(pkg *Package, _dev DevEnum, _os string, _arch string) (*Workspace, error) {
+func (g *Generator) GenerateWorkspace(pkg *Package, _dev DevEnum, _buildTarget BuildTarget) (*Workspace, error) {
 	g.GoPathAbs = filepath.Join(os.Getenv("GOPATH"), "src")
 
 	mainApps := pkg.GetMainApp()
@@ -142,7 +140,7 @@ func (g *Generator) GenerateWorkspace(pkg *Package, _dev DevEnum, _os string, _a
 		return nil, fmt.Errorf("this package has no application(s), unittest(s) or main lib(s)")
 	}
 
-	wsc := NewWorkspaceConfig(_dev, _os, _arch, g.GoPathAbs, pkg.Name)
+	wsc := NewWorkspaceConfig(_dev, _buildTarget, g.GoPathAbs, pkg.Name)
 	if len(mainApps) > 0 {
 		wsc.StartupProject = mainApps[0].Name
 	} else if len(mainTests) > 0 {
@@ -156,11 +154,11 @@ func (g *Generator) GenerateWorkspace(pkg *Package, _dev DevEnum, _os string, _a
 	ws.WorkspaceName = pkg.Name
 	ws.WorkspaceAbsPath = g.GoPathAbs
 	if len(mainApps) > 0 {
-		ws.GenerateAbsPath = filepath.Join(g.GoPathAbs, mainApps[0].PackageURL, "target", ws.Config.Dev.String())
+		ws.GenerateAbsPath = filepath.Join(g.GoPathAbs, mainApps[0].PackageURL, "target", ws.Config.Dev.ToString())
 	} else if len(mainTests) > 0 {
-		ws.GenerateAbsPath = filepath.Join(g.GoPathAbs, mainTests[0].PackageURL, "target", ws.Config.Dev.String())
+		ws.GenerateAbsPath = filepath.Join(g.GoPathAbs, mainTests[0].PackageURL, "target", ws.Config.Dev.ToString())
 	} else if len(mainLibs) > 0 {
-		ws.GenerateAbsPath = filepath.Join(g.GoPathAbs, mainLibs[0].PackageURL, "target", ws.Config.Dev.String())
+		ws.GenerateAbsPath = filepath.Join(g.GoPathAbs, mainLibs[0].PackageURL, "target", ws.Config.Dev.ToString())
 	}
 	g.ExclusionFilter = NewExclusionFilter(ws.BuildTarget)
 
@@ -269,7 +267,7 @@ func (g *Generator) getOrCreateProject(devProj *DevProject, ws *Workspace) *Proj
 
 		// Generate file entry dictionaries for groups of external source files to the new project
 		for _, externalSource := range devProj.ExternalSources {
-			if externalSource.BuildTargets.Contains(ws.BuildTarget.BuildTarget) {
+			if externalSource.BuildTargets.Contains(ws.BuildTarget) {
 				externalSrcFileDict := NewFileEntryDict(externalSource.Path)
 				for _, srcFile := range externalSource.SrcFiles {
 					externalSrcFileDict.Add(srcFile)
@@ -292,7 +290,7 @@ func (g *Generator) getOrCreateProject(devProj *DevProject, ws *Workspace) *Proj
 			newProject.GlobFiles(projAbsPath, filepath.Join("source", "app", "include", "^**", "*.h"), exclusionFilter)
 			newProject.GlobFiles(projAbsPath, filepath.Join("source", "app", "include", "^**", "*.hpp"), exclusionFilter)
 			newProject.GlobFiles(projAbsPath, filepath.Join("source", "app", "include", "^**", "*.inl"), exclusionFilter)
-			if ws.BuildTarget.OSIsMac() {
+			if ws.BuildTarget.Mac() {
 				newProject.GlobFiles(projAbsPath, filepath.Join("source", "app", "cpp", "^**", "*.m"), exclusionFilter)
 				newProject.GlobFiles(projAbsPath, filepath.Join("source", "app", "cpp", "^**", "*.mm"), exclusionFilter)
 			}
@@ -302,7 +300,7 @@ func (g *Generator) getOrCreateProject(devProj *DevProject, ws *Workspace) *Proj
 			newProject.GlobFiles(projAbsPath, filepath.Join("source", "main", "include", "^**", "*.h"), exclusionFilter)
 			newProject.GlobFiles(projAbsPath, filepath.Join("source", "main", "include", "^**", "*.hpp"), exclusionFilter)
 			newProject.GlobFiles(projAbsPath, filepath.Join("source", "main", "include", "^**", "*.inl"), exclusionFilter)
-			if ws.BuildTarget.OSIsMac() {
+			if ws.BuildTarget.Mac() {
 				newProject.GlobFiles(projAbsPath, filepath.Join("source", "main", "cpp", "^**", "*.m"), exclusionFilter)
 				newProject.GlobFiles(projAbsPath, filepath.Join("source", "main", "cpp", "^**", "*.mm"), exclusionFilter)
 			}
