@@ -74,9 +74,9 @@ func SetBuildTarget(os string, arch string) BuildTarget {
 		CurrentBuildTarget = BuildTargetArduinoEsp32
 	} else if os == "windows" && arch == "x64" {
 		CurrentBuildTarget = BuildTargetWindowsX64
-	} else if os == "mac" && arch == "x64" {
+	} else if os == "darwin" && arch == "x64" {
 		CurrentBuildTarget = BuildTargetMacX64
-	} else if os == "mac" && arch == "arm64" {
+	} else if os == "darwin" && arch == "arm64" {
 		CurrentBuildTarget = BuildTargetMacArm64
 	} else if os == "linux" && arch == "x64" {
 		CurrentBuildTarget = BuildTargetLinuxX64

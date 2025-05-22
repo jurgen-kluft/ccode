@@ -6,14 +6,17 @@ const (
 	DevConfigTypeStaticLibrary  DevConfigType = 1
 	DevConfigTypeDynamicLibrary DevConfigType = 2
 	DevConfigTypeExecutable     DevConfigType = 4
+    DevConfigTypeOutputMask = DevConfigTypeStaticLibrary | DevConfigTypeDynamicLibrary | DevConfigTypeExecutable
 	DevConfigTypeDebug          DevConfigType = 8
 	DevConfigTypeRelease        DevConfigType = 16
 	DevConfigTypeFinal          DevConfigType = 64
-	DevConfigTypeDevelopment    DevConfigType = 128
+    DevConfigTypeConfigMask = DevConfigTypeDebug | DevConfigTypeRelease | DevConfigTypeFinal
+    DevConfigTypeDevelopment    DevConfigType = 128
 	DevConfigTypeTest           DevConfigType = 256
 	DevConfigTypeProfile        DevConfigType = 512
 	DevConfigTypeProduction     DevConfigType = 1024
-	DevConfigTypeAll            DevConfigType = 0xFFFF
+    DevConfigTypeVariantMask = DevConfigTypeDevelopment | DevConfigTypeTest | DevConfigTypeProfile | DevConfigTypeProduction
+	DevConfigTypeAll            DevConfigType = DevConfigTypeOutputMask | DevConfigTypeConfigMask | DevConfigTypeVariantMask
 )
 
 func (t DevConfigType) Contains(o DevConfigType) bool {
@@ -147,25 +150,23 @@ func NewDevConfig(configType DevConfigType) *DevConfig {
 // -----------------------------------------------------------------------------------------------------
 
 func (t DevConfigType) Tundra() string {
-	switch t {
+    config := "*-*-"
+	switch t & DevConfigTypeConfigMask {
 	case DevConfigTypeDebug:
-		return "*-*-debug-*"
+		config+="debug"
 	case DevConfigTypeRelease:
-		return "*-*-release-*"
+		config+= "release"
 	case DevConfigTypeFinal:
-		return "*-*-final-*"
-	case DevConfigTypeDebug | DevConfigTypeTest:
-		return "*-*-debug-test"
-	case DevConfigTypeRelease | DevConfigTypeTest:
-		return "*-*-release-test"
-	case DevConfigTypeFinal | DevConfigTypeTest:
-		return "*-*-final-test"
-	case DevConfigTypeDebug | DevConfigTypeProfile:
-		return "*-*-debug-profile"
-	case DevConfigTypeRelease | DevConfigTypeProfile:
-		return "*-*-release-profile"
-	case DevConfigTypeFinal | DevConfigTypeProfile:
-		return "*-*-final-profile"
+		config += "final"
 	}
-	return "*-*-debug-*"
+
+    switch t & DevConfigTypeVariantMask {
+    case DevConfigTypeDevelopment: config += "-dev"
+    case DevConfigTypeTest: config += "-test"
+    case DevConfigTypeProfile: config += "-profile"
+    case DevConfigTypeProduction: config += "-prod"
+    default: config += "-*"
+    }
+
+	return config
 }
