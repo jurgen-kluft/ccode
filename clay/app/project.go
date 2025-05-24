@@ -25,7 +25,7 @@ func AddLibraries(prj *clay.Project) {
 		library := clay.NewCppLibrary(name, "0.1.0", name, name+".a")
 
 		// Include directories
-		library.IncludeDirs.Add("/Users/obnosis5/dev.go/src/github.com/jurgen-kluft/ccode/clay/app/clay/test_lib/include", false)
+		library.IncludeDirs.Add("/Users/obnosis5/dev.go/src/github.com/jurgen-kluft/ccode/clay/app/clay/test_lib/include")
 		// etc..
 
 		// Define macros
@@ -34,7 +34,7 @@ func AddLibraries(prj *clay.Project) {
 		// etc..
 
 		// Source files
-		library.AddSourceFile("/Users/obnosis5/dev.go/src/github.com/jurgen-kluft/ccode/clay/app/clay/test_lib/src/test.cpp", "test.cpp", true)
+		library.AddSourceFile("/Users/obnosis5/dev.go/src/github.com/jurgen-kluft/ccode/clay/app/clay/test_lib/src/test.cpp", "test.cpp")
 		// etc..
 
 		prj.Executable.AddLibrary(library)

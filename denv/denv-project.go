@@ -127,6 +127,7 @@ func (prj *DevProject) externalSourcesFrom(path string) *ExternalSrcFiles {
 func (prj *DevProject) AddExternalSourcesFromForArduino(path string) {
 	externalSrcFiles := prj.externalSourcesFrom(path)
 	externalSrcFiles.BuildTargets = []BuildTarget{BuildTargetArduinoEsp32}
+    prj.ExternalSources = append(prj.ExternalSources, externalSrcFiles)
 }
 
 func (prj *DevProject) AddDefine(define string) {

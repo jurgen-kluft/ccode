@@ -160,7 +160,7 @@ func (g *Esp32Generator) generateLibrary(p *Project, cfg *Config, description st
 		for _, inc := range cfg.IncludeDirs.Values {
 			includePath := filepath.Join(inc.Root, inc.Path)
 			includePath = strings.Replace(includePath, "\\", "/", -1)
-			units.WriteILine("", "library.IncludeDirs.Add(", `"`, includePath, `", false)`)
+			units.WriteILine("", "library.IncludeDirs.Add(", `"`, includePath, `")`)
 		}
 		units.WriteLine()
 
@@ -176,7 +176,7 @@ func (g *Esp32Generator) generateLibrary(p *Project, cfg *Config, description st
 			if src.Is_SourceFile() {
 				path := filepath.Join(p.ProjectAbsPath, src.Path)
 				path = strings.Replace(path, "\\", "/", -1)
-				units.WriteILine("", "library.AddSourceFile(", `"`, path, `", "`, filepath.Base(path), `", true)`)
+				units.WriteILine("", "library.AddSourceFile(", `"`, path, `", "`, filepath.Base(path), `")`)
 			}
 		}
 		for _, externalSource := range p.ExternalSrcFiles {
@@ -184,7 +184,7 @@ func (g *Esp32Generator) generateLibrary(p *Project, cfg *Config, description st
 				if src.Is_SourceFile() {
 					path := src.Path
 					path = strings.Replace(path, "\\", "/", -1)
-					units.WriteILine("", "library.AddSourceFile(", `"`, filepath.Join(externalSource.Path, path), `", "`, path, `", true)`)
+					units.WriteILine("", "library.AddSourceFile(", `"`, filepath.Join(externalSource.Path, path), `", "`, path, `")`)
 				}
 			}
 		}

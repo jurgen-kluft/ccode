@@ -57,20 +57,20 @@ func (p *Project) SetBuildEnvironment(be *BuildEnvironment) error {
 
 	sdkRoot := be.SdkRoot
 
-	//// System Library is at ESP_ROOT+'cores/esp32/', collect
-	//// all the C and Cpp source files in this directory and create a Library.
+	// System Library is at ESP_ROOT+'cores/esp32/', collect
+	// all the C and Cpp source files in this directory and create a Library.
 	coreLibPath := filepath.Join(sdkRoot, "cores/esp32/")
 
-	coreCppLib := NewCppLibrary("esp32-core-cpp", "esp32-core, "+p.Config, "esp32-core", "libesp32-core-cpp.a")
+	coreCppLib := NewCppLibrary(be.Name+"-core-cpp", be.Name+"-core, "+p.Config, be.Name+"-core", "lib"+be.Name+"-core-cpp.a")
 	coreCppLib.IsSystemLibrary = true
 
-	coreCppLib.IncludeDirs.Add(coreLibPath, false)
-	coreCppLib.IncludeDirs.Add(filepath.Join(sdkRoot, "tools/esp32-arduino-libs/esp32/include/"), true)
-	coreCppLib.IncludeDirs.Add(filepath.Join(sdkRoot, "cores/esp32"), false)
-	coreCppLib.IncludeDirs.Add(filepath.Join(sdkRoot, "variants/esp32"), false)
+	coreCppLib.IncludeDirs.Add(coreLibPath)
+	coreCppLib.PrefixDirs.Add(filepath.Join(sdkRoot, "tools/esp32-arduino-libs/"+be.Name+"/include/"))
+	coreCppLib.IncludeDirs.Add(filepath.Join(sdkRoot, "cores/esp32"))
+	coreCppLib.IncludeDirs.Add(filepath.Join(sdkRoot, "variants/"+be.Name))
 
 	// Flash Type
-	coreCppLib.IncludeDirs.Add(filepath.Join(sdkRoot, "tools/esp32-arduino-libs/esp32/dio_qspi/include"), false)
+	coreCppLib.IncludeDirs.Add(filepath.Join(sdkRoot, "tools/esp32-arduino-libs/"+be.Name+"/dio_qspi/include"))
 
 	// Get all the .cpp files from the core library path
 	coreCppLib.AddSourceFilesFrom(coreLibPath, OptionAddCppFiles|OptionAddCFiles|OptionAddRecursively)

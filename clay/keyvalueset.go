@@ -4,22 +4,42 @@ import "strings"
 
 type KeyValueSet struct {
 	Values []string
-	Keys   map[string]int
+	Keys   []string // original case and order of insertion
+	KeyMap map[string]int
 }
 
 func NewKeyValueSet() *KeyValueSet {
 	return &KeyValueSet{
 		Values: make([]string, 0),
-		Keys:   make(map[string]int),
+		Keys:   make([]string, 0),
+		KeyMap: make(map[string]int),
+	}
+}
+
+func (kv *KeyValueSet) Merge(other *KeyValueSet, overwrite bool) {
+	if other == nil {
+		return
+	}
+	for index, key := range other.Keys {
+		// Convert key to lowercase for case-insensitive comparison
+		lcKey := strings.ToLower(key)
+		if i, exists := kv.KeyMap[lcKey]; !exists {
+			kv.KeyMap[lcKey] = len(kv.Keys)
+			kv.Keys = append(kv.Keys, key) // keep original case
+			kv.Values = append(kv.Values, other.Values[index])
+		} else if overwrite {
+			kv.Values[i] = other.Values[index]
+		}
 	}
 }
 
 func (kv *KeyValueSet) Add(key string, value string) {
 	// Convert key to lowercase for case-insensitive comparison
 	lcKey := strings.ToLower(key)
-	if index, exists := kv.Keys[lcKey]; !exists {
+	if index, exists := kv.KeyMap[lcKey]; !exists {
 		index = len(kv.Values)
-		kv.Keys[lcKey] = index
+		kv.KeyMap[lcKey] = index
+		kv.Keys = append(kv.Keys, key) // keep original case
 		kv.Values = append(kv.Values, value)
 	} else {
 		// If the key already exists, update the value
@@ -30,14 +50,14 @@ func (kv *KeyValueSet) Add(key string, value string) {
 func (kv *KeyValueSet) Has(key string) bool {
 	// Convert key to lowercase for case-insensitive comparison
 	lcKey := strings.ToLower(key)
-	_, exists := kv.Keys[lcKey]
+	_, exists := kv.KeyMap[lcKey]
 	return exists
 }
 
 func (kv *KeyValueSet) HasGet(key string) (string, bool) {
 	// Convert key to lowercase for case-insensitive comparison
 	lcKey := strings.ToLower(key)
-	if index, exists := kv.Keys[lcKey]; exists {
+	if index, exists := kv.KeyMap[lcKey]; exists {
 		return kv.Values[index], true
 	}
 	return "", false
@@ -46,7 +66,7 @@ func (kv *KeyValueSet) HasGet(key string) (string, bool) {
 func (kv *KeyValueSet) Get(key string) string {
 	// Convert key to lowercase for case-insensitive comparison
 	lcKey := strings.ToLower(key)
-	if index, exists := kv.Keys[lcKey]; exists {
+	if index, exists := kv.KeyMap[lcKey]; exists {
 		return kv.Values[index]
 	}
 	return ""

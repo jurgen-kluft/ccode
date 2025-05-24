@@ -2,6 +2,7 @@ package clay
 
 import (
 	"path/filepath"
+	"strings"
 
 	cutils "github.com/jurgen-kluft/ccode/cutils"
 )
@@ -25,6 +26,7 @@ type Library struct {
 	OutputFilename  string // Relative filepath to the build output (.lib, .a)
 
 	Defines     *ValueSet     // Compiler defines (macros) for the library
+	PrefixDirs  *IncludeMap   // Include paths for the library (prefix)
 	IncludeDirs *IncludeMap   // Include paths for the library (system)
 	SourceFiles []*SourceFile // C/C++ Source files for the library
 }
@@ -38,6 +40,7 @@ func NewLibrary(name string, config string, buildSubDir string, outputFilename s
 		BuildSubDir:     buildSubDir,
 		OutputFilename:  outputFilename,
 		Defines:         NewValueSet(),
+		PrefixDirs:      NewIncludeMap(),
 		IncludeDirs:     NewIncludeMap(),
 		SourceFiles:     make([]*SourceFile, 0),
 	}
@@ -55,7 +58,8 @@ func NewCppLibrary(name string, config string, buildSubDir string, outputFilenam
 	return lib
 }
 
-func (lib *Library) AddSourceFile(srcPath string, srcRelPath string, isCpp bool) {
+func (lib *Library) AddSourceFile(srcPath string, srcRelPath string) {
+	isCpp := strings.HasSuffix(srcRelPath, ".cpp") || strings.HasSuffix(srcRelPath, ".cxx")
 	srcFile := &SourceFile{
 		SrcAbsPath: srcPath,
 		SrcRelPath: srcRelPath,
@@ -85,10 +89,10 @@ func (lib *Library) AddSourceFilesFrom(srcPath string, options AddSourceFileOpti
 		return len(relPath) == 0 || HasOption(options, OptionAddRecursively)
 	}
 	handleFile := func(rootPath, relPath string) {
-		isCpp := HasOption(options, OptionAddCppFiles) && filepath.Ext(relPath) == ".cpp"
+		isCpp := HasOption(options, OptionAddCppFiles) && (filepath.Ext(relPath) == ".cpp" || filepath.Ext(relPath) == ".cxx")
 		isC := !isCpp && (HasOption(options, OptionAddCFiles) && filepath.Ext(relPath) == ".c")
 		if isCpp || isC {
-			lib.AddSourceFile(filepath.Join(rootPath, relPath), relPath, isCpp)
+			lib.AddSourceFile(filepath.Join(rootPath, relPath), relPath)
 		}
 	}
 
@@ -132,6 +136,7 @@ type Compiler struct {
 	ResponseFileFlags    string                                                                        // FilePath to the C compiler flags file (optional)
 	ResponseFileDefines  string                                                                        // FilePath to the C compiler defines file (optional)
 	ResponseFileIncludes string                                                                        // FilePath to the C compiler includes file (optional)
+	PrefixPaths          *IncludeMap                                                                   // Include paths for the compiler (system level)
 	IncludePaths         *IncludeMap                                                                   // Include paths for the compiler (system level)
 	BuildArgs            func(cl *Compiler, lib *Library, src *SourceFile, outputPath string) []string // Function to build the compiler arguments
 }
@@ -145,6 +150,7 @@ func NewCompiler(compilerPath string) *Compiler {
 		ResponseFileFlags:    "",
 		ResponseFileDefines:  "",
 		ResponseFileIncludes: "",
+		PrefixPaths:          NewIncludeMap(),
 		IncludePaths:         NewIncludeMap(),
 		BuildArgs:            func(cl *Compiler, lib *Library, src *SourceFile, outputPath string) []string { return nil },
 	}

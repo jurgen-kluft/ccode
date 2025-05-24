@@ -26,6 +26,11 @@ dependencies of the source file.
 We could do #include directive scanning manually, but this is not trivial,
 maybe in a next version we could experiment with this.
 
+A dependency represents the dependency description of:
+
+- a file (.cpp, .c, .exe, .lib, .a, etc..)
+- a command line argument (e.g. MSVC C++ compiler cmd-line arguments)
+- a version of a something (e.g. Visual Studio, GCC, Arduino, etc..)
 
 ## User API
 
@@ -48,74 +53,37 @@ Note: The hash of data for Item ID should be different from the hash of the
       We could do this by prefixing the data with 'src' for Item and 'dep' for
       Dep, before generating the digest.
 
-## item.db.clay
+## item db
 
-Item (16 bytes)
+Item (16 bytes) (shared)
 
 - int32, index to Hash-Node, this is the ID of the item (filepath, label (e.g. 'MSVC C++ compiler cmd-line arguments))
 - int32, index to Hash-Node, this identifies the 'change' (modification-time, file-size, file-content, command-line arguments, string, etc..)
+- int32, index to Node, this is the head of the list of dependencies
 - int32, ref-count, for identifying stale entries
-- int32, padding
 
 A file represents a source file, header file or any other file that is
 a dependency of a source file. The file is identified by its hash, whic
 is a SHA1 hash of the file path.
 
-## dep.db.clay
+## node db
 
-Dep (16 bytes)
+Node (16 bytes) (unique)
 
+- int32, index to (dep) Item
+- int32, Next
+- int32, Prev
+
+## hash db
+
+Hash (32 bytes) (unique)
+
+- hash (byte[20])
+- int32, index to Data
 - int32, index to Item
-- int32, index to Node (list of dependencies, e.g. '.d', '.o' file and '.h' files)
-         this list should be sorted by Item.ID
-- int32, ref-count, for identifying stale entries
-- int32, padding
+- uint32, flags
 
-A dependency represents the dependency description of:
-
-- a file (.cpp, .c, .exe, .lib, .a, etc..)
-- a command line argument (e.g. MSVC C++ compiler cmd-line arguments)
-- a version of a something (e.g. Visual Studio, GCC, Arduino, etc..)
-
-## node.db.clay
-
-Node (16 bytes)
-
-- int32, index to Item
-- int32, next Node
-- int32, prev Node
-- int32, ref-count, for identifying stale entries
-
-## hash-node.db.clay
-
-Hash-Node (16 bytes)
-
-- int32, index to Data (string, byte-array, or 0 if no Data (e.g. modification-time, file-size))
-- int32, index to byte[20] (SHA1 of Data)
-- int32, ref-count, for identifying stale entries
-- int32, flags, for identifying the type of data (e.g. string, byte-array, etc..)
-
-Note: item.db.clay + dep.db.clay + node.db.clay + hash-node.db.clay
-      can all be in the same file?
-
-So then we have three files:
-
-- clay.db.clay (for the item, dep, node, hash-node)
-- hash.db.clay (for the hash of the data)
-- data.db.clay (for the hash of the data)
-
-We decouple hash-node and the actual hash, so that we can sort on the
-hash-node and not the hash. When sorting we can 'update' the Hash-Node
-index of the Item or Node.
-
-## hash.db.clay
-
-Hash (32 bytes)
-
-- ref-count is for identifying stale entries
-- ref-count, padding, padding, hash ([byte[4], byte[4], byte[4], byte[20])
-
-## data.db.clay
+## data db
 
 Data
 

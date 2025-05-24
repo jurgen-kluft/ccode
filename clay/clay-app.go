@@ -157,7 +157,7 @@ func Build(projectName string, projectConfig string, board string) error {
 	case "esp32":
 		buildEnv = NewBuildEnvironmentEsp32(buildPath)
 	case "esp32s3":
-		//buildEnv = clay.NewBuildEnvironmentEsp32S3(BuildPath)
+		buildEnv = NewBuildEnvironmentEsp32s3(buildPath)
 	}
 
 	if buildEnv == nil {
@@ -240,7 +240,7 @@ func Flash(projectName string, projectConfig string, board string) error {
 	case "esp32":
 		buildEnv = NewBuildEnvironmentEsp32(buildPath)
 	case "esp32s3":
-		//buildEnv = clay.NewBuildEnvironmentEsp32S3(buildPath)
+		buildEnv = NewBuildEnvironmentEsp32s3(buildPath)
 	}
 
 	if buildEnv == nil {
@@ -329,8 +329,7 @@ func ListBoards(boardName string, matches int) error {
 		EspSdkPath = env
 	}
 
-	boardsFilePath := filepath.Join(EspSdkPath, "boards.txt")
-	return PrintAllMatchingBoards(boardsFilePath, boardName, matches)
+	return PrintAllMatchingBoards(EspSdkPath, boardName, matches)
 }
 
 func ListFlashSizes(cpuName string, boardName string) error {
@@ -339,8 +338,7 @@ func ListFlashSizes(cpuName string, boardName string) error {
 		EspSdkPath = env
 	}
 
-	boardsFilePath := filepath.Join(EspSdkPath, "boards.txt")
-	return PrintAllFlashSizes(boardsFilePath, cpuName, boardName)
+	return PrintAllFlashSizes(EspSdkPath, cpuName, boardName)
 }
 
 // AddBuildInfoAsCppLibrary checks if 'buildinfo.h' and 'buildinfo.cpp' exist,
@@ -351,8 +349,8 @@ func AddBuildInfoAsCppLibrary(prj *Project) {
 	srcFilepath := filepath.Join(prj.BuildPath, name+".cpp")
 	if cutils.FileExists(hdrFilepath) && cutils.FileExists(srcFilepath) {
 		library := NewCppLibrary(name, "0.1.0", name, name+".a")
-		library.IncludeDirs.Add(filepath.Dir(hdrFilepath), false)
-		library.AddSourceFile(srcFilepath, filepath.Base(srcFilepath), true)
+		library.IncludeDirs.Add(filepath.Dir(hdrFilepath))
+		library.AddSourceFile(srcFilepath, filepath.Base(srcFilepath))
 		prj.Executable.AddLibrary(library)
 	}
 }
