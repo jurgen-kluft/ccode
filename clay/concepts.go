@@ -217,26 +217,34 @@ func NewImageGenerator(genPartitionsToolPath string, genPartitionsToolScript str
 }
 
 type EspTool struct {
-	ToolPath         string // FilePath to the ESP tool
-	Chip             string // Chip name (e.g., ESP32, ESP32S3)
-	Port             string // Port name (e.g., /dev/ttyUSB0, COM3) (optional)
-	Baud             string // Baud rate (e.g., 115200, 921600) (optional)
-	FlashMode        string // Flash mode (e.g., DIO, QIO)
-	FlashFrequency   string // Flash frequency (e.g., 40m, 80m)
-	FlashSize        string // Flash size (e.g., 4MB, 8MB)
-	ElfShareOffset   string // ELF share offset (e.g., 0xb0)
-	PartitionCsvFile string // FilePath to the partitions file
+	ToolPath             string // FilePath to the ESP tool
+	Chip                 string // Chip name (e.g., ESP32, ESP32S3)
+	Port                 string // Port name (e.g., /dev/ttyUSB0, COM3) (optional)
+	Baud                 string // Baud rate (e.g., 115200, 921600) (optional)
+	FlashMode            string // Flash mode (e.g., DIO, QIO)
+	FlashFrequency       string // Flash frequency (e.g., 40m, 80m)
+	FlashSize            string // Flash size (e.g., 4MB, 8MB)
+	ElfShareOffset       string // ELF share offset (e.g., 0xb0)
+	PartitionCsvFile     string // FilePath to the partitions file
+	BootLoaderBinOffset  string // Offset for the bootloader binary (e.g., 0x1000)
+	PartitionsBinOffset  string // Offset for the partitions binary (e.g., 0x8000)
+	BootApp0BinOffset    string // Offset for the boot_app0 binary (e.g., 0xe000)
+	ApplicationBinOffset string // Offset for the ELF file (e.g., 0x10000)
 }
 
 func NewEspTool(espImageToolPath string) *EspTool {
 	return &EspTool{
-		ToolPath:         espImageToolPath,
-		Chip:             "",
-		FlashMode:        "",
-		FlashFrequency:   "",
-		FlashSize:        "",
-		ElfShareOffset:   "",
-		PartitionCsvFile: "",
+		ToolPath:             espImageToolPath,
+		Chip:                 "",
+		FlashMode:            "",
+		FlashFrequency:       "",
+		FlashSize:            "",
+		ElfShareOffset:       "",
+		PartitionCsvFile:     "",
+		BootLoaderBinOffset:  "",
+		PartitionsBinOffset:  "",
+		BootApp0BinOffset:    "",
+		ApplicationBinOffset: "",
 	}
 }
 
@@ -262,17 +270,17 @@ func NewImageStatsTool(elfSizeToolPath string) *ImageStatsTool {
 type BootLoaderCompiler struct {
 	EspTool *EspTool //
 	// BootLoaderElfPath = $(ESP_SDK)/tools/esp32-arduino-libs/esp32/bin/bootloader_dio_40m.elf
-	Variables *KeyValueSet // e.g. BootApp0
-	Args      func(*BootLoaderCompiler, *Executable, string) []string
-	Execute   func(*BootLoaderCompiler, *Executable, string) error
+	BootLoaderElfPath string
+	Args              func(*BootLoaderCompiler, *Executable, string) []string
+	Execute           func(*BootLoaderCompiler, *Executable, string) error
 }
 
 func NewBootLoaderCompiler(espToolSettings *EspTool) *BootLoaderCompiler {
 	return &BootLoaderCompiler{
-		EspTool:   espToolSettings,
-		Variables: NewKeyValueSet(),
-		Args:      func(g *BootLoaderCompiler, exe *Executable, outputPath string) []string { return nil },
-		Execute:   func(g *BootLoaderCompiler, exe *Executable, outputPath string) error { return nil },
+		EspTool:           espToolSettings,
+		BootLoaderElfPath: "",
+		Args:              func(g *BootLoaderCompiler, exe *Executable, outputPath string) []string { return nil },
+		Execute:           func(g *BootLoaderCompiler, exe *Executable, outputPath string) error { return nil },
 	}
 }
 
@@ -306,25 +314,26 @@ func NewBootLoaderCompiler(espToolSettings *EspTool) *BootLoaderCompiler {
 //    "../target/mkESP/WiFiScan_esp32/WiFiScan.bin"
 
 type FlashTool struct {
-	Tool      *EspTool                                                         // FilePath to the ESP tool
-	Variables *KeyValueSet                                                     // e.g. BootApp0
-	Args      func(ft *FlashTool, exe *Executable, outputPath string) []string // Function to build the flash tool arguments
-	Flash     func(ft *FlashTool, exe *Executable, outputPath string) error    // Function to flash the image to the device
+	Tool            *EspTool // FilePath to the ESP tool
+	BootApp0BinFile string
+	Args            func(ft *FlashTool, exe *Executable, outputPath string) []string // Function to build the flash tool arguments
+	Flash           func(ft *FlashTool, exe *Executable, outputPath string) error    // Function to flash the image to the device
 }
 
 func NewFlashTool(espToolSettings *EspTool) *FlashTool {
 	return &FlashTool{
-		Tool:      espToolSettings,
-		Variables: NewKeyValueSet(),
-		Args:      func(ft *FlashTool, exe *Executable, outputPath string) []string { return nil },
-		Flash:     func(ft *FlashTool, exe *Executable, outputPath string) error { return nil },
+		Tool:            espToolSettings,
+		BootApp0BinFile: "",
+		Args:            func(ft *FlashTool, exe *Executable, outputPath string) []string { return nil },
+		Flash:           func(ft *FlashTool, exe *Executable, outputPath string) error { return nil },
 	}
 }
 
 type BuildEnvironment struct {
-	Name    string // Name of the compiler package
-	Version string // Version of the compiler package
-	SdkRoot string // Path to the SDK root directory
+	Name           string // Name of the compiler package
+	Version        string // Version of the compiler package
+	SdkRoot        string // Path to the SDK root directory
+	ArduinoSdkRoot string // Path to the Arduino SDK root directory
 
 	CCompiler          *Compiler
 	CppCompiler        *Compiler
@@ -348,11 +357,12 @@ type BuildEnvironment struct {
 	FlashFunc         func(be *BuildEnvironment, exe *Executable, outputPath string) error                // Function to flash the image to the device
 }
 
-func NewBuildEnvironment(name string, version string, sdkRoot string) *BuildEnvironment {
+func NewBuildEnvironment(name string, version string, sdkRoot string, arduinoSdkRoot string) *BuildEnvironment {
 	return &BuildEnvironment{
 		Name:              name,
 		Version:           version,
 		SdkRoot:           sdkRoot,
+		ArduinoSdkRoot:    arduinoSdkRoot,
 		CCompiler:         nil,
 		CppCompiler:       nil,
 		Archiver:          nil,

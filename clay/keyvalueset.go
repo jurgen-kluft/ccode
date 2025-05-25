@@ -3,9 +3,9 @@ package clay
 import "strings"
 
 type KeyValueSet struct {
-	Values []string
-	Keys   []string // original case and order of insertion
-	KeyMap map[string]int
+	Values []string       // values corresponding to the keys
+	Keys   []string       // original case and order of insertion
+	KeyMap map[string]int // map for case-insensitive key lookup
 }
 
 func NewKeyValueSet() *KeyValueSet {
