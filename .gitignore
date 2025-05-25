@@ -17,6 +17,7 @@ vendor/
 
 !*.txt
 !*.md
+!*.config
 
 !*.cs
 !*.csproj
