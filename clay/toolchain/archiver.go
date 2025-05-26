@@ -1,15 +1,11 @@
 package toolchain
 
-type ArchiverConfig struct {
-	Switches              []string // Compile switches (flags)
-	LibraryPaths          []string // Library paths for the linker (system)
-	Libraries             []string // Libraries to link against
-	OutputMapFile         bool     // Whether to generate a map file for the linker output
-	ResponseFileLdFlags   string   // FilePath to the linker flags file (optional)
-	ResponseFileLdScripts string   // FilePath to the linker scripts file (optional)
-	ResponseFileLdLibs    string   // FilePath to the linker libraries file (optional)
-}
-
 type Archiver interface {
-	Archive(inputObjFilepaths []string, outputArchiveFilepath string) error
+	// SetupArgs prepares the arguments for the archiver based on user-defined variables.
+	// It should be called before using the Archive method.
+	SetupArgs(userVars Vars)
+
+	// Archive takes a list of input object file paths and an output archive file path.
+	// Both paths are relative to the build path.
+	Archive(inputObjAbsFilepaths []string, outputArchiveRelFilepath string) error
 }

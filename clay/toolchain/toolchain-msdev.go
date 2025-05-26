@@ -1,21 +1,26 @@
 package toolchain
 
 type ToolchainMsdev struct {
-	CompilerConfig *CompilerConfig // The compiler configuration
-	ArchiverConfig *ArchiverConfig // The archiver configuration
-	LinkerConfig   *LinkerConfig   // The linker configuration
+	ToolchainInstance
 }
 
 func NewToolchainMsdev() *ToolchainMsdev {
 	return &ToolchainMsdev{}
 }
 
-func (ms *ToolchainMsdev) GetCompiler() *Compiler {
+func (ms *ToolchainMsdev) NewCCompiler(config string) Compiler {
 	return nil
 }
-func (ms *ToolchainMsdev) GetArchiver() *Archiver {
+func (ms *ToolchainMsdev) NewCppCompiler(config string) Compiler {
 	return nil
 }
-func (ms *ToolchainMsdev) GetLinker() *Linker {
+func (ms *ToolchainMsdev) NewArchiver(config string) Archiver {
 	return nil
+}
+func (ms *ToolchainMsdev) NewLinker(config string) Linker {
+	return nil
+}
+
+func (t *ToolchainMsdev) NewBurner(config string) Burner {
+	return &ToolchainEmptyBurner{}
 }
