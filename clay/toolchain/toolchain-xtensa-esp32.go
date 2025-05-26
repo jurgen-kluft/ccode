@@ -123,11 +123,11 @@ func (cl *ToolchainArduinoEsp32CCompiler) Compile(sourceAbsFilepath string, sour
 	cl.compilerArgs = append(cl.compilerArgs, objFilepath)
 
 	cmd := exec.Command(cl.compilerPath, cl.compilerArgs...)
+	out, err := cmd.CombinedOutput()
 
 	// Reset the arguments to the initial state
 	cl.compilerArgs = cl.compilerArgs[:numArgs]
 
-	out, err := cmd.CombinedOutput()
 	if err != nil {
 		log.Printf("Compile failed, output:\n%s\n", string(out))
 		return "", fmt.Errorf("Compile failed with %s\n", err)
@@ -248,11 +248,11 @@ func (cl *ToolchainArduinoEsp32CppCompiler) Compile(sourceAbsFilepath string, so
 	cl.compilerArgs = append(cl.compilerArgs, objectFilepath)
 
 	cmd := exec.Command(cl.compilerPath, cl.compilerArgs...)
+	out, err := cmd.CombinedOutput()
 
 	// Reset the arguments to the initial state
 	cl.compilerArgs = cl.compilerArgs[:numArgs]
 
-	out, err := cmd.CombinedOutput()
 	if err != nil {
 		log.Printf("Compile failed, output:\n%s\n", string(out))
 		return "", fmt.Errorf("Compile failed with %s\n", err)
@@ -303,9 +303,11 @@ func (a *ToolchainArduinoEsp32Archiver) Archive(inputObjectFilepaths []string, o
 		a.archiverArgs = append(a.archiverArgs, objFile)
 	}
 
-	cmd := exec.Command(a.archiverPath, a.archiverArgs...)
 	log.Printf("Archiving %s\n", outputArchiveFilepath)
+
+	cmd := exec.Command(a.archiverPath, a.archiverArgs...)
 	out, err := cmd.CombinedOutput()
+
 	if err != nil {
 		return fmt.Errorf("Archive failed with %s\n", err)
 	}
@@ -404,12 +406,13 @@ func (l *ToolchainArduinoEsp32Linker) Link(inputArchiveAbsFilepaths []string, ou
 	linkerArgs = append(linkerArgs, "-o")
 	linkerArgs = append(linkerArgs, filepath.Join(l.buildPath, outputAppRelFilepathNoExt+".elf"))
 
-	cmd := exec.Command(linker, linkerArgs...)
-
-	linkerArgs = linkerArgs[:argCount] // Reset the args to the initial state
-
 	log.Printf("Linking '%s'...\n", outputAppRelFilepathNoExt+".elf")
+	cmd := exec.Command(linker, linkerArgs...)
 	out, err := cmd.CombinedOutput()
+
+	// Reset the args to the initial state
+	linkerArgs = linkerArgs[:argCount]
+
 	if err != nil {
 		log.Printf("Link failed, output:\n%s\n", string(out))
 		return fmt.Errorf("Link failed with %s\n", err)
@@ -430,13 +433,13 @@ type ToolchainArduinoEsp32Burner struct {
 	buildPath                       string // Path to the build directory
 	projectName                     string
 	config                          string // Configuration for the burner, e.g., debug or release
-	generateImagePartitionsToolArgs []string
-	generateImagePartitionsToolPath string
-	generateImageBinToolArgs        []string
+	generateImageBinToolArgs        Arguments
 	generateImageBinToolPath        string
-	generateBootloaderToolArgs      []string
+	generateImagePartitionsToolArgs Arguments
+	generateImagePartitionsToolPath string
+	generateBootloaderToolArgs      Arguments
 	generateBootloaderToolPath      string
-	flashToolArgs                   []string
+	flashToolArgs                   Arguments
 	flashToolPath                   string
 }
 
@@ -446,56 +449,48 @@ func (t *ToolchainArduinoEsp32) NewBurner(config string) Burner {
 		buildPath:                       t.buildPath,
 		projectName:                     t.projectName,
 		config:                          config,
-		generateImagePartitionsToolArgs: []string{},
-		generateImagePartitionsToolPath: t.Tools["burner.generate-partitions-bin"],
-		generateImageBinToolArgs:        []string{},
+		generateImageBinToolArgs:        NewArguments(64),
 		generateImageBinToolPath:        t.Tools["burner.generate-image-bin"],
-		generateBootloaderToolArgs:      []string{},
+		generateImagePartitionsToolArgs: NewArguments(64),
+		generateImagePartitionsToolPath: t.Tools["burner.generate-partitions-bin"],
+		generateBootloaderToolArgs:      NewArguments(64),
 		generateBootloaderToolPath:      t.Tools["burner.generate-bootloader"],
-		flashToolArgs:                   []string{},
+		flashToolArgs:                   NewArguments(64),
 		flashToolPath:                   t.Tools["burner.flash"],
 	}
 }
 
-func (b *ToolchainArduinoEsp32Burner) SetupBuildArgs(userVars Vars, config string) {
-	// Implement the logic to setup build arguments for the building of
-	// the bootloader and image bin files here
+func (b *ToolchainArduinoEsp32Burner) SetupBuildArgs(userVars Vars) {
 
-	// - Arguments for generating the image bin file ('PROJECT.NAME.bin'):
-	//     --chip
-	//     img.ImageBinTool.Chip
-	//     elf2image
-	//     --flash_mode
-	//     FlashMode
-	//     --flash_freq
-	//     FlashFrequency
-	//     --flash_size
-	//     FlashSize
-	//     --elf-sha256-offset
-	//     ElfShareOffset
-	//     -o
-	//     BuildPath / ProjectName + ".bin"
-	//     BuildPath / ProjectName + ".elf"
+	projectElfFilepath := filepath.Join(b.buildPath, b.projectName+".elf")
+	projectBinFilepath := filepath.Join(b.buildPath, b.projectName+".bin")
+	projectPartitionsBinFilepath := filepath.Join(b.buildPath, b.projectName+".partitions.bin")
+	projectBootloaderBinFilepath := filepath.Join(b.buildPath, b.projectName+".bootloader.bin")
 
-	// - Arguments for generating the image partitions bin file ('PROJECT.NAME.partitions.bin'):
-	//    PartitionsBinToolScript
-	//    -q
-	//    PartitionCsvFilepath
-	//    BuildPath / ProjectName + ".partitions.bin"
+	b.generateImageBinToolArgs.Clear()
+	b.generateImageBinToolArgs.Add("--chip", b.toolChain.Vars.GetOne("esp.mcu"))
+	b.generateImageBinToolArgs.Add("elf2image")
+	b.generateImageBinToolArgs.Add("--flash_mode", userVars.GetOne("burner.flash.mode"))
+	b.generateImageBinToolArgs.Add("--flash_freq", userVars.GetOne("burner.flash.frequency"))
+	b.generateImageBinToolArgs.Add("--flash_size", userVars.GetOne("burner.flash.size"))
+	b.generateImageBinToolArgs.Add("--elf-sha256-offset", userVars.GetOne("burner.elf.sha256.offset"))
+	b.generateImageBinToolArgs.Add("-o", projectBinFilepath)
+	b.generateImageBinToolArgs.Add(projectElfFilepath)
 
-	// - Arguments for generating bootloader image ('PROJECT.NAME.bootloader.bin'):
-	//     --chip
-	//     {esp.mcu}
-	//     elf2image
-	//     {flash.mode}
-	//     --flash_freq
-	//     {flash.frequency}
-	//     --flash_size
-	//     {flash.size}
-	//     -o
-	//     buildPath/projectName+.bootloader.bin
-	//     {bootloader.elf.path}
+	b.generateImagePartitionsToolArgs.Clear()
+	b.generateImagePartitionsToolArgs.Add(b.toolChain.Vars.GetOne("burner.partitions.bin.script"))
+	b.generateImagePartitionsToolArgs.Add("-q")
+	b.generateImagePartitionsToolArgs.Add(b.toolChain.Vars.GetOne("burner.partitions.csv.filepath"))
+	b.generateImagePartitionsToolArgs.Add(projectPartitionsBinFilepath)
 
+	b.generateBootloaderToolArgs.Clear()
+	b.generateBootloaderToolArgs.Add("--chip", b.toolChain.Vars.GetOne("esp.mcu"))
+	b.generateBootloaderToolArgs.Add("elf2image")
+	b.generateBootloaderToolArgs.Add("--flash_mode", userVars.GetOne("burner.flash.mode"))
+	b.generateBootloaderToolArgs.Add("--flash_freq", userVars.GetOne("burner.flash.frequency"))
+	b.generateBootloaderToolArgs.Add("--flash_size", userVars.GetOne("burner.flash.size"))
+	b.generateBootloaderToolArgs.Add("-o", projectBootloaderBinFilepath)
+	b.generateBootloaderToolArgs.Add(projectElfFilepath)
 }
 
 func (b *ToolchainArduinoEsp32Burner) Build() error {
@@ -509,7 +504,7 @@ func (b *ToolchainArduinoEsp32Burner) Build() error {
 		img, _ := exec.LookPath(b.generateImagePartitionsToolPath)
 		args := b.generateImagePartitionsToolArgs
 
-		cmd := exec.Command(img, args...)
+		cmd := exec.Command(img, args.List...)
 		log.Printf("Creating image partitions '%s' ...\n", b.projectName+".partitions.bin")
 		out, err := cmd.CombinedOutput()
 		if err != nil {
@@ -525,7 +520,7 @@ func (b *ToolchainArduinoEsp32Burner) Build() error {
 		imgPath := b.generateImageBinToolPath
 		args := b.generateImageBinToolArgs
 
-		cmd := exec.Command(imgPath, args...)
+		cmd := exec.Command(imgPath, args.List...)
 		log.Printf("Generating image '%s'\n", b.projectName+".bin")
 		out, err := cmd.CombinedOutput()
 		if err != nil {
@@ -541,7 +536,7 @@ func (b *ToolchainArduinoEsp32Burner) Build() error {
 		imgPath := b.generateBootloaderToolPath
 		args := b.generateBootloaderToolArgs
 
-		cmd := exec.Command(imgPath, args...)
+		cmd := exec.Command(imgPath, args.List...)
 		log.Printf("Generating bootloader '%s'\n", b.projectName+".bootloader.bin")
 		out, err := cmd.CombinedOutput()
 		if err != nil {
@@ -556,42 +551,43 @@ func (b *ToolchainArduinoEsp32Burner) Build() error {
 	return nil
 }
 
-func (b *ToolchainArduinoEsp32Burner) SetupBurnArgs(userVars Vars, config string) {
-	// - Argument for flashing:
-	//     --chip
-	//     FlashChip
-	//     --port
-	//     FlashPort
-	//     --baud
-	//     FlashBaud
-	//     --before
-	//     default_reset
-	//     --after
-	//     hard_reset
-	//     write_flash
-	//     -z
-	//     --flash_mode
-	//     keep
-	//     --flash_freq
-	//     keep
-	//     --flash_size
-	//     keep
-	//     BootLoaderBinOffset
-	//     BuildPath / ProjectName + ".bootloader.bin"
-	//     PartitionsBinOffset
-	//     BuildPath / ProjectName + ".partitions.bin"
-	//     BootApp0BinOffset
-	//     BootApp0BinFile
-	//     ApplicationBinOffset
-	//     BuildPath / ProjectName + ".bin"
+func (b *ToolchainArduinoEsp32Burner) SetupBurnArgs(userVars Vars) {
+
+	b.flashToolArgs.Clear()
+
+	b.flashToolArgs.Add("--chip", b.toolChain.Vars.GetOne("esp.mcu"))
+	b.flashToolArgs.Add("--port", b.toolChain.Vars.GetOne("burner.flash.port"))
+	b.flashToolArgs.Add("--baud", b.toolChain.Vars.GetOne("burner.flash.baud"))
+	b.flashToolArgs.Add("--before", "default_reset")
+	b.flashToolArgs.Add("--after", "hard_reset")
+	b.flashToolArgs.Add("write_flash", "-z")
+	b.flashToolArgs.Add("--flash_mode", "keep")
+	b.flashToolArgs.Add("--flash_freq", "keep")
+	b.flashToolArgs.Add("--flash_size", "keep")
+
+	projectNameFilepath := filepath.Join(b.buildPath, b.projectName)
+	bootloaderBinFilepath := projectNameFilepath + ".bootloader.bin"
+	partitionsBinFilepath := projectNameFilepath + ".partitions.bin"
+	bootApp0BinFilePath := b.toolChain.Vars.GetOne("burner.bootapp0.bin.filepath")
+	applicationBinFilepath := projectNameFilepath + ".bin"
+
+	b.flashToolArgs.Add(b.toolChain.Vars.GetOne("burner.flash.bootloader.offset"))
+	b.flashToolArgs.Add(bootloaderBinFilepath)
+	b.flashToolArgs.Add(b.toolChain.Vars.GetOne("burner.flash.partitions.offset"))
+	b.flashToolArgs.Add(partitionsBinFilepath)
+	b.flashToolArgs.Add(b.toolChain.Vars.GetOne("burner.flash.bootapp0.offset"))
+	b.flashToolArgs.Add(bootApp0BinFilePath)
+	b.flashToolArgs.Add(b.toolChain.Vars.GetOne("burner.flash.application.offset"))
+	b.flashToolArgs.Add(applicationBinFilepath)
 }
 
 func (b *ToolchainArduinoEsp32Burner) Burn() error {
-
 	flashToolPath := b.flashToolPath
 	flashToolArgs := b.flashToolArgs
 
-	flashToolCmd := exec.Command(flashToolPath, flashToolArgs...)
+	// TODO Verify that the 4 files exist before proceeding?
+
+	flashToolCmd := exec.Command(flashToolPath, flashToolArgs.List...)
 	log.Printf("Flashing '%s'...\n", b.projectName+".bin")
 	out, err := flashToolCmd.CombinedOutput()
 	if err != nil {

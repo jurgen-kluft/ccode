@@ -1,10 +1,14 @@
 package toolchain
 
+// A Burner is an interface that defines the methods required for preparing
+// and burning a project to a USB device.
+// For example, the Xtensa Espressif toolchain implements this interface
+// to prepare the project for burning to an ESP32 device.
 type Burner interface {
-	SetupBuildArgs(userVars Vars, config string)
+	SetupBuildArgs(userVars Vars)
 	Build() error
 
-	SetupBurnArgs(userVars Vars, config string)
+	SetupBurnArgs(userVars Vars)
 	Burn() error
 }
 
@@ -18,7 +22,7 @@ type ToolchainEmptyBurner struct {
 }
 
 // SetupBuildArgs sets up the build arguments for the burner.
-func (cl *ToolchainEmptyBurner) SetupBuildArgs(userVars Vars, config string) {
+func (cl *ToolchainEmptyBurner) SetupBuildArgs(userVars Vars) {
 	// Implement the logic to setup build arguments for the burner here
 }
 
@@ -29,7 +33,7 @@ func (cl *ToolchainEmptyBurner) Build() error {
 }
 
 // SetupBurnArgs sets up the burn arguments for the burner.
-func (cl *ToolchainEmptyBurner) SetupBurnArgs(userVars Vars, config string) {
+func (cl *ToolchainEmptyBurner) SetupBurnArgs(userVars Vars) {
 	// Implement the logic to setup burn arguments for the burner here
 }
 

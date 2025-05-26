@@ -62,7 +62,6 @@ func (p *Project) SetBuildEnvironment(be *BuildEnvironment) error {
 	coreLibPath := filepath.Join(sdkRoot, "cores/esp32/")
 
 	coreCppLib := NewCppLibrary(be.Name+"-core-cpp", be.Name+"-core, "+p.Config, be.Name+"-core", "lib"+be.Name+"-core-cpp.a")
-	coreCppLib.IsSystemLibrary = true
 
 	coreCppLib.IncludeDirs.Add(coreLibPath)
 	coreCppLib.PrefixDirs.Add(filepath.Join(sdkRoot, "tools/esp32-arduino-libs/"+be.Name+"/include/"))

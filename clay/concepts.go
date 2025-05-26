@@ -18,12 +18,10 @@ type SourceFile struct {
 
 // Library represents a C/C++ library that can be linked with an executable
 type Library struct {
-	Name            string // Name of the library
-	Config          string // Config to identify the library
-	IsSystemLibrary bool   // Is this a system library (true) or a user-defined library (false)
-	IsCppLibrary    bool   // Is this a C++ library (true) or a C library (false)
-	BuildSubDir     string // Subdirectory for the library build (optional)
-	OutputFilename  string // Relative filepath to the build output (.lib, .a)
+	Name           string // Name of the library
+	Config         string // Config to identify the library
+	BuildSubDir    string // Subdirectory for the library build (optional)
+	OutputFilename string // Relative filepath to the build output (.lib, .a)
 
 	Defines     *ValueSet     // Compiler defines (macros) for the library
 	PrefixDirs  *IncludeMap   // Include paths for the library (prefix)
@@ -33,28 +31,24 @@ type Library struct {
 
 func NewLibrary(name string, config string, buildSubDir string, outputFilename string) *Library {
 	return &Library{
-		Name:            name,
-		Config:          config,
-		IsSystemLibrary: false,
-		IsCppLibrary:    false,
-		BuildSubDir:     buildSubDir,
-		OutputFilename:  outputFilename,
-		Defines:         NewValueSet(),
-		PrefixDirs:      NewIncludeMap(),
-		IncludeDirs:     NewIncludeMap(),
-		SourceFiles:     make([]*SourceFile, 0),
+		Name:           name,
+		Config:         config,
+		BuildSubDir:    buildSubDir,
+		OutputFilename: outputFilename,
+		Defines:        NewValueSet(),
+		PrefixDirs:     NewIncludeMap(),
+		IncludeDirs:    NewIncludeMap(),
+		SourceFiles:    make([]*SourceFile, 0),
 	}
 }
 
 func NewCLibrary(name string, config string, buildSubDir string, outputFilename string) *Library {
 	lib := NewLibrary(name, config, buildSubDir, outputFilename)
-	lib.IsCppLibrary = false
 	return lib
 }
 
 func NewCppLibrary(name string, config string, buildSubDir string, outputFilename string) *Library {
 	lib := NewLibrary(name, config, buildSubDir, outputFilename)
-	lib.IsCppLibrary = true
 	return lib
 }
 
