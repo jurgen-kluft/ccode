@@ -11,6 +11,16 @@
 - Written in pure Go
 - No external dependencies
 
+## Design and Implementation Notes:
+
+- We load the DB from disk and use it to query the state of a file, we 
+  create a new DB that we use to register files and their dependencies. 
+  The new one becomes the main DB when we save it, and we delete the
+  previous DB. On the next run, we load the new DB from disk and use it to
+  query the state of a file.
+- When nothing has changed, we do not write the new DB to disk, this is
+  to avoid unnecessary disk writes.  
+
 ## Dependency Tracking General Information:
 
 The purpose of dependency tracking is to not compile a source file if it
