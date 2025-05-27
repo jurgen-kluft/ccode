@@ -80,28 +80,42 @@ func (d *DepTrackr) Save() error {
 	return nil
 }
 
+const (
+	ItemFlagSourceFile = 1
+	ItemFlagDependency = 2
+	ItemFlagUpToDate   = 4 // This is set when the item is up to date, otherwise it is out of date
+)
+
+const (
+	ChangeFlagModTime = 1
+)
+
 type ItemToAdd struct {
-	IdDigest   []byte // SHA1 20 bytes
-	ItemData   []byte
-	ItemDigest []byte // SHA1 20 bytes
-	Flags      uint32
+	IdDigest     []byte // SHA1 20 bytes
+	IdData       []byte
+	ChangeDigest []byte // SHA1 20 bytes
+	ChangeData   []byte
+	IdFlags      uint16
+	ChangeFlags  uint16
 }
 
 type State int
 
 const (
-	StateUpToDate State = iota
-	StateOutOfDate
+	StateUpToDate  State = 0
+	StateOutOfDate State = 2
+	StateError     State = 4
+	StateIgnore    State = 8
 )
 
-type VerifyItemFunc func(itemFlags uint32, itemData []byte, itemDigest []byte) State
+type VerifyItemFunc func(itemChangeFlags uint32, itemChangeData []byte, itemIdFlags uint32, itemIdData []byte) State
 
 // -----------------------------------------------------------------------------------------------------------------
 // -----------------------------------------------------------------------------------------------------------------
 
 type Item struct {
-	IDHashNodeIndex     uint32 // Hash, this is the ID of the item (filepath, label (e.g. 'MSVC C++ compiler cmd-line arguments))
-	ChangeHashNodeIndex uint32 // Hash, this identifies the 'change' (modification-time, file-size, file-content, command-line arguments, string, etc..)
+	IDHashNodeIndex     int32  // Hash, this is the ID of the item (filepath, label (e.g. 'MSVC C++ compiler cmd-line arguments))
+	ChangeHashNodeIndex int32  // Hash, this identifies the 'change' (modification-time, file-size, file-content, command-line arguments, string, etc..)
 	ArrayStart          uint32 // start of dependencies
 	ArrayLength         uint32 // length of dependencies
 }
@@ -257,28 +271,51 @@ func (d *DepTrackr) Insert(item ItemToAdd, deps []ItemToAdd) bool {
 		// This should not happen, as we are inserting a new item
 		return false
 	}
-	idHashShardIndex, idHashShardHashIndex = d.HashDB.InsertHash(item.IdDigest, -1, itemIndex, item.Flags)
+	idHashShardIndex, idHashShardHashIndex = d.HashDB.InsertHash(item.IdDigest, int32(len(d.DataNodes)), itemIndex, uint32(item.IdFlags))
+	idHashNodeIndex := int32(d.HashDB.Shards[idHashShardIndex*d.HashDB.S+idHashShardHashIndex])
 
-	changeHashBucketIndex, changeHashHashIndex := d.HashDB.HashExists(item.ItemDigest)
-	if changeHashBucketIndex >= 0 {
-		// This should not happen, as we are inserting a new item
-		return false
+	changeHashNodeIndex := int32(0)
+	if item.ChangeDigest != nil || len(item.ChangeDigest) > 0 {
+		changeHashBucketIndex, changeHashHashIndex := d.HashDB.HashExists(item.ChangeDigest)
+		if changeHashBucketIndex >= 0 {
+			// This should not happen, as we are inserting a new item
+			return false
+		}
+		changeHashBucketIndex, changeHashHashIndex = d.HashDB.InsertHash(item.ChangeDigest, int32(len(d.DataNodes)+1), itemIndex, uint32(item.ChangeFlags))
+		changeHashNodeIndex = int32(d.HashDB.Shards[changeHashBucketIndex*d.HashDB.S+changeHashHashIndex])
+	} else {
+		hashNode := HashNode{
+			HashOffset: 0,                           // No hash for the change, so we set it to 0
+			DataIndex:  int32(len(d.DataNodes) + 1), // This will be the index of the DataNode for the change
+			ItemIndex:  itemIndex,                   // This is the index of the item that this hash belongs to
+			Dummy:      0,                           // Dummy value, not used
+		}
+		d.HashDB.HashNodes = append(d.HashDB.HashNodes, hashNode) // add the new hash node
+		changeHashNodeIndex = int32(len(d.HashDB.HashNodes) - 1)  // this is the index of the new hash node
 	}
-	changeHashBucketIndex, changeHashHashIndex = d.HashDB.InsertHash(item.ItemDigest, int32(len(d.DataNodes)), itemIndex, item.Flags)
+
+	// DataNode for the Item Id
+	idDataNode := DataNode{
+		Length: int32(len(item.IdData)),
+		Flags:  uint32(item.IdFlags),
+		Offset: uint32(len(d.Data)),
+	}
+	d.DataNodes = append(d.DataNodes, idDataNode) // add the DataNode for the Change
+	d.Data = append(d.Data, item.IdData...)       // add the Item data to the Data array
 
 	// DataNode for the Item Change
 	changeDataNode := DataNode{
-		Length: int32(len(item.ItemData)),
-		Flags:  item.Flags,
+		Length: int32(len(item.ChangeData)),
+		Flags:  uint32(item.ChangeFlags),
 		Offset: uint32(len(d.Data)),
 	}
 	d.DataNodes = append(d.DataNodes, changeDataNode) // add the DataNode for the Change
-	d.Data = append(d.Data, item.ItemData...)         // add the Item data to the Data array
+	d.Data = append(d.Data, item.ChangeData...)       // add the Item data to the Data array
 
 	depArrayStart := len(d.Deps) // this may be the start of the array of dependencies
 	d.Items = append(d.Items, Item{
-		IDHashNodeIndex:     uint32(idHashShardIndex)<<16 | uint32(idHashShardHashIndex),
-		ChangeHashNodeIndex: uint32(changeHashBucketIndex)<<16 | uint32(changeHashHashIndex),
+		IDHashNodeIndex:     idHashNodeIndex,
+		ChangeHashNodeIndex: changeHashNodeIndex,
 		ArrayStart:          uint32(depArrayStart),
 		ArrayLength:         uint32(len(deps)),
 	})
@@ -295,28 +332,39 @@ func (d *DepTrackr) Insert(item ItemToAdd, deps []ItemToAdd) bool {
 		} else {
 
 			// Need to build a new dependency item
-			depIdHashShardIndex, depIdHashHashIndex = d.HashDB.InsertHash(dep.IdDigest, -1, depItemIndex, dep.Flags)
+			depIdHashShardIndex, depIdHashHashIndex = d.HashDB.InsertHash(dep.IdDigest, int32(len(d.DataNodes)), depItemIndex, uint32(dep.IdFlags))
+			depIdHashNodeIndex := int32(d.HashDB.Shards[depIdHashShardIndex*d.HashDB.S+depIdHashHashIndex])
 
-			depChangeHashBucketIndex, depChangeHashHashIndex := d.HashDB.HashExists(dep.ItemDigest)
+			depChangeHashBucketIndex, depChangeHashHashIndex := d.HashDB.HashExists(dep.IdDigest)
 			if depChangeHashBucketIndex >= 0 {
 				// This should not happen, as we are inserting a new item
 				return false
 			}
-			depChangeHashBucketIndex, depChangeHashHashIndex = d.HashDB.InsertHash(dep.ItemDigest, int32(len(d.DataNodes)), depItemIndex, dep.Flags)
+			depChangeHashBucketIndex, depChangeHashHashIndex = d.HashDB.InsertHash(dep.ChangeDigest, int32(len(d.DataNodes)+1), depItemIndex, uint32(dep.ChangeFlags))
+			depChangeHashNodeIndex := int32(d.HashDB.Shards[depChangeHashBucketIndex*d.HashDB.S+depChangeHashHashIndex])
+
+			// DataNode for the Dependency Id
+			depIdDataNode := DataNode{
+				Length: int32(len(dep.IdData)),
+				Flags:  uint32(dep.IdFlags),
+				Offset: uint32(len(d.Data)),
+			}
+			d.DataNodes = append(d.DataNodes, depIdDataNode) // add the DataNode for the Dependency Id
+			d.Data = append(d.Data, dep.IdData...)           // add the Dependency Id data to the Data array
 
 			// DataNode for the Dependency Change
 			depChangeDataNode := DataNode{
-				Length: int32(len(dep.ItemData)),
-				Flags:  dep.Flags,
+				Length: int32(len(dep.ChangeData)),
+				Flags:  uint32(dep.ChangeFlags),
 				Offset: uint32(len(d.Data)),
 			}
 			d.DataNodes = append(d.DataNodes, depChangeDataNode) // add the DataNode for the Dependency Change
-			d.Data = append(d.Data, dep.ItemData...)             // add the Dependency Change data to the Data array
+			d.Data = append(d.Data, dep.ChangeData...)           // add the Dependency Change data to the Data array
 
 			d.Items = append(d.Items, Item{
-				IDHashNodeIndex:     uint32(depIdHashShardIndex)<<16 | uint32(depIdHashHashIndex),
-				ChangeHashNodeIndex: uint32(depChangeHashBucketIndex)<<16 | uint32(depChangeHashHashIndex),
-				ArrayStart:          0,
+				IDHashNodeIndex:     depIdHashNodeIndex,
+				ChangeHashNodeIndex: depChangeHashNodeIndex,
+				ArrayStart:          0, // Dependencies do not have dependencies, so we set the start to 0
 				ArrayLength:         0,
 			})
 		}
@@ -336,16 +384,21 @@ func (d *DepTrackr) QueryItem(itemHash []byte, verifyAll bool, verifyCb VerifyIt
 	itemIdHashNodeIndex := d.HashDB.Shards[idHashShardIndex*d.HashDB.S+idHashShardHashIndex]
 	itemIdHashNode := d.HashDB.HashNodes[itemIdHashNodeIndex]
 	itemIndex := itemIdHashNode.ItemIndex
+	itemDataIndex := itemIdHashNode.DataIndex
 
 	changeHashNodeIndex := d.Items[itemIndex].ChangeHashNodeIndex
 	changeHashNode := d.HashDB.HashNodes[changeHashNodeIndex]
 
+	idData := d.DataNodes[itemDataIndex]
+	idDataData := d.Data[idData.Offset : int32(idData.Offset)+idData.Length]
+	idDataFlags := idData.Flags
+
 	changeData := d.DataNodes[changeHashNode.DataIndex]
 
-	itemData := d.Data[changeData.Offset : int32(changeData.Offset)+changeData.Length]
-	itemFlags := changeData.Flags
+	changeDataData := d.Data[changeData.Offset : int32(changeData.Offset)+changeData.Length]
+	changeDataFlags := changeData.Flags
 
-	state := verifyCb(itemFlags, itemData, itemHash)
+	state := verifyCb(changeDataFlags, changeDataData, idDataFlags, idDataData)
 	if state == StateOutOfDate && !verifyAll {
 		return StateOutOfDate, nil // item is out of date (exit early)
 	}
@@ -364,9 +417,11 @@ func (d *DepTrackr) QueryItem(itemHash []byte, verifyAll bool, verifyCb VerifyIt
 
 		depItemIdHashNodeIndex := d.Items[depItemIndex].IDHashNodeIndex
 		depItemIdHashNode := d.HashDB.HashNodes[depItemIdHashNodeIndex]
-		depItemIdHash := d.HashDB.Hashes[depItemIdHashNode.HashOffset : depItemIdHashNode.HashOffset+20]
+		depItemIdData := d.DataNodes[depItemIdHashNode.DataIndex]
+		depItemIdDataData := d.Data[depItemIdData.Offset : int32(depItemIdData.Offset)+depItemIdData.Length]
+		depItemIdDataFlags := depItemIdData.Flags
 
-		state = verifyCb(depItemDataFlags, depItemDataData, depItemIdHash)
+		state = verifyCb(depItemDataFlags, depItemDataData, depItemIdDataFlags, depItemIdDataData)
 		if state == StateOutOfDate {
 			if !verifyAll {
 				return StateOutOfDate, nil // dependency is out of date (exit early)
