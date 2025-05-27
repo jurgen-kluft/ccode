@@ -176,7 +176,7 @@ func (d *DepTrackr) AddFile(srcfileAbsFilepath string, depfileAbsFilepath string
 	item = dep.ItemToAdd{
 		IdData:       []byte(depfileAbsFilepath),
 		IdDigest:     mainHash,
-		IdFlags:      dep.ItemFlagSourceFile,
+		IdFlags:      dep.ItemFlagDependency,
 		ChangeData:   modTimeBytes,
 		ChangeDigest: nil, // mod-time is small enough, we do not need a hash
 		ChangeFlags:  dep.ChangeFlagModTime,
@@ -203,6 +203,7 @@ func (d *DepTrackr) AddFile(srcfileAbsFilepath string, depfileAbsFilepath string
 		depItem := dep.ItemToAdd{
 			IdDigest:     depDigest,
 			IdData:       content[p.from:p.to],
+			IdFlags:      dep.ItemFlagDependency,
 			ChangeDigest: nil, // mod-time is small enough, we do not need a hash
 			ChangeData:   modTimeBytes,
 			ChangeFlags:  dep.ChangeFlagModTime,
@@ -213,4 +214,125 @@ func (d *DepTrackr) AddFile(srcfileAbsFilepath string, depfileAbsFilepath string
 	d.New.AddItem(item, depItems)
 
 	return nil
+}
+
+type StringDependency struct {
+	Main    string // e.g. 'Commandline arguments'
+	Content string // e.g. '-I/usr/include -L/usr/lib'
+}
+
+// Examples:
+//   - A library and the source files that where used to build it, as well as the
+//     commandline arguments that were used.
+//   - An executable and the library/archive files that where used to link it and the
+//     commandline arguments that were used.
+//   - A bootloader binary and the files that were used to build it, as well as the
+//     commandline arguments that were used.
+func (d *DepTrackr) AddFileAndDependencies(fileAbsFilepath string, listOfFileDependencies []string, listOfStringDependencies []StringDependency) error {
+
+	// Add a library file and its dependencies to the dependency tracker
+
+	// ----------------------------------------------------------------
+	// We want the main item to be the source file
+	d.Hasher.Write([]byte(fileAbsFilepath))
+	mainHash := d.Hasher.Sum(nil)
+
+	// For the 'change', we want the file modification time and hash it
+	fileInfo, err := os.Stat(fileAbsFilepath)
+	if err != nil {
+		return err
+	}
+
+	// Use the file modification time as part of the item data
+	modTimeBytes, err := fileInfo.ModTime().MarshalBinary()
+
+	item := dep.ItemToAdd{
+		IdData:       []byte(fileAbsFilepath),
+		IdDigest:     mainHash,
+		IdFlags:      dep.ItemFlagSourceFile,
+		ChangeData:   modTimeBytes,
+		ChangeDigest: nil, // mod-time is small enough, we do not need a hash
+		ChangeFlags:  dep.ChangeFlagModTime,
+	}
+
+	// ----------------------------------------------------------------
+	// The file itself is also a dependency
+	d.Hasher.Reset()
+	d.Hasher.Write([]byte(fileAbsFilepath))
+	mainHash = d.Hasher.Sum(nil)
+
+	// For the 'change', we want the file modification time and hash it
+	fileInfo, err = os.Stat(fileAbsFilepath)
+	if err != nil {
+		return err
+	}
+
+	// Use the file modification time as part of the item data
+	modTimeBytes, err = fileInfo.ModTime().MarshalBinary()
+
+	item = dep.ItemToAdd{
+		IdData:       []byte(fileAbsFilepath),
+		IdDigest:     mainHash,
+		IdFlags:      dep.ItemFlagSourceFile,
+		ChangeData:   modTimeBytes,
+		ChangeDigest: nil, // mod-time is small enough, we do not need a hash
+		ChangeFlags:  dep.ChangeFlagModTime,
+	}
+	depItems := []dep.ItemToAdd{item}
+
+	for _, p := range listOfFileDependencies {
+		// Make sure the digest of a dependency will be unique and
+		// not collide when the same file is used as a main item
+		d.Hasher.Reset()
+		d.Hasher.Write([]byte{'d', 'e', 'p'})
+		d.Hasher.Write([]byte(p))
+		depDigest := d.Hasher.Sum(nil)
+
+		// For the 'change', we want the file modification time and hash it
+		fileInfo, err = os.Stat(p)
+		if err != nil {
+			return err
+		}
+
+		// Use the file modification time as part of the item data
+		modTimeBytes, err = fileInfo.ModTime().MarshalBinary()
+
+		depItem := dep.ItemToAdd{
+			IdDigest:     depDigest,
+			IdData:       []byte(p),
+			IdFlags:      dep.ItemFlagDependency,
+			ChangeDigest: nil, // mod-time is small enough, we do not need a hash
+			ChangeData:   modTimeBytes,
+			ChangeFlags:  dep.ChangeFlagModTime,
+		}
+		depItems = append(depItems, depItem)
+	}
+
+	for _, p := range listOfStringDependencies {
+		// Make sure the digest of a dependency will be unique and
+		// not collide when the same file is used as a main item
+		d.Hasher.Reset()
+		d.Hasher.Write([]byte{'d', 'e', 'p'})
+		d.Hasher.Write([]byte(p.Main))
+		depDigest := d.Hasher.Sum(nil)
+
+		d.Hasher.Reset()
+		d.Hasher.Write([]byte(p.Content))
+		contentDigest := d.Hasher.Sum(nil)
+
+		depItem := dep.ItemToAdd{
+			IdDigest:     depDigest,
+			IdData:       []byte(p.Main),
+			IdFlags:      dep.ItemFlagString,
+			ChangeDigest: contentDigest,
+			ChangeData:   []byte(p.Content),
+			ChangeFlags:  dep.ChangeFlagString,
+		}
+		depItems = append(depItems, depItem)
+	}
+
+	d.New.AddItem(item, depItems)
+
+	return nil
+
 }
