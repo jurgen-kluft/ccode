@@ -4,11 +4,11 @@
 
 - Q: How do identify stale entries that should be pruned?
   A: We do not need this, since we do not modify a DB, we only build
-     them.
+     them, which means everything acts in an 'appending/additive' manner.
 
 ## Design and Implementation Notes:
 
-- Fully custom database structure
+- Fully custom structure
 - Written in pure Go
 - No external dependencies
 
@@ -61,31 +61,20 @@ Note: The hash of data for Item ID should be different from the hash of the
 
 ## item db
 
-Item (12 bytes) (shared)
+Item (16 bytes) (shared)
 
 - int32, index to Hash-Node, this is the ID of the item (filepath, label (e.g. 'MSVC C++ compiler cmd-line arguments))
 - int32, index to Hash-Node, this identifies the 'change' (modification-time, file-size, file-content, command-line arguments, string, etc..)
-- int32, index to Node, this is the head of the list of dependencies
-
-A file represents a source file, header file or any other file that is
-a dependency of a source file. The file is identified by its hash, whic
-is a SHA1 hash of the file path.
-
-## node db
-
-Node (12 bytes) (unique)
-
-- int32, index to (dep) Item
-- int32, Next
-- int32, Prev
+- int32, start into global array of []uint32, this is the global array of dependency indices
+- int32, number of dependencies
 
 ## hash db
 
-Hash (32 bytes) (unique)
+Hash Node (32 bytes) (unique)
 
 - hash (byte[20])
-- int32, index to Data
-- int32, index to Item
+- uint32, index to Data
+- uint32, index to Item
 - uint32, flags
 
 ## data db
