@@ -108,13 +108,6 @@ func (d *DepTrackr) AddFile(srcfileAbsFilepath string, depfileAbsFilepath string
 	// part[0] is the object file, the rest are dependencies
 	// Note: also add the .d file as a dependency
 
-	// type ItemToAdd struct {
-	// 	IdDigest   []byte // SHA1 20 bytes
-	// 	ItemData   []byte
-	// 	ItemDigest []byte // SHA1 20 bytes
-	// 	Flags      uint32
-	// }
-
 	// ----------------------------------------------------------------
 	// We want the main item to be the source file
 	hasher := sha1.New()
@@ -129,16 +122,13 @@ func (d *DepTrackr) AddFile(srcfileAbsFilepath string, depfileAbsFilepath string
 
 	// Use the file modification time as part of the item data
 	modTimeBytes, err := fileInfo.ModTime().MarshalBinary()
-	// hasher.Reset()
-	// hasher.Write(modTimeBytes)
-	// modTimeHash := hasher.Sum(nil)
 
 	item := dep.ItemToAdd{
 		IdData:       []byte(srcfileAbsFilepath),
 		IdDigest:     mainHash,
 		IdFlags:      dep.ItemFlagSourceFile,
 		ChangeData:   modTimeBytes,
-		ChangeDigest: nil,
+		ChangeDigest: nil, // mod-time is small enough, we do not need a hash
 		ChangeFlags:  dep.ChangeFlagModTime,
 	}
 
@@ -165,7 +155,7 @@ func (d *DepTrackr) AddFile(srcfileAbsFilepath string, depfileAbsFilepath string
 		IdDigest:     mainHash,
 		IdFlags:      dep.ItemFlagSourceFile,
 		ChangeData:   modTimeBytes,
-		ChangeDigest: nil,
+		ChangeDigest: nil, // mod-time is small enough, we do not need a hash
 		ChangeFlags:  dep.ChangeFlagModTime,
 	}
 
@@ -195,14 +185,14 @@ func (d *DepTrackr) AddFile(srcfileAbsFilepath string, depfileAbsFilepath string
 		depItem := dep.ItemToAdd{
 			IdDigest:     depDigest,
 			IdData:       content[p.from:p.to],
-			ChangeDigest: nil,
+			ChangeDigest: nil, // mod-time is small enough, we do not need a hash
 			ChangeData:   modTimeBytes,
 			ChangeFlags:  dep.ChangeFlagModTime,
 		}
 		depItems = append(depItems, depItem)
 	}
 
-	d.Tracker.Insert(item, depItems)
+	d.Tracker.AddItem(item, depItems)
 
 	return nil
 }

@@ -284,7 +284,7 @@ func SerialMonitor(port string, baud int) error {
 		line = strings.Trim(line, "\r\n")
 	}
 
-	return nil
+	//return nil
 }
 
 func ListLibraries() error {

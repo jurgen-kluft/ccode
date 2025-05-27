@@ -1,6 +1,11 @@
 package dep
 
-import "unsafe"
+import (
+	"encoding/binary"
+	"fmt"
+	"os"
+	"unsafe"
+)
 
 type DepTrackr struct {
 	StoragePath string
@@ -20,11 +25,6 @@ func NewDepTrackr(storageDir string) *DepTrackr {
 		Data:        make([]byte, 0, 1024*1024), // initial capacity of 1MB for data
 		HashDB:      NewHashDB(10),              // default to 10 bits for the hash database
 	}
-}
-
-func (d *DepTrackr) Load() error {
-
-	return nil
 }
 
 func (d *DepTrackr) NewDB() *DepTrackr {
@@ -73,13 +73,122 @@ func castItemArrayToByteArray(items []Item) []byte {
 	return unsafe.Slice((*byte)(unsafe.Pointer(&items[0])), n*int(sizeOfItem))
 }
 
-// --------------------------------------------------------------------------
+func castHashNodeArrayToByteArray(items []HashNode) []byte {
+	n := len(items)
+	if n == 0 {
+		return []byte{}
+	}
+	sizeOfItem := unsafe.Sizeof(HashNode{})
+	return unsafe.Slice((*byte)(unsafe.Pointer(&items[0])), n*int(sizeOfItem))
+}
 
+func castDataNodeArrayToByteArray(items []DataNode) []byte {
+	n := len(items)
+	if n == 0 {
+		return []byte{}
+	}
+	sizeOfItem := unsafe.Sizeof(DataNode{})
+	return unsafe.Slice((*byte)(unsafe.Pointer(&items[0])), n*int(sizeOfItem))
+}
+
+// --------------------------------------------------------------------------
 func (d *DepTrackr) Save() error {
+	dbFile, err := os.Create(d.StoragePath + "/deptrackr.point.db")
+	if err != nil {
+		return err
+	}
+	defer dbFile.Close()
+
+	header := make([]byte, 0, 64)
+	header = binary.LittleEndian.AppendUint32(header, uint32(len(d.Items)))     // Number of items
+	header = binary.LittleEndian.AppendUint32(header, uint32(len(d.Deps)))      // Number of dependencies
+	header = binary.LittleEndian.AppendUint32(header, uint32(len(d.DataNodes))) // Number of data nodes
+	header = binary.LittleEndian.AppendUint32(header, uint32(len(d.Data)))      // Size of data
+	header = binary.LittleEndian.AppendUint32(header, uint32(d.HashDB.N))       // Number of bits for the hash
+	header = binary.LittleEndian.AppendUint32(header, uint32(d.HashDB.S))       // Size of a shard
+	header = binary.LittleEndian.AppendUint32(header, uint32(len(d.HashDB.Hashes)))
+	header = binary.LittleEndian.AppendUint32(header, uint32(len(d.HashDB.HashNodes)))
+	header = binary.LittleEndian.AppendUint32(header, uint32(len(d.HashDB.ShardOffsets)))
+	header = binary.LittleEndian.AppendUint32(header, uint32(len(d.HashDB.ShardSizes)))
+	header = binary.LittleEndian.AppendUint32(header, uint32(len(d.HashDB.DirtyFlags)))
+	header = binary.LittleEndian.AppendUint32(header, uint32(len(d.HashDB.Shards)))
+
+	// Write the header to the file
+	if _, err := dbFile.Write(header); err != nil {
+		return err
+	}
+
+	// Save Items
+	itemsData := castItemArrayToByteArray(d.Items)
+	if _, err := dbFile.Write(itemsData); err != nil {
+		return err
+	}
+
+	// Save Deps
+	depsData := castInt32ArrayToByteArray(d.Deps)
+	if _, err := dbFile.Write(depsData); err != nil {
+		return err
+	}
+
+	// Save DataNodes
+	dataNodesData := castDataNodeArrayToByteArray(d.DataNodes)
+	if _, err := dbFile.Write(dataNodesData); err != nil {
+		return err
+	}
+
+	// Save Data
+	if _, err := dbFile.Write(d.Data); err != nil {
+		return err
+	}
+
+	// Write HashDB.Hashes
+	if _, err := dbFile.Write(d.HashDB.Hashes); err != nil {
+		return err
+	}
+
+	// Write HashDB.HashNodes
+	hashNodesData := castHashNodeArrayToByteArray(d.HashDB.HashNodes)
+	if _, err := dbFile.Write(hashNodesData); err != nil {
+		return err
+	}
+
+	// Write HashDB.ShardOffsets
+	shardOffsets := castInt32ArrayToByteArray(d.HashDB.ShardOffsets)
+	if _, err := dbFile.Write(shardOffsets); err != nil {
+		return err
+	}
+
+	// Write HashDB.ShardSizes
+	shardSizes := castInt32ArrayToByteArray(d.HashDB.ShardSizes)
+	if _, err := dbFile.Write(shardSizes); err != nil {
+		return err
+	}
+
+	// Write HashDB.DirtyFlags
+	if _, err := dbFile.Write(d.HashDB.DirtyFlags); err != nil {
+		return err
+	}
+
+	// Write HashDB.Shards
+	shardsData := castInt32ArrayToByteArray(d.HashDB.Shards)
+	if _, err := dbFile.Write(shardsData); err != nil {
+		return err
+	}
+
+	// Flush the file to ensure all data is written
+	if err := dbFile.Sync(); err != nil {
+		return err
+	}
 
 	return nil
 }
 
+func (d *DepTrackr) Load() error {
+
+	return nil
+}
+
+// --------------------------------------------------------------------------
 const (
 	ItemFlagSourceFile = 1
 	ItemFlagDependency = 2
@@ -124,7 +233,8 @@ type HashNode struct {
 	HashOffset uint32 // hash offset in the Digests array, 4 bytes
 	DataIndex  int32  // data that gave us the hash, 4 bytes (-1 means no data)
 	ItemIndex  int32  // item that this hash belongs to, 4 bytes (help with swap remove)
-	Dummy      uint32 //
+	HashSize   int16  // We could support different hash sizes
+	Dummy      uint16 //
 }
 
 type DataNode struct {
@@ -145,73 +255,73 @@ func CompareDigest(a []byte, b []byte) int {
 }
 
 type HashDB struct {
-	N            int        // how many bits we take from the hash to index into the buckets (0-15)
-	S            int        // size of a shard, this is the number of hashes per shardOffset, default is 512
+	N            int32      // how many bits we take from the hash to index into the buckets (0-15)
+	S            int32      // size of a shard, this is the number of hashes per shardOffset, default is 512
 	Hashes       []byte     // This is a byte array of 20 bytes SHA1 digests
 	HashNodes    []HashNode // This is an array of HashNodes, each HashNode contains a hash offset, data index, item index, and a dummy value
-	ShardOffsets []int      // This is an array of offsets into the Shards array, each offset corresponds to a shard, -1 means the shard doesn't exist yet
-	ShardSizes   []int      // This is an array of sizes of each shard, 0 means the shard is empty
+	ShardOffsets []int32    // This is an array of offsets into the Shards array, each offset corresponds to a shard, -1 means the shard doesn't exist yet
+	ShardSizes   []int32    // This is an array of sizes of each shard, 0 means the shard is empty
 	DirtyFlags   []uint8    // A bit per shard, indicates if the shard is dirty and needs to be sorted
-	Shards       []int      // A shard is a region of hash-node-indices that belong to a shard
+	Shards       []int32    // A shard is a region of hash-node-indices that belong to a shard
 }
 
-func NewHashDB(n int) *HashDB {
+func NewHashDB(n int32) *HashDB {
 	if n < 0 || n > 15 {
 		n = 10
 	}
-	s := 512 // maximum size of a shard
+	s := int32(512) // maximum size of a shard
 
 	return &HashDB{
 		N:            n,
 		S:            s,
 		Hashes:       make([]byte, 0, 128*1024*20),  // initial capacity of 128KB for hashes (20 bytes each)
 		HashNodes:    make([]HashNode, 0, 128*1024), // initial capacity of 128KB for hash nodes
-		ShardOffsets: make([]int, 1<<n),             // initial capacity of 2^N buckets
-		ShardSizes:   make([]int, 1<<n),             // initial capacity of 2^N buckets sizes
+		ShardOffsets: make([]int32, 1<<n),           // initial capacity of 2^N buckets
+		ShardSizes:   make([]int32, 1<<n),           // initial capacity of 2^N buckets sizes
 		DirtyFlags:   make([]uint8, (n+7)>>3),       // initial capacity of N bits for dirty flags (rounded up to the nearest byte)
-		Shards:       make([]int, (1<<n)*s),         // initial capacity of 2^N shards where each shard has s elements
+		Shards:       make([]int32, (1<<n)*s),       // initial capacity of 2^N shards where each shard has s elements
 	}
 }
 
-func (hb *HashDB) IsShardDirty(shardOffset int) bool {
+func (hb *HashDB) IsShardDirty(shardOffset int32) bool {
 	return (hb.DirtyFlags[shardOffset>>3] & (1 << (shardOffset & 7))) != 0 // check the dirty flag for the shard
 }
 
-func (hb *HashDB) SetShardAsDirty(shardOffset int) {
+func (hb *HashDB) SetShardAsDirty(shardOffset int32) {
 	hb.DirtyFlags[shardOffset>>3] |= (1 << (shardOffset & 7)) // set the dirty flag for the shard
 }
-func (hb *HashDB) SetShardAsSorted(shardOffset int) {
+func (hb *HashDB) SetShardAsSorted(shardOffset int32) {
 	hb.DirtyFlags[shardOffset>>3] = hb.DirtyFlags[shardOffset>>3] &^ (1 << (shardOffset & 7)) // clear the dirty flag for the shard
 }
 
-func (hb *HashDB) InsertHash(hash []byte, data int32, item int32, flags uint32) (int, int) {
-	indexOfShard := 0
+func (hb *HashDB) InsertHash(hash []byte, data int32, item int32, flags uint32) (int32, int32) {
+	indexOfShard := int32(0)
 	if hb.N < 8 {
-		indexOfShard = int(hash[0]) >> (8 - hb.N) // use the first N bits of the hash
+		indexOfShard = int32(hash[0]) >> (8 - hb.N) // use the first N bits of the hash
 	} else if hb.N < 16 {
-		indexOfShard = int(hash[0])<<8 | int(hash[1]) // use the first N bits of the hash
-		indexOfShard = indexOfShard >> (16 - hb.N)    // shift to get the right index
+		indexOfShard = int32(hash[0])<<8 | int32(hash[1]) // use the first N bits of the hash
+		indexOfShard = indexOfShard >> (16 - hb.N)        // shift to get the right index
 	}
 
 	if hb.ShardOffsets[indexOfShard] == -1 {
-		hb.ShardSizes[indexOfShard] = 0                // initialize the shard size
-		hb.ShardOffsets[indexOfShard] = len(hb.Shards) // initialize the shard offset
+		hb.ShardSizes[indexOfShard] = 0                       // initialize the shard size
+		hb.ShardOffsets[indexOfShard] = int32(len(hb.Shards)) // initialize the shard offset
 		// TODO any easier way to set the size of the slice, we know that there is enough reserved capacity
 		for i := range hb.S {
-			hb.Shards = append(hb.Shards, i) // initialize the shard
+			hb.Shards = append(hb.Shards, int32(i)) // initialize the shard
 		}
 	}
 	hashIndex := hb.AddHashToShard(hb.ShardOffsets[indexOfShard], hash, data, item, flags)
 	return indexOfShard, hashIndex
 }
 
-func (hb *HashDB) HashExists(hash []byte) (int, int) {
-	indexOfShard := 0
+func (hb *HashDB) HashExists(hash []byte) (int32, int32) {
+	indexOfShard := int32(0)
 	if hb.N < 8 {
-		indexOfShard = int(hash[0]) >> (8 - hb.N) // use the first N bits of the hash
+		indexOfShard = int32(hash[0]) >> (8 - hb.N) // use the first N bits of the hash
 	} else if hb.N < 16 {
-		indexOfShard = int(hash[0])<<8 | int(hash[1]) // use the first N bits of the hash
-		indexOfShard = indexOfShard >> (16 - hb.N)    // shift to get the right index
+		indexOfShard = int32(hash[0])<<8 | int32(hash[1]) // use the first N bits of the hash
+		indexOfShard = indexOfShard >> (16 - hb.N)        // shift to get the right index
 	}
 
 	shardOffset := hb.ShardOffsets[indexOfShard]
@@ -229,8 +339,8 @@ func (hb *HashDB) HashExists(hash []byte) (int, int) {
 	}
 
 	// Binary search for the hash in the sorted array
-	indexOfHashInShard := -1
-	low, high := 0, hb.ShardSizes[indexOfShard]-1
+	indexOfHashInShard := int32(-1)
+	low, high := int32(0), hb.ShardSizes[indexOfShard]-1
 	for low <= high {
 		mid := (low + high) / 2
 		mido := hb.Hashes[hb.Shards[mid]]
@@ -246,14 +356,14 @@ func (hb *HashDB) HashExists(hash []byte) (int, int) {
 	}
 
 	if indexOfHashInShard >= 0 {
-		return indexOfShard, indexOfHashInShard
+		return int32(indexOfShard), indexOfHashInShard
 	}
 	return -1, -1
 }
 
-func (hb *HashDB) AddHashToShard(shardOffset int, hash []byte, data int32, item int32, flags uint32) int {
-	newHashOffset := len(hb.Hashes)
-	newHashNodeIndex := len(hb.HashNodes)
+func (hb *HashDB) AddHashToShard(shardOffset int32, hash []byte, data int32, item int32, flags uint32) int32 {
+	newHashOffset := int32(len(hb.Hashes))
+	newHashNodeIndex := int32(len(hb.HashNodes))
 	hb.HashNodes = append(hb.HashNodes, HashNode{HashOffset: uint32(newHashOffset), DataIndex: data, ItemIndex: item, Dummy: 0})
 	hb.Hashes = append(hb.Hashes, hash...) // append the new hash to the hash byte array
 	shardSize := hb.ShardSizes[shardOffset]
@@ -263,7 +373,7 @@ func (hb *HashDB) AddHashToShard(shardOffset int, hash []byte, data int32, item 
 	return newHashNodeIndex
 }
 
-func (d *DepTrackr) Insert(item ItemToAdd, deps []ItemToAdd) bool {
+func (d *DepTrackr) AddItem(item ItemToAdd, deps []ItemToAdd) bool {
 	itemIndex := int32(len(d.Items))
 
 	idHashShardIndex, idHashShardHashIndex := d.HashDB.HashExists(item.IdDigest)
@@ -376,6 +486,7 @@ func (d *DepTrackr) Insert(item ItemToAdd, deps []ItemToAdd) bool {
 }
 
 func (d *DepTrackr) QueryItem(itemHash []byte, verifyAll bool, verifyCb VerifyItemFunc) (State, error) {
+
 	idHashShardIndex, idHashShardHashIndex := d.HashDB.HashExists(itemHash)
 	if idHashShardIndex < 0 {
 		return StateOutOfDate, nil // item not found
@@ -433,4 +544,160 @@ func (d *DepTrackr) QueryItem(itemHash []byte, verifyAll bool, verifyCb VerifyIt
 	}
 
 	return finalState, nil // item is up to date, but we need to check dependencies
+}
+
+// CopyItem copies an item from one DepTrackr to another.
+func (src *DepTrackr) CopyItem(dst *DepTrackr, itemHash []byte) error {
+
+	// Note: Item and other indices are not identical between the two DepTrackrs,
+	// so we need to find the item in the source DepTrackr and add it to the destination DepTrackr.
+
+	idHashShardIndex, idHashShardHashIndex := src.HashDB.HashExists(itemHash)
+	if idHashShardIndex < 0 {
+		return fmt.Errorf("item with hash %x doesn't exists in the source DepTrackr", itemHash)
+	}
+
+	srcItemHashNodeIndex := src.HashDB.Shards[idHashShardIndex*src.HashDB.S+idHashShardHashIndex]
+	srcItemHashNode := &src.HashDB.HashNodes[srcItemHashNodeIndex]
+	srcItem := &src.Items[srcItemHashNode.ItemIndex]
+	srcItemDataNode := &src.DataNodes[srcItemHashNode.DataIndex]
+
+	srcChangeHashNodeIndex := srcItem.ChangeHashNodeIndex
+	srcChangeHashNode := &src.HashDB.HashNodes[srcChangeHashNodeIndex]
+	srcChangeDataNode := &src.DataNodes[srcChangeHashNode.DataIndex]
+	srcChangeHash := src.HashDB.Hashes[srcChangeHashNode.HashOffset : srcChangeHashNode.HashOffset+20]
+
+	// Create a destination main item
+	dstMainItemIndex := int32(len(dst.Items))
+	dstMainIdHashShardIndex, dstMainIdHashShardHashIndex := dst.HashDB.HashExists(itemHash)
+	if dstMainIdHashShardIndex >= 0 {
+		// The item already exists in the destination DepTrackr, so we just return
+		return fmt.Errorf("item with hash %x already exists in the destination DepTrackr", itemHash)
+	}
+
+	dstMainIdHashShardIndex, dstMainIdHashShardHashIndex = dst.HashDB.InsertHash(itemHash, int32(len(dst.DataNodes)), dstMainItemIndex, srcItemDataNode.Flags)
+	dstMainIdHashNodeIndex := int32(dst.HashDB.Shards[dstMainIdHashShardIndex*dst.HashDB.S+dstMainIdHashShardHashIndex])
+
+	dstMainChangeHashShardIndex, dstMainChangeHashShardHashIndex := dst.HashDB.HashExists(srcChangeHash)
+	dstMainChangeHashNodeIndex := src.HashDB.Shards[dstMainChangeHashShardIndex*dst.HashDB.S+dstMainChangeHashShardHashIndex]
+
+	// DataNode for the Item Id
+	dstMainIdDataNode := DataNode{
+		Length: srcItemDataNode.Length,
+		Flags:  srcItemDataNode.Flags,
+		Offset: uint32(len(dst.Data)),
+	}
+	dst.DataNodes = append(dst.DataNodes, dstMainIdDataNode)                                                              // add the DataNode for the Item Id
+	dst.Data = append(dst.Data, src.Data[srcItemDataNode.Offset:int32(srcItemDataNode.Offset)+srcItemDataNode.Length]...) // add the Item data to the Data array
+
+	// DataNode for the Item Change
+	dstMainChangeDataNode := DataNode{
+		Length: srcChangeDataNode.Length,
+		Flags:  srcChangeDataNode.Flags,
+		Offset: uint32(len(dst.Data)),
+	}
+	dst.DataNodes = append(dst.DataNodes, dstMainChangeDataNode)                                                                // add the DataNode for the Item Change
+	dst.Data = append(dst.Data, src.Data[srcChangeDataNode.Offset:int32(srcChangeDataNode.Offset)+srcChangeDataNode.Length]...) // add the Item change data to the Data array
+
+	// Allocate the dependency array in the destination DepTrackr
+	depArrayStart := len(dst.Deps)
+	depArrayEnd := depArrayStart + int(srcItem.ArrayLength)
+
+	// Create the main item in the destination DepTrackr
+	dstMainItem := Item{
+		IDHashNodeIndex:     dstMainIdHashNodeIndex,
+		ChangeHashNodeIndex: dstMainChangeHashNodeIndex,
+		ArrayStart:          uint32(depArrayStart),
+		ArrayLength:         uint32(srcItem.ArrayLength),
+	}
+	dst.Items = append(dst.Items, dstMainItem) // add the main item to the destination DepTrackr
+
+	// Now we need to copy the dependencies of the item from the source DepTrackr to the destination DepTrackr
+	for depArrayStart < depArrayEnd {
+		depSrcItemIndex := src.Deps[depArrayStart]
+		depSrcItem := &src.Items[depSrcItemIndex]
+
+		depSrcIdHashIndex := depSrcItem.IDHashNodeIndex
+		depSrcIdHashNode := &src.HashDB.HashNodes[depSrcIdHashIndex]
+		depSrcIdHash := src.HashDB.Hashes[depSrcIdHashNode.HashOffset : depSrcIdHashNode.HashOffset+20]
+
+		depSrcIdDataNode := &src.DataNodes[depSrcIdHashNode.DataIndex]
+
+		depSrcChangeHashIndex := depSrcItem.ChangeHashNodeIndex
+		depSrcChangeHashNode := &src.HashDB.HashNodes[depSrcChangeHashIndex]
+		depSrcChangeDataNode := &src.DataNodes[depSrcChangeHashNode.DataIndex]
+
+		depDstIdHashShardIndex, depDstIdHashShardHashIndex := dst.HashDB.HashExists(depSrcIdHash)
+
+		// The dep item either exists or it doesn't yet exist in which case we need to create it
+		depDstItemIndex := int32(-1)
+		if depDstIdHashShardIndex < 0 {
+
+			// The dependency item doesn't exist, so we need to create it
+			depDstItemIndex = int32(len(dst.Items))
+
+			depDstIdHashShardIndex, depDstIdHashShardHashIndex = dst.HashDB.InsertHash(depSrcIdHash, int32(len(dst.DataNodes)), depDstItemIndex, depSrcIdDataNode.Flags)
+			depDstIdHashNodeIndex := int32(dst.HashDB.Shards[depDstIdHashShardIndex*dst.HashDB.S+depDstIdHashShardHashIndex])
+
+			if depSrcIdHashNode.DataIndex >= 0 {
+				depSrcIdDataNode := &src.DataNodes[depSrcIdHashNode.DataIndex]
+				depDstIdDataNodeIndex := int32(len(dst.DataNodes))
+				dst.DataNodes = append(dst.DataNodes, DataNode{
+					Length: depSrcIdDataNode.Length,
+					Flags:  depSrcIdDataNode.Flags,
+					Offset: uint32(len(dst.Data)),
+				})
+				dst.Data = append(dst.Data, src.Data[depSrcIdDataNode.Offset:int32(depSrcIdDataNode.Offset)+depSrcIdDataNode.Length]...)
+				dst.HashDB.HashNodes[depDstIdHashNodeIndex].DataIndex = depDstIdDataNodeIndex // update the data index of the hash node
+			}
+
+			depSrcChangeHashIndex := depSrcItem.ChangeHashNodeIndex
+			depSrcChangeHashNode := &src.HashDB.HashNodes[depSrcChangeHashIndex]
+
+			depDstChangeDataNodeIndex := int32(-1)
+			if depSrcChangeHashNode.DataIndex >= 0 {
+				depSrcChangeDataNode := &src.DataNodes[depSrcChangeHashNode.DataIndex]
+				depDstChangeDataNodeIndex = int32(len(dst.DataNodes))
+				dst.DataNodes = append(dst.DataNodes, DataNode{
+					Length: depSrcChangeDataNode.Length,
+					Flags:  depSrcChangeDataNode.Flags,
+					Offset: uint32(len(dst.Data)),
+				})
+				dst.Data = append(dst.Data, src.Data[depSrcChangeDataNode.Offset:int32(depSrcChangeDataNode.Offset)+depSrcChangeDataNode.Length]...)
+			}
+
+			depDstChangeHashNodeIndex := int32(-1)
+			if depSrcChangeHashNode.HashSize > 0 {
+				depSrcChangeHash := src.HashDB.Hashes[depSrcChangeHashNode.HashOffset : depSrcChangeHashNode.HashOffset+uint32(depSrcChangeHashNode.HashSize)]
+				depDstChangeHashShardIndex, depDstChangeHashShardHashIndex := dst.HashDB.InsertHash(depSrcChangeHash, depDstChangeDataNodeIndex, depDstItemIndex, depSrcChangeDataNode.Flags)
+				depDstChangeHashNodeIndex = int32(dst.HashDB.Shards[depDstChangeHashShardIndex*dst.HashDB.S+depDstChangeHashShardHashIndex])
+			} else {
+				depDstChangeHashNodeIndex = int32(len(dst.HashDB.HashNodes))
+				dst.HashDB.HashNodes = append(dst.HashDB.HashNodes, HashNode{
+					HashOffset: 0, // No hash for the change, so we set it to 0
+					DataIndex:  depDstChangeDataNodeIndex,
+					ItemIndex:  depDstItemIndex, // This is the index of the item that this hash belongs to
+					Dummy:      0,               // Dummy value, not used
+				})
+			}
+
+			dst.Items = append(dst.Items, Item{
+				IDHashNodeIndex:     depDstIdHashNodeIndex,
+				ChangeHashNodeIndex: depDstChangeHashNodeIndex,
+				ArrayStart:          0, // Dependencies do not have dependencies, so we set the start to 0
+				ArrayLength:         0, // No dependencies for the dependency item
+			})
+
+		} else {
+			depDstHashNodeIndex := dst.HashDB.Shards[depDstIdHashShardIndex*dst.HashDB.S+depDstIdHashShardHashIndex]
+			depDstHashNode := &dst.HashDB.HashNodes[depDstHashNodeIndex]
+			depDstItemIndex = depDstHashNode.ItemIndex
+		}
+
+		dst.Deps = append(dst.Deps, depDstItemIndex) // add the dependency item index
+
+		depArrayStart += 1
+	}
+
+	return nil
 }
