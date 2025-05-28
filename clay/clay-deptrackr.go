@@ -60,7 +60,7 @@ func (d *DepTrackr) QueryFile(srcfileAbsFilepath string) bool {
 	d.Hasher.Write([]byte(srcfileAbsFilepath))
 	mainDigest := d.Hasher.Sum(nil)
 
-	state, err := d.Current.QueryItem(mainDigest, true, func(itemChangeFlags uint32, itemChangeData []byte, itemIdFlags uint32, itemIdData []byte) dep.State {
+	state, err := d.Current.QueryItem(mainDigest, true, func(itemChangeFlags uint16, itemChangeData []byte, itemIdFlags uint16, itemIdData []byte) dep.State {
 		if itemIdFlags&dep.ItemFlagSourceFile == dep.ItemFlagSourceFile || itemIdFlags&dep.ItemFlagDependency == dep.ItemFlagDependency {
 			srcFileInfo, err := os.Stat(string(itemIdData))
 			if err == nil {

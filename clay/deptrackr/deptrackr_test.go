@@ -56,9 +56,9 @@ func TestDepTrackr(t *testing.T) {
 	}
 
 	// Query the main item
-	mainItemState, err := tracker.QueryItem(mainItem.IdDigest, true, func(itemChangeFlags uint32, itemChangeData []byte, itemIdFlags uint32, itemIdData []byte) State {
-		if itemChangeFlags != uint32(mainItem.ChangeFlags) || string(itemChangeData) != string(mainItem.ChangeData) ||
-			itemIdFlags != uint32(mainItem.IdFlags) || string(itemIdData) != string(mainItem.IdData) {
+	mainItemState, err := tracker.QueryItem(mainItem.IdDigest, true, func(itemChangeFlags uint16, itemChangeData []byte, itemIdFlags uint16, itemIdData []byte) State {
+		if itemChangeFlags != mainItem.ChangeFlags || string(itemChangeData) != string(mainItem.ChangeData) ||
+			itemIdFlags != mainItem.IdFlags || string(itemIdData) != string(mainItem.IdData) {
 			t.Fatalf("Main item data mismatch")
 		}
 		return StateUpToDate
