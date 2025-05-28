@@ -438,30 +438,20 @@ func (d *DepTrackr) SetShardAsSorted(shardOffset int32) {
 }
 
 func (d *DepTrackr) InsertItemIntoDb(hash []byte, item int32) {
-	indexOfShard := NilIndex
-	if d.N < 8 {
-		indexOfShard = int32(hash[0]) >> (8 - d.N) // use the first N bits of the hash
-	} else if d.N < 16 {
-		indexOfShard = int32(hash[0])<<8 | int32(hash[1]) // use the first N bits of the hash
-		indexOfShard = indexOfShard >> (16 - d.N)         // shift to get the right index
-	}
+	indexOfShard := int32(hash[0])<<8 | int32(hash[1]) // use the first N bits of the hash
+	indexOfShard = indexOfShard >> (16 - d.N)          // shift to get the right index
 
 	if d.ShardOffsets[indexOfShard] == NilIndex {
 		d.ShardSizes[indexOfShard] = 0                      // initialize the shard size
 		d.ShardOffsets[indexOfShard] = int32(len(d.Shards)) // initialize the shard offset
 		d.Shards = append(d.Shards, d.EmptyShard...)        // initialize the shard, all of them set to -1
 	}
-	d.AddItemToShard(d.ShardOffsets[indexOfShard], item)
+	d.AddItemToShard(indexOfShard, item)
 }
 
 func (d *DepTrackr) DoesItemExist(hash []byte) int32 {
-	indexOfShard := NilIndex
-	if d.N < 8 {
-		indexOfShard = int32(hash[0]) >> (8 - d.N) // use the first N bits of the hash
-	} else if d.N < 16 {
-		indexOfShard = int32(hash[0])<<8 | int32(hash[1]) // use the first N bits of the hash
-		indexOfShard = indexOfShard >> (16 - d.N)         // shift to get the right index
-	}
+	indexOfShard := int32(hash[0])<<8 | int32(hash[1]) // use the first N bits of the hash
+	indexOfShard = indexOfShard >> (16 - d.N)          // shift to get the right index
 
 	shardOffset := d.ShardOffsets[indexOfShard]
 	if shardOffset == NilIndex {
@@ -478,12 +468,12 @@ func (d *DepTrackr) DoesItemExist(hash []byte) int32 {
 	}
 
 	// Binary search for the hash in the sorted array
-	indexOfHashInShard := int32(0)
+	indexOfHashInShard := NilIndex
 	low, high := int32(0), d.ShardSizes[indexOfShard]-1
 	for low <= high {
 		mid := (low + high) / 2
-		midItemIndex := d.Shards[indexOfShard*d.S+mid]
-		midItemHash := d.ItemIdHash[midItemIndex+d.HashSize : (midItemIndex+1)+d.HashSize]
+		midItemIndex := d.Shards[shardOffset+mid]
+		midItemHash := d.ItemIdHash[midItemIndex*d.HashSize : (midItemIndex+1)*d.HashSize]
 		c := d.CompareDigest(midItemHash, hash)
 		if c == 0 {
 			indexOfHashInShard = mid // found
@@ -495,15 +485,16 @@ func (d *DepTrackr) DoesItemExist(hash []byte) int32 {
 		}
 	}
 
-	if indexOfHashInShard >= 0 {
-		return d.Shards[shardOffset+indexOfHashInShard] // return the index of the item in the shard
+	if indexOfHashInShard == NilIndex {
+		return NilIndex
 	}
-	return NilIndex
+	return d.Shards[shardOffset+indexOfHashInShard] // return the index of the item in the shard
 }
 
 func (d *DepTrackr) AddItemToShard(shardIndex int32, item int32) {
 	shardSize := d.ShardSizes[shardIndex]
-	d.Shards[shardIndex+shardSize] = item    // add the new item index to the shard
+	shardOffset := d.ShardOffsets[shardIndex]
+	d.Shards[shardOffset+shardSize] = item   // add the new item index to the shard
 	d.ShardSizes[shardIndex] = shardSize + 1 // increment the size of the shard
 	d.SetShardAsDirty(shardIndex)
 }
