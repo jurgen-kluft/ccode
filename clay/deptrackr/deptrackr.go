@@ -59,7 +59,7 @@ func NewDepTrackr(storageDir string) *DepTrackr {
 		S:                    s,                                //
 		ShardOffsets:         make([]int32, 1<<n),              // initial capacity of 2^N shards
 		ShardSizes:           make([]int32, 1<<n),              // initial capacity of 2^N shards
-		DirtyFlags:           make([]uint8, (n+7)>>3),          // initial capacity of N bits for dirty flags (rounded up to the nearest byte)
+		DirtyFlags:           make([]uint8, ((1<<n)+7)>>3),     // initial capacity of N bits for dirty flags (rounded up to the nearest byte)
 		Shards:               make([]int32, 0, (1<<n)*s),       // initial capacity of 2^N shards where each shard has s elements
 		EmptyShard:           make([]int32, s, s),              // an empty shard, used to copy when making a new shard in Shards
 		Deps:                 make([]int32, 0, reserve*64),     //
@@ -69,9 +69,15 @@ func NewDepTrackr(storageDir string) *DepTrackr {
 	// Set the first 8 elements of EmptyShard to -1
 	pattern := []int32{NilIndex, NilIndex, NilIndex, NilIndex, NilIndex, NilIndex, NilIndex, NilIndex}
 	copy(d.EmptyShard, pattern)
+	copy(d.ShardOffsets, pattern)
+
 	// Fill the rest of the shard with the pattern, increasing the size of the pattern
 	for j := len(pattern); j < len(d.EmptyShard); j *= 2 {
 		copy(d.EmptyShard[j:], d.EmptyShard[:j])
+	}
+
+	for j := len(pattern); j < len(d.ShardOffsets); j *= 2 {
+		copy(d.ShardOffsets[j:], d.ShardOffsets[:j])
 	}
 
 	return d
@@ -102,7 +108,7 @@ func (src *DepTrackr) NewDB() *DepTrackr {
 		S:                    s,                                                  //
 		ShardOffsets:         make([]int32, 1<<n),                                // initial capacity of 2^N shards
 		ShardSizes:           make([]int32, 1<<n),                                // initial capacity of 2^N shards
-		DirtyFlags:           make([]uint8, (n+7)>>3),                            // initial capacity of N bits for dirty flags (rounded up to the nearest byte)
+		DirtyFlags:           make([]uint8, ((1<<n)+7)>>3),                       // initial capacity of N bits for dirty flags (rounded up to the nearest byte)
 		Shards:               make([]int32, 0, (1<<n)*s),                         // initial capacity of 2^N shards where each shard has s elements
 		EmptyShard:           make([]int32, s, s),                                // an empty shard, used to copy when making a new shard in Shards
 		Deps:                 make([]int32, 0, len(src.Deps)+(len(src.Deps)/10)), //
@@ -123,20 +129,6 @@ func (src *DepTrackr) NewDB() *DepTrackr {
 
 // --------------------------------------------------------------------------
 // Helper functions to cast loaded byte arrays to other types
-func castByteArrayToInt32Array(s []byte) []int32 {
-	if len(s) == 0 || len(s)&3 != 0 {
-		return nil
-	}
-	return unsafe.Slice((*int32)(unsafe.Pointer(&s[0])), len(s)>>2)
-}
-
-func castByteArrayToUInt16Array(s []byte) []uint16 {
-	if len(s) == 0 || len(s)&3 != 0 {
-		return nil
-	}
-	return unsafe.Slice((*uint16)(unsafe.Pointer(&s[0])), len(s)>>2)
-}
-
 func castInt32ArrayToByteArray(i []int32) []byte {
 	if len(i) == 0 {
 		return []byte{}
@@ -479,7 +471,7 @@ func (d *DepTrackr) DoesItemExist(hash []byte) int32 {
 	shardIsDirty := d.IsShardDirty(indexOfShard)
 	if shardIsDirty {
 		// Sort the indices based on the hashes
-		// The indices are stored in d.Shards from [indexOfShard * d.S : (indexOfShard + 1) * d.S]
+		// The indices are stored in d.Shards from 'indexOfShard * d.S' until 'indexOfShard * d.S + d.ShardSizes[indexOfShard]'
 
 		// Mark the shard as sorted
 		d.SetShardAsSorted(indexOfShard)
@@ -490,8 +482,9 @@ func (d *DepTrackr) DoesItemExist(hash []byte) int32 {
 	low, high := int32(0), d.ShardSizes[indexOfShard]-1
 	for low <= high {
 		mid := (low + high) / 2
-		mido := mid * int32(d.HashSize)
-		c := d.CompareDigest(d.ItemIdHash[mido:mido+int32(d.HashSize)], hash)
+		midItemIndex := d.Shards[indexOfShard*d.S+mid]
+		midItemHash := d.ItemIdHash[midItemIndex+d.HashSize : (midItemIndex+1)+d.HashSize]
+		c := d.CompareDigest(midItemHash, hash)
 		if c == 0 {
 			indexOfHashInShard = mid // found
 			break
@@ -508,11 +501,11 @@ func (d *DepTrackr) DoesItemExist(hash []byte) int32 {
 	return NilIndex
 }
 
-func (d *DepTrackr) AddItemToShard(shardOffset int32, item int32) {
-	shardSize := d.ShardSizes[shardOffset]
-	d.Shards[shardOffset+shardSize] = item    // add the new item index to the shard
-	d.ShardSizes[shardOffset] = shardSize + 1 // increment the size of the shard
-	d.SetShardAsDirty(shardOffset)
+func (d *DepTrackr) AddItemToShard(shardIndex int32, item int32) {
+	shardSize := d.ShardSizes[shardIndex]
+	d.Shards[shardIndex+shardSize] = item    // add the new item index to the shard
+	d.ShardSizes[shardIndex] = shardSize + 1 // increment the size of the shard
+	d.SetShardAsDirty(shardIndex)
 }
 
 func (d *DepTrackr) AddItem(item ItemToAdd, deps []ItemToAdd) bool {
@@ -523,7 +516,7 @@ func (d *DepTrackr) AddItem(item ItemToAdd, deps []ItemToAdd) bool {
 		return false
 	}
 
-	itemIndex := int32(len(d.ItemIdHash))
+	itemIndex := int32(len(d.ItemIdFlags))
 	d.InsertItemIntoDb(item.IdDigest, itemIndex)
 
 	// Insert the item into the main arrays
@@ -543,7 +536,7 @@ func (d *DepTrackr) AddItem(item ItemToAdd, deps []ItemToAdd) bool {
 	// Insert dependencies
 	// Note: dependencies as an Item are shared
 	for _, dep := range deps {
-		depItemIndex := int32(len(d.ItemIdHash))
+		depItemIndex := int32(len(d.ItemIdFlags))
 		if existingItemIndex := d.DoesItemExist(dep.IdDigest); existingItemIndex != NilIndex {
 			depItemIndex = existingItemIndex
 		} else {
@@ -585,11 +578,14 @@ func (d *DepTrackr) QueryItem(itemHash []byte, verifyAll bool, verifyCb VerifyIt
 
 	// Check if the item is up to date
 	itemState := verifyCb(itemChangeFlags, itemChangeData, itemIdFlags, itemIdData)
-	if itemState == StateOutOfDate && !verifyAll {
-		return StateOutOfDate, nil
-	}
 
-	finalState := StateOutOfDate
+	outOfDateCount := 0
+	if itemState == StateOutOfDate {
+		if !verifyAll {
+			return StateOutOfDate, nil
+		}
+		outOfDateCount++
+	}
 
 	// Check the dependencies
 	depStart := d.ItemDepsStart[itemIndex]
@@ -606,7 +602,7 @@ func (d *DepTrackr) QueryItem(itemHash []byte, verifyAll bool, verifyCb VerifyIt
 			if !verifyAll {
 				return StateOutOfDate, nil // if we are not verifying all, we can return early
 			}
-			finalState = StateOutOfDate // at least one dependency is out of date
+			outOfDateCount++
 		}
 
 		// If the dependency is ignored, we do not change the final state
@@ -614,7 +610,10 @@ func (d *DepTrackr) QueryItem(itemHash []byte, verifyAll bool, verifyCb VerifyIt
 		depStart++
 	}
 
-	return finalState, nil // item is up to date, but we need to check dependencies
+	if outOfDateCount == 0 {
+		return StateUpToDate, nil // item is up to date, but we need to check dependencies
+	}
+	return StateOutOfDate, nil
 }
 
 // CopyItem copies an item from one DepTrackr to another.
@@ -639,7 +638,7 @@ func (src *DepTrackr) CopyItem(dst *DepTrackr, itemHash []byte) error {
 	itemChangeData := src.Data[itemChangeDataOffset : itemChangeDataOffset+itemChangeDataSize]
 
 	// Add a new item in dst
-	dstItemIndex := int32(len(dst.ItemIdHash))                                        // index of the new item in the destination DepTrackr
+	dstItemIndex := int32(len(dst.ItemIdFlags))                                       // index of the new item in the destination DepTrackr
 	dst.ItemIdHash = append(dst.ItemIdHash, itemIdHash...)                            // add the item Id hash
 	dst.ItemChangeHash = append(dst.ItemChangeHash, itemChangeHash...)                // add the item Change hash
 	dst.ItemIdFlags = append(dst.ItemIdFlags, itemIdFlags)                            // add the item Id flags
@@ -671,7 +670,7 @@ func (src *DepTrackr) CopyItem(dst *DepTrackr, itemHash []byte) error {
 		depItemChangeDataSize := src.ItemChangeDataSize[srcDepItemIndex]
 		depItemChangeData := src.Data[depItemChangeDataOffset : depItemChangeDataOffset+depItemChangeDataSize]
 
-		dstDepItemIndex := int32(len(dst.ItemIdHash))                                     // index of the new dependency item in the destination DepTrackr
+		dstDepItemIndex := int32(len(dst.ItemIdFlags))                                    // index of the new dependency item in the destination DepTrackr
 		dst.ItemIdHash = append(dst.ItemIdHash, depItemIdHash...)                         // add the dependency Id hash
 		dst.ItemChangeHash = append(dst.ItemChangeHash, depItemChangeHash...)             // add the dependency Change hash
 		dst.ItemIdFlags = append(dst.ItemIdFlags, depItemIdFlags)                         // add the dependency Id flags
