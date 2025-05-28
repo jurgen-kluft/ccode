@@ -37,8 +37,8 @@ import (
 //
 
 type depTrackr struct {
-	StoragePath          string // Path to the directory where we store the database file
-	IsReadOnly           bool
+	StoragePath          string   // Path to the directory where we store the database file
+	Signature            string   // max 32 characters signature, e.g. ".d deptracker v1.0.0"
 	HashSize             int32    // Size of the hash, this is 20 bytes for SHA1
 	ItemIdHash           []byte   // Hash, this is the ID of the item (filepath, label (e.g. 'MSVC C++ compiler cmd-line arguments))
 	ItemChangeHash       []byte   // Hash, this identifies the 'change' (modification-time, file-size, file-content, command-line arguments, string, etc..)
@@ -61,26 +61,15 @@ type depTrackr struct {
 	EmptyShard           []int32  // A shard initialized to a size of S and full of NillIndex
 }
 
-type WriteableDepTrackr interface {
-	AddItem(item ItemToAdd, deps []ItemToAdd) bool
-	Save() error
-}
-
-type ReadableDepTracker interface {
-	NewDB() WriteableDepTrackr
-	QueryItem(itemHash []byte, verifyAll bool, verifyCb VerifyItemFunc) (State, error)
-	CopyItem(dst WriteableDepTrackr, itemHash []byte) error
-}
-
-func newDepTrackr(storageDir string) *depTrackr {
+func newDepTrackr(storageDir string, signature string) *depTrackr {
 	reserve := 1024 // A new database is set to reserve 1024 items
 	hs := int32(20) // SHA1 hash size is 20 bytes
 	n := int32(10)  // how many bits we take from the hash to index into the buckets (0-15)
 	s := int32(512) // size of a shard, this is the number of items per shard, default is 512
 
 	d := &depTrackr{
-		StoragePath:          storageDir,
-		IsReadOnly:           true,
+		StoragePath:          storageDir,                       //
+		Signature:            signature,                        //
 		HashSize:             hs,                               //
 		ItemIdHash:           make([]byte, 0, reserve*int(hs)), //
 		ItemChangeHash:       make([]byte, 0, reserve*int(hs)), //
@@ -120,7 +109,7 @@ func newDepTrackr(storageDir string) *depTrackr {
 	return d
 }
 
-func (src *depTrackr) NewDB() WriteableDepTrackr {
+func (src *depTrackr) newDepTrackr() *depTrackr {
 	reserve := len(src.ItemIdHash)
 	reserve = reserve + (reserve / 10) // reserve 10% more space for the new DB
 
@@ -129,9 +118,9 @@ func (src *depTrackr) NewDB() WriteableDepTrackr {
 	s := src.S
 
 	newTrackr := &depTrackr{
-		StoragePath:          src.StoragePath,
-		IsReadOnly:           false,
-		HashSize:             hs,                                                 // SHA1 hash size is 20 bytes
+		StoragePath:          src.StoragePath,                                    //
+		Signature:            src.Signature,                                      // copy the signature from the source
+		HashSize:             hs,                                                 //
 		ItemIdHash:           make([]byte, 0, reserve*int(hs)),                   //
 		ItemChangeHash:       make([]byte, 0, reserve*int(hs)),                   //
 		ItemIdFlags:          make([]uint16, 0, reserve),                         //
@@ -182,7 +171,7 @@ func castUint16ArrayToByteArray(i []uint16) []byte {
 }
 
 // --------------------------------------------------------------------------
-func (d *depTrackr) Save() error {
+func (d *depTrackr) save() error {
 	dbFile, err := os.Create(d.StoragePath + "/deptrackr.point.db")
 	if err != nil {
 		return err
@@ -190,6 +179,10 @@ func (d *depTrackr) Save() error {
 	defer dbFile.Close()
 
 	header := make([]byte, 0, 64)
+
+	// Write the signature to the header, max 32 bytes
+	signatureBytes := []byte(d.Signature)
+	header = append(header, signatureBytes[:32]...)
 
 	// Number of items, also indicates the size of any Item... array
 	header = binary.LittleEndian.AppendUint32(header, uint32(len(d.ItemIdHash)))
@@ -281,13 +274,34 @@ func (d *depTrackr) Save() error {
 	return nil
 }
 
-func Load(storagePath string) ReadableDepTracker {
+func loadDepTrackr(storagePath string, signature string) *depTrackr {
+
+	// If "/deptrackr.main.db" exists and "/deptrackr.point.db" then
+	// delete "/deptrackr.main.db" and rename "/deptrackr.point.db" to "/deptrackr.main.db".
+	var err error
+	if _, err = os.Stat(storagePath + "/deptrackr.point.db"); err == nil {
+		if _, err = os.Stat(storagePath + "/deptrackr.main.db"); err == nil {
+			if err = os.Remove(storagePath + "/deptrackr.main.db"); err == nil {
+				err = os.Rename(storagePath+"/deptrackr.point.db", storagePath+"/deptrackr.main.db")
+			}
+		} else if os.IsNotExist(err) {
+			// If the main database does not exist, we just rename the point database to the main database
+			err = os.Rename(storagePath+"/deptrackr.point.db", storagePath+"/deptrackr.main.db")
+		}
+	} else {
+		_, err = os.Stat(storagePath + "/deptrackr.main.db")
+	}
+
+	// On any error, we just create a new database
+	if err != nil {
+		return newDepTrackr(storagePath, signature)
+	}
 
 	// Open the database file
 	dbFile, err := os.Open(storagePath + "/deptrackr.main.db")
 	if err != nil {
 		// No database exists on disk, so we just create an empty one
-		d := newDepTrackr(storagePath)
+		d := newDepTrackr(storagePath, signature)
 		return d
 	}
 	defer dbFile.Close()
@@ -295,8 +309,13 @@ func Load(storagePath string) ReadableDepTracker {
 	// Read the header
 	header := make([]byte, 64)
 	if _, err := dbFile.Read(header); err != nil {
-		d := newDepTrackr(storagePath)
-		return d
+		return newDepTrackr(storagePath, signature)
+	}
+
+	loadedSignature := string(header[0:32])
+	if loadedSignature != signature {
+		// The signature does not match, so we create a new database
+		return newDepTrackr(storagePath, signature)
 	}
 
 	numItems := int(binary.LittleEndian.Uint32(header[0:4]))
@@ -307,91 +326,79 @@ func Load(storagePath string) ReadableDepTracker {
 
 	newItemIdHash := make([]byte, 0, numItems*int(newHashSize))
 	if bytesRead, err := dbFile.Read(newItemIdHash); err != nil || bytesRead != numItems*int(newHashSize) {
-		d := newDepTrackr(storagePath)
-		return d
+		return newDepTrackr(storagePath, signature)
 	}
 	newItemChangeHash := make([]byte, numItems*int(newHashSize))
 	if bytesRead, err := dbFile.Read(newItemChangeHash); err != nil || bytesRead != numItems*int(newHashSize) {
-		d := newDepTrackr(storagePath)
-		return d
+		return newDepTrackr(storagePath, signature)
 	}
 
 	newItemIdFlags := make([]uint16, numItems)
 	itemIdFlagsBytes := castUint16ArrayToByteArray(newItemIdFlags)
 	itemIdFlagsNumBytes := numItems * 2
 	if bytesRead, err := dbFile.Read(itemIdFlagsBytes); err != nil || bytesRead != itemIdFlagsNumBytes {
-		d := newDepTrackr(storagePath)
-		return d
+		return newDepTrackr(storagePath, signature)
 	}
 
 	newItemChangeFlags := make([]uint16, numItems)
 	itemChangeFlagsBytes := castUint16ArrayToByteArray(newItemChangeFlags)
 	itemChangeFlagsNumBytes := numItems * 2
 	if bytesRead, err := dbFile.Read(itemChangeFlagsBytes); err != nil || bytesRead != itemChangeFlagsNumBytes {
-		d := newDepTrackr(storagePath)
-		return d
+		return newDepTrackr(storagePath, signature)
 	}
 
 	newItemDepsStart := make([]int32, numItems)
 	itemDepsStartBytes := castInt32ArrayToByteArray(newItemDepsStart)
 	itemDepsStartNumBytes := numItems * 4
 	if bytesRead, err := dbFile.Read(itemDepsStartBytes); err != nil || bytesRead != itemDepsStartNumBytes {
-		d := newDepTrackr(storagePath)
-		return d
+		return newDepTrackr(storagePath, signature)
 	}
 
 	newItemDepsCount := make([]int32, numItems)
 	itemDepsCountBytes := castInt32ArrayToByteArray(newItemDepsCount)
 	itemDepsCountNumBytes := numItems * 4
 	if bytesRead, err := dbFile.Read(itemDepsCountBytes); err != nil || bytesRead != itemDepsCountNumBytes {
-		d := newDepTrackr(storagePath)
-		return d
+		return newDepTrackr(storagePath, signature)
 	}
 
 	newItemIdDataOffset := make([]int32, numItems)
 	itemIdDataOffsetBytes := castInt32ArrayToByteArray(newItemIdDataOffset)
 	itemIdDataOffsetNumBytes := numItems * 4
 	if bytesRead, err := dbFile.Read(itemIdDataOffsetBytes); err != nil || bytesRead != itemIdDataOffsetNumBytes {
-		d := newDepTrackr(storagePath)
-		return d
+		return newDepTrackr(storagePath, signature)
 	}
 
 	newItemIdDataSize := make([]int32, numItems)
 	itemIdDataSizeBytes := castInt32ArrayToByteArray(newItemIdDataSize)
 	itemIdDataSizeNumBytes := numItems * 4
 	if bytesRead, err := dbFile.Read(itemIdDataSizeBytes); err != nil || bytesRead != itemIdDataSizeNumBytes {
-		d := newDepTrackr(storagePath)
-		return d
+		return newDepTrackr(storagePath, signature)
 	}
 
 	newItemChangeDataOffset := make([]int32, numItems)
 	itemChangeDataOffsetBytes := castInt32ArrayToByteArray(newItemChangeDataOffset)
 	itemChangeDataOffsetNumBytes := numItems * 4
 	if bytesRead, err := dbFile.Read(itemChangeDataOffsetBytes); err != nil || bytesRead != itemChangeDataOffsetNumBytes {
-		d := newDepTrackr(storagePath)
-		return d
+		return newDepTrackr(storagePath, signature)
 	}
 
 	newItemChangeDataSize := make([]int32, numItems)
 	itemChangeDataSizeBytes := castInt32ArrayToByteArray(newItemChangeDataSize)
 	itemChangeDataSizeNumBytes := numItems * 4
 	if bytesRead, err := dbFile.Read(itemChangeDataSizeBytes); err != nil || bytesRead != itemChangeDataSizeNumBytes {
-		d := newDepTrackr(storagePath)
-		return d
+		return newDepTrackr(storagePath, signature)
 	}
 
 	newDeps := make([]int32, depsArrayLen)
 	depsBytes := castInt32ArrayToByteArray(newDeps)
 	depsNumBytes := depsArrayLen * 4
 	if bytesRead, err := dbFile.Read(depsBytes); err != nil || bytesRead != depsNumBytes {
-		d := newDepTrackr(storagePath)
-		return d
+		return newDepTrackr(storagePath, signature)
 	}
 
 	newData := make([]byte, dataArrayLen)
 	if bytesRead, err := dbFile.Read(newData); err != nil || bytesRead != dataArrayLen {
-		d := newDepTrackr(storagePath)
-		return d
+		return newDepTrackr(storagePath, signature)
 	}
 
 	shardN := int32(binary.LittleEndian.Uint32(header[0:4]))
@@ -402,37 +409,33 @@ func Load(storagePath string) ReadableDepTracker {
 	shardOffsetsBytes := castInt32ArrayToByteArray(newShardOffsets)
 	shardOffsetsNumBytes := (1 << shardN) * 4 // 4 bytes per int32
 	if bytesRead, err := dbFile.Read(shardOffsetsBytes); err != nil || bytesRead != shardOffsetsNumBytes {
-		d := newDepTrackr(storagePath)
-		return d
+		return newDepTrackr(storagePath, signature)
 	}
 
 	newShardSizes := make([]int32, (1 << shardN))
 	shardSizesBytes := castInt32ArrayToByteArray(newShardSizes)
 	shardSizesNumBytes := (1 << shardN) * 4 // 4 bytes per int32
 	if bytesRead, err := dbFile.Read(shardSizesBytes); err != nil || bytesRead != shardSizesNumBytes {
-		d := newDepTrackr(storagePath)
-		return d
+		return newDepTrackr(storagePath, signature)
 	}
 
 	newDirtyFlags := make([]byte, (shardN+7)>>3) // N bits, rounded up to the nearest byte
 	dirtyFlagsBytes := newDirtyFlags
 	dirtyFlagsNumBytes := int((shardN + 7) >> 3) // N bits, rounded up to the nearest byte
 	if bytesRead, err := dbFile.Read(dirtyFlagsBytes); err != nil || bytesRead != dirtyFlagsNumBytes {
-		d := newDepTrackr(storagePath)
-		return d
+		return newDepTrackr(storagePath, signature)
 	}
 
 	newShards := make([]int32, (shardsArrayLen * 4))
 	shardsDataBytes := castInt32ArrayToByteArray(newShards)
 	shardsDataNumBytes := int(shardsArrayLen * 4) // 4 bytes per int32
 	if bytesRead, err := dbFile.Read(shardsDataBytes); err != nil || bytesRead != shardsDataNumBytes {
-		d := newDepTrackr(storagePath)
-		return d
+		return newDepTrackr(storagePath, signature)
 	}
 
 	d := &depTrackr{
-		StoragePath:          storagePath,
-		IsReadOnly:           true,
+		StoragePath:          storagePath,                   // Path to the directory where we store the database file
+		Signature:            signature,                     // Signature of the database
 		HashSize:             newHashSize,                   // SHA1 hash size is 20 bytes
 		ItemIdHash:           newItemIdHash,                 // Item Id hash
 		ItemChangeHash:       newItemChangeHash,             // Item Change hash
@@ -471,7 +474,8 @@ const (
 	ItemFlagSourceFile = 1
 	ItemFlagDependency = 2
 	ItemFlagString     = 8
-	ItemFlagUpToDate   = 128 // This is set when the item is up to date, otherwise it is out of date
+	ItemFlagUpToDate   = 64  // This is set when the item is up to date
+	ItemFlagOutOfDate  = 128 // This is set when the item is out of dat
 )
 
 const (
@@ -585,10 +589,6 @@ func (d *depTrackr) DoesItemExistInDb(hash []byte) int32 {
 }
 
 func (d *depTrackr) AddItem(item ItemToAdd, deps []ItemToAdd) bool {
-	if d.IsReadOnly {
-		return false
-	}
-
 	existingItemIndex := d.DoesItemExistInDb(item.IdDigest)
 	if existingItemIndex != NilIndex {
 		// This should not happen, as we are inserting a new item
@@ -660,10 +660,13 @@ func (d *depTrackr) QueryItem(itemHash []byte, verifyAll bool, verifyCb VerifyIt
 
 	outOfDateCount := 0
 	if itemState == StateOutOfDate {
+		d.ItemIdFlags[itemIndex] |= ItemFlagUpToDate // mark the item as out of date
 		if !verifyAll {
 			return StateOutOfDate, nil
 		}
 		outOfDateCount++
+	} else {
+		d.ItemIdFlags[itemIndex] |= ItemFlagOutOfDate // mark the item as out of date
 	}
 
 	// Check the dependencies
@@ -678,10 +681,13 @@ func (d *depTrackr) QueryItem(itemHash []byte, verifyAll bool, verifyCb VerifyIt
 
 		depState := verifyCb(depChangeFlags, depChangeData, depIdFlags, depIdData)
 		if depState == StateOutOfDate {
-			if !verifyAll {
-				return StateOutOfDate, nil // if we are not verifying all, we can return early
-			}
+			d.ItemIdFlags[depStart] |= ItemFlagUpToDate // mark the item as out of date
 			outOfDateCount++
+			if !verifyAll {
+				break
+			}
+		} else {
+			d.ItemIdFlags[depStart] |= ItemFlagOutOfDate // mark the item as out of date
 		}
 
 		// If the dependency is ignored, we do not change the final state
@@ -692,17 +698,18 @@ func (d *depTrackr) QueryItem(itemHash []byte, verifyAll bool, verifyCb VerifyIt
 	if outOfDateCount == 0 {
 		return StateUpToDate, nil // item is up to date, but we need to check dependencies
 	}
+
+	// Mark the main item as out-of-date when any of the dependencies where out of date
+	d.ItemIdFlags[itemIndex] |= ItemFlagOutOfDate // mark the item as out of date
 	return StateOutOfDate, nil
 }
 
 // CopyItem copies an item from one depTrackr to another.
-func (src *depTrackr) CopyItem(_dst WriteableDepTrackr, itemHash []byte) error {
+func (src *depTrackr) CopyItem(dst *depTrackr, itemHash []byte) error {
 	itemIndex := src.DoesItemExistInDb(itemHash)
 	if itemIndex == NilIndex {
 		return nil // item does not exist, nothing to copy
 	}
-
-	dst := _dst.(*depTrackr) // cast the WriteableDepTrackr to depTrackr
 
 	// Copy all the item properties
 	itemIdHash := src.ItemIdHash[itemIndex*src.HashSize : (itemIndex+1)*src.HashSize]

@@ -16,12 +16,13 @@ type SourceFile struct {
 	DepRelPath string // Mostly at the same location as the object file
 }
 
-// Library represents a C/C++ library that can be linked with an executable
+// Library represents a C/C++ library/archive that can be linked with other
+// libraries/archives to form an executable binary.
 type Library struct {
 	Name           string // Name of the library
-	Config         string // Config to identify the library
+	Config         string // Config to identify the library (debug, release, final, test)
 	BuildSubDir    string // Subdirectory for the library build (optional)
-	OutputFilename string // Relative filepath to the build output (.lib, .a)
+	LibRelFilepath string // Relative filepath to the build output (.lib, .a)
 
 	Defines     *ValueSet     // Compiler defines (macros) for the library
 	PrefixDirs  *IncludeMap   // Include paths for the library (prefix)
@@ -34,7 +35,7 @@ func NewLibrary(name string, config string, buildSubDir string, outputFilename s
 		Name:           name,
 		Config:         config,
 		BuildSubDir:    buildSubDir,
-		OutputFilename: outputFilename,
+		LibRelFilepath: outputFilename,
 		Defines:        NewValueSet(),
 		PrefixDirs:     NewIncludeMap(),
 		IncludeDirs:    NewIncludeMap(),
@@ -102,20 +103,31 @@ func (lib *Library) PrepareOutput(buildDir string) {
 
 // Executable represents a C/C++ executable that can be built using the Clay build system.
 type Executable struct {
-	Name           string        // Name of the executable
-	OutputFilePath string        // FilePath to the executable
-	ObjectFiles    []*SourceFile // Object files that this executable is linking with (optional)
-	Libraries      []*Library    // Libraries that this executable is linking with
+	Name        string     // Name of the executable
+	BuildSubDir string     // Relative FilePath of the executable (relative to the build directory)
+	Libraries   []*Library // Libraries that this executable is linking with
 }
 
 func NewExecutable(name string, outputPath string) *Executable {
-	executableFilepath := name + ".elf"
 	return &Executable{
-		Name:           name,
-		OutputFilePath: executableFilepath,
-		ObjectFiles:    make([]*SourceFile, 0),
-		Libraries:      make([]*Library, 0),
+		Name:        name,
+		BuildSubDir: "",
+		Libraries:   make([]*Library, 0),
 	}
+}
+
+func (exe *Executable) GetRelOutputFilepath(extension string) string {
+	if len(exe.BuildSubDir) > 0 {
+		return filepath.Join(exe.BuildSubDir, exe.Name) + extension
+	}
+	return exe.Name + extension
+}
+
+func (exe *Executable) GetAbsOutputFilepath(builddir string, extension string) string {
+	if len(exe.BuildSubDir) > 0 {
+		return filepath.Join(builddir, exe.BuildSubDir, exe.Name) + extension
+	}
+	return filepath.Join(builddir, exe.Name) + extension
 }
 
 func (exe *Executable) AddLibrary(lib *Library) {

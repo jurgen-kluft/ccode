@@ -383,7 +383,7 @@ func (*BuildEnvironmentEsp32) GenerateBootLoaderArgs(bl *BootLoaderCompiler, exe
 	args = append(args, "--flash_size")
 	args = append(args, bl.EspTool.FlashSize)
 
-	bootloaderBinFile := filepath.Join(buildPath, FileChangeExtension(exe.OutputFilePath, ".bootloader.bin"))
+	bootloaderBinFile := exe.GetAbsOutputFilepath(buildPath, ".bootloader.bin")
 
 	args = append(args, "-o")
 	args = append(args, bootloaderBinFile)
@@ -413,7 +413,7 @@ func (*BuildEnvironmentEsp32) CreateBootLoader(bl *BootLoaderCompiler, exe *Exec
 	return nil
 }
 
-func (be *BuildEnvironmentEsp32) FlashToolArgs(ft *FlashTool, exe *Executable, outputPath string) []string {
+func (be *BuildEnvironmentEsp32) FlashToolArgs(ft *FlashTool, exe *Executable, buildPath string) []string {
 	args := make([]string, 0)
 
 	args = append(args, "--chip")
@@ -440,16 +440,16 @@ func (be *BuildEnvironmentEsp32) FlashToolArgs(ft *FlashTool, exe *Executable, o
 	args = append(args, "keep")
 
 	args = append(args, ft.Tool.BootLoaderBinOffset)
-	args = append(args, filepath.Join(outputPath, FileChangeExtension(exe.OutputFilePath, ".bootloader.bin")))
+	args = append(args, exe.GetAbsOutputFilepath(buildPath, ".bootloader.bin"))
 
 	args = append(args, ft.Tool.PartitionsBinOffset)
-	args = append(args, filepath.Join(outputPath, FileChangeExtension(exe.OutputFilePath, ".partitions.bin")))
+	args = append(args, exe.GetAbsOutputFilepath(buildPath, ".partitions.bin"))
 
 	args = append(args, ft.Tool.BootApp0BinOffset)
 	args = append(args, ft.BootApp0BinFile)
 
 	args = append(args, ft.Tool.ApplicationBinOffset)
-	args = append(args, filepath.Join(outputPath, FileChangeExtension(exe.OutputFilePath, ".bin")))
+	args = append(args, exe.GetAbsOutputFilepath(buildPath, ".bin"))
 
 	return args
 }
@@ -487,11 +487,11 @@ func (*BuildEnvironmentEsp32) Flash(be *BuildEnvironment, exe *Executable, build
 	return nil
 }
 
-func (*BuildEnvironmentEsp32) BuildLinkerArgs(l *Linker, exe *Executable, outputPath string) []string {
+func (*BuildEnvironmentEsp32) BuildLinkerArgs(l *Linker, exe *Executable, buildPath string) []string {
 	args := make([]string, 0)
 
 	if l.OutputMapFile {
-		mapFilePath := filepath.Join(outputPath, FileChangeExtension(exe.OutputFilePath, ".map"))
+		mapFilePath := exe.GetAbsOutputFilepath(buildPath, ".map")
 		args = append(args, "-Wl,--Map="+mapFilePath)
 	}
 
@@ -511,7 +511,7 @@ func (*BuildEnvironmentEsp32) BuildLinkerArgs(l *Linker, exe *Executable, output
 
 	args = append(args, "-Wl,--start-group")
 	for _, lib := range exe.Libraries {
-		args = append(args, filepath.Join(outputPath, lib.BuildSubDir, lib.OutputFilename))
+		args = append(args, filepath.Join(buildPath, lib.BuildSubDir, lib.LibRelFilepath))
 	}
 	if len(l.ResponseFileLdLibs) > 0 {
 		args = append(args, "@"+l.ResponseFileLdLibs)
@@ -519,7 +519,7 @@ func (*BuildEnvironmentEsp32) BuildLinkerArgs(l *Linker, exe *Executable, output
 	args = append(args, "-Wl,--end-group")
 	args = append(args, "-Wl,-EL")
 	args = append(args, "-o")
-	args = append(args, filepath.Join(outputPath, exe.OutputFilePath))
+	args = append(args, exe.GetAbsOutputFilepath(buildPath, ".elf"))
 
 	return args
 }
@@ -527,7 +527,7 @@ func (*BuildEnvironmentEsp32) BuildLinkerArgs(l *Linker, exe *Executable, output
 func (*BuildEnvironmentEsp32) ImageStatsToolArgs(statsTool *ImageStatsTool, exe *Executable, buildPath string) []string {
 	args := make([]string, 0, 2)
 	args = append(args, "-A")
-	args = append(args, filepath.Join(buildPath, exe.OutputFilePath))
+	args = append(args, exe.GetAbsOutputFilepath(buildPath, ".elf"))
 	return args
 }
 
@@ -593,7 +593,7 @@ func (*BuildEnvironmentEsp32) ImageStatsParser(s string, exe *Executable) (*Imag
 }
 
 func (*BuildEnvironmentEsp32) GeneratePartitionsBinArgs(img *ImageGenerator, exe *Executable, buildPath string) []string {
-	img.PartitionsBinToolOutputFile = filepath.Join(buildPath, FileChangeExtension(exe.OutputFilePath, ".partitions.bin"))
+	img.PartitionsBinToolOutputFile = exe.GetAbsOutputFilepath(buildPath, ".partitions.bin")
 	args := make([]string, 0)
 	args = append(args, img.PartitionsBinToolScript)
 	args = append(args, "-q")
@@ -617,8 +617,8 @@ func (*BuildEnvironmentEsp32) GenerateImageBinArgs(img *ImageGenerator, exe *Exe
 	args = append(args, img.ImageBinTool.ElfShareOffset)
 
 	args = append(args, "-o")
-	args = append(args, filepath.Join(buildPath, FileChangeExtension(exe.OutputFilePath, ".bin")))
-	args = append(args, filepath.Join(buildPath, exe.OutputFilePath))
+	args = append(args, exe.GetAbsOutputFilepath(buildPath, ".bin"))
+	args = append(args, exe.GetAbsOutputFilepath(buildPath, ".elf"))
 
 	return args
 }
@@ -711,7 +711,7 @@ func (*BuildEnvironmentEsp32) BuildArchiverArgs(ar *Archiver, lib *Library, outp
 	args := make([]string, 0)
 
 	args = append(args, "cr")
-	args = append(args, filepath.Join(outputPath, lib.BuildSubDir, lib.OutputFilename))
+	args = append(args, filepath.Join(outputPath, lib.BuildSubDir, lib.LibRelFilepath))
 	for _, src := range lib.SourceFiles {
 		args = append(args, src.ObjRelPath)
 	}
@@ -727,7 +727,7 @@ func (*BuildEnvironmentEsp32) Archive(be *BuildEnvironment, lib *Library, output
 	ar = be.Archiver.ArchiverPath
 
 	cmd := exec.Command(ar, args...)
-	log.Printf("Archiving %s\n", lib.OutputFilename)
+	log.Printf("Archiving %s\n", lib.LibRelFilepath)
 	out, err := cmd.CombinedOutput()
 	if err != nil {
 		return fmt.Errorf("Archive failed with %s\n", err)

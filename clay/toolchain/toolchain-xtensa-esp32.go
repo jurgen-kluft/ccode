@@ -6,10 +6,13 @@ import (
 	"os/exec"
 	"path/filepath"
 	"strings"
+
+	"github.com/jurgen-kluft/ccode/clay/toolchain/deptrackr"
 )
 
 type ToolchainArduinoEsp32 struct {
 	ToolchainInstance
+	depTrackr   deptrackr.DepTrackr
 	buildPath   string // Path to the build directory
 	projectName string // Name of the project, used for output files
 }
@@ -112,12 +115,12 @@ func (cl *ToolchainArduinoEsp32CCompiler) SetupArgs(userVars Vars) {
 func (cl *ToolchainArduinoEsp32CCompiler) Compile(sourceAbsFilepath string, sourceRelFilepath string) (string, error) {
 
 	numArgs := len(cl.compilerArgs)
+	objFilepath := sourceRelFilepath + ".o"
 
 	// The source file and the output object file
 	// sourceAbsFilepath
 	// -o
 	// sourceRelFilepath + ".o"
-	objFilepath := sourceRelFilepath + ".o"
 	cl.compilerArgs = append(cl.compilerArgs, sourceAbsFilepath)
 	cl.compilerArgs = append(cl.compilerArgs, "-o")
 	cl.compilerArgs = append(cl.compilerArgs, objFilepath)
@@ -135,6 +138,7 @@ func (cl *ToolchainArduinoEsp32CCompiler) Compile(sourceAbsFilepath string, sour
 	if len(out) > 0 {
 		log.Printf("Compile output:\n%s\n", string(out))
 	}
+
 	return objFilepath, nil
 }
 
@@ -233,11 +237,8 @@ func (cl *ToolchainArduinoEsp32CppCompiler) SetupArgs(userVars Vars) {
 	}
 }
 func (cl *ToolchainArduinoEsp32CppCompiler) Compile(sourceAbsFilepath string, sourceRelFilepath string) (string, error) {
-
 	numArgs := len(cl.compilerArgs)
-
-	// The object filepath can stay relative
-	objectFilepath := sourceRelFilepath + ".o"
+	objFilepath := sourceRelFilepath + ".o"
 
 	// The source file and the output object file
 	// sourceAbsFilepath
@@ -245,7 +246,7 @@ func (cl *ToolchainArduinoEsp32CppCompiler) Compile(sourceAbsFilepath string, so
 	// sourceRelFilepath + ".o"
 	cl.compilerArgs = append(cl.compilerArgs, sourceAbsFilepath)
 	cl.compilerArgs = append(cl.compilerArgs, "-o")
-	cl.compilerArgs = append(cl.compilerArgs, objectFilepath)
+	cl.compilerArgs = append(cl.compilerArgs, objFilepath)
 
 	cmd := exec.Command(cl.compilerPath, cl.compilerArgs...)
 	out, err := cmd.CombinedOutput()
@@ -260,7 +261,8 @@ func (cl *ToolchainArduinoEsp32CppCompiler) Compile(sourceAbsFilepath string, so
 	if len(out) > 0 {
 		log.Printf("Compile output:\n%s\n", string(out))
 	}
-	return objectFilepath, nil
+
+	return objFilepath, nil
 }
 
 // --------------------------------------------------------------------------------------------------

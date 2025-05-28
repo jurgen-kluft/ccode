@@ -9,3 +9,10 @@ type Linker interface {
 	SetupArgs(userVars Vars)
 	Link(inputArchiveAbsFilepaths []string, outputAppRelFilepathNoExt string) error
 }
+
+// Note: Linker dependency management.
+// An executable is a collection of archive files that together form an executable.
+// The linker before linking the list of archive files, should query the depTrackr
+// to check if the archive files are up to date.
+// After linking, the linker should add the executable file + the archive files as
+// an item with dependencies to the depTrackr.

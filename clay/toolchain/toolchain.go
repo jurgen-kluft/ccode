@@ -29,17 +29,22 @@ func (t *ToolchainInstance) ResolveVars() {
 }
 
 // Example:
-//    BuildTargetConfig = "clang-arm64-debug-test"
-// 	  Config = "*-*-debug-*"
-//    Result = true
+//
+//	   BuildTargetConfig = "clang-arm64-debug-test"
+//		  Config = "*-*-debug-*"
+//	   Result = true
+//
 // Example:
-//    BuildTargetConfig = "clang-arm64-debug-test"
-//    Config = "*-*-*-test"
-//    Result = true
+//
+//	BuildTargetConfig = "clang-arm64-debug-test"
+//	Config = "*-*-*-test"
+//	Result = true
+//
 // Example:
-//    BuildTargetConfig = "clang-arm64-debug-test"
-//    Config = "*-*-debug-test"
-//    Result = true
+//
+//	BuildTargetConfig = "clang-arm64-debug-test"
+//	Config = "*-*-debug-test"
+//	Result = true
 func ConfigMatches(lhsConfig string, rhsConfig string) bool {
 	if lhsConfig == "*-*-*-*" || rhsConfig == "*-*-*-*" {
 		return true
