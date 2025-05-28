@@ -6,6 +6,10 @@ import (
 	"unsafe"
 )
 
+// Golang prototype for a dependency tracker database, the core key is the shard structure.
+// Most of the ways of adding items to the database should be very efficient to implement
+// in a language like C or C++ where we have virtual memory and even mmapped file IO.
+
 type DepTrackr struct {
 	StoragePath          string   // Path to the directory where we store the database file
 	HashSize             int32    // Size of the hash, this is 20 bytes for SHA1
@@ -19,64 +23,102 @@ type DepTrackr struct {
 	ItemIdDataSize       []int32  //
 	ItemChangeDataOffset []int32  // data for Change, 4 bytes (0 means no data)
 	ItemChangeDataSize   []int32  //
-	N                    int32    // how many bits we take from the hash to index into the buckets (0-15)
-	S                    int32    // size of a shard, this is the number of hashes per shardOffset, default is 512
-	ShardOffsets         []int32  // This is an array of offsets into the Shards array, each offset corresponds to a shard, 0 means the shard doesn't exist yet
-	ShardSizes           []int32  // This is an array of sizes of each shard, 0 means the shard is empty
-	DirtyFlags           []uint8  // A bit per shard, indicates if the shard is dirty and needs to be sorted
-	Shards               []int32  // A shard is a region of item-indices that belong to a shard
-	EmptyShard           []int32  // A shard initialized to a size of S and full of zeros
 	Deps                 []int32  // Array for each item to list their dependencies, this is a flat array of item indices
 	Data                 []byte   // Here the data for Id and Change is stored, this is a flat array of bytes
+	N                    int32    // how many bits we take from the hash to index into the shards (0-15)
+	S                    int32    // size of a shard, this is the number of items per shard, default is 512
+	ShardOffsets         []int32  // This is an array of offsets into the Shards array, each offset corresponds to a shard, 0 means the shard doesn't exist yet
+	ShardSizes           []int32  // This is an array of sizes of each shard, 0 means the shard is empty
+	DirtyFlags           []uint8  // A bit per shard, indicates if the shard is dirty (unsorted) and needs to be sorted
+	Shards               []int32  // An array of shards, a shard is a region of item-indices
+	EmptyShard           []int32  // A shard initialized to a size of S and full of NillIndex
 }
 
 func NewDepTrackr(storageDir string) *DepTrackr {
 
 	reserve := 1024
 
+	hs := int32(20) // SHA1 hash size is 20 bytes
 	n := int32(10)  // how many bits we take from the hash to index into the buckets (0-15)
 	s := int32(512) // size of a shard, this is the number of items per shard, default is 512
 
 	d := &DepTrackr{
 		StoragePath:          storageDir,
-		HashSize:             20,                            // SHA1 hash size is 20 bytes
-		ItemIdHash:           make([]byte, 0, reserve),      //
-		ItemChangeHash:       make([]byte, 0, reserve),      //
-		ItemIdFlags:          make([]uint16, 0, reserve),    //
-		ItemChangeFlags:      make([]uint16, 0, reserve),    //
-		ItemDepsStart:        make([]int32, 0, reserve),     //
-		ItemDepsCount:        make([]int32, 0, reserve),     //
-		ItemIdDataOffset:     make([]int32, 0, reserve),     //
-		ItemIdDataSize:       make([]int32, 0, reserve),     //
-		ItemChangeDataOffset: make([]int32, 0, reserve),     //
-		ItemChangeDataSize:   make([]int32, 0, reserve),     //
-		N:                    n,                             //
-		S:                    s,                             //
-		ShardOffsets:         make([]int32, 1<<n),           // initial capacity of 2^N shards
-		ShardSizes:           make([]int32, 1<<n),           // initial capacity of 2^N shards
-		DirtyFlags:           make([]uint8, (n+7)>>3),       // initial capacity of N bits for dirty flags (rounded up to the nearest byte)
-		Shards:               make([]int32, 0, (1<<n)*s),    // initial capacity of 2^N shards where each shard has s elements
-		EmptyShard:           make([]int32, s, s),           // an empty shard, used to copy when making a new shard in Shards
-		Deps:                 make([]int32, 0, reserve),     //
-		Data:                 make([]byte, 0, reserve*1024), //
+		HashSize:             hs,                               //
+		ItemIdHash:           make([]byte, 0, reserve*int(hs)), //
+		ItemChangeHash:       make([]byte, 0, reserve*int(hs)), //
+		ItemIdFlags:          make([]uint16, 0, reserve),       //
+		ItemChangeFlags:      make([]uint16, 0, reserve),       //
+		ItemDepsStart:        make([]int32, 0, reserve),        //
+		ItemDepsCount:        make([]int32, 0, reserve),        //
+		ItemIdDataOffset:     make([]int32, 0, reserve),        //
+		ItemIdDataSize:       make([]int32, 0, reserve),        //
+		ItemChangeDataOffset: make([]int32, 0, reserve),        //
+		ItemChangeDataSize:   make([]int32, 0, reserve),        //
+		N:                    n,                                //
+		S:                    s,                                //
+		ShardOffsets:         make([]int32, 1<<n),              // initial capacity of 2^N shards
+		ShardSizes:           make([]int32, 1<<n),              // initial capacity of 2^N shards
+		DirtyFlags:           make([]uint8, (n+7)>>3),          // initial capacity of N bits for dirty flags (rounded up to the nearest byte)
+		Shards:               make([]int32, 0, (1<<n)*s),       // initial capacity of 2^N shards where each shard has s elements
+		EmptyShard:           make([]int32, s, s),              // an empty shard, used to copy when making a new shard in Shards
+		Deps:                 make([]int32, 0, reserve*64),     //
+		Data:                 make([]byte, 0, reserve*1024),    //
 	}
 
-	// Set the content of an EmptyShard to -1
-	for i, _ := range d.EmptyShard {
-		d.EmptyShard[i] = NilIndex
+	// Set the first 8 elements of EmptyShard to -1
+	pattern := []int32{NilIndex, NilIndex, NilIndex, NilIndex, NilIndex, NilIndex, NilIndex, NilIndex}
+	copy(d.EmptyShard, pattern)
+	// Fill the rest of the shard with the pattern, increasing the size of the pattern
+	for j := len(pattern); j < len(d.EmptyShard); j *= 2 {
+		copy(d.EmptyShard[j:], d.EmptyShard[:j])
 	}
 
 	return d
 }
 
-func (d *DepTrackr) NewDB() *DepTrackr {
-	// Based on the current sizes of Items, Deps, DataNodes, and Data,
-	// we will initialize the DepTrackr with empty slices and a new HashDB.
-	nd := NewDepTrackr(d.StoragePath)
-	nd.Deps = make([]int32, 0, cap(d.Deps))
-	nd.Data = make([]byte, 0, cap(d.Data))
+func (src *DepTrackr) NewDB() *DepTrackr {
+	reserve := len(src.ItemIdHash)
+	reserve = reserve + (reserve / 10) // reserve 10% more space for the new DB
 
-	return nd
+	hs := src.HashSize
+	n := src.N
+	s := src.S
+
+	newTrackr := &DepTrackr{
+		StoragePath:          src.StoragePath,
+		HashSize:             hs,                                                 // SHA1 hash size is 20 bytes
+		ItemIdHash:           make([]byte, 0, reserve*int(hs)),                   //
+		ItemChangeHash:       make([]byte, 0, reserve*int(hs)),                   //
+		ItemIdFlags:          make([]uint16, 0, reserve),                         //
+		ItemChangeFlags:      make([]uint16, 0, reserve),                         //
+		ItemDepsStart:        make([]int32, 0, reserve),                          //
+		ItemDepsCount:        make([]int32, 0, reserve),                          //
+		ItemIdDataOffset:     make([]int32, 0, reserve),                          //
+		ItemIdDataSize:       make([]int32, 0, reserve),                          //
+		ItemChangeDataOffset: make([]int32, 0, reserve),                          //
+		ItemChangeDataSize:   make([]int32, 0, reserve),                          //
+		N:                    n,                                                  //
+		S:                    s,                                                  //
+		ShardOffsets:         make([]int32, 1<<n),                                // initial capacity of 2^N shards
+		ShardSizes:           make([]int32, 1<<n),                                // initial capacity of 2^N shards
+		DirtyFlags:           make([]uint8, (n+7)>>3),                            // initial capacity of N bits for dirty flags (rounded up to the nearest byte)
+		Shards:               make([]int32, 0, (1<<n)*s),                         // initial capacity of 2^N shards where each shard has s elements
+		EmptyShard:           make([]int32, s, s),                                // an empty shard, used to copy when making a new shard in Shards
+		Deps:                 make([]int32, 0, len(src.Deps)+(len(src.Deps)/10)), //
+		Data:                 make([]byte, 0, len(src.Data)+(len(src.Data)/10)),  //
+	}
+
+	// Set the first 8 elements of EmptyShard to -1
+	pattern := []int32{NilIndex, NilIndex, NilIndex, NilIndex, NilIndex, NilIndex, NilIndex, NilIndex}
+	copy(newTrackr.EmptyShard, pattern)
+
+	// Fill the rest of the shard with the pattern, increasing the size of the pattern
+	for j := len(pattern); j < len(newTrackr.EmptyShard); j *= 2 {
+		copy(newTrackr.EmptyShard[j:], newTrackr.EmptyShard[:j])
+	}
+
+	return newTrackr
 }
 
 // --------------------------------------------------------------------------
@@ -88,7 +130,21 @@ func castByteArrayToInt32Array(s []byte) []int32 {
 	return unsafe.Slice((*int32)(unsafe.Pointer(&s[0])), len(s)>>2)
 }
 
+func castByteArrayToUInt16Array(s []byte) []uint16 {
+	if len(s) == 0 || len(s)&3 != 0 {
+		return nil
+	}
+	return unsafe.Slice((*uint16)(unsafe.Pointer(&s[0])), len(s)>>2)
+}
+
 func castInt32ArrayToByteArray(i []int32) []byte {
+	if len(i) == 0 {
+		return []byte{}
+	}
+	return unsafe.Slice((*byte)(unsafe.Pointer(&i[0])), len(i)<<2)
+}
+
+func castUint16ArrayToByteArray(i []uint16) []byte {
 	if len(i) == 0 {
 		return []byte{}
 	}
@@ -105,15 +161,21 @@ func (d *DepTrackr) Save() error {
 
 	header := make([]byte, 0, 64)
 
-	header = binary.LittleEndian.AppendUint32(header, uint32(len(d.ItemIdHash))) // Number of items
-	header = binary.LittleEndian.AppendUint32(header, uint32(d.N))               // Number of bits for the hash
-	header = binary.LittleEndian.AppendUint32(header, uint32(d.S))               // Size of a shard
-	header = binary.LittleEndian.AppendUint32(header, uint32(len(d.ShardOffsets)))
-	header = binary.LittleEndian.AppendUint32(header, uint32(len(d.ShardSizes)))
-	header = binary.LittleEndian.AppendUint32(header, uint32(len(d.DirtyFlags)))
-	header = binary.LittleEndian.AppendUint32(header, uint32(len(d.Shards)))
+	// Number of items, also indicates the size of any Item... array
+	header = binary.LittleEndian.AppendUint32(header, uint32(len(d.ItemIdHash)))
+	// The length of the deps and data arrays
 	header = binary.LittleEndian.AppendUint32(header, uint32(len(d.Deps)))
 	header = binary.LittleEndian.AppendUint32(header, uint32(len(d.Data)))
+
+	// The shard database information
+	header = binary.LittleEndian.AppendUint32(header, uint32(d.N)) // Number of bits for the hash
+	header = binary.LittleEndian.AppendUint32(header, uint32(d.S)) // Size of a shard
+	header = binary.LittleEndian.AppendUint32(header, uint32(len(d.Shards)))
+
+	// The rest of the header fill it with zeros
+	for len(header) < 64 {
+		header = append(header, 0)
+	}
 
 	// Write the header to the file
 	if _, err := dbFile.Write(header); err != nil {
@@ -121,29 +183,61 @@ func (d *DepTrackr) Save() error {
 	}
 
 	// Save Items
-	itemsData := d.ItemIdHash
-	if _, err := dbFile.Write(itemsData); err != nil {
+	if _, err := dbFile.Write(d.ItemIdHash); err != nil {
+		return err
+	}
+	if _, err := dbFile.Write(d.ItemChangeHash); err != nil {
+		return err
+	}
+	if _, err := dbFile.Write(castUint16ArrayToByteArray(d.ItemIdFlags)); err != nil {
+		return err
+	}
+	if _, err := dbFile.Write(castUint16ArrayToByteArray(d.ItemChangeFlags)); err != nil {
+		return err
+	}
+	if _, err := dbFile.Write(castInt32ArrayToByteArray(d.ItemDepsStart)); err != nil {
+		return err
+	}
+	if _, err := dbFile.Write(castInt32ArrayToByteArray(d.ItemDepsCount)); err != nil {
+		return err
+	}
+	if _, err := dbFile.Write(castInt32ArrayToByteArray(d.ItemIdDataOffset)); err != nil {
+		return err
+	}
+	if _, err := dbFile.Write(castInt32ArrayToByteArray(d.ItemIdDataSize)); err != nil {
+		return err
+	}
+	if _, err := dbFile.Write(castInt32ArrayToByteArray(d.ItemChangeDataOffset)); err != nil {
+		return err
+	}
+	if _, err := dbFile.Write(castInt32ArrayToByteArray(d.ItemChangeDataSize)); err != nil {
+		return err
+	}
+	if _, err := dbFile.Write(castInt32ArrayToByteArray(d.Deps)); err != nil {
+		return err
+	}
+	if _, err := dbFile.Write(d.Data); err != nil {
 		return err
 	}
 
-	// Write HashDB.ShardOffsets
+	// Write shard database, ShardOffsets
 	shardOffsets := castInt32ArrayToByteArray(d.ShardOffsets)
 	if _, err := dbFile.Write(shardOffsets); err != nil {
 		return err
 	}
 
-	// Write HashDB.ShardSizes
+	// Write shard database, ShardSizes
 	shardSizes := castInt32ArrayToByteArray(d.ShardSizes)
 	if _, err := dbFile.Write(shardSizes); err != nil {
 		return err
 	}
 
-	// Write HashDB.DirtyFlags
+	// Write shard database, DirtyFlags
 	if _, err := dbFile.Write(d.DirtyFlags); err != nil {
 		return err
 	}
 
-	// Write HashDB.Shards
+	// Write shard database, Shards
 	shardsData := castInt32ArrayToByteArray(d.Shards)
 	if _, err := dbFile.Write(shardsData); err != nil {
 		return err
@@ -158,6 +252,135 @@ func (d *DepTrackr) Save() error {
 }
 
 func (d *DepTrackr) Load() error {
+
+	// Open the database file
+	dbFile, err := os.Open(d.StoragePath + "/deptrackr.main.db")
+	if err != nil {
+		return err
+	}
+	defer dbFile.Close()
+
+	// Read the header
+	header := make([]byte, 64)
+	if _, err := dbFile.Read(header); err != nil {
+		return err
+	}
+
+	numItems := int(binary.LittleEndian.Uint32(header[0:4]))
+	depsArrayLen := int(binary.LittleEndian.Uint32(header[0:4]))
+	dataArrayLen := int(binary.LittleEndian.Uint32(header[0:4]))
+
+	d.ItemIdHash = d.ItemIdHash[0:(numItems * int(d.HashSize))]
+	if bytesRead, err := dbFile.Read(d.ItemIdHash); err != nil || bytesRead != numItems*int(d.HashSize) {
+		return err
+	}
+	d.ItemChangeHash = d.ItemChangeHash[0:(numItems * int(d.HashSize))]
+	if bytesRead, err := dbFile.Read(d.ItemChangeHash); err != nil || bytesRead != numItems*int(d.HashSize) {
+		return err
+	}
+
+	d.ItemIdFlags = d.ItemIdFlags[0:numItems]
+	itemIdFlagsBytes := castUint16ArrayToByteArray(d.ItemIdFlags)
+	itemIdFlagsNumBytes := numItems * 2
+	if bytesRead, err := dbFile.Read(itemIdFlagsBytes); err != nil || bytesRead != itemIdFlagsNumBytes {
+		return err
+	}
+
+	d.ItemChangeFlags = d.ItemChangeFlags[0:numItems]
+	itemChangeFlagsBytes := castUint16ArrayToByteArray(d.ItemChangeFlags)
+	itemChangeFlagsNumBytes := numItems * 2
+	if bytesRead, err := dbFile.Read(itemChangeFlagsBytes); err != nil || bytesRead != itemChangeFlagsNumBytes {
+		return err
+	}
+
+	d.ItemDepsStart = d.ItemDepsStart[0:numItems]
+	itemDepsStartBytes := castInt32ArrayToByteArray(d.ItemDepsStart)
+	itemDepsStartNumBytes := numItems * 4
+	if bytesRead, err := dbFile.Read(itemDepsStartBytes); err != nil || bytesRead != itemDepsStartNumBytes {
+		return err
+	}
+
+	d.ItemDepsCount = d.ItemDepsCount[0:numItems]
+	itemDepsCountBytes := castInt32ArrayToByteArray(d.ItemDepsCount)
+	itemDepsCountNumBytes := numItems * 4
+	if bytesRead, err := dbFile.Read(itemDepsCountBytes); err != nil || bytesRead != itemDepsCountNumBytes {
+		return err
+	}
+
+	d.ItemIdDataOffset = d.ItemIdDataOffset[0:numItems]
+	itemIdDataOffsetBytes := castInt32ArrayToByteArray(d.ItemIdDataOffset)
+	itemIdDataOffsetNumBytes := numItems * 4
+	if bytesRead, err := dbFile.Read(itemIdDataOffsetBytes); err != nil || bytesRead != itemIdDataOffsetNumBytes {
+		return err
+	}
+
+	d.ItemIdDataSize = d.ItemIdDataSize[0:numItems]
+	itemIdDataSizeBytes := castInt32ArrayToByteArray(d.ItemIdDataSize)
+	itemIdDataSizeNumBytes := numItems * 4
+	if bytesRead, err := dbFile.Read(itemIdDataSizeBytes); err != nil || bytesRead != itemIdDataSizeNumBytes {
+		return err
+	}
+
+	d.ItemChangeDataOffset = d.ItemChangeDataOffset[0:numItems]
+	itemChangeDataOffsetBytes := castInt32ArrayToByteArray(d.ItemChangeDataOffset)
+	itemChangeDataOffsetNumBytes := numItems * 4
+	if bytesRead, err := dbFile.Read(itemChangeDataOffsetBytes); err != nil || bytesRead != itemChangeDataOffsetNumBytes {
+		return err
+	}
+
+	d.ItemChangeDataSize = d.ItemChangeDataSize[0:numItems]
+	itemChangeDataSizeBytes := castInt32ArrayToByteArray(d.ItemChangeDataSize)
+	itemChangeDataSizeNumBytes := numItems * 4
+	if bytesRead, err := dbFile.Read(itemChangeDataSizeBytes); err != nil || bytesRead != itemChangeDataSizeNumBytes {
+		return err
+	}
+
+	d.Deps = d.Deps[0:depsArrayLen]
+	depsBytes := castInt32ArrayToByteArray(d.Deps)
+	depsNumBytes := depsArrayLen * 4
+	if bytesRead, err := dbFile.Read(depsBytes); err != nil || bytesRead != depsNumBytes {
+		return err
+	}
+
+	d.Data = d.Data[0:dataArrayLen]
+	if bytesRead, err := dbFile.Read(d.Data); err != nil || bytesRead != dataArrayLen {
+		return err
+	}
+
+	shardN := int32(binary.LittleEndian.Uint32(header[0:4]))
+	shardS := int32(binary.LittleEndian.Uint32(header[0:4]))
+	shardsArrayLen := int32(binary.LittleEndian.Uint32(header[0:4]))
+
+	d.N = shardN
+	d.S = shardS
+
+	d.ShardOffsets = d.ShardOffsets[0:(1 << shardN)]
+	shardOffsetsBytes := castInt32ArrayToByteArray(d.ShardOffsets)
+	shardOffsetsNumBytes := (1 << shardN) * 4 // 4 bytes per int32
+	if bytesRead, err := dbFile.Read(shardOffsetsBytes); err != nil || bytesRead != shardOffsetsNumBytes {
+		return err
+	}
+
+	d.ShardSizes = d.ShardSizes[0:(1 << shardN)]
+	shardSizesBytes := castInt32ArrayToByteArray(d.ShardSizes)
+	shardSizesNumBytes := (1 << shardN) * 4 // 4 bytes per int32
+	if bytesRead, err := dbFile.Read(shardSizesBytes); err != nil || bytesRead != shardSizesNumBytes {
+		return err
+	}
+
+	d.DirtyFlags = d.DirtyFlags[0 : (shardN+7)>>3] // N bits, rounded up to the nearest byte
+	dirtyFlagsBytes := d.DirtyFlags
+	dirtyFlagsNumBytes := int((shardN + 7) >> 3) // N bits, rounded up to the nearest byte
+	if bytesRead, err := dbFile.Read(dirtyFlagsBytes); err != nil || bytesRead != dirtyFlagsNumBytes {
+		return err
+	}
+
+	d.Shards = d.Shards[0:(shardsArrayLen * 4)]
+	shardsDataBytes := castInt32ArrayToByteArray(d.Shards)
+	shardsDataNumBytes := int(shardsArrayLen * 4) // 4 bytes per int32
+	if bytesRead, err := dbFile.Read(shardsDataBytes); err != nil || bytesRead != shardsDataNumBytes {
+		return err
+	}
 
 	return nil
 }
