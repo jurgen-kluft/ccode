@@ -1,4 +1,4 @@
-package dep
+package deptrackr
 
 import (
 	"crypto/sha1"
@@ -7,7 +7,9 @@ import (
 )
 
 func TestDepTrackrSimple(t *testing.T) {
-	tracker := NewDepTrackr("testdb")
+	current := Load("testdb")
+
+	tracker := current.NewDB()
 
 	hasher := sha1.New()
 
@@ -56,8 +58,9 @@ func TestDepTrackrSimple(t *testing.T) {
 	}
 
 	// Query the main item
+	qtracker := tracker.(*depTrackr)
 	dependencyCount := 0
-	mainItemState, err := tracker.QueryItem(mainItem.IdDigest, true, func(itemChangeFlags uint16, itemChangeData []byte, itemIdFlags uint16, itemIdData []byte) State {
+	mainItemState, err := qtracker.QueryItem(mainItem.IdDigest, true, func(itemChangeFlags uint16, itemChangeData []byte, itemIdFlags uint16, itemIdData []byte) State {
 		if itemChangeFlags == mainItem.ChangeFlags && string(itemChangeData) == string(mainItem.ChangeData) &&
 			itemIdFlags == mainItem.IdFlags && string(itemIdData) == string(mainItem.IdData) {
 			return StateUpToDate
@@ -83,8 +86,9 @@ func TestDepTrackrSimple(t *testing.T) {
 // each item has more than 3 dependencies. Here we do not test for
 // out-of-date items, but rather focus on the addition of multiple dependencies.
 func TestDepTrackrMultipleDependencies(t *testing.T) {
-	tracker := NewDepTrackr("testdb")
+	current := Load("testdb")
 
+	tracker := current.NewDB()
 	hasher := sha1.New()
 
 	items := map[string]int{
@@ -153,13 +157,14 @@ func TestDepTrackrMultipleDependencies(t *testing.T) {
 	}
 
 	// Query each main item to ensure all dependencies are added correctly
+	qtracker := tracker.(*depTrackr)
 	for itemData, itemFlag := range items {
 		hasher.Reset()
 		hasher.Write([]byte(itemData))
 		itemHash := hasher.Sum(nil)
 
 		depCount := 0
-		mainItemState, err := tracker.QueryItem(itemHash, true, func(itemChangeFlags uint16, itemChangeData []byte, itemIdFlags uint16, itemIdData []byte) State {
+		mainItemState, err := qtracker.QueryItem(itemHash, true, func(itemChangeFlags uint16, itemChangeData []byte, itemIdFlags uint16, itemIdData []byte) State {
 			if itemIdFlags == uint16(itemFlag) && string(itemIdData) == itemData {
 				return StateUpToDate
 			} else if itemIdFlags >= 100 {

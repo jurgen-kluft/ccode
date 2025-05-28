@@ -1,17 +1,44 @@
-package dep
+package deptrackr
 
 import (
 	"encoding/binary"
 	"os"
+	"slices"
 	"unsafe"
 )
 
-// Golang prototype for a dependency tracker database, the core key is the shard structure.
-// Most of the ways of adding items to the database should be very efficient to implement
+// Golang prototype for a dependency tracker database, the core is the shard structure.
+// Mostly this is about adding items to the database and should be very efficient to implement
 // in a language like C or C++ where we have virtual memory and even mmapped file IO.
+// A database loaded from disk is always read-only, we do not load, modify and save. Instead
+// we load the database, then create a new one and build it anew utilizing the old one. This
+// is a lot faster and simpler than loading, modifying and saving.
+//
+// TODO One thing that has not been implemented yet is the case when a shard gets full. We
+//      can implement this by making the first int32 of a shard being an offset to the next
+//      shard, so we can have a linked list of shards. This way we can have an unlimited
+//      number of items in a shard, however performance will degrade when searching for a
+//      hash in a shard that has many linked shards. This can only occur when the hash
+//      keeps hitting this shard, so it is not a very common case.
+//
+// e.g.
+// currentTrackr := deptrackr.Load("path/to/storage")
+// futureTrackr := currentTrackr.NewDB() // create a new database based on the current one
+//
+// // Query item
+// state, err := currentTrackr.QueryItem(itemHash, true, verifyCb)
+// if state == deptrackr.StateUpToDate {
+//     currentTrackr.CopyItem(futureTrackr, itemHash) // copy the item to the new database
+// } else {
+//     // Build a new item and add it to the new database
+// }
+//
+// futureTrackr.Save()
+//
 
-type DepTrackr struct {
-	StoragePath          string   // Path to the directory where we store the database file
+type depTrackr struct {
+	StoragePath          string // Path to the directory where we store the database file
+	IsReadOnly           bool
 	HashSize             int32    // Size of the hash, this is 20 bytes for SHA1
 	ItemIdHash           []byte   // Hash, this is the ID of the item (filepath, label (e.g. 'MSVC C++ compiler cmd-line arguments))
 	ItemChangeHash       []byte   // Hash, this identifies the 'change' (modification-time, file-size, file-content, command-line arguments, string, etc..)
@@ -34,16 +61,26 @@ type DepTrackr struct {
 	EmptyShard           []int32  // A shard initialized to a size of S and full of NillIndex
 }
 
-func NewDepTrackr(storageDir string) *DepTrackr {
+type WriteableDepTrackr interface {
+	AddItem(item ItemToAdd, deps []ItemToAdd) bool
+	Save() error
+}
 
-	reserve := 1024
+type ReadableDepTracker interface {
+	NewDB() WriteableDepTrackr
+	QueryItem(itemHash []byte, verifyAll bool, verifyCb VerifyItemFunc) (State, error)
+	CopyItem(dst WriteableDepTrackr, itemHash []byte) error
+}
 
+func newDepTrackr(storageDir string) *depTrackr {
+	reserve := 1024 // A new database is set to reserve 1024 items
 	hs := int32(20) // SHA1 hash size is 20 bytes
 	n := int32(10)  // how many bits we take from the hash to index into the buckets (0-15)
 	s := int32(512) // size of a shard, this is the number of items per shard, default is 512
 
-	d := &DepTrackr{
+	d := &depTrackr{
 		StoragePath:          storageDir,
+		IsReadOnly:           true,
 		HashSize:             hs,                               //
 		ItemIdHash:           make([]byte, 0, reserve*int(hs)), //
 		ItemChangeHash:       make([]byte, 0, reserve*int(hs)), //
@@ -83,7 +120,7 @@ func NewDepTrackr(storageDir string) *DepTrackr {
 	return d
 }
 
-func (src *DepTrackr) NewDB() *DepTrackr {
+func (src *depTrackr) NewDB() WriteableDepTrackr {
 	reserve := len(src.ItemIdHash)
 	reserve = reserve + (reserve / 10) // reserve 10% more space for the new DB
 
@@ -91,8 +128,9 @@ func (src *DepTrackr) NewDB() *DepTrackr {
 	n := src.N
 	s := src.S
 
-	newTrackr := &DepTrackr{
+	newTrackr := &depTrackr{
 		StoragePath:          src.StoragePath,
+		IsReadOnly:           false,
 		HashSize:             hs,                                                 // SHA1 hash size is 20 bytes
 		ItemIdHash:           make([]byte, 0, reserve*int(hs)),                   //
 		ItemChangeHash:       make([]byte, 0, reserve*int(hs)),                   //
@@ -144,7 +182,7 @@ func castUint16ArrayToByteArray(i []uint16) []byte {
 }
 
 // --------------------------------------------------------------------------
-func (d *DepTrackr) Save() error {
+func (d *depTrackr) Save() error {
 	dbFile, err := os.Create(d.StoragePath + "/deptrackr.point.db")
 	if err != nil {
 		return err
@@ -243,138 +281,189 @@ func (d *DepTrackr) Save() error {
 	return nil
 }
 
-func (d *DepTrackr) Load() error {
+func Load(storagePath string) ReadableDepTracker {
 
 	// Open the database file
-	dbFile, err := os.Open(d.StoragePath + "/deptrackr.main.db")
+	dbFile, err := os.Open(storagePath + "/deptrackr.main.db")
 	if err != nil {
-		return err
+		// No database exists on disk, so we just create an empty one
+		d := newDepTrackr(storagePath)
+		return d
 	}
 	defer dbFile.Close()
 
 	// Read the header
 	header := make([]byte, 64)
 	if _, err := dbFile.Read(header); err != nil {
-		return err
+		d := newDepTrackr(storagePath)
+		return d
 	}
 
 	numItems := int(binary.LittleEndian.Uint32(header[0:4]))
 	depsArrayLen := int(binary.LittleEndian.Uint32(header[0:4]))
 	dataArrayLen := int(binary.LittleEndian.Uint32(header[0:4]))
 
-	d.ItemIdHash = d.ItemIdHash[0:(numItems * int(d.HashSize))]
-	if bytesRead, err := dbFile.Read(d.ItemIdHash); err != nil || bytesRead != numItems*int(d.HashSize) {
-		return err
+	newHashSize := int32(20)
+
+	newItemIdHash := make([]byte, 0, numItems*int(newHashSize))
+	if bytesRead, err := dbFile.Read(newItemIdHash); err != nil || bytesRead != numItems*int(newHashSize) {
+		d := newDepTrackr(storagePath)
+		return d
 	}
-	d.ItemChangeHash = d.ItemChangeHash[0:(numItems * int(d.HashSize))]
-	if bytesRead, err := dbFile.Read(d.ItemChangeHash); err != nil || bytesRead != numItems*int(d.HashSize) {
-		return err
+	newItemChangeHash := make([]byte, numItems*int(newHashSize))
+	if bytesRead, err := dbFile.Read(newItemChangeHash); err != nil || bytesRead != numItems*int(newHashSize) {
+		d := newDepTrackr(storagePath)
+		return d
 	}
 
-	d.ItemIdFlags = d.ItemIdFlags[0:numItems]
-	itemIdFlagsBytes := castUint16ArrayToByteArray(d.ItemIdFlags)
+	newItemIdFlags := make([]uint16, numItems)
+	itemIdFlagsBytes := castUint16ArrayToByteArray(newItemIdFlags)
 	itemIdFlagsNumBytes := numItems * 2
 	if bytesRead, err := dbFile.Read(itemIdFlagsBytes); err != nil || bytesRead != itemIdFlagsNumBytes {
-		return err
+		d := newDepTrackr(storagePath)
+		return d
 	}
 
-	d.ItemChangeFlags = d.ItemChangeFlags[0:numItems]
-	itemChangeFlagsBytes := castUint16ArrayToByteArray(d.ItemChangeFlags)
+	newItemChangeFlags := make([]uint16, numItems)
+	itemChangeFlagsBytes := castUint16ArrayToByteArray(newItemChangeFlags)
 	itemChangeFlagsNumBytes := numItems * 2
 	if bytesRead, err := dbFile.Read(itemChangeFlagsBytes); err != nil || bytesRead != itemChangeFlagsNumBytes {
-		return err
+		d := newDepTrackr(storagePath)
+		return d
 	}
 
-	d.ItemDepsStart = d.ItemDepsStart[0:numItems]
-	itemDepsStartBytes := castInt32ArrayToByteArray(d.ItemDepsStart)
+	newItemDepsStart := make([]int32, numItems)
+	itemDepsStartBytes := castInt32ArrayToByteArray(newItemDepsStart)
 	itemDepsStartNumBytes := numItems * 4
 	if bytesRead, err := dbFile.Read(itemDepsStartBytes); err != nil || bytesRead != itemDepsStartNumBytes {
-		return err
+		d := newDepTrackr(storagePath)
+		return d
 	}
 
-	d.ItemDepsCount = d.ItemDepsCount[0:numItems]
-	itemDepsCountBytes := castInt32ArrayToByteArray(d.ItemDepsCount)
+	newItemDepsCount := make([]int32, numItems)
+	itemDepsCountBytes := castInt32ArrayToByteArray(newItemDepsCount)
 	itemDepsCountNumBytes := numItems * 4
 	if bytesRead, err := dbFile.Read(itemDepsCountBytes); err != nil || bytesRead != itemDepsCountNumBytes {
-		return err
+		d := newDepTrackr(storagePath)
+		return d
 	}
 
-	d.ItemIdDataOffset = d.ItemIdDataOffset[0:numItems]
-	itemIdDataOffsetBytes := castInt32ArrayToByteArray(d.ItemIdDataOffset)
+	newItemIdDataOffset := make([]int32, numItems)
+	itemIdDataOffsetBytes := castInt32ArrayToByteArray(newItemIdDataOffset)
 	itemIdDataOffsetNumBytes := numItems * 4
 	if bytesRead, err := dbFile.Read(itemIdDataOffsetBytes); err != nil || bytesRead != itemIdDataOffsetNumBytes {
-		return err
+		d := newDepTrackr(storagePath)
+		return d
 	}
 
-	d.ItemIdDataSize = d.ItemIdDataSize[0:numItems]
-	itemIdDataSizeBytes := castInt32ArrayToByteArray(d.ItemIdDataSize)
+	newItemIdDataSize := make([]int32, numItems)
+	itemIdDataSizeBytes := castInt32ArrayToByteArray(newItemIdDataSize)
 	itemIdDataSizeNumBytes := numItems * 4
 	if bytesRead, err := dbFile.Read(itemIdDataSizeBytes); err != nil || bytesRead != itemIdDataSizeNumBytes {
-		return err
+		d := newDepTrackr(storagePath)
+		return d
 	}
 
-	d.ItemChangeDataOffset = d.ItemChangeDataOffset[0:numItems]
-	itemChangeDataOffsetBytes := castInt32ArrayToByteArray(d.ItemChangeDataOffset)
+	newItemChangeDataOffset := make([]int32, numItems)
+	itemChangeDataOffsetBytes := castInt32ArrayToByteArray(newItemChangeDataOffset)
 	itemChangeDataOffsetNumBytes := numItems * 4
 	if bytesRead, err := dbFile.Read(itemChangeDataOffsetBytes); err != nil || bytesRead != itemChangeDataOffsetNumBytes {
-		return err
+		d := newDepTrackr(storagePath)
+		return d
 	}
 
-	d.ItemChangeDataSize = d.ItemChangeDataSize[0:numItems]
-	itemChangeDataSizeBytes := castInt32ArrayToByteArray(d.ItemChangeDataSize)
+	newItemChangeDataSize := make([]int32, numItems)
+	itemChangeDataSizeBytes := castInt32ArrayToByteArray(newItemChangeDataSize)
 	itemChangeDataSizeNumBytes := numItems * 4
 	if bytesRead, err := dbFile.Read(itemChangeDataSizeBytes); err != nil || bytesRead != itemChangeDataSizeNumBytes {
-		return err
+		d := newDepTrackr(storagePath)
+		return d
 	}
 
-	d.Deps = d.Deps[0:depsArrayLen]
-	depsBytes := castInt32ArrayToByteArray(d.Deps)
+	newDeps := make([]int32, depsArrayLen)
+	depsBytes := castInt32ArrayToByteArray(newDeps)
 	depsNumBytes := depsArrayLen * 4
 	if bytesRead, err := dbFile.Read(depsBytes); err != nil || bytesRead != depsNumBytes {
-		return err
+		d := newDepTrackr(storagePath)
+		return d
 	}
 
-	d.Data = d.Data[0:dataArrayLen]
-	if bytesRead, err := dbFile.Read(d.Data); err != nil || bytesRead != dataArrayLen {
-		return err
+	newData := make([]byte, dataArrayLen)
+	if bytesRead, err := dbFile.Read(newData); err != nil || bytesRead != dataArrayLen {
+		d := newDepTrackr(storagePath)
+		return d
 	}
 
 	shardN := int32(binary.LittleEndian.Uint32(header[0:4]))
 	shardS := int32(binary.LittleEndian.Uint32(header[0:4]))
 	shardsArrayLen := int32(binary.LittleEndian.Uint32(header[0:4]))
 
-	d.N = shardN
-	d.S = shardS
-
-	d.ShardOffsets = d.ShardOffsets[0:(1 << shardN)]
-	shardOffsetsBytes := castInt32ArrayToByteArray(d.ShardOffsets)
+	newShardOffsets := make([]int32, (1 << shardN))
+	shardOffsetsBytes := castInt32ArrayToByteArray(newShardOffsets)
 	shardOffsetsNumBytes := (1 << shardN) * 4 // 4 bytes per int32
 	if bytesRead, err := dbFile.Read(shardOffsetsBytes); err != nil || bytesRead != shardOffsetsNumBytes {
-		return err
+		d := newDepTrackr(storagePath)
+		return d
 	}
 
-	d.ShardSizes = d.ShardSizes[0:(1 << shardN)]
-	shardSizesBytes := castInt32ArrayToByteArray(d.ShardSizes)
+	newShardSizes := make([]int32, (1 << shardN))
+	shardSizesBytes := castInt32ArrayToByteArray(newShardSizes)
 	shardSizesNumBytes := (1 << shardN) * 4 // 4 bytes per int32
 	if bytesRead, err := dbFile.Read(shardSizesBytes); err != nil || bytesRead != shardSizesNumBytes {
-		return err
+		d := newDepTrackr(storagePath)
+		return d
 	}
 
-	d.DirtyFlags = d.DirtyFlags[0 : (shardN+7)>>3] // N bits, rounded up to the nearest byte
-	dirtyFlagsBytes := d.DirtyFlags
+	newDirtyFlags := make([]byte, (shardN+7)>>3) // N bits, rounded up to the nearest byte
+	dirtyFlagsBytes := newDirtyFlags
 	dirtyFlagsNumBytes := int((shardN + 7) >> 3) // N bits, rounded up to the nearest byte
 	if bytesRead, err := dbFile.Read(dirtyFlagsBytes); err != nil || bytesRead != dirtyFlagsNumBytes {
-		return err
+		d := newDepTrackr(storagePath)
+		return d
 	}
 
-	d.Shards = d.Shards[0:(shardsArrayLen * 4)]
-	shardsDataBytes := castInt32ArrayToByteArray(d.Shards)
+	newShards := make([]int32, (shardsArrayLen * 4))
+	shardsDataBytes := castInt32ArrayToByteArray(newShards)
 	shardsDataNumBytes := int(shardsArrayLen * 4) // 4 bytes per int32
 	if bytesRead, err := dbFile.Read(shardsDataBytes); err != nil || bytesRead != shardsDataNumBytes {
-		return err
+		d := newDepTrackr(storagePath)
+		return d
 	}
 
-	return nil
+	d := &depTrackr{
+		StoragePath:          storagePath,
+		IsReadOnly:           true,
+		HashSize:             newHashSize,                   // SHA1 hash size is 20 bytes
+		ItemIdHash:           newItemIdHash,                 // Item Id hash
+		ItemChangeHash:       newItemChangeHash,             // Item Change hash
+		ItemIdFlags:          newItemIdFlags,                // Item Id flags
+		ItemChangeFlags:      newItemChangeFlags,            // Item Change flags
+		ItemDepsStart:        newItemDepsStart,              // Item, start of dependencies
+		ItemDepsCount:        newItemDepsCount,              // Item, count of dependencies
+		ItemIdDataOffset:     newItemIdDataOffset,           // Item Id data offset
+		ItemIdDataSize:       newItemIdDataSize,             // Item Id data size
+		ItemChangeDataOffset: newItemChangeDataOffset,       // Item Change data offset
+		ItemChangeDataSize:   newItemChangeDataSize,         // Item Change data size
+		Deps:                 newDeps,                       // Dependencies
+		Data:                 newData,                       // Data for Id and Change
+		N:                    shardN,                        // Number of bits for the hash
+		S:                    shardS,                        // Size of a shard
+		ShardOffsets:         newShardOffsets,               // Shard offsets
+		ShardSizes:           newShardSizes,                 // Shard sizes
+		DirtyFlags:           newDirtyFlags,                 // Dirty flags for shards
+		Shards:               newShards,                     // Shards, an array of item indices
+		EmptyShard:           make([]int32, shardS, shardS), // An empty shard, used to copy when making a new shard in Shards
+	}
+
+	// Set the first 8 elements of EmptyShard to -1
+	pattern := []int32{NilIndex, NilIndex, NilIndex, NilIndex, NilIndex, NilIndex, NilIndex, NilIndex}
+	copy(d.EmptyShard, pattern)
+	// Fill the rest of the shard with the pattern, increasing the size of the pattern
+	for j := len(pattern); j < len(d.EmptyShard); j *= 2 {
+		copy(d.EmptyShard[j:], d.EmptyShard[:j])
+	}
+
+	return d
 }
 
 // --------------------------------------------------------------------------
@@ -415,7 +504,7 @@ type VerifyItemFunc func(itemChangeFlags uint16, itemChangeData []byte, itemIdFl
 
 const NilIndex = int32(-1)
 
-func (d *DepTrackr) CompareDigest(a []byte, b []byte) int {
+func (d *depTrackr) compareDigest(a []byte, b []byte) int {
 	for i := range d.HashSize {
 		if a[i] < b[i] {
 			return -1
@@ -426,18 +515,11 @@ func (d *DepTrackr) CompareDigest(a []byte, b []byte) int {
 	return 0
 }
 
-func (d *DepTrackr) IsShardDirty(shardOffset int32) bool {
+func (d *depTrackr) isShardUnsorted(shardOffset int32) bool {
 	return (d.DirtyFlags[shardOffset>>3] & (1 << (shardOffset & 7))) != 0 // check the dirty flag for the shard
 }
 
-func (d *DepTrackr) SetShardAsDirty(shardOffset int32) {
-	d.DirtyFlags[shardOffset>>3] |= 1 << (shardOffset & 7) // set the dirty flag for the shard
-}
-func (d *DepTrackr) SetShardAsSorted(shardOffset int32) {
-	d.DirtyFlags[shardOffset>>3] = d.DirtyFlags[shardOffset>>3] &^ (1 << (shardOffset & 7)) // clear the dirty flag for the shard
-}
-
-func (d *DepTrackr) InsertItemIntoDb(hash []byte, item int32) {
+func (d *depTrackr) insertItemIntoDb(hash []byte, item int32) {
 	indexOfShard := int32(hash[0])<<8 | int32(hash[1]) // use the first N bits of the hash
 	indexOfShard = indexOfShard >> (16 - d.N)          // shift to get the right index
 
@@ -446,10 +528,15 @@ func (d *DepTrackr) InsertItemIntoDb(hash []byte, item int32) {
 		d.ShardOffsets[indexOfShard] = int32(len(d.Shards)) // initialize the shard offset
 		d.Shards = append(d.Shards, d.EmptyShard...)        // initialize the shard, all of them set to -1
 	}
-	d.AddItemToShard(indexOfShard, item)
+
+	shardSize := d.ShardSizes[indexOfShard]
+	shardOffset := d.ShardOffsets[indexOfShard]
+	d.Shards[shardOffset+shardSize] = item                 // add the new item index to the shard
+	d.ShardSizes[indexOfShard] = shardSize + 1             // increment the size of the shard
+	d.DirtyFlags[shardOffset>>3] |= 1 << (shardOffset & 7) // set the dirty flag for the shard
 }
 
-func (d *DepTrackr) DoesItemExist(hash []byte) int32 {
+func (d *depTrackr) DoesItemExistInDb(hash []byte) int32 {
 	indexOfShard := int32(hash[0])<<8 | int32(hash[1]) // use the first N bits of the hash
 	indexOfShard = indexOfShard >> (16 - d.N)          // shift to get the right index
 
@@ -458,23 +545,29 @@ func (d *DepTrackr) DoesItemExist(hash []byte) int32 {
 		return NilIndex // shard doesn't exist, so the hash cannot exist
 	}
 
-	shardIsDirty := d.IsShardDirty(indexOfShard)
-	if shardIsDirty {
-		// Sort the indices based on the hashes
-		// The indices are stored in d.Shards from 'indexOfShard * d.S' until 'indexOfShard * d.S + d.ShardSizes[indexOfShard]'
-
+	shardSize := d.ShardSizes[indexOfShard]
+	if shardSize > 1 && d.isShardUnsorted(indexOfShard) {
+		shardStart := shardOffset
+		shardEnd := shardStart + shardSize
+		slices.SortFunc(d.Shards[shardStart:shardEnd], func(i, j int32) int {
+			itemIndexI := d.Shards[shardStart+i]
+			itemIndexJ := d.Shards[shardStart+j]
+			hashI := d.ItemIdHash[itemIndexI*d.HashSize : (itemIndexI+1)*d.HashSize]
+			hashJ := d.ItemIdHash[itemIndexJ*d.HashSize : (itemIndexJ+1)*d.HashSize]
+			return d.compareDigest(hashI, hashJ) // sort in ascending order
+		})
 		// Mark the shard as sorted
-		d.SetShardAsSorted(indexOfShard)
+		d.DirtyFlags[shardOffset>>3] = d.DirtyFlags[shardOffset>>3] &^ (1 << (shardOffset & 7))
 	}
 
 	// Binary search for the hash in the sorted array
 	indexOfHashInShard := NilIndex
-	low, high := int32(0), d.ShardSizes[indexOfShard]-1
+	low, high := int32(0), shardSize-1
 	for low <= high {
 		mid := (low + high) / 2
 		midItemIndex := d.Shards[shardOffset+mid]
 		midItemHash := d.ItemIdHash[midItemIndex*d.HashSize : (midItemIndex+1)*d.HashSize]
-		c := d.CompareDigest(midItemHash, hash)
+		c := d.compareDigest(midItemHash, hash)
 		if c == 0 {
 			indexOfHashInShard = mid // found
 			break
@@ -491,24 +584,19 @@ func (d *DepTrackr) DoesItemExist(hash []byte) int32 {
 	return d.Shards[shardOffset+indexOfHashInShard] // return the index of the item in the shard
 }
 
-func (d *DepTrackr) AddItemToShard(shardIndex int32, item int32) {
-	shardSize := d.ShardSizes[shardIndex]
-	shardOffset := d.ShardOffsets[shardIndex]
-	d.Shards[shardOffset+shardSize] = item   // add the new item index to the shard
-	d.ShardSizes[shardIndex] = shardSize + 1 // increment the size of the shard
-	d.SetShardAsDirty(shardIndex)
-}
+func (d *depTrackr) AddItem(item ItemToAdd, deps []ItemToAdd) bool {
+	if d.IsReadOnly {
+		return false
+	}
 
-func (d *DepTrackr) AddItem(item ItemToAdd, deps []ItemToAdd) bool {
-
-	existingItemIndex := d.DoesItemExist(item.IdDigest)
+	existingItemIndex := d.DoesItemExistInDb(item.IdDigest)
 	if existingItemIndex != NilIndex {
 		// This should not happen, as we are inserting a new item
 		return false
 	}
 
 	itemIndex := int32(len(d.ItemIdFlags))
-	d.InsertItemIntoDb(item.IdDigest, itemIndex)
+	d.insertItemIntoDb(item.IdDigest, itemIndex)
 
 	// Insert the item into the main arrays
 	d.ItemIdHash = append(d.ItemIdHash, item.IdDigest...)                            // add the item Id hash
@@ -528,7 +616,7 @@ func (d *DepTrackr) AddItem(item ItemToAdd, deps []ItemToAdd) bool {
 	// Note: dependencies as an Item are shared
 	for _, dep := range deps {
 		depItemIndex := int32(len(d.ItemIdFlags))
-		if existingItemIndex := d.DoesItemExist(dep.IdDigest); existingItemIndex != NilIndex {
+		if existingItemIndex := d.DoesItemExistInDb(dep.IdDigest); existingItemIndex != NilIndex {
 			depItemIndex = existingItemIndex
 		} else {
 			// Insert the dependency item into the main arrays
@@ -546,7 +634,7 @@ func (d *DepTrackr) AddItem(item ItemToAdd, deps []ItemToAdd) bool {
 			d.Data = append(d.Data, dep.ChangeData...)                                      // add the Item Change data to the Data array
 
 			// Add the dependency item to the shard database, so that we can search it
-			d.InsertItemIntoDb(dep.IdDigest, depItemIndex)
+			d.insertItemIntoDb(dep.IdDigest, depItemIndex)
 		}
 		d.Deps = append(d.Deps, depItemIndex) // add the dependency item index
 	}
@@ -554,9 +642,9 @@ func (d *DepTrackr) AddItem(item ItemToAdd, deps []ItemToAdd) bool {
 	return true
 }
 
-func (d *DepTrackr) QueryItem(itemHash []byte, verifyAll bool, verifyCb VerifyItemFunc) (State, error) {
+func (d *depTrackr) QueryItem(itemHash []byte, verifyAll bool, verifyCb VerifyItemFunc) (State, error) {
 
-	itemIndex := d.DoesItemExist(itemHash)
+	itemIndex := d.DoesItemExistInDb(itemHash)
 	if itemIndex == NilIndex {
 		return StateOutOfDate, nil // item does not exist, so it is out of date
 	}
@@ -607,13 +695,14 @@ func (d *DepTrackr) QueryItem(itemHash []byte, verifyAll bool, verifyCb VerifyIt
 	return StateOutOfDate, nil
 }
 
-// CopyItem copies an item from one DepTrackr to another.
-func (src *DepTrackr) CopyItem(dst *DepTrackr, itemHash []byte) error {
-
-	itemIndex := src.DoesItemExist(itemHash)
+// CopyItem copies an item from one depTrackr to another.
+func (src *depTrackr) CopyItem(_dst WriteableDepTrackr, itemHash []byte) error {
+	itemIndex := src.DoesItemExistInDb(itemHash)
 	if itemIndex == NilIndex {
 		return nil // item does not exist, nothing to copy
 	}
+
+	dst := _dst.(*depTrackr) // cast the WriteableDepTrackr to depTrackr
 
 	// Copy all the item properties
 	itemIdHash := src.ItemIdHash[itemIndex*src.HashSize : (itemIndex+1)*src.HashSize]
@@ -629,7 +718,7 @@ func (src *DepTrackr) CopyItem(dst *DepTrackr, itemHash []byte) error {
 	itemChangeData := src.Data[itemChangeDataOffset : itemChangeDataOffset+itemChangeDataSize]
 
 	// Add a new item in dst
-	dstItemIndex := int32(len(dst.ItemIdFlags))                                       // index of the new item in the destination DepTrackr
+	dstItemIndex := int32(len(dst.ItemIdFlags))                                       // index of the new item in the destination depTrackr
 	dst.ItemIdHash = append(dst.ItemIdHash, itemIdHash...)                            // add the item Id hash
 	dst.ItemChangeHash = append(dst.ItemChangeHash, itemChangeHash...)                // add the item Change hash
 	dst.ItemIdFlags = append(dst.ItemIdFlags, itemIdFlags)                            // add the item Id flags
@@ -644,7 +733,7 @@ func (src *DepTrackr) CopyItem(dst *DepTrackr, itemHash []byte) error {
 	dst.Data = append(dst.Data, itemChangeData...)                                    // add the Item Change data to the Data array
 
 	// Insert the item into the shard database
-	dst.InsertItemIntoDb(itemIdHash, dstItemIndex)
+	dst.insertItemIntoDb(itemIdHash, dstItemIndex)
 
 	srcDepItemIndex := src.ItemDepsStart[itemIndex]
 	srcDepItemIndexEnd := srcDepItemIndex + itemDepsCount
@@ -661,7 +750,7 @@ func (src *DepTrackr) CopyItem(dst *DepTrackr, itemHash []byte) error {
 		depItemChangeDataSize := src.ItemChangeDataSize[srcDepItemIndex]
 		depItemChangeData := src.Data[depItemChangeDataOffset : depItemChangeDataOffset+depItemChangeDataSize]
 
-		dstDepItemIndex := int32(len(dst.ItemIdFlags))                                    // index of the new dependency item in the destination DepTrackr
+		dstDepItemIndex := int32(len(dst.ItemIdFlags))                                    // index of the new dependency item in the destination depTrackr
 		dst.ItemIdHash = append(dst.ItemIdHash, depItemIdHash...)                         // add the dependency Id hash
 		dst.ItemChangeHash = append(dst.ItemChangeHash, depItemChangeHash...)             // add the dependency Change hash
 		dst.ItemIdFlags = append(dst.ItemIdFlags, depItemIdFlags)                         // add the dependency Id flags
@@ -676,9 +765,9 @@ func (src *DepTrackr) CopyItem(dst *DepTrackr, itemHash []byte) error {
 		dst.Data = append(dst.Data, depItemChangeData...)                                 // add the Item Change data to the Data array
 
 		// Insert the dependency item into the shard database
-		dst.InsertItemIntoDb(depItemIdHash, dstDepItemIndex)
+		dst.insertItemIntoDb(depItemIdHash, dstDepItemIndex)
 
-		dst.Deps = append(dst.Deps, dstDepItemIndex) // add the dependency item index to the destination DepTrackr
+		dst.Deps = append(dst.Deps, dstDepItemIndex) // add the dependency item index to the destination depTrackr
 		srcDepItemIndex++
 	}
 
