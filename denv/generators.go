@@ -6,7 +6,8 @@ import (
 	"path/filepath"
 	"strings"
 
-	cutils "github.com/jurgen-kluft/ccode/cutils"
+	"github.com/jurgen-kluft/ccode/dev"
+	utils "github.com/jurgen-kluft/ccode/utils"
 )
 
 // ----------------------------------------------------------------------------------------------
@@ -55,7 +56,7 @@ func IsExcludedDefault(str string) bool {
 	return IsExcludedOn(str, gValidSuffixDefault)
 }
 
-func NewExclusionFilter(target BuildTarget) *ExclusionFilter {
+func NewExclusionFilter(target dev.BuildTarget) *ExclusionFilter {
 	if target.Mac() {
 		return &ExclusionFilter{Filter: IsExcludedOnMac}
 	} else if target.Windows() {
@@ -71,7 +72,7 @@ type ExclusionFilter struct {
 }
 
 func (f *ExclusionFilter) IsExcluded(filepath string) bool {
-	parts := cutils.PathSplitRelativeFilePath(filepath, true)
+	parts := utils.PathSplitRelativeFilePath(filepath, true)
 	for i := 0; i < len(parts)-1; i++ {
 		p := strings.ToLower(parts[i])
 		if f.Filter(p) {
@@ -86,13 +87,13 @@ func (f *ExclusionFilter) IsExcluded(filepath string) bool {
 // ----------------------------------------------------------------------------------------------
 type Generator struct {
 	Dev             DevEnum
-	BuildTarget     BuildTarget
+	BuildTarget     dev.BuildTarget
 	Verbose         bool
 	GoPathAbs       string // $(GOPATH)/src, absolute path
 	ExclusionFilter *ExclusionFilter
 }
 
-func NewGenerator(dev string, buildTarget BuildTarget, verbose bool) *Generator {
+func NewGenerator(dev string, buildTarget dev.BuildTarget, verbose bool) *Generator {
 	g := &Generator{}
 	g.Dev = NewDevEnum(dev)
 	g.BuildTarget = buildTarget
@@ -121,7 +122,7 @@ func (g *Generator) Generate(pkg *Package) error {
 	case DevVs2015, DevVs2017, DevVs2019, DevVs2022:
 		gg := NewMsDevGenerator(ws)
 		gg.Generate()
-	case DevEsp32:
+	case DevEsp32, DevEsp32s3:
 		gg := NewEsp32Generator(ws, g.Verbose)
 		err = gg.Generate()
 	}
@@ -129,7 +130,7 @@ func (g *Generator) Generate(pkg *Package) error {
 	return err
 }
 
-func (g *Generator) GenerateWorkspace(pkg *Package, _dev DevEnum, _buildTarget BuildTarget) (*Workspace, error) {
+func (g *Generator) GenerateWorkspace(pkg *Package, _dev DevEnum, _buildTarget dev.BuildTarget) (*Workspace, error) {
 	g.GoPathAbs = filepath.Join(os.Getenv("GOPATH"), "src")
 
 	mainApps := pkg.GetMainApp()
@@ -163,7 +164,7 @@ func (g *Generator) GenerateWorkspace(pkg *Package, _dev DevEnum, _buildTarget B
 	g.ExclusionFilter = NewExclusionFilter(ws.BuildTarget)
 
 	for _, mainTest := range mainTests {
-		if mainTest.Type.IsTest() {
+		if mainTest.BuildConfig.IsTest() {
 			mainTestProject := g.getOrCreateProject(mainTest, ws)
 			mainTestProject.AddConfigurations(mainTest.Configs)
 
@@ -184,7 +185,7 @@ func (g *Generator) GenerateWorkspace(pkg *Package, _dev DevEnum, _buildTarget B
 	}
 
 	for _, mainApp := range mainApps {
-		if mainApp.Type.IsApplication() {
+		if mainApp.BuildType.IsApplication() {
 			mainAppProject := g.getOrCreateProject(mainApp, ws)
 			mainAppProject.AddConfigurations(mainApp.Configs)
 
@@ -205,7 +206,7 @@ func (g *Generator) GenerateWorkspace(pkg *Package, _dev DevEnum, _buildTarget B
 	}
 
 	for _, mainLib := range mainLibs {
-		if mainLib.Type.IsLibrary() {
+		if mainLib.BuildType.IsLibrary() {
 			mainLibProject := g.getOrCreateProject(mainLib, ws)
 			mainLibProject.AddConfigurations(mainLib.Configs)
 
@@ -240,15 +241,15 @@ func (g *Generator) getOrCreateProject(devProj *DevProject, ws *Workspace) *Proj
 
 	projectConfig := NewProjectConfig()
 	{
-		if !devProj.Type.IsExecutable() {
-			if devProj.Type.IsTest() {
+		if !devProj.BuildType.IsExecutable() {
+			if devProj.BuildConfig.IsTest() {
 				projectConfig.Group = "unittest/cpp-library"
 			} else {
 				projectConfig.Group = "main/cpp-library"
 			}
 			//projectConfig.Type = ProjectTypeCppLib
 		} else {
-			if devProj.Type.IsTest() {
+			if devProj.BuildConfig.IsTest() {
 				projectConfig.Group = "unittest/cpp-exe"
 			} else {
 				projectConfig.Group = "main/cpp-exe"
@@ -267,7 +268,7 @@ func (g *Generator) getOrCreateProject(devProj *DevProject, ws *Workspace) *Proj
 
 		// Generate file entry dictionaries for groups of external source files to the new project
 		for _, externalSource := range devProj.ExternalSources {
-			if externalSource.BuildTargets.Contains(ws.BuildTarget) {
+			if externalSource.Supported.Contains(ws.BuildTarget) {
 				externalSrcFileDict := NewFileEntryDict(externalSource.Path)
 				for _, srcFile := range externalSource.SrcFiles {
 					externalSrcFileDict.Add(srcFile)
@@ -278,13 +279,13 @@ func (g *Generator) getOrCreateProject(devProj *DevProject, ws *Workspace) *Proj
 
 		exclusionFilter := func(_filepath string) bool { return g.ExclusionFilter.IsExcluded(_filepath) }
 
-		if devProj.Type.IsTest() {
+		if devProj.BuildConfig.IsTest() {
 			// Unittest executable
 			newProject.GlobFiles(projAbsPath, filepath.Join("source", "test", "cpp", "^**", "*.cpp"), exclusionFilter)
 			newProject.GlobFiles(projAbsPath, filepath.Join("source", "test", "include", "^**", "*.h"), exclusionFilter)
 			newProject.GlobFiles(projAbsPath, filepath.Join("source", "test", "include", "^**", "*.hpp"), exclusionFilter)
 			newProject.GlobFiles(projAbsPath, filepath.Join("source", "test", "include", "^**", "*.inl"), exclusionFilter)
-		} else if devProj.Type.IsApplication() {
+		} else if devProj.BuildType.IsApplication() {
 			// Application
 			newProject.GlobFiles(projAbsPath, filepath.Join("source", "app", "cpp", "^**", "*.cpp"), exclusionFilter)
 			newProject.GlobFiles(projAbsPath, filepath.Join("source", "app", "include", "^**", "*.h"), exclusionFilter)
@@ -294,7 +295,7 @@ func (g *Generator) getOrCreateProject(devProj *DevProject, ws *Workspace) *Proj
 				newProject.GlobFiles(projAbsPath, filepath.Join("source", "app", "cpp", "^**", "*.m"), exclusionFilter)
 				newProject.GlobFiles(projAbsPath, filepath.Join("source", "app", "cpp", "^**", "*.mm"), exclusionFilter)
 			}
-		} else if devProj.Type.IsLibrary() {
+		} else if devProj.BuildType.IsLibrary() {
 			newProject.GlobFiles(projAbsPath, filepath.Join("source", "main", "cpp", "^**", "*.c"), exclusionFilter)
 			newProject.GlobFiles(projAbsPath, filepath.Join("source", "main", "cpp", "^**", "*.cpp"), exclusionFilter)
 			newProject.GlobFiles(projAbsPath, filepath.Join("source", "main", "include", "^**", "*.h"), exclusionFilter)

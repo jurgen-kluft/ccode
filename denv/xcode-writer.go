@@ -3,7 +3,7 @@ package denv
 import (
 	"fmt"
 
-	cutils "github.com/jurgen-kluft/ccode/cutils"
+	utils "github.com/jurgen-kluft/ccode/utils"
 )
 
 type LevelType int8
@@ -14,7 +14,7 @@ const (
 )
 
 type XcodeWriter struct {
-	buffer        *cutils.StringBuilder
+	buffer        *utils.StringBuilder
 	lines         []string
 	levels        []int8
 	newlineNeeded bool
@@ -22,7 +22,7 @@ type XcodeWriter struct {
 
 func NewXcodeWriter() *XcodeWriter {
 	w := &XcodeWriter{}
-	w.buffer = cutils.NewStringBuilder()
+	w.buffer = utils.NewStringBuilder()
 	w.lines = make([]string, 0, 2048)
 	w.levels = make([]int8, 0, 16)
 	w.newlineNeeded = true
@@ -31,7 +31,7 @@ func NewXcodeWriter() *XcodeWriter {
 
 func (w *XcodeWriter) WriteToFile(filename string) error {
 	w.finalize()
-	return cutils.WriteLinesToFile(filename, w.lines)
+	return utils.WriteLinesToFile(filename, w.lines)
 }
 
 // ------------------------------------------------------------------------------------------------

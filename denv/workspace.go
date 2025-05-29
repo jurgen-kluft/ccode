@@ -5,7 +5,8 @@ import (
 	"path/filepath"
 	"strings"
 
-	cutils "github.com/jurgen-kluft/ccode/cutils"
+	"github.com/jurgen-kluft/ccode/dev"
+	utils "github.com/jurgen-kluft/ccode/utils"
 )
 
 // -----------------------------------------------------------------------------------------------------
@@ -74,7 +75,7 @@ func (cat CppAdvancedType) ToString() string {
 	}
 	return ""
 }
-func (cat CppAdvancedType) Tundra(d DevEnum, t BuildTarget) string {
+func (cat CppAdvancedType) Tundra(d DevEnum, t dev.BuildTarget) string {
 	if d.IsVisualStudio() && cat.IsEnabled() {
 		return "/arch:" + cat.ToString()
 	} else if d.CompilerIsClang() || d.CompilerIsGcc() {
@@ -116,7 +117,7 @@ func (cat CppAdvancedType) VisualStudio() string {
 
 type WorkspaceConfig struct {
 	Dev                DevEnum             // The development environment (tundra, make, xcode, vs2022, espmake)
-	BuildTarget        BuildTarget         // The build target (windows, linux, macos, etc.)
+	BuildTarget        dev.BuildTarget     // The build target (windows, linux, macos, etc.)
 	GenerateAbsPath    string              // The directory where the workspace and project files will be generated
 	StartupProject     string              // The name of the project that will be marked as the startup project
 	CppStd             CppStdType          // The C++ standard to use for this workspace and all projects
@@ -132,7 +133,7 @@ type WorkspaceConfig struct {
 	LibTargetSuffix string
 }
 
-func NewWorkspaceConfig(_dev DevEnum, _buildTarget BuildTarget, workspacePath string, projectName string) *WorkspaceConfig {
+func NewWorkspaceConfig(_dev DevEnum, _buildTarget dev.BuildTarget, workspacePath string, projectName string) *WorkspaceConfig {
 	wsc := &WorkspaceConfig{}
 	wsc.Dev = _dev
 	wsc.BuildTarget = _buildTarget
@@ -154,8 +155,8 @@ type Workspace struct {
 	WorkspaceName     string                     // The name of the workspace (e.g. For VisualStudio -> "cbase.sln", for Xcode -> "cbase.xcworkspace")
 	WorkspaceAbsPath  string                     // The workspace directory is the path where all the projects and workspace are to be generated
 	GenerateAbsPath   string                     // Where to generate the workspace and project files
-	HostAsBuildTarget BuildTarget                // The make target for the workspace (e.g. contains details like OS, Compiler, Arch, etc.)
-	BuildTarget       BuildTarget                // The make target for the workspace (e.g. contains details like OS, Compiler, Arch, etc.)
+	HostAsBuildTarget dev.BuildTarget            // The make target for the workspace (e.g. contains details like OS, Compiler, Arch, etc.)
+	BuildTarget       dev.BuildTarget            // The make target for the workspace (e.g. contains details like OS, Compiler, Arch, etc.)
 	Compiler          string                     // The compiler to use for the workspace (e.g. "gcc", "clang", "msvc", etc.)
 	StartupProject    *Project                   // The project instance that will be marked as the startup project
 	ProjectList       *ProjectList               // The project list
@@ -172,7 +173,7 @@ func NewWorkspace(wsc *WorkspaceConfig) *Workspace {
 		ExtraWorkspaces: make(map[string]*ExtraWorkspace),
 	}
 	ws.BuildTarget = ws.Config.BuildTarget
-	ws.HostAsBuildTarget = GetBuildTargetTargettingHost()
+	ws.HostAsBuildTarget = dev.GetBuildTargetTargettingHost()
 	ws.GenerateAbsPath = ws.Config.GenerateAbsPath
 
 	if ws.BuildTarget.Windows() {
@@ -272,7 +273,7 @@ func (ew *ExtraWorkspace) resolve() {
 
 	for _, name := range ew.Config.Groups {
 		for _, g := range ew.Workspace.ProjectGroups.Values {
-			if cutils.PathMatchWildcard(g.Path, name, true) {
+			if utils.PathMatchWildcard(g.Path, name, true) {
 				for _, gp := range g.Projects {
 					projectToAdd.Add(gp)
 				}
@@ -282,7 +283,7 @@ func (ew *ExtraWorkspace) resolve() {
 
 	for _, name := range ew.Config.ExcludeProjects {
 		for _, p := range ew.Workspace.ProjectList.Values {
-			if cutils.PathMatchWildcard(p.Name, name, true) {
+			if utils.PathMatchWildcard(p.Name, name, true) {
 				projectToRemove.Add(p)
 			}
 		}
@@ -290,7 +291,7 @@ func (ew *ExtraWorkspace) resolve() {
 
 	for _, name := range ew.Config.ExcludeGroups {
 		for _, g := range ew.Workspace.ProjectGroups.Values {
-			if cutils.PathMatchWildcard(g.Path, name, true) {
+			if utils.PathMatchWildcard(g.Path, name, true) {
 				for _, gp := range g.Projects {
 					projectToRemove.Add(gp)
 				}

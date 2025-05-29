@@ -1,12 +1,31 @@
 package toolchain
 
+import "github.com/jurgen-kluft/ccode/dev"
+
+type Config struct {
+	Config dev.BuildConfig
+	Target dev.BuildTarget
+}
+
+func NewConfig(config dev.BuildConfig, target dev.BuildTarget) *Config {
+	return &Config{
+		Config: config,
+		Target: target,
+	}
+}
+
+// GetDirname returns "os-arch-build-variant"
+func (c *Config) GetDirname() string {
+	return c.Target.OSAsString() + "-" + c.Target.ArchAsString() + "-" + c.Config.Build() + "-" + c.Config.Variant()
+}
+
 type Toolchain interface {
-	NewCCompiler(config string) Compiler
-	NewCppCompiler(config string) Compiler
-	NewArchiver(config string) Archiver
-	NewLinker(config string) Linker
-	//NewInformer(config string) Informer  // List information about the executable
-	NewBurner(config string) Burner
+	NewCCompiler(config *Config) Compiler
+	NewCppCompiler(config *Config) Compiler
+	NewArchiver(config *Config) Archiver
+	NewLinker(config *Config) Linker
+	//NewInformer(config *Config) Informer  // List information about the executable
+	NewBurner(config *Config) Burner
 }
 
 type ToolchainInstance struct {

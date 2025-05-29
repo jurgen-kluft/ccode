@@ -5,7 +5,7 @@ import (
 	"path/filepath"
 	"strings"
 
-	cutils "github.com/jurgen-kluft/ccode/cutils"
+	utils "github.com/jurgen-kluft/ccode/utils"
 )
 
 type XcodeGenerator struct {
@@ -37,7 +37,7 @@ func (g *XcodeGenerator) genWorkSpace() {
 		}
 	}
 
-	wr := cutils.NewXmlWriter()
+	wr := utils.NewXmlWriter()
 	{
 		tag := wr.TagScope("Workspace")
 		wr.Attr("version", "1.0")
@@ -50,12 +50,12 @@ func (g *XcodeGenerator) genWorkSpace() {
 	wr.WriteToFile(filepath.Join(xcodeWorkspace, "contents.xcworkspacedata"))
 }
 
-func (g *XcodeGenerator) genWorkspaceGroup(wr *cutils.XmlWriter, group *ProjectGroup) {
+func (g *XcodeGenerator) genWorkspaceGroup(wr *utils.XmlWriter, group *ProjectGroup) {
 	for _, c := range group.Children {
 		tag := wr.TagScope("Group")
 		{
 			wr.Attr("location", "container:")
-			wr.Attr("name", cutils.PathFilename(c.Path, true))
+			wr.Attr("name", utils.PathFilename(c.Path, true))
 			g.genWorkspaceGroup(wr, c)
 		}
 		tag.Close()
@@ -76,35 +76,35 @@ func (g *XcodeGenerator) genProjectGenUuid(proj *Project) {
 	gd := proj.Resolved.GenDataXcode
 	gd.XcodeProj.Init(filepath.Join(g.Workspace.GenerateAbsPath, proj.Name+".xcodeproj"), true)
 	gd.PbxProj = filepath.Join(gd.XcodeProj.Path, "project.pbxproj")
-	gd.Uuid = cutils.GenerateUUID()
-	gd.TargetUuid = cutils.GenerateUUID()
-	gd.TargetProductUuid = cutils.GenerateUUID()
-	gd.ConfigListUuid = cutils.GenerateUUID()
-	gd.TargetConfigListUuid = cutils.GenerateUUID()
-	gd.DependencyProxyUuid = cutils.GenerateUUID()
-	gd.DependencyTargetUuid = cutils.GenerateUUID()
-	gd.DependencyTargetProxyUuid = cutils.GenerateUUID()
+	gd.Uuid = utils.GenerateUUID()
+	gd.TargetUuid = utils.GenerateUUID()
+	gd.TargetProductUuid = utils.GenerateUUID()
+	gd.ConfigListUuid = utils.GenerateUUID()
+	gd.TargetConfigListUuid = utils.GenerateUUID()
+	gd.DependencyProxyUuid = utils.GenerateUUID()
+	gd.DependencyTargetUuid = utils.GenerateUUID()
+	gd.DependencyTargetProxyUuid = utils.GenerateUUID()
 
 	for _, i := range proj.SrcFiles.Dict {
 		f := proj.SrcFiles.Values[i]
-		f.UUID = cutils.GenerateUUID()
-		f.BuildUUID = cutils.GenerateUUID()
+		f.UUID = utils.GenerateUUID()
+		f.BuildUUID = utils.GenerateUUID()
 	}
 
 	for _, i := range proj.ResourceEntries.Dict {
 		f := proj.SrcFiles.Values[i]
-		f.UUID = cutils.GenerateUUID()
-		f.BuildUUID = cutils.GenerateUUID()
+		f.UUID = utils.GenerateUUID()
+		f.BuildUUID = utils.GenerateUUID()
 	}
 
 	for _, f := range proj.VirtualFolders.Folders {
-		f.UUID = cutils.GenerateUUID()
+		f.UUID = utils.GenerateUUID()
 	}
 
 	for _, config := range proj.Resolved.Configs.Values {
-		config.GenDataXcode.ProjectConfigUuid = cutils.GenerateUUID()
-		config.GenDataXcode.TargetUuid = cutils.GenerateUUID()
-		config.GenDataXcode.TargetConfigUuid = cutils.GenerateUUID()
+		config.GenDataXcode.ProjectConfigUuid = utils.GenerateUUID()
+		config.GenDataXcode.TargetUuid = utils.GenerateUUID()
+		config.GenDataXcode.TargetConfigUuid = utils.GenerateUUID()
 	}
 }
 
@@ -171,15 +171,15 @@ func (g *XcodeGenerator) genFileReference(wr *XcodeWriter, proj *Project, f *Fil
 	wr.commentBlock(f.Path)
 
 	scope := wr.NewObjectScope(f.UUID.ForXCode())
-	basename := cutils.PathFilename(f.Path, true)
+	basename := utils.PathFilename(f.Path, true)
 	{
 		wr.member("isa", "PBXFileReference")
 		wr.member("name", g.quoteString(basename))
 		wr.member("path", g.quoteString(basename))
 		// if filepath.Ext(f.Path) == ".h" {
-		// 	wr.member("path", g.quoteString(cutils.PathGetRelativeTo(filepath.Join(proj.ProjectAbsPath, f.Path), proj.Resolved.GenDataXcode.PbxProj)))
+		// 	wr.member("path", g.quoteString(utils.PathGetRelativeTo(filepath.Join(proj.ProjectAbsPath, f.Path), proj.Resolved.GenDataXcode.PbxProj)))
 		// } else {
-		// 	wr.member("path", g.quoteString(cutils.PathGetRelativeTo(filepath.Join(proj.ProjectAbsPath, f.Path), proj.Resolved.GenDataXcode.XcodeProj.Path)))
+		// 	wr.member("path", g.quoteString(utils.PathGetRelativeTo(filepath.Join(proj.ProjectAbsPath, f.Path), proj.Resolved.GenDataXcode.XcodeProj.Path)))
 		// }
 
 		wr.member("sourceTree", XcodeKSourceTreeGroup)
@@ -215,7 +215,7 @@ func (g *XcodeGenerator) genProjectDependencies(wr *XcodeWriter, proj *Project) 
 			continue
 		}
 
-		targetBasename := cutils.PathFilename(dp.Resolved.GenDataXcode.XcodeProj.Path, true)
+		targetBasename := utils.PathFilename(dp.Resolved.GenDataXcode.XcodeProj.Path, true)
 
 		wr.newline(0)
 		wr.commentBlock(dp.Name)
@@ -343,8 +343,8 @@ func (g *XcodeGenerator) genProjectPBXBuildFile(wr *XcodeWriter, proj *Project) 
 		wr.commentBlock(f.Path)
 		scope := wr.NewObjectScope(f.UUID.ForXCode())
 		{
-			basename := cutils.PathFilename(f.Path, true)
-			relPath := cutils.PathGetRelativeTo(filepath.Join(proj.ProjectAbsPath, f.Path), proj.Resolved.GenDataXcode.XcodeProj.Path)
+			basename := utils.PathFilename(f.Path, true)
+			relPath := utils.PathGetRelativeTo(filepath.Join(proj.ProjectAbsPath, f.Path), proj.Resolved.GenDataXcode.XcodeProj.Path)
 			if filepath.Ext(f.Path) == ".h" {
 				relPath = "../" + relPath
 			}
@@ -419,12 +419,12 @@ func (g *XcodeGenerator) genProjectPBXGroup(wr *XcodeWriter, proj *Project) {
 			}
 			scope.Close()
 
-			basename := cutils.PathFilename(v.Path, true)
+			basename := utils.PathFilename(v.Path, true)
 			wr.member("name", g.quoteString(basename))
 
 			if v.Parent == root {
 				wr.member("sourceTree", XcodeKSourceTreeProject)
-				relPath := cutils.PathGetRelativeTo(v.DiskPath, g.Workspace.GenerateAbsPath)
+				relPath := utils.PathGetRelativeTo(v.DiskPath, g.Workspace.GenerateAbsPath)
 				wr.member("path", g.quoteString(relPath))
 			} else {
 				wr.member("sourceTree", XcodeKSourceTreeGroup)
@@ -451,7 +451,7 @@ func (g *XcodeGenerator) genProjectPBXGroup(wr *XcodeWriter, proj *Project) {
 			scope.Close()
 		}
 		wr.member("sourceTree", XcodeKSourceTreeProject)
-		relPath := cutils.PathGetRelativeTo(proj.GenerateAbsPath, g.Workspace.GenerateAbsPath)
+		relPath := utils.PathGetRelativeTo(proj.GenerateAbsPath, g.Workspace.GenerateAbsPath)
 		wr.member("path", g.quoteString(relPath))
 		wr.member("name", "MainGroup")
 		scope.Close()
@@ -589,7 +589,7 @@ func (g *XcodeGenerator) genProjectPBXNativeTarget(wr *XcodeWriter, proj *Projec
 			wr.member("includeInIndex", "0")
 
 			defaultConfig := proj.Resolved.Configs.First()
-			targetBasename := cutils.PathFilename(defaultConfig.Resolved.OutputTarget.Path, true)
+			targetBasename := utils.PathFilename(defaultConfig.Resolved.OutputTarget.Path, true)
 			wr.member("path", g.quoteString(targetBasename))
 			wr.member("sourceTree", "BUILT_PRODUCTS_DIR")
 		}
@@ -683,7 +683,7 @@ func (g *XcodeGenerator) genProjectXCBuildConfiguration(wr *XcodeWriter, proj *P
 				//link_flags
 				outputTarget := config.Resolved.OutputTarget.Path
 				targetDir := filepath.Dir(outputTarget)
-				targetBasename := cutils.PathFilename(outputTarget, false)
+				targetBasename := utils.PathFilename(outputTarget, false)
 				targetExt := strings.TrimLeft(filepath.Ext(outputTarget), ".")
 
 				wr.member("PRODUCT_NAME", g.quoteString(targetBasename))
@@ -835,7 +835,7 @@ func (g *XcodeGenerator) genInfoPlistMacOSX(proj *Project) error {
 	gd := proj.Resolved.GenDataXcode
 	gd.InfoPlistFile = proj.Name + "_info.plist"
 
-	wr := cutils.NewXmlWriter()
+	wr := utils.NewXmlWriter()
 	wr.WriteHeader()
 	wr.WriteDocType("plist", "-//Apple//DTD PLIST 1.0//EN", "http://www.apple.com/DTDs/PropertyList-1.0.dtd")
 

@@ -6,10 +6,11 @@ import (
 	"log"
 	"os"
 	"path/filepath"
+	"runtime"
 	"strings"
 	"time"
 
-	cutils "github.com/jurgen-kluft/ccode/cutils"
+	cutils "github.com/jurgen-kluft/ccode/utils"
 )
 
 // Clay App
@@ -33,10 +34,8 @@ const (
 
 var ClayAppCreateProjectsFunc func(buildPath string) []*Project
 
-func GetBuildPath(board string) string {
-	// /build/esp32
-	// /build/esp32s3
-	buildPath := filepath.Join("build", board)
+func GetBuildPath(subdir string) string {
+	buildPath := filepath.Join("build", subdir)
 	return buildPath
 }
 
@@ -67,15 +66,55 @@ func ParseCpuAndBoardName() (string, string) {
 	return cpu, boardName
 }
 
-func ParseProjectNameBoardNameAndConfig() (string, string, string) {
+func ParseProjectNameAndConfig() (string, *Config) {
 	var projectName string
-	var projectConfig string
-	var boardName string
+	var targetOs string
+	var targetArch string
+	var targetBuild string
+	var targetVariant string
 	flag.StringVar(&projectName, "p", "", "Name of the project")
-	flag.StringVar(&projectConfig, "c", "ReleaseDev", "Build configuration (DebugDev, ReleaseDev, FinalDev)")
-	flag.StringVar(&boardName, "b", "esp32", "Board name (esp32, esp32s3)")
+	flag.StringVar(&targetOs, "os", "", "Target OS (windows, darwin, linux, arduino)")
+	flag.StringVar(&targetBuild, "build", "release-dev", "Build configuration (debug-dev, release-test, final-prod)")
+	flag.StringVar(&targetArch, "arch", "", "Cpu Architecture (amd64, x64, arm64, esp32, esp32s3)")
 	flag.Parse()
-	return projectName, projectConfig, boardName
+
+	configParts := strings.Split(targetBuild, "-")
+
+	if len(configParts) != 2 {
+		targetBuild = "release"
+		targetVariant = "dev"
+	} else {
+		targetBuild = configParts[0]
+		targetVariant = configParts[1]
+	}
+
+	if runtime.GOOS == "windows" {
+		targetOs = "windows"
+	} else if runtime.GOOS == "darwin" {
+		targetOs = "darwin"
+	} else {
+		targetOs = "linux"
+	}
+
+	if strings.HasPrefix(targetArch, "esp32") {
+		targetOs = "arduino"
+	}
+
+	if targetArch == "" {
+		targetArch = runtime.GOARCH
+		if targetOs == "arduino" {
+			targetArch = "esp32"
+		} else if targetOs == "darwin" {
+			targetArch = "arm64"
+		} else if targetOs == "windows" {
+			targetArch = "x64"
+		} else if targetOs == "linux" {
+			targetArch = "amd64"
+		}
+	}
+
+	config := NewConfig(targetOs, targetArch, targetBuild, targetVariant)
+	return projectName, config
 }
 
 func ClayAppMain() {
@@ -87,13 +126,13 @@ func ClayAppMain() {
 	var err error
 	switch command {
 	case "build":
-		err = Build(ParseProjectNameBoardNameAndConfig())
+		err = Build(ParseProjectNameAndConfig())
 	case "build-info":
-		err = BuildInfo(ParseProjectNameBoardNameAndConfig())
+		err = BuildInfo(ParseProjectNameAndConfig())
 	case "clean":
-		err = Clean(ParseProjectNameBoardNameAndConfig())
+		err = Clean(ParseProjectNameAndConfig())
 	case "flash":
-		err = Flash(ParseProjectNameBoardNameAndConfig())
+		err = Flash(ParseProjectNameAndConfig())
 	case "monitor":
 		err = SerialMonitor(ParsePortAndBaud())
 	case "list-libraries":
@@ -136,42 +175,33 @@ func Usage() {
 
 	fmt.Println("Examples:")
 	fmt.Println("  clay build-info (generates buildinfo.h and buildinfo.cpp)")
-	fmt.Println("  clay build-info -x debug -b esp32s3")
+	fmt.Println("  clay build-info -c debug -b esp32s3")
 	fmt.Println("  clay build")
-	fmt.Println("  clay build -x debug -b esp32s3")
-	fmt.Println("  clay clean -x debug -b esp32s3")
-	fmt.Println("  clay flash -x debug -b esp32s3")
+	fmt.Println("  clay build -c debug -b esp32s3")
+	fmt.Println("  clay clean -c debug -b esp32s3")
+	fmt.Println("  clay flash -c debug -b esp32s3")
 	fmt.Println("  clay list-libraries")
 	fmt.Println("  clay list-boards -b esp32 -m 5")
 	fmt.Println("  clay list-flash-sizes -c esp32 -b esp32")
 }
 
-func Build(projectName string, projectConfig string, board string) error {
-	// Note: We should be running this from the "target/esp" directory
+func Build(projectName string, targetConfig *Config) error {
+	// Note: We should be running this from the "target/{build target}" directory
 	// Create the build directory
-	buildPath := GetBuildPath(board)
+	buildPath := GetBuildPath(targetConfig.GetSubDir())
 	os.MkdirAll(buildPath+"/", os.ModePerm)
-
-	var buildEnv *BuildEnvironment
-	switch board {
-	case "esp32":
-		buildEnv = NewBuildEnvironmentEsp32(buildPath)
-	case "esp32s3":
-		buildEnv = NewBuildEnvironmentEsp32s3(buildPath)
-	}
-
-	if buildEnv == nil {
-		return fmt.Errorf("Unsupported board: " + board)
-	}
 
 	prjs := ClayAppCreateProjectsFunc(buildPath)
 	for _, prj := range prjs {
+		prj.SetToolchain(targetConfig)
+	}
+
+	for _, prj := range prjs {
 		if projectName == "" || projectName == prj.Name {
-			if projectConfig == "" || strings.EqualFold(prj.Config, projectConfig) {
-				log.Printf("Building project: %s, config: %s\n", prj.Name, prj.Config)
+			if prj.Config.Matches(targetConfig) {
+				log.Printf("Building project: %s, config: %s-%s, arch: %s\n", prj.Name, prj.Config.Config.Build(), prj.Config.Config.Variant(), prj.Config.Target.ArchAsString())
 				startTime := time.Now()
 				{
-					prj.SetBuildEnvironment(buildEnv)
 					AddBuildInfoAsCppLibrary(prj)
 					if err := prj.Build(); err != nil {
 						return fmt.Errorf("Build failed on project %s with config %s: %v", prj.Name, prj.Config, err)
@@ -185,17 +215,17 @@ func Build(projectName string, projectConfig string, board string) error {
 	return nil
 }
 
-func BuildInfo(projectName string, projectConfig string, board string) error {
+func BuildInfo(projectName string, buildConfig *Config) error {
 	EspSdkPath := "/Users/obnosis5/sdk/arduino/esp32"
 	if env := os.Getenv("ESP_SDK"); env != "" {
 		EspSdkPath = env
 	}
 
-	prjs := ClayAppCreateProjectsFunc(GetBuildPath(board))
+	prjs := ClayAppCreateProjectsFunc("build")
 	for _, prj := range prjs {
 		if projectName == "" || projectName == prj.Name {
-			if projectConfig == "" || projectConfig == prj.Config {
-				buildPath := prj.BuildPath
+			if prj.Config.Matches(buildConfig) {
+				buildPath := prj.GetBuildPath()
 				appPath, _ := os.Getwd()
 				if err := GenerateBuildInfo(buildPath, appPath, EspSdkPath, BuildInfoFilenameWithoutExt); err != nil {
 					return err
@@ -207,14 +237,13 @@ func BuildInfo(projectName string, projectConfig string, board string) error {
 	return nil
 }
 
-func Clean(projectName string, projectConfig string, board string) error {
-	buildPath := GetBuildPath(board)
-
-	prjs := ClayAppCreateProjectsFunc(buildPath)
+func Clean(projectName string, buildConfig *Config) error {
+	prjs := ClayAppCreateProjectsFunc("build")
 	for _, prj := range prjs {
 		if projectName == "" || projectName == prj.Name {
-			if projectConfig == "" || projectConfig == prj.Config {
-				buildPath = filepath.Join(buildPath, prj.Name, projectConfig)
+			if prj.Config.Matches(buildConfig) {
+
+				buildPath := prj.GetBuildPath()
 
 				// Note: We should be running this from the "target/esp" directory
 				// Remove all folders and files from "build/"
@@ -232,29 +261,19 @@ func Clean(projectName string, projectConfig string, board string) error {
 	return nil
 }
 
-func Flash(projectName string, projectConfig string, board string) error {
-	buildPath := GetBuildPath(board)
+func Flash(projectName string, buildConfig *Config) error {
 
-	var buildEnv *BuildEnvironment
-	switch board {
-	case "esp32":
-		buildEnv = NewBuildEnvironmentEsp32(buildPath)
-	case "esp32s3":
-		buildEnv = NewBuildEnvironmentEsp32s3(buildPath)
+	prjs := ClayAppCreateProjectsFunc("build")
+	for _, prj := range prjs {
+		prj.SetToolchain(buildConfig)
 	}
 
-	if buildEnv == nil {
-		return fmt.Errorf("Unsupported board: " + board)
-	}
-
-	prjs := ClayAppCreateProjectsFunc(buildPath)
 	for _, prj := range prjs {
 		if projectName == prj.Name || projectName == "" {
-			if projectConfig == "" || strings.EqualFold(prj.Config, projectConfig) {
+			if prj.Config.Matches(buildConfig) {
 				log.Printf("Flashing project: %s, config: %s\n", prj.Name, prj.Config)
 				startTime := time.Now()
 				{
-					prj.SetBuildEnvironment(buildEnv)
 					if err := prj.Flash(); err != nil {
 						return fmt.Errorf("Build failed: %v", err)
 					}
@@ -268,23 +287,8 @@ func Flash(projectName string, projectConfig string, board string) error {
 }
 
 func SerialMonitor(port string, baud int) error {
-	c := &SerialConfig{Name: port, Baud: baud}
-	s, err := SerialOpenPort(c)
-	if err != nil {
-		return err
-	}
 
-	for {
-		buf := make([]byte, 128)
-		n, err := s.Read(buf)
-		if err != nil {
-			return err
-		}
-		line := string(buf[:n])
-		line = strings.Trim(line, "\r\n")
-	}
-
-	//return nil
+	return nil
 }
 
 func ListLibraries() error {
@@ -297,9 +301,9 @@ func ListLibraries() error {
 		if idx, ok := nameToIndex[prj.Name]; !ok {
 			idx = len(configs)
 			nameToIndex[prj.Name] = idx
-			configs = append(configs, prj.Config)
+			configs = append(configs, prj.Config.Config.Build()+"-"+prj.Config.Config.Variant())
 		} else {
-			configs[idx] += ", " + prj.Config
+			configs[idx] += ", " + prj.Config.Config.Build() + "-" + prj.Config.Config.Variant()
 		}
 	}
 
@@ -345,10 +349,10 @@ func ListFlashSizes(cpuName string, boardName string) error {
 // if so it creates a C++ library and adds it to the project
 func AddBuildInfoAsCppLibrary(prj *Project) {
 	name := BuildInfoFilenameWithoutExt
-	hdrFilepath := filepath.Join(prj.BuildPath, name+".h")
-	srcFilepath := filepath.Join(prj.BuildPath, name+".cpp")
+	hdrFilepath := filepath.Join(prj.GetBuildPath(), name+".h")
+	srcFilepath := filepath.Join(prj.GetBuildPath(), name+".cpp")
 	if cutils.FileExists(hdrFilepath) && cutils.FileExists(srcFilepath) {
-		library := NewCppLibrary(name, "0.1.0", name, name+".a")
+		library := NewLibrary(name, prj.Config)
 		library.IncludeDirs.Add(filepath.Dir(hdrFilepath))
 		library.AddSourceFile(srcFilepath, filepath.Base(srcFilepath))
 		prj.Executable.AddLibrary(library)

@@ -7,72 +7,71 @@ import (
 	"strings"
 
 	"github.com/jurgen-kluft/ccode/denv"
+	"github.com/jurgen-kluft/ccode/dev"
 	"github.com/jurgen-kluft/ccode/embedded"
 )
 
 // Init will initialize ccode before anything else is run
 
 var (
-	// tundra, vs2022, make, cmake, xcode, espmake
-	dev = "tundra"
+	// tundra, vs2022, make, cmake, xcode, esp32/esp32s3
+	cdev = "tundra"
 
 	// win32, win64, linux32, linux64, macos64
-	os = runtime.GOOS
+	cos = runtime.GOOS
 
 	// x64, arm64, amd64, 386, esp32 / esp32c3 / esp32s3
-	arch = runtime.GOARCH
+	carch = runtime.GOARCH
 
 	// verbose
-	verbose = false
+	cverbose = false
 )
 
 func Init() bool {
 
-	flag.StringVar(&dev, "dev", "tundra", "the build system to generate for (vs2022, tundra, make, cmake, xcode, esp32)")
-	flag.BoolVar(&verbose, "verbose", false, "verbose output")
+	flag.StringVar(&cdev, "dev", "", "the build system to generate for (vs2022, tundra, make, cmake, xcode, esp32)")
+	flag.BoolVar(&cverbose, "verbose", false, "verbose output")
 	flag.Parse()
 
 	// Currently supported: esp32, esp32s3
-	if strings.HasPrefix(dev, "esp32") {
-		os = "arduino"
-		arch = "esp32"
-		if strings.EqualFold(dev, "esp32s3") {
-			arch = "esp32s3"
-		}
+	if strings.HasPrefix(cdev, "esp32") {
+		cos = "arduino"
+		carch = cdev
 	}
 
-	if os == "" {
-		os = strings.ToLower(runtime.GOOS)
+	if cos == "" {
+		cos = strings.ToLower(runtime.GOOS)
 	}
 
-	if arch == "" {
-		arch = strings.ToLower(runtime.GOARCH)
+	if carch == "" {
+		carch = strings.ToLower(runtime.GOARCH)
 	}
 
-	if dev == "" {
-		dev = "tundra"
-		if os == "windows" {
-			dev = "vs2022"
+	if cdev == "" {
+		if cos == "darwin" {
+			cdev = "tundra"
+		} else if cos == "windows" {
+			cdev = "vs2022"
 		}
 	}
 
 	fmt.Println("ccode, a tool to generate C/C++ workspace and project files")
 
-	if denv.NewDevEnum(dev) == denv.DevInvalid {
+	if denv.NewDevEnum(cdev) == denv.DevInvalid {
 		fmt.Println()
-		fmt.Println("Error, wrong parameter for '-dev', '", dev, "' is not recognized")
+		fmt.Println("Error, wrong parameter for '-dev', '", cdev, "' is not recognized")
 		fmt.Println()
 		fmt.Println("Examples:")
 		fmt.Println("    -> Usage: go run cbase.go -dev=vs2022/vs2019/vs2015")
 		fmt.Println("    -> Usage: go run cbase.go -dev=tundra")
 		fmt.Println("    -> Usage: go run cbase.go -dev=make")
 		fmt.Println("    -> Usage: go run cbase.go -dev=xcode")
-		fmt.Println("    -> Usage: go run cbase.go -dev=esp32")
+		fmt.Println("    -> Usage: go run cbase.go -dev=esp32 / esp32s3")
 		return false
 	}
 
 	// Initialize the build target that will be used during Package, Project and Lib creation
-	denv.SetBuildTarget(os, arch)
+	dev.SetBuildTarget(cos, carch)
 
 	return true
 }
@@ -80,8 +79,8 @@ func Init() bool {
 // Generate is the main function that requires 'arguments' to then generate
 // workspace and project files for a specified IDE.
 func Generate(pkg *denv.Package) error {
-	buildTarget := denv.GetBuildTarget()
-	generator := denv.NewGenerator(dev, buildTarget, verbose)
+	buildTarget := dev.GetBuildTarget()
+	generator := denv.NewGenerator(cdev, buildTarget, cverbose)
 	return generator.Generate(pkg)
 }
 

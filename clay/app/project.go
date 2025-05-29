@@ -9,7 +9,7 @@ func CreateProjects(buildPath string) []*clay.Project {
 	projects := []*clay.Project{}
 
 	prjName := "test_project"
-	prjConfig := "release"
+	prjConfig := clay.NewConfig("macos", "arm64", "debug", "dev")
 	prj := clay.NewProject(prjName, prjConfig, buildPath)
 	clay.AddBuildInfoAsCppLibrary(prj)
 	AddLibraries(prj)
@@ -22,7 +22,7 @@ func CreateProjects(buildPath string) []*clay.Project {
 func AddLibraries(prj *clay.Project) {
 	{
 		name := "test_lib"
-		library := clay.NewCppLibrary(name, "0.1.0", name, name+".a")
+		library := clay.NewLibrary(name, prj.Config)
 
 		// Include directories
 		library.IncludeDirs.Add("/Users/obnosis5/dev.go/src/github.com/jurgen-kluft/ccode/clay/app/clay/test_lib/include")

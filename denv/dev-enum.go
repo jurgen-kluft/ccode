@@ -5,23 +5,24 @@ import (
 	"strings"
 )
 
-type DevEnum uint
+type DevEnum uint64
 
 // All development environment
 const (
-	DevTundra        DevEnum = 0x020000
-	DevMake          DevEnum = 0x080000
-	DevXcode         DevEnum = 0x100000
-	DevVisualStudio  DevEnum = 0x200000
+	DevTundra        DevEnum = 0x0000000000010000
+	DevMake          DevEnum = 0x0000000000020000
+	DevXcode         DevEnum = 0x0000000000040000
+	DevVisualStudio  DevEnum = 0x0000000000080000
 	DevVs2015        DevEnum = DevVisualStudio | 2015
 	DevVs2017        DevEnum = DevVisualStudio | 2017
 	DevVs2019        DevEnum = DevVisualStudio | 2019
 	DevVs2022        DevEnum = DevVisualStudio | 2022
-	DevEsp32         DevEnum = 0x400000
-	DevCompilerMsvc  DevEnum = 0x800000
-	DevCompilerGcc   DevEnum = 0x1000000
-	DevCompilerClang DevEnum = 0x2000000
-	DevInvalid       DevEnum = 0xFFFFFFFF
+	DevEsp32         DevEnum = 0x0000000000100000
+	DevEsp32s3       DevEnum = 0x0000000000200000
+	DevCompilerMsvc  DevEnum = 0x0000000010000000
+	DevCompilerGcc   DevEnum = 0x0000000020000000
+	DevCompilerClang DevEnum = 0x0000000040000000
+	DevInvalid       DevEnum = 0xFFFFFFFFFFFFFFFF
 )
 
 func (d DevEnum) CompilerIsMsvc() bool {
@@ -75,6 +76,7 @@ var DevEnumToStrMap = map[DevEnum]string{
 	DevVs2019:       "vs2019",
 	DevVs2022:       "vs2022",
 	DevEsp32:        "esp32",
+	DevEsp32s3:      "esp32s3",
 }
 
 var DevStrToEnumMap = map[string]DevEnum{
@@ -87,6 +89,7 @@ var DevStrToEnumMap = map[string]DevEnum{
 	"vs2022":       DevVs2022,
 	"vs":           DevVs2022,
 	"esp32":        DevEsp32,
+	"esp32s3":      DevEsp32s3,
 	"visualstudio": DevVisualStudio,
 }
 

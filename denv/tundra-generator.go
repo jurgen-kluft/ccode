@@ -5,7 +5,8 @@ import (
 	"runtime"
 	"strings"
 
-	cutils "github.com/jurgen-kluft/ccode/cutils"
+	"github.com/jurgen-kluft/ccode/dev"
+	utils "github.com/jurgen-kluft/ccode/utils"
 )
 
 type TundraGenerator struct {
@@ -27,7 +28,7 @@ func (g *TundraGenerator) Generate() {
 }
 
 func (g *TundraGenerator) generateUnitsLua(ws *Workspace) {
-	units := cutils.NewLineWriter(cutils.IndentModeTabs)
+	units := utils.NewLineWriter(utils.IndentModeTabs)
 
 	units.WriteLine(`require "tundra.syntax.glob"`)
 	units.WriteLine(`require "tundra.path"`)
@@ -37,13 +38,13 @@ func (g *TundraGenerator) generateUnitsLua(ws *Workspace) {
 
 	// Get all the projects and write them out
 	for _, p := range ws.ProjectList.Values {
-		switch p.Type.GetProjectType() {
-		case DevConfigTypeExecutable:
+		switch p.BuildType.GetProjectType() {
+		case dev.BuildTypeExecutable:
 			continue
-		case DevConfigTypeStaticLibrary:
+		case dev.BuildTypeStaticLibrary:
 			units.NewLine()
 			units.WriteILine("", "local ", p.Name, "_staticlib = ", "StaticLibrary", "{")
-		case DevConfigTypeDynamicLibrary:
+		case dev.BuildTypeDynamicLibrary:
 			units.NewLine()
 			units.WriteILine("", "local ", p.Name, "_sharedlib = ", "SharedLibrary", "{")
 		}
@@ -56,12 +57,12 @@ func (g *TundraGenerator) generateUnitsLua(ws *Workspace) {
 	}
 
 	for _, p := range ws.ProjectList.Values {
-		switch p.Type.GetProjectType() {
-		case DevConfigTypeStaticLibrary:
+		switch p.BuildType.GetProjectType() {
+		case dev.BuildTypeStaticLibrary:
 			continue
-		case DevConfigTypeDynamicLibrary:
+		case dev.BuildTypeDynamicLibrary:
 			continue
-		case DevConfigTypeExecutable:
+		case dev.BuildTypeExecutable:
 			units.NewLine()
 			units.WriteILine("", "local ", p.Name, "_program = ", "Program", "{")
 		}
@@ -77,7 +78,7 @@ func (g *TundraGenerator) generateUnitsLua(ws *Workspace) {
 	units.WriteToFile(filepath.Join(ws.GenerateAbsPath, "units.lua"))
 }
 
-func (g *TundraGenerator) writeUnit(units *cutils.LineWriter, p *Project, isProgram bool) {
+func (g *TundraGenerator) writeUnit(units *utils.LineWriter, p *Project, isProgram bool) {
 	units.WriteILine("+", "Name = ", `"`, p.Name, `",`)
 	units.WriteILine("+", "Env = {")
 
@@ -92,7 +93,7 @@ func (g *TundraGenerator) writeUnit(units *cutils.LineWriter, p *Project, isProg
 		for _, cfg := range p.Resolved.Configs.Values {
 			linkDirs, _, _ := p.BuildLibraryInformation(DevTundra, cfg, p.Workspace.GenerateAbsPath)
 			for _, linkDir := range linkDirs.Values {
-				units.WriteILine("+++", `{"`, linkDir, `", `, `Config = "`, cfg.Type.Tundra(), `"},`)
+				units.WriteILine("+++", `{"`, linkDir, `", `, `Config = "`, cfg.BuildConfig.Tundra(), `"},`)
 			}
 		}
 		units.WriteILine("++", "},")
@@ -107,7 +108,7 @@ func (g *TundraGenerator) writeUnit(units *cutils.LineWriter, p *Project, isProg
 			escapedDef := g.escapeString(def)
 			units.WriteILine("++++", `"`, escapedDef, `",`)
 		}
-		units.WriteILine("++++", `Config = "`, cfg.Type.Tundra(), `"`)
+		units.WriteILine("++++", `Config = "`, cfg.BuildConfig.Tundra(), `"`)
 		units.WriteILine("+++", `},`)
 	}
 	units.WriteILine("+++", `{ "TARGET_PC", Config = "win64-*-*-*" },`)
@@ -127,7 +128,7 @@ func (g *TundraGenerator) writeUnit(units *cutils.LineWriter, p *Project, isProg
 			path = strings.Replace(path, "\\", "/", -1)
 			signature := path + " | " + pcfg.String()
 			if _, ok := history[signature]; !ok {
-				units.WriteILine("++", `{"`, path, `", Config = "`, pcfg.Type.Tundra(), `"},`)
+				units.WriteILine("++", `{"`, path, `", Config = "`, pcfg.BuildConfig.Tundra(), `"},`)
 				history[signature] = 1
 			}
 		}
@@ -140,7 +141,7 @@ func (g *TundraGenerator) writeUnit(units *cutils.LineWriter, p *Project, isProg
 				path = strings.Replace(path, "\\", "/", -1)
 				signature := path + " | " + dpcfg.String()
 				if _, ok := history[signature]; !ok {
-					units.WriteILine("++", `{"`, path, `", Config = "`, dpcfg.Type.Tundra(), `"},`)
+					units.WriteILine("++", `{"`, path, `", Config = "`, dpcfg.BuildConfig.Tundra(), `"},`)
 					history[signature] = 1
 				}
 			}
@@ -164,10 +165,10 @@ func (g *TundraGenerator) writeUnit(units *cutils.LineWriter, p *Project, isProg
 
 	units.WriteILine("+", "Depends = {")
 	for _, dp := range p.Dependencies.Values {
-		switch dp.Type.GetProjectType() {
-		case DevConfigTypeStaticLibrary:
+		switch dp.BuildType.GetProjectType() {
+		case dev.BuildTypeStaticLibrary:
 			units.WriteILine("++", dp.Name, "_staticlib,")
-		case DevConfigTypeDynamicLibrary:
+		case dev.BuildTypeDynamicLibrary:
 			units.WriteILine("++", dp.Name, "_sharedlib,")
 		}
 	}
@@ -185,7 +186,7 @@ func (g *TundraGenerator) writeUnit(units *cutils.LineWriter, p *Project, isProg
 			_, _, linkLibs := p.BuildLibraryInformation(DevTundra, cfg, p.Workspace.GenerateAbsPath)
 			for _, lib := range linkLibs.Values {
 				lib = strings.Replace(lib, "\\", "/", -1)
-				units.WriteILine("++", `{"`, lib, `"`, `, Config = "`, cfg.Type.Tundra(), `"},`)
+				units.WriteILine("++", `{"`, lib, `"`, `, Config = "`, cfg.BuildConfig.Tundra(), `"},`)
 			}
 		}
 		units.WriteILine("+", "},")
@@ -196,7 +197,7 @@ func (g *TundraGenerator) writeUnit(units *cutils.LineWriter, p *Project, isProg
 			for _, cfg := range p.Resolved.Configs.Values {
 				frameworks := p.BuildFrameworkInformation(cfg)
 				for _, framework := range frameworks.Values {
-					units.WriteILine("++", `{"`, framework, `"`, `, Config = "`, cfg.Type.Tundra(), `"},`)
+					units.WriteILine("++", `{"`, framework, `"`, `, Config = "`, cfg.BuildConfig.Tundra(), `"},`)
 				}
 			}
 			units.WriteILine("+", `},`)
@@ -205,7 +206,7 @@ func (g *TundraGenerator) writeUnit(units *cutils.LineWriter, p *Project, isProg
 }
 
 func (g *TundraGenerator) generateTundraLua(ws *Workspace) {
-	tundra := cutils.NewLineWriter(cutils.IndentModeTabs)
+	tundra := utils.NewLineWriter(utils.IndentModeTabs)
 	tundra.WriteLine(`local native = require('tundra.native')`)
 	tundra.WriteLine(``)
 	tundra.WriteLine(`-----------------------------------------------------------------------------------------------------------------------`)

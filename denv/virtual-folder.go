@@ -4,7 +4,7 @@ import (
 	"path/filepath"
 	"sort"
 
-	cutils "github.com/jurgen-kluft/ccode/cutils"
+	utils "github.com/jurgen-kluft/ccode/utils"
 )
 
 type VirtualDirectory struct {
@@ -13,7 +13,7 @@ type VirtualDirectory struct {
 	Children []*VirtualDirectory
 	Files    []*FileEntry
 	Parent   *VirtualDirectory
-	UUID     cutils.UUID
+	UUID     utils.UUID
 }
 
 type VirtualDirectories struct {
@@ -27,7 +27,7 @@ func NewVirtualFolder() *VirtualDirectory {
 	c := &VirtualDirectory{}
 	c.Children = make([]*VirtualDirectory, 0)
 	c.Files = make([]*FileEntry, 0)
-	c.UUID = cutils.GenerateUUID()
+	c.UUID = utils.GenerateUUID()
 	return c
 }
 
@@ -43,7 +43,7 @@ func (f *VirtualDirectories) GetAllLeafDirectories() []*VirtualDirectory {
 }
 
 func (f *VirtualDirectories) getOrAddParent(filePath string) *VirtualDirectory {
-	dir, _ := cutils.PathUp(filePath)
+	dir, _ := utils.PathUp(filePath)
 	if len(dir) == 0 || dir == "." {
 		return f.Root
 	}

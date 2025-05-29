@@ -4,7 +4,7 @@ import (
 	"fmt"
 	"sort"
 
-	cutils "github.com/jurgen-kluft/ccode/cutils"
+	cutils "github.com/jurgen-kluft/ccode/utils"
 )
 
 // opName: Any of the following:

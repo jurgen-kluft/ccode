@@ -5,7 +5,8 @@ import (
 	"path/filepath"
 	"strings"
 
-	cutils "github.com/jurgen-kluft/ccode/cutils"
+	dev "github.com/jurgen-kluft/ccode/dev"
+	utils "github.com/jurgen-kluft/ccode/utils"
 )
 
 // -----------------------------------------------------------------------------------------------------
@@ -34,18 +35,18 @@ type XcodeProjectConfig struct {
 	XcodeProj                 *FileEntry
 	PbxProj                   string
 	InfoPlistFile             string
-	Uuid                      cutils.UUID
-	TargetUuid                cutils.UUID
-	TargetProductUuid         cutils.UUID
-	ConfigListUuid            cutils.UUID
-	TargetConfigListUuid      cutils.UUID
-	DependencyProxyUuid       cutils.UUID
-	DependencyTargetUuid      cutils.UUID
-	DependencyTargetProxyUuid cutils.UUID
+	Uuid                      utils.UUID
+	TargetUuid                utils.UUID
+	TargetProductUuid         utils.UUID
+	ConfigListUuid            utils.UUID
+	TargetConfigListUuid      utils.UUID
+	DependencyProxyUuid       utils.UUID
+	DependencyTargetUuid      utils.UUID
+	DependencyTargetProxyUuid utils.UUID
 }
 
 type MsDevProjectConfig struct {
-	UUID cutils.UUID
+	UUID utils.UUID
 }
 
 func NewXcodeProjectConfig() *XcodeProjectConfig {
@@ -96,7 +97,7 @@ func (p *ProjectList) Get(name string) (*Project, bool) {
 
 func (p *ProjectList) CollectByWildcard(name string, list *ProjectList) {
 	for _, p := range p.Values {
-		if cutils.PathMatchWildcard(p.Name, name, true) {
+		if utils.PathMatchWildcard(p.Name, name, true) {
 			list.Add(p)
 		}
 	}
@@ -142,15 +143,16 @@ func (p *ProjectList) TopoSort() error {
 // -----------------------------------------------------------------------------------------------------
 
 type Project struct {
-	Workspace        *Workspace     // The workspace this project is part of
-	Name             string         // The name of the project
-	Version          string         // The version of the project
-	Type             DevConfigType  // The type of the project
-	SupportedTargets BuildTargets   // The targets that this project supports
-	ProjectAbsPath   string         // The path where the project is located on disk, under the workspace directory
-	GenerateAbsPath  string         // Where the project will be saved on disk
-	Settings         *ProjectConfig //
-	Group            *ProjectGroup  // Set when project is added into ProjectGroups
+	Workspace        *Workspace      // The workspace this project is part of
+	Name             string          // The name of the project
+	Version          string          // The version of the project
+	BuildType        dev.BuildType   // The build type of the project
+	BuildConfig      dev.BuildConfig // The build config of the project
+	SupportedTargets dev.BuildTarget // The targets that this project supports
+	ProjectAbsPath   string          // The path where the project is located on disk, under the workspace directory
+	GenerateAbsPath  string          // Where the project will be saved on disk
+	Settings         *ProjectConfig  //
+	Group            *ProjectGroup   // Set when project is added into ProjectGroups
 	SrcFiles         *FileEntryDict
 	ExternalSrcFiles []*FileEntryDict
 	ResourceEntries  *FileEntryDict
@@ -167,8 +169,9 @@ func newProject2(prj *DevProject, ws *Workspace, name string, projectAbsPath str
 	p := &Project{
 		Workspace:        ws,
 		Name:             name,
-		Type:             prj.Type,
-		SupportedTargets: prj.BuildTargets,
+		BuildType:        prj.BuildType,
+		BuildConfig:      prj.BuildConfig,
+		SupportedTargets: prj.Supported,
 		ProjectAbsPath:   projectAbsPath,
 		GenerateAbsPath:  ws.GenerateAbsPath,
 		Settings:         settings,
@@ -188,22 +191,22 @@ func newProject2(prj *DevProject, ws *Workspace, name string, projectAbsPath str
 }
 
 func (p *Project) TypeIsCpp() bool {
-	return p.Type == DevConfigTypeStaticLibrary || p.Type == DevConfigTypeDynamicLibrary || p.Type == DevConfigTypeExecutable
+	return p.BuildType == dev.BuildTypeStaticLibrary || p.BuildType == dev.BuildTypeDynamicLibrary || p.BuildType == dev.BuildTypeExecutable
 }
 func (p *Project) TypeIsExe() bool {
-	return p.Type == DevConfigTypeExecutable || p.Type == DevConfigTypeExecutable
+	return p.BuildType == dev.BuildTypeExecutable || p.BuildType == dev.BuildTypeExecutable
 }
 func (p *Project) TypeIsDll() bool {
-	return p.Type == DevConfigTypeDynamicLibrary || p.Type == DevConfigTypeDynamicLibrary
+	return p.BuildType == dev.BuildTypeDynamicLibrary || p.BuildType == dev.BuildTypeDynamicLibrary
 }
 func (p *Project) TypeIsLib() bool {
-	return p.Type == DevConfigTypeDynamicLibrary || p.Type == DevConfigTypeStaticLibrary
+	return p.BuildType == dev.BuildTypeDynamicLibrary || p.BuildType == dev.BuildTypeStaticLibrary
 }
 func (p *Project) TypeIsExeOrDll() bool {
 	return p.TypeIsExe() || p.TypeIsDll()
 }
 
-func (p *Project) GetOrCreateConfig(t DevConfigType) *Config {
+func (p *Project) GetOrCreateConfig(t dev.BuildConfig) *Config {
 	c, ok := p.ConfigsLocal.Get(t)
 	if !ok {
 		c = NewConfig(t, p.Workspace, p)
@@ -211,7 +214,7 @@ func (p *Project) GetOrCreateConfig(t DevConfigType) *Config {
 	return c
 }
 
-func (p *Project) FindConfig(t DevConfigType) *Config {
+func (p *Project) FindConfig(t dev.BuildConfig) *Config {
 	c, ok := p.ConfigsLocal.Get(t)
 	if !ok {
 		return nil
@@ -223,23 +226,23 @@ func (p *Project) FileEntriesGenerateUUIDs() {
 
 	for _, i := range p.SrcFiles.Dict {
 		f := p.SrcFiles.Values[i]
-		f.UUID = cutils.GenerateUUID()
-		f.BuildUUID = cutils.GenerateUUID()
+		f.UUID = utils.GenerateUUID()
+		f.BuildUUID = utils.GenerateUUID()
 	}
 
 	for _, i := range p.ResourceEntries.Dict {
 		f := p.SrcFiles.Values[i]
-		f.UUID = cutils.GenerateUUID()
-		f.BuildUUID = cutils.GenerateUUID()
+		f.UUID = utils.GenerateUUID()
+		f.BuildUUID = utils.GenerateUUID()
 	}
 
 	for _, f := range p.VirtualFolders.Folders {
-		f.UUID = cutils.GenerateUUID()
+		f.UUID = utils.GenerateUUID()
 	}
 }
 
-func (p *Project) CreateConfiguration(cfg *DevConfig, configType DevConfigType) *Config {
-	config := p.GetOrCreateConfig(configType)
+func (p *Project) CreateConfiguration(cfg *DevConfig, buildConfig dev.BuildConfig) *Config {
+	config := p.GetOrCreateConfig(buildConfig)
 
 	// C++ defines
 	for _, define := range cfg.Defines.Values {
@@ -261,7 +264,7 @@ func (p *Project) CreateConfiguration(cfg *DevConfig, configType DevConfigType) 
 		config.AddExternalIncludeDir(include)
 	}
 
-	if configType.IsTest() {
+	if buildConfig.IsTest() {
 		config.VisualStudioClCompile.AddOrSet("ExceptionHandling", "Sync")
 	}
 
@@ -270,8 +273,8 @@ func (p *Project) CreateConfiguration(cfg *DevConfig, configType DevConfigType) 
 
 func (p *Project) AddConfigurations(configs []*DevConfig) {
 	for _, cfg := range configs {
-		configType := cfg.ConfigType
-		config := p.CreateConfiguration(cfg, configType)
+		buildConfig := cfg.BuildConfig
+		config := p.CreateConfiguration(cfg, buildConfig)
 		p.ConfigsLocal.Add(config)
 	}
 }
@@ -299,7 +302,7 @@ func NewProjectResolved() *ProjectResolved {
 	}
 }
 
-func (p *ProjectResolved) FindConfig(t DevConfigType) *Config {
+func (p *ProjectResolved) FindConfig(t dev.BuildConfig) *Config {
 	c, ok := p.Configs.Get(t)
 	if !ok {
 		return nil
@@ -317,36 +320,36 @@ func (p *ProjectResolved) InitXCodeConfig(prj *Project) {
 
 func (p *ProjectResolved) GenerateUUIDs(dev DevEnum) {
 	if dev.IsXCode() {
-		p.GenDataXcode.Uuid = cutils.GenerateUUID()
-		p.GenDataXcode.TargetUuid = cutils.GenerateUUID()
-		p.GenDataXcode.TargetProductUuid = cutils.GenerateUUID()
-		p.GenDataXcode.ConfigListUuid = cutils.GenerateUUID()
-		p.GenDataXcode.TargetConfigListUuid = cutils.GenerateUUID()
-		p.GenDataXcode.DependencyProxyUuid = cutils.GenerateUUID()
-		p.GenDataXcode.DependencyTargetUuid = cutils.GenerateUUID()
-		p.GenDataXcode.DependencyTargetProxyUuid = cutils.GenerateUUID()
+		p.GenDataXcode.Uuid = utils.GenerateUUID()
+		p.GenDataXcode.TargetUuid = utils.GenerateUUID()
+		p.GenDataXcode.TargetProductUuid = utils.GenerateUUID()
+		p.GenDataXcode.ConfigListUuid = utils.GenerateUUID()
+		p.GenDataXcode.TargetConfigListUuid = utils.GenerateUUID()
+		p.GenDataXcode.DependencyProxyUuid = utils.GenerateUUID()
+		p.GenDataXcode.DependencyTargetUuid = utils.GenerateUUID()
+		p.GenDataXcode.DependencyTargetProxyUuid = utils.GenerateUUID()
 
 		for _, config := range p.Configs.Values {
-			config.GenDataXcode.ProjectConfigUuid = cutils.GenerateUUID()
-			config.GenDataXcode.TargetUuid = cutils.GenerateUUID()
-			config.GenDataXcode.TargetConfigUuid = cutils.GenerateUUID()
+			config.GenDataXcode.ProjectConfigUuid = utils.GenerateUUID()
+			config.GenDataXcode.TargetUuid = utils.GenerateUUID()
+			config.GenDataXcode.TargetConfigUuid = utils.GenerateUUID()
 		}
 	}
 
-	p.GenDataMsDev.UUID = cutils.GenerateUUID()
+	p.GenDataMsDev.UUID = utils.GenerateUUID()
 }
 
-func (p *Project) Resolve(dev DevEnum) error {
+func (p *Project) Resolve(devEnum DevEnum) error {
 	resolved := NewProjectResolved()
 
-	if p.Type.IsExecutable() {
+	if p.BuildType.IsExecutable() {
 		resolved.HasOutputTarget = true
-	} else if p.Type.IsDynamicLibrary() {
+	} else if p.BuildType.IsDynamicLibrary() {
 		resolved.HasOutputTarget = true
-	} else if p.Type.IsStaticLibrary() {
+	} else if p.BuildType.IsStaticLibrary() {
 		resolved.HasOutputTarget = true
 	} else {
-		return fmt.Errorf("project %q has unknown project type %q", p.Name, p.Type.ProjectString())
+		return fmt.Errorf("project %q has unknown project type %q", p.Name, p.BuildType.ProjectString())
 	}
 
 	resolved.GeneratedFilesDir = filepath.Join(p.Workspace.GenerateAbsPath, "_generated_", p.Name)
@@ -364,7 +367,7 @@ func (p *Project) Resolve(dev DevEnum) error {
 		}
 	}
 
-	configsPerConfigTypeDb := map[DevConfigType][]*Config{}
+	configsPerConfigTypeDb := map[dev.BuildConfig][]*Config{}
 
 	err := p.Dependencies.TopoSort()
 	if err != nil {
@@ -377,15 +380,15 @@ func (p *Project) Resolve(dev DevEnum) error {
 		}
 
 		for _, config := range p.ConfigsLocal.Values {
-			if dpConfig, ok := depProject.ConfigsLocal.Get(config.Type); ok {
-				configsPerConfigTypeDb[config.Type] = append(configsPerConfigTypeDb[config.Type], dpConfig)
+			if dpConfig, ok := depProject.ConfigsLocal.Get(config.BuildConfig); ok {
+				configsPerConfigTypeDb[config.BuildConfig] = append(configsPerConfigTypeDb[config.BuildConfig], dpConfig)
 			}
 		}
 	}
 
 	// For each config of this project, merge it will all the configs of the dependencies using the configsPerConfigTypeDb
 	for _, config := range p.ConfigsLocal.Values {
-		if configsOfSpecificConfigType, ok := configsPerConfigTypeDb[config.Type]; ok {
+		if configsOfSpecificConfigType, ok := configsPerConfigTypeDb[config.BuildConfig]; ok {
 			mergedConfig := config.BuildResolved(configsOfSpecificConfigType)
 			resolved.Configs.Add(mergedConfig)
 		} else {
@@ -400,10 +403,10 @@ func (p *Project) Resolve(dev DevEnum) error {
 	p.FileEntriesGenerateUUIDs()
 
 	// XCode ?
-	if dev.IsXCode() {
+	if devEnum.IsXCode() {
 		resolved.InitXCodeConfig(p)
 	}
-	resolved.GenerateUUIDs(dev)
+	resolved.GenerateUUIDs(devEnum)
 
 	p.Resolved = resolved
 
@@ -414,8 +417,8 @@ func (p *Project) Resolve(dev DevEnum) error {
 // -----------------------------------------------------------------------------------------------------
 
 func (p *Project) GlobFiles(dir string, pattern string, isExcluded func(string) bool) {
-	dir = cutils.PathNormalize(dir)
-	pattern = cutils.PathNormalize(pattern)
+	dir = utils.PathNormalize(dir)
+	pattern = utils.PathNormalize(pattern)
 	pp := strings.Split(pattern, "^")
 	path := filepath.Join(dir, pp[0])
 	files, err := GlobFiles(path, pp[1])
@@ -441,7 +444,7 @@ func (p *Project) BuildLibraryInformation(dev DevEnum, config *Config, workspace
 
 	// Library directories, these will be relative to the workspace generate path
 	for _, dir := range config.LibraryDirs.Values {
-		relpath := cutils.PathGetRelativeTo(dir.String(), workspaceGenerateAbsPath)
+		relpath := utils.PathGetRelativeTo(dir.String(), workspaceGenerateAbsPath)
 		linkDirs.Add(relpath)
 	}
 
@@ -453,8 +456,8 @@ func (p *Project) BuildLibraryInformation(dev DevEnum, config *Config, workspace
 	// For all project dependencies, get their matching config and take the OutputLib and add it to the linkLibs
 	if dev.IsVisualStudio() {
 		for _, dep := range p.Dependencies.Values {
-			if cfg, has := dep.Resolved.Configs.Get(config.Type); has {
-				relpath := cutils.PathGetRelativeTo(cfg.Resolved.OutputLib.Path, workspaceGenerateAbsPath)
+			if cfg, has := dep.Resolved.Configs.Get(config.BuildConfig); has {
+				relpath := utils.PathGetRelativeTo(cfg.Resolved.OutputLib.Path, workspaceGenerateAbsPath)
 				linkLibs.Add(relpath)
 			}
 		}

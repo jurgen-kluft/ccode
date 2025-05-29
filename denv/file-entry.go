@@ -4,7 +4,7 @@ import (
 	"path/filepath"
 	"sort"
 
-	cutils "github.com/jurgen-kluft/ccode/cutils"
+	utils "github.com/jurgen-kluft/ccode/utils"
 )
 
 type FileType int
@@ -34,8 +34,8 @@ type FileEntry struct {
 	Parent            *VirtualDirectory // Parent directory
 	ExcludedFromBuild bool              // Excluded from build
 	Generated         bool              // Generated file
-	UUID              cutils.UUID
-	BuildUUID         cutils.UUID
+	UUID              utils.UUID
+	BuildUUID         utils.UUID
 }
 
 func NewFileEntry() *FileEntry {
@@ -53,7 +53,7 @@ func (fe *FileEntry) Init(path string, isGenerated bool) {
 	fe.Path = path
 	fe.ExcludedFromBuild = false
 
-	ext := cutils.PathFileExtension(fe.Path)
+	ext := utils.PathFileExtension(fe.Path)
 	switch ext {
 	case ".h", ".hpp", ".inl":
 		fe.Type = FileTypeCppHeader
@@ -154,7 +154,7 @@ func (d *FileEntryDict) GetRelativePath(e *FileEntry, path string) string {
 	if len(d.Path) == 0 {
 		return e.Path
 	}
-	return cutils.PathGetRelativeTo(filepath.Join(d.Path, e.Path), path)
+	return utils.PathGetRelativeTo(filepath.Join(d.Path, e.Path), path)
 }
 
 func (d *FileEntryDict) add(path string, isGenerated bool) *FileEntry {

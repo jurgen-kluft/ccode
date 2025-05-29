@@ -2,6 +2,8 @@ package denv
 
 import (
 	"strings"
+
+	"github.com/jurgen-kluft/ccode/dev"
 )
 
 // Package hold a defined set of 'Projects'
@@ -11,7 +13,7 @@ type Package struct {
 	Projects map[string]*DevProject
 }
 
-func (p *Package) collect(projectTypesToCollect DevConfigType) []*DevProject {
+func (p *Package) collectTypes(buildType dev.BuildType) []*DevProject {
 	stack := make([]*DevProject, 0)
 	for _, prj := range p.Projects {
 		stack = append(stack, prj)
@@ -23,7 +25,7 @@ func (p *Package) collect(projectTypesToCollect DevConfigType) []*DevProject {
 		stack = stack[1:]
 		if _, ok := projectMap[prj.Name]; !ok {
 			projectMap[prj.Name] = len(projects)
-			if prj.Type&projectTypesToCollect != 0 {
+			if prj.BuildType&buildType != 0 {
 				projects = append(projects, prj)
 			}
 			stack = append(stack, prj)
@@ -31,7 +33,7 @@ func (p *Package) collect(projectTypesToCollect DevConfigType) []*DevProject {
 		for _, dprj := range prj.Dependencies {
 			if _, ok := projectMap[dprj.Name]; !ok {
 				projectMap[dprj.Name] = len(projects)
-				if dprj.Type&projectTypesToCollect != 0 {
+				if dprj.BuildType&buildType != 0 {
 					projects = append(projects, dprj)
 				}
 				stack = append(stack, dprj)
@@ -43,7 +45,7 @@ func (p *Package) collect(projectTypesToCollect DevConfigType) []*DevProject {
 
 // Libraries returns all the libraries in the package
 func (p *Package) Libraries() []*DevProject {
-	return p.collect(DevConfigTypeStaticLibrary | DevConfigTypeDynamicLibrary)
+	return p.collectTypes(dev.BuildTypeStaticLibrary | dev.BuildTypeDynamicLibrary)
 }
 
 func (p *Package) MainProjects() []*DevProject {

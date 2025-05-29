@@ -16,10 +16,10 @@ type ToolchainDarwinClangCCompiler struct {
 	toolChain *ToolchainDarwinClang
 	toolPath  string
 	args      []string
-	config    string
+	config    *Config
 }
 
-func (t *ToolchainDarwinClang) NewCCompiler(config string) Compiler {
+func (t *ToolchainDarwinClang) NewCCompiler(config *Config) Compiler {
 	return &ToolchainDarwinClangCCompiler{
 		toolChain: t,
 		toolPath:  t.Tools["c.compiler"],
@@ -27,25 +27,20 @@ func (t *ToolchainDarwinClang) NewCCompiler(config string) Compiler {
 	}
 }
 
-func (cl *ToolchainDarwinClangCCompiler) AddDefine(define string) {
-	// Implement the logic to add a define here
-}
-func (cl *ToolchainDarwinClangCCompiler) AddIncludePath(path string) {
-	// Implement the logic to add an include path here
-}
-func (cl *ToolchainDarwinClangCCompiler) SetupArgs(userVars Vars) {
+func (cl *ToolchainDarwinClangCCompiler) SetupArgs(defines []string, includes []string) {
 	// Implement the logic to setup arguments for the compiler here
 	cl.args = []string{}
-	if ConfigMatches(cl.config, "*-*-debug-*") {
+	if cl.config.Config.IsDebug() {
 		cl.args = append(cl.args, `-g`, `-O0`)
-	} else if ConfigMatches(cl.config, "*-*-release-*") {
+	} else if cl.config.Config.IsRelease() {
 		cl.args = append(cl.args, `-O3`)
 	}
 	cl.args = append(cl.args, `-fPIC`)
 }
-func (cl *ToolchainDarwinClangCCompiler) Compile(sourceAbsFilepath string, sourceRelFilepath string) (string, error) {
+
+func (cl *ToolchainDarwinClangCCompiler) Compile(sourceAbsFilepath string, objRelFilepath string) error {
 	// Implement the compile logic here
-	return "objectfilepath", nil
+	return nil
 }
 
 // --------------------------------------------------------------------------------------------------
@@ -56,10 +51,10 @@ type ToolchainDarwinClangCppCompiler struct {
 	toolChain    *ToolchainDarwinClang
 	compilerPath string
 	compilerArgs []string
-	config       string
+	config       *Config
 }
 
-func (t *ToolchainDarwinClang) NewCppCompiler(config string) Compiler {
+func (t *ToolchainDarwinClang) NewCppCompiler(config *Config) Compiler {
 	return &ToolchainDarwinClangCppCompiler{
 		toolChain:    t,
 		compilerPath: t.Tools["cpp.compiler"],
@@ -68,25 +63,20 @@ func (t *ToolchainDarwinClang) NewCppCompiler(config string) Compiler {
 	}
 }
 
-func (cl *ToolchainDarwinClangCppCompiler) AddDefine(define string) {
-	// Implement the logic to add a define here
-}
-func (cl *ToolchainDarwinClangCppCompiler) AddIncludePath(path string) {
-	// Implement the logic to add an include path here
-}
-func (cl *ToolchainDarwinClangCppCompiler) SetupArgs(userVars Vars) {
+func (cl *ToolchainDarwinClangCppCompiler) SetupArgs(defines []string, includes []string) {
 	// Implement the logic to setup arguments for the compiler here
 	cl.compilerArgs = []string{}
-	if ConfigMatches(cl.config, "*-*-debug-*") {
+	if cl.config.Config.IsDebug() {
 		cl.compilerArgs = append(cl.compilerArgs, `-g`, `-O0`)
-	} else if ConfigMatches(cl.config, "*-*-release-*") {
+	} else if cl.config.Config.IsRelease() {
 		cl.compilerArgs = append(cl.compilerArgs, `-O3`)
 	}
 	cl.compilerArgs = append(cl.compilerArgs, `-fPIC`)
 }
-func (cl *ToolchainDarwinClangCppCompiler) Compile(sourceFilepath string, objectFilepath string) (string, error) {
+
+func (cl *ToolchainDarwinClangCppCompiler) Compile(sourceFilepath string, objRelFilepath string) error {
 	// Implement the compile logic here
-	return "objectfilepath", nil
+	return nil
 }
 
 // --------------------------------------------------------------------------------------------------
@@ -98,11 +88,16 @@ type ToolchainDarwinClangArchiver struct {
 	toolPath  string
 }
 
-func (t *ToolchainDarwinClang) NewArchiver() Archiver {
+func (t *ToolchainDarwinClang) NewArchiver(config *Config) Archiver {
 	return &ToolchainDarwinClangArchiver{
 		toolChain: t,
 		toolPath:  t.Tools["archiver"],
 	}
+}
+
+func (t *ToolchainDarwinClangArchiver) FileExtension() string {
+	// The file extension for the archive on Darwin is typically ".a"
+	return ".a"
 }
 
 func (t *ToolchainDarwinClangArchiver) SetupArgs(userVars Vars) {
@@ -124,23 +119,19 @@ type ToolchainDarwinClangLinker struct {
 	args      []string
 }
 
-func (t *ToolchainDarwinClang) NewLinker() Linker {
+func (t *ToolchainDarwinClang) NewLinker(config *Config) Linker {
 	return &ToolchainDarwinClangLinker{
 		toolChain: t,
 		toolPath:  t.Tools["linker"],
 	}
 }
 
-func (cl *ToolchainDarwinClangLinker) GenerateMapFile() {
-	// Implement the logic to generate a map file here
+func (t *ToolchainDarwinClangLinker) FileExt() string {
+	// The file extension for the linker output on Darwin is typically ".dylib" or ".app"
+	return ".dylib"
 }
-func (cl *ToolchainDarwinClangLinker) AddLibraryPath(path string) {
-	// Implement the logic to add a library path here
-}
-func (cl *ToolchainDarwinClangLinker) AddLibraryFile(lib string) {
-	// Implement the logic to add a library file here
-}
-func (t *ToolchainDarwinClangLinker) SetupArgs(userVars Vars) {
+
+func (t *ToolchainDarwinClangLinker) SetupArgs(generateMapFile bool, libraryPaths []string, libraryFiles []string) {
 	libPaths := t.toolChain.Vars["linker.lib.paths"]
 	t.args = []string{}
 	for _, libPath := range libPaths {
@@ -162,7 +153,7 @@ func (cl *ToolchainDarwinClangLinker) Link(inputArchiveAbsFilepaths []string, ou
 // --------------------------------------------------------------------------------------------------
 // Burner
 
-func (t *ToolchainDarwinClang) NewBurner() Burner {
+func (t *ToolchainDarwinClang) NewBurner(config *Config) Burner {
 	return &ToolchainEmptyBurner{}
 }
 

@@ -5,29 +5,31 @@ import (
 	"path/filepath"
 	"strings"
 
-	cutils "github.com/jurgen-kluft/ccode/cutils"
+	"github.com/jurgen-kluft/ccode/dev"
+	utils "github.com/jurgen-kluft/ccode/utils"
 )
 
 type ExternalSrcFiles struct {
-	Path         string // Absolute path
-	BuildTargets BuildTargets
-	SrcFiles     []string
+	Path      string // Absolute path
+	Supported dev.BuildTarget
+	SrcFiles  []string
 }
 
 func NewExternalSrcFiles(path string) *ExternalSrcFiles {
 	return &ExternalSrcFiles{
-		Path:         path,
-		BuildTargets: BuildTargets{},
-		SrcFiles:     []string{},
+		Path:      path,
+		Supported: dev.BuildTarget{},
+		SrcFiles:  []string{},
 	}
 }
 
 // DevProject is a structure that holds all the information that defines a project in an IDE
 type DevProject struct {
 	Name            string
-	Type            DevConfigType
+	BuildType       dev.BuildType
+	BuildConfig     dev.BuildConfig
+	Supported       dev.BuildTarget
 	Vars            map[string]string
-	BuildTargets    []BuildTarget
 	PackageURL      string
 	Configs         []*DevConfig
 	ExternalSources []*ExternalSrcFiles
@@ -37,9 +39,10 @@ type DevProject struct {
 func NewProject(name string) *DevProject {
 	return &DevProject{
 		Name:            name,
-		Type:            0,
+		BuildType:       dev.BuildTypeExecutable,
+		BuildConfig:     dev.BuildConfigDebug | dev.BuildConfigDevelopment,
 		Vars:            make(map[string]string),
-		BuildTargets:    []BuildTarget{},
+		Supported:       dev.EmptyBuildTarget,
 		PackageURL:      "",
 		Configs:         []*DevConfig{},
 		ExternalSources: []*ExternalSrcFiles{},
@@ -117,7 +120,7 @@ func (prj *DevProject) externalSourcesFrom(path string) *ExternalSrcFiles {
 	}
 
 	// Scan for .c and .cpp files in that directory, recursively
-	cutils.AddFilesFrom(path, handleDir, handleFile)
+	utils.AddFilesFrom(path, handleDir, handleFile)
 
 	externalSrcFiles := NewExternalSrcFiles(path)
 	externalSrcFiles.SrcFiles = externalSources
@@ -126,8 +129,8 @@ func (prj *DevProject) externalSourcesFrom(path string) *ExternalSrcFiles {
 
 func (prj *DevProject) AddExternalSourcesFromForArduino(path string) {
 	externalSrcFiles := prj.externalSourcesFrom(path)
-	externalSrcFiles.BuildTargets = []BuildTarget{BuildTargetArduinoEsp32}
-    prj.ExternalSources = append(prj.ExternalSources, externalSrcFiles)
+	externalSrcFiles.Supported = dev.BuildTargetArduinoEsp32
+	prj.ExternalSources = append(prj.ExternalSources, externalSrcFiles)
 }
 
 func (prj *DevProject) AddDefine(define string) {
@@ -140,7 +143,7 @@ func (prj *DevProject) AddDefine(define string) {
 func (prj *DevProject) AddLibs(libs []*DevLib) {
 	for _, cfg := range prj.Configs {
 		for _, lib := range libs {
-			if lib.Configs.Contains(cfg.ConfigType) {
+			if lib.BuildConfigs.Contains(cfg.BuildConfig) {
 				cfg.Libs = append(cfg.Libs, lib)
 			}
 		}
@@ -196,19 +199,19 @@ func (proj *DevProject) CollectProjectDependencies() []*DevProject {
 // Example:
 //
 //	SetupDefaultCppLibProject("cbase", "github.com/jurgen-kluft")
-func SetupDefaultCppLibProject(name string, URL string, dir string, buildTarget BuildTarget) *DevProject {
+func SetupDefaultCppLibProject(name string, URL string, dir string, buildTarget dev.BuildTarget) *DevProject {
 	project := NewProject(name)
-	project.Type = DevConfigTypeStaticLibrary
+	project.BuildType = dev.BuildTypeStaticLibrary
 	if os.PathSeparator == '\\' {
 		project.PackageURL = strings.Replace(URL, "/", "\\", -1)
 	} else {
 		project.PackageURL = strings.Replace(URL, "\\", "/", -1)
 	}
 
-	project.Configs = append(project.Configs, NewDevConfig(DevConfigTypeStaticLibrary|DevConfigTypeDebug|DevConfigTypeDevelopment|DevConfigTypeStaticLibrary))
-	project.Configs = append(project.Configs, NewDevConfig(DevConfigTypeStaticLibrary|DevConfigTypeRelease|DevConfigTypeDevelopment|DevConfigTypeStaticLibrary))
-	project.Configs = append(project.Configs, NewDevConfig(DevConfigTypeStaticLibrary|DevConfigTypeDebug|DevConfigTypeDevelopment|DevConfigTypeStaticLibrary|DevConfigTypeTest))
-	project.Configs = append(project.Configs, NewDevConfig(DevConfigTypeStaticLibrary|DevConfigTypeRelease|DevConfigTypeDevelopment|DevConfigTypeStaticLibrary|DevConfigTypeTest))
+	project.Configs = append(project.Configs, NewDevConfig(dev.BuildTypeStaticLibrary, dev.BuildConfigDebug|dev.BuildConfigDevelopment))
+	project.Configs = append(project.Configs, NewDevConfig(dev.BuildTypeStaticLibrary, dev.BuildConfigRelease|dev.BuildConfigDevelopment))
+	project.Configs = append(project.Configs, NewDevConfig(dev.BuildTypeStaticLibrary, dev.BuildConfigDebug|dev.BuildConfigDevelopment|dev.BuildConfigTest))
+	project.Configs = append(project.Configs, NewDevConfig(dev.BuildTypeStaticLibrary, dev.BuildConfigRelease|dev.BuildConfigDevelopment|dev.BuildConfigTest))
 	project.Dependencies = []*DevProject{}
 
 	for _, cfg := range project.Configs {
@@ -221,43 +224,44 @@ func SetupDefaultCppLibProject(name string, URL string, dir string, buildTarget 
 
 func SetupCppLibProject(name string, URL string) *DevProject {
 	// Windows, Mac and Linux, build for the Host platform
-	project := SetupDefaultCppLibProject(name, URL, "main", GetBuildTarget())
-	project.BuildTargets = append(project.BuildTargets, BuildTargetsAll...)
+	project := SetupDefaultCppLibProject(name, URL, "main", dev.GetBuildTarget())
+	project.Supported = dev.BuildTargetsAll
 	return project
 }
 
 func SetupCppLibProjectForDesktop(name string, URL string) *DevProject {
 	// Windows, Mac and Linux, build for the Host platform
-	project := SetupDefaultCppLibProject(name, URL, "main", GetBuildTarget())
-	project.BuildTargets = append(project.BuildTargets, BuildTargetsDesktop...)
+	project := SetupDefaultCppLibProject(name, URL, "main", dev.GetBuildTarget())
+	project.Supported = dev.BuildTargetsDesktop
 	return project
 }
 
 func SetupCppLibProjectForArduino(name string, URL string) *DevProject {
 	// Arduino Esp32
-	project := SetupDefaultCppLibProject(name, URL, "main", BuildTargetArduinoEsp32)
-	project.BuildTargets = append(project.BuildTargets, BuildTargetsArduino...)
+	project := SetupDefaultCppLibProject(name, URL, "main", dev.BuildTargetArduinoEsp32)
+	project.Supported = dev.BuildTargetsArduino
 	return project
 }
 
 func SetupCppLibProjectWithLibs(name string, URL string, Libs []*DevLib) *DevProject {
-	project := SetupDefaultCppLibProject(name, URL, "main", GetBuildTarget())
+	project := SetupDefaultCppLibProject(name, URL, "main", dev.GetBuildTarget())
 	project.AddLibs(Libs)
-	project.BuildTargets = append(project.BuildTargets, BuildTargetsArduino...)
+	project.Supported = dev.BuildTargetsArduino
 	return project
 }
 
-func SetupDefaultCppTestProject(name string, URL string, buildTarget BuildTarget) *DevProject {
+func SetupDefaultCppTestProject(name string, URL string, buildTarget dev.BuildTarget) *DevProject {
 	project := NewProject(name)
-	project.Type = DevConfigTypeExecutable | DevConfigTypeTest
-	project.BuildTargets = append(project.BuildTargets, BuildTargetsDesktop...)
+	project.BuildType = dev.BuildTypeExecutable
+	project.BuildConfig = dev.BuildConfigTest
+	project.Supported = dev.BuildTargetsDesktop
 	if os.PathSeparator == '\\' {
 		project.PackageURL = strings.Replace(URL, "/", "\\", -1)
 	} else {
 		project.PackageURL = strings.Replace(URL, "\\", "/", -1)
 	}
-	project.Configs = append(project.Configs, NewDevConfig(DevConfigTypeDebug|DevConfigTypeDevelopment|DevConfigTypeTest|DevConfigTypeExecutable))
-	project.Configs = append(project.Configs, NewDevConfig(DevConfigTypeRelease|DevConfigTypeDevelopment|DevConfigTypeTest|DevConfigTypeExecutable))
+	project.Configs = append(project.Configs, NewDevConfig(dev.BuildTypeExecutable, dev.BuildConfigDebug|dev.BuildConfigDevelopment|dev.BuildConfigTest))
+	project.Configs = append(project.Configs, NewDevConfig(dev.BuildTypeExecutable, dev.BuildConfigRelease|dev.BuildConfigDevelopment|dev.BuildConfigTest))
 	project.Dependencies = []*DevProject{}
 
 	for _, cfg := range project.Configs {
@@ -270,15 +274,15 @@ func SetupDefaultCppTestProject(name string, URL string, buildTarget BuildTarget
 
 func SetupCppTestProject(name string, URL string) *DevProject {
 	// Windows, Mac and Linux, build for the Host platform
-	project := SetupDefaultCppTestProject(name, URL, GetBuildTarget())
-	project.BuildTargets = append(project.BuildTargets, BuildTargetsDesktop...)
+	project := SetupDefaultCppTestProject(name, URL, dev.GetBuildTarget())
+	project.Supported = dev.BuildTargetsDesktop
 	return project
 }
 
 func SetupCppTestProjectForDesktop(name string, URL string) *DevProject {
 	// Windows, Mac and Linux, build for the Host platform
-	project := SetupDefaultCppTestProject(name, URL, GetBuildTarget())
-	project.BuildTargets = append(project.BuildTargets, BuildTargetsDesktop...)
+	project := SetupDefaultCppTestProject(name, URL, dev.GetBuildTarget())
+	project.Supported = dev.BuildTargetsDesktop
 	return project
 }
 
@@ -286,17 +290,18 @@ func SetupCppTestProjectForDesktop(name string, URL string) *DevProject {
 // Example:
 //
 //	SetupDefaultCppCliProject("cmycli", "github.com\\jurgen-kluft")
-func SetupDefaultCppCliProject(name string, URL string, buildTarget BuildTarget) *DevProject {
+func SetupDefaultCppCliProject(name string, URL string, buildTarget dev.BuildTarget) *DevProject {
 	project := NewProject(name)
-	project.Type = DevConfigTypeExecutable
-	project.BuildTargets = append(project.BuildTargets, BuildTargetsDesktop...)
+	project.BuildType = dev.BuildTypeExecutable
+	project.BuildConfig = dev.BuildConfigDevelopment | dev.BuildConfigConfigAll
+	project.Supported = dev.BuildTargetsDesktop
 	if os.PathSeparator == '\\' {
 		project.PackageURL = strings.Replace(URL, "/", "\\", -1)
 	} else {
 		project.PackageURL = strings.Replace(URL, "\\", "/", -1)
 	}
-	project.Configs = append(project.Configs, NewDevConfig(DevConfigTypeDebug|DevConfigTypeDevelopment|DevConfigTypeExecutable))
-	project.Configs = append(project.Configs, NewDevConfig(DevConfigTypeRelease|DevConfigTypeDevelopment|DevConfigTypeExecutable))
+	project.Configs = append(project.Configs, NewDevConfig(dev.BuildTypeExecutable, dev.BuildConfigDebug|dev.BuildConfigDevelopment))
+	project.Configs = append(project.Configs, NewDevConfig(dev.BuildTypeExecutable, dev.BuildConfigRelease|dev.BuildConfigDevelopment))
 	project.Dependencies = []*DevProject{}
 
 	for _, cfg := range project.Configs {
@@ -311,17 +316,17 @@ func SetupDefaultCppCliProject(name string, URL string, buildTarget BuildTarget)
 // Example:
 //
 //	SetupDefaultCppAppProject("cmyapp", "github.com\\jurgen-kluft")
-func SetupDefaultCppAppProject(name string, URL string, buildTarget BuildTarget) *DevProject {
+func SetupDefaultCppAppProject(name string, URL string, buildTarget dev.BuildTarget) *DevProject {
 	project := NewProject(name)
-	project.Type = DevConfigTypeExecutable
-	project.BuildTargets = append(project.BuildTargets, BuildTargetsDesktop...)
+	project.BuildType = dev.BuildTypeExecutable
+	project.Supported = dev.BuildTargetsDesktop
 	if os.PathSeparator == '\\' {
 		project.PackageURL = strings.Replace(URL, "/", "\\", -1)
 	} else {
 		project.PackageURL = strings.Replace(URL, "\\", "/", -1)
 	}
-	project.Configs = append(project.Configs, NewDevConfig(DevConfigTypeDebug|DevConfigTypeDevelopment|DevConfigTypeExecutable))
-	project.Configs = append(project.Configs, NewDevConfig(DevConfigTypeRelease|DevConfigTypeDevelopment|DevConfigTypeExecutable))
+	project.Configs = append(project.Configs, NewDevConfig(dev.BuildTypeExecutable, dev.BuildConfigDebug|dev.BuildConfigDevelopment))
+	project.Configs = append(project.Configs, NewDevConfig(dev.BuildTypeExecutable, dev.BuildConfigRelease|dev.BuildConfigDevelopment))
 	project.Dependencies = []*DevProject{}
 
 	for _, cfg := range project.Configs {
@@ -334,22 +339,22 @@ func SetupDefaultCppAppProject(name string, URL string, buildTarget BuildTarget)
 
 func SetupCppAppProject(name string, URL string) *DevProject {
 	// Windows, Mac and Linux, build for the Host platform
-	project := SetupDefaultCppAppProject(name, URL, GetBuildTarget())
-	project.BuildTargets = append(project.BuildTargets, BuildTargetsAll...)
+	project := SetupDefaultCppAppProject(name, URL, dev.GetBuildTarget())
+	project.Supported = dev.BuildTargetsAll
 	return project
 }
 
 func SetupCppAppProjectForDesktop(name string, URL string) *DevProject {
 	// Windows, Mac and Linux, build for the Host platform
-	project := SetupDefaultCppAppProject(name, URL, GetBuildTarget())
-	project.BuildTargets = append(project.BuildTargets, BuildTargetsDesktop...)
+	project := SetupDefaultCppAppProject(name, URL, dev.GetBuildTarget())
+	project.Supported = dev.BuildTargetsDesktop
 	return project
 }
 
 func SetupCppAppProjectForArduino(name string, URL string) *DevProject {
 	// Arduino project
-	project := SetupDefaultCppAppProject(name, URL, BuildTargetArduinoEsp32)
-	project.BuildTargets = append(project.BuildTargets, BuildTargetsArduino...)
+	project := SetupDefaultCppAppProject(name, URL, dev.BuildTargetArduinoEsp32)
+	project.Supported = dev.BuildTargetsArduino
 	return project
 }
 
@@ -378,7 +383,7 @@ func configureProjectAppConfiguration(config *DevConfig) {
 }
 
 func configureProjectBasicConfiguration(config *DevConfig) {
-	configType := config.ConfigType
+	configType := config.BuildConfig
 	if configType.IsDebug() {
 		config.Defines.AddMany("TARGET_DEBUG", "_DEBUG")
 	} else if configType.IsRelease() {

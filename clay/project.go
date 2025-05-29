@@ -1,7 +1,12 @@
 package clay
 
 import (
+	"fmt"
 	"path/filepath"
+	"runtime"
+	"strings"
+
+	"github.com/jurgen-kluft/ccode/clay/toolchain"
 )
 
 // TODO:
@@ -26,56 +31,68 @@ import (
 
 // Project represents a C/C++ project that can be built using the Clay build system.
 type Project struct {
-	Name       string
-	Config     string            // Build configuration (debug, release, final)
-	BuildPath  string            // Path to the build directory
-	BuildEnv   *BuildEnvironment // Build environment for this project
-	Executable *Executable       // Executable that this project builds (if any)
+	Name            string
+	GlobalBuildPath string              // Path where all projects are built (e.g. build/)
+	Config          *Config             // Build configuration
+	Toolchain       toolchain.Toolchain // Build environment for this project
+	Executable      *Executable         // Executable that this project builds (if any)
 }
 
-func NewProject(name string, config string, buildPath string) *Project {
-	buildPath = filepath.Join(buildPath, name, config)
-	exe := NewExecutable(name, buildPath)
+func NewProject(name string, config *Config, buildPath string) *Project {
+	exe := NewExecutable(name)
 	return &Project{
-		Name:       name,
-		Config:     config,
-		BuildPath:  buildPath,
-		Executable: exe,
+		Name:            name,
+		GlobalBuildPath: buildPath,
+		Config:          config,
+		Executable:      exe,
 	}
+}
+
+func (p *Project) GetBuildPath() string {
+	if len(p.GlobalBuildPath) == 0 {
+		return filepath.Join("build", p.Name)
+	}
+	return filepath.Join(p.GlobalBuildPath, p.Name)
 }
 
 func (p *Project) GetExecutable() *Executable {
 	if p.Executable == nil {
-		p.Executable = NewExecutable(p.Name, p.BuildPath)
+		p.Executable = NewExecutable(p.Name)
 	}
 	return p.Executable
 }
 
-func (p *Project) SetBuildEnvironment(be *BuildEnvironment) error {
+func (p *Project) SetToolchain(config *Config) (err error) {
 
-	p.BuildEnv = be
+	targetOS := config.Target.OSAsString()
 
-	sdkRoot := be.SdkRoot
+	if targetOS == "arduino" {
+		var tc *toolchain.ToolchainArduinoEsp32
+		targetMcu := config.Target.ArchAsString()
+		tc, err = toolchain.NewToolchainArduinoEsp32(targetMcu, p.GlobalBuildPath, p.Name)
+		p.Toolchain = tc
 
-	// System Library is at ESP_ROOT+'cores/esp32/', collect
-	// all the C and Cpp source files in this directory and create a Library.
-	coreLibPath := filepath.Join(sdkRoot, "cores/esp32/")
+		// TODO This is a HACK!!, this should actually be moved into a 'rdno_sdk' ccode package
 
-	coreCppLib := NewCppLibrary(be.Name+"-core-cpp", be.Name+"-core, "+p.Config, be.Name+"-core", "lib"+be.Name+"-core-cpp.a")
+		// System Library is at ESP_ROOT+'cores/esp32/', collect
+		// all the C and Cpp source files in this directory and create a Library.
+		sdkRoot := tc.Vars.GetOne("esp.sdk.path")
+		coreLibPath := filepath.Join(sdkRoot, "cores/esp32/")
 
-	coreCppLib.IncludeDirs.Add(coreLibPath)
-	coreCppLib.PrefixDirs.Add(filepath.Join(sdkRoot, "tools/esp32-arduino-libs/"+be.Name+"/include/"))
-	coreCppLib.IncludeDirs.Add(filepath.Join(sdkRoot, "cores/esp32"))
-	coreCppLib.IncludeDirs.Add(filepath.Join(sdkRoot, "variants/"+be.Name))
+		coreCppLib := NewLibrary("core-cpp-"+targetMcu, p.Config)
 
-	// Flash Type
-	coreCppLib.IncludeDirs.Add(filepath.Join(sdkRoot, "tools/esp32-arduino-libs/"+be.Name+"/dio_qspi/include"))
+		// Get all the .cpp files from the core library path
+		coreCppLib.AddSourceFilesFrom(coreLibPath, OptionAddCppFiles|OptionAddCFiles|OptionAddRecursively)
 
-	// Get all the .cpp files from the core library path
-	coreCppLib.AddSourceFilesFrom(coreLibPath, OptionAddCppFiles|OptionAddCFiles|OptionAddRecursively)
-	coreCppLib.PrepareOutput(p.BuildPath)
+		p.Executable.Libraries = append(p.Executable.Libraries, coreCppLib)
 
-	p.Executable.Libraries = append(p.Executable.Libraries, coreCppLib)
+	} else if targetOS == "windows" {
+		p.Toolchain = toolchain.NewToolchainMsdev()
+	} else if targetOS == "darwin" {
+		p.Toolchain, err = toolchain.NewToolchainClangDarwin()
+	} else {
+		return fmt.Errorf("error, %s as a build target on %s is not supported", targetOS, runtime.GOOS)
+	}
 
 	return nil
 }
@@ -84,10 +101,79 @@ func (p *Project) AddUserLibrary(lib *Library) {
 	p.Executable.Libraries = append(p.Executable.Libraries, lib)
 }
 
+func CopyConfig(config *Config) *toolchain.Config {
+	return toolchain.NewConfig(config.Config, config.Target)
+}
+
 func (p *Project) Build() error {
-	return p.BuildEnv.BuildFunc(p.BuildEnv, p.Executable, p.BuildPath)
+
+	cCompiler := p.Toolchain.NewCCompiler(CopyConfig(p.Config))
+	cppCompiler := p.Toolchain.NewCppCompiler(CopyConfig(p.Config))
+	archiver := p.Toolchain.NewArchiver(CopyConfig(p.Config))
+
+	for _, lib := range p.Executable.Libraries {
+		libBuildPath := lib.GetOutputDirpath(p.GetBuildPath())
+		MakeDir(libBuildPath)
+
+		cCompiler.SetupArgs(lib.Defines.Values, lib.IncludeDirs.Values)
+		cppCompiler.SetupArgs(lib.Defines.Values, lib.IncludeDirs.Values)
+
+		objFilepaths := []string{}
+		for _, src := range lib.SourceFiles {
+
+			srcObjRelPath := filepath.Join(libBuildPath, src.SrcRelPath+".o")
+			//srcDepRelPath := filepath.Join(libBuildPath, src.SrcRelPath+".d")
+
+			MakeDir(filepath.Dir(srcObjRelPath))
+
+			var err error
+			if strings.HasSuffix(src.SrcRelPath, ".c") {
+				err = cCompiler.Compile(src.SrcAbsPath, srcObjRelPath)
+			} else {
+				err = cppCompiler.Compile(src.SrcAbsPath, srcObjRelPath)
+			}
+
+			if err != nil {
+				return err
+			}
+
+			objFilepaths = append(objFilepaths, srcObjRelPath)
+		}
+
+		if err := archiver.Archive(objFilepaths, lib.GetOutputFilepath(p.GetBuildPath(), archiver.FileExtension())); err != nil {
+			return err
+		}
+	}
+
+	linker := p.Toolchain.NewLinker(CopyConfig(p.Config))
+
+	generateMapFile := true
+	linker.SetupArgs(generateMapFile, []string{}, []string{})
+
+	archivesToLink := []string{}
+	for _, lib := range p.Executable.Libraries {
+		libAbsFilepath := lib.GetOutputFilepath(p.GetBuildPath(), archiver.FileExtension())
+		archivesToLink = append(archivesToLink, libAbsFilepath)
+	}
+	if err := linker.Link(archivesToLink, p.Executable.GetOutputFilepath(p.GetBuildPath(), linker.FileExt())); err != nil {
+		return err
+	}
+	return nil
 }
 
 func (p *Project) Flash() error {
-	return p.BuildEnv.FlashFunc(p.BuildEnv, p.Executable, p.BuildPath)
+
+	burner := p.Toolchain.NewBurner(CopyConfig(p.Config))
+
+	burner.SetupBuildArgs()
+	if err := burner.Build(); err != nil {
+		return err
+	}
+
+	burner.SetupBurnArgs()
+	if err := burner.Burn(); err != nil {
+		return err
+	}
+
+	return nil
 }

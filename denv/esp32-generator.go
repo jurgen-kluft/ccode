@@ -7,7 +7,8 @@ import (
 	"path/filepath"
 	"strings"
 
-	cutils "github.com/jurgen-kluft/ccode/cutils"
+	dev "github.com/jurgen-kluft/ccode/dev"
+	utils "github.com/jurgen-kluft/ccode/utils"
 )
 
 // -------------------------------------------------------------------------------------
@@ -16,7 +17,7 @@ import (
 type Esp32Generator struct {
 	Workspace     *Workspace
 	Verbose       bool
-	BuildTarget   BuildTarget
+	BuildTarget   dev.BuildTarget
 	TargetAbsPath string
 }
 
@@ -24,7 +25,7 @@ func NewEsp32Generator(ws *Workspace, verbose bool) *Esp32Generator {
 	g := &Esp32Generator{
 		Workspace:     ws,
 		Verbose:       verbose,
-		BuildTarget:   BuildTargetArduinoEsp32,
+		BuildTarget:   ws.BuildTarget,
 		TargetAbsPath: ws.GenerateAbsPath,
 	}
 	return g
@@ -32,16 +33,18 @@ func NewEsp32Generator(ws *Workspace, verbose bool) *Esp32Generator {
 
 func (g *Esp32Generator) Generate() error {
 	appDir := filepath.Join(g.TargetAbsPath, "clay-app")
-	cutils.MakeDir(appDir)
+	utils.MakeDir(appDir)
 
-	out := cutils.NewLineWriter(cutils.IndentModeSpaces)
+	log.Printf("Generating ESP32 project files in %s for target %s", appDir, g.BuildTarget)
+
+	out := utils.NewLineWriter(utils.IndentModeSpaces)
 	g.generateMain(out)
 	appGoFilepath := filepath.Join(appDir, "main.go")
 	if err := out.WriteToFile(appGoFilepath); err != nil {
 		log.Printf("Error writing file %s: %v", appGoFilepath, err)
 	}
 
-	out = cutils.NewLineWriter(cutils.IndentModeSpaces)
+	out = utils.NewLineWriter(utils.IndentModeSpaces)
 	g.generateProjectFile(out)
 
 	// Write the generated file to the target path
@@ -66,7 +69,7 @@ func (g *Esp32Generator) Generate() error {
 	return nil
 }
 
-func (g *Esp32Generator) generateMain(out *cutils.LineWriter) {
+func (g *Esp32Generator) generateMain(out *utils.LineWriter) {
 	out.WriteLine("package main")
 	out.WriteLine()
 	out.WriteLine("import (")
@@ -80,7 +83,7 @@ func (g *Esp32Generator) generateMain(out *cutils.LineWriter) {
 	out.WriteLine()
 }
 
-func (g *Esp32Generator) generateProjectFile(out *cutils.LineWriter) {
+func (g *Esp32Generator) generateProjectFile(out *utils.LineWriter) {
 	out.WriteLine("// --------------------------------------------------------------------")
 	out.WriteLine("// ---------------------- GENERATED -----------------------------------")
 	out.WriteLine("// --------------------------------------------------------------------")
@@ -100,26 +103,28 @@ func (g *Esp32Generator) generateProjectFile(out *cutils.LineWriter) {
 	// clay.Project = ublinky + debug
 	// clay.Project = ublinky + release
 
+	arch := g.BuildTarget.ArchAsString()
+
 	for _, prj := range g.Workspace.ProjectList.Values {
-		if prj.Type.IsExecutable() && prj.SupportedTargets.Contains(g.BuildTarget) {
+		if prj.BuildType.IsExecutable() && prj.SupportedTargets.Contains(g.BuildTarget) {
 
 			// Get the version info for this project
-			depVersionInfo := cutils.NewGitVersionInfo(prj.ProjectAbsPath)
+			depVersionInfo := utils.NewGitVersionInfo(prj.ProjectAbsPath)
 			prj.Version = depVersionInfo.Commit
 
 			for _, prjCfg := range prj.Resolved.Configs.Values {
-				cfgName := prjCfg.Type.ConfigString()
+				cfgName := prjCfg.BuildConfig.ConfigString()
 
 				out.WriteILine("", "{")
 				out.WriteILine("+", "prjName := ", `"`, prj.Name, `"`)
-				out.WriteILine("+", "prjConfig := ", `"`, prjCfg.Type.ConfigString(), `"`)
+				out.WriteILine("+", "prjConfig := clay.NewConfig(\"arduino\", \"", arch, `", "`, prjCfg.BuildConfig.Build(), `", "`, prjCfg.BuildConfig.Variant(), `")`)
 				out.WriteILine("+", "prj := clay.NewProject(prjName, prjConfig, buildPath)")
 
 				out.WriteILine("+", "add_", prj.Name, "_", cfgName, "_library(prj)")
 				cfgs = append(cfgs, prjCfg)
 				deps = append(deps, prj)
 				for _, dep := range prj.Dependencies.Values {
-					depCfg := dep.Resolved.FindConfig(prjCfg.Type)
+					depCfg := dep.Resolved.FindConfig(prjCfg.BuildConfig)
 					cfgs = append(cfgs, depCfg)
 					deps = append(deps, dep)
 					out.WriteILine("+", "add_", dep.Name, "_", cfgName, "_library(prj)")
@@ -138,22 +143,22 @@ func (g *Esp32Generator) generateProjectFile(out *cutils.LineWriter) {
 	// Emit the 'library' projects, avoid duplicates
 	duplicateTracking := make(map[string]bool)
 	for i, p := range deps {
-		if _, ok := duplicateTracking[p.Name+":"+cfgs[i].Type.ConfigString()]; !ok {
-			g.generateLibrary(p, cfgs[i], p.Name+","+cfgs[i].Type.ConfigString(), out)
-			duplicateTracking[p.Name+":"+cfgs[i].Type.ConfigString()] = true
+		if _, ok := duplicateTracking[p.Name+":"+cfgs[i].BuildConfig.ConfigString()]; !ok {
+			g.generateLibrary(p, cfgs[i], out)
+			duplicateTracking[p.Name+":"+cfgs[i].BuildConfig.ConfigString()] = true
 			continue
 		}
 	}
 }
 
-func (g *Esp32Generator) generateLibrary(p *Project, cfg *Config, description string, out *cutils.LineWriter) {
+func (g *Esp32Generator) generateLibrary(p *Project, cfg *Config, out *utils.LineWriter) {
 	units := out
 
 	{
-		units.WriteLine("func add_", p.Name, "_", cfg.Type.ConfigString(), "_library(prj *clay.Project) {")
+		units.WriteLine("func add_", p.Name, "_", cfg.BuildConfig.ConfigString(), "_library(prj *clay.Project) {")
 		name := p.Name
 		units.WriteILine("", "name := \"", name, "\"")
-		units.WriteILine("", "library := clay.NewCppLibrary(name, \"", description, "\", name, name+\".a\")")
+		units.WriteILine("", "library := clay.NewLibrary(name, prj.Config)")
 		units.WriteLine()
 
 		units.WriteILine("", "// Include directories")

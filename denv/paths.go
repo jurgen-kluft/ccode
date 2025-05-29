@@ -4,7 +4,7 @@ import (
 	"path"
 	"strings"
 
-	cutils "github.com/jurgen-kluft/ccode/cutils"
+	utils "github.com/jurgen-kluft/ccode/utils"
 )
 
 // ----------------------------------------------------------------------------------------------------------
@@ -20,7 +20,7 @@ func (fp *PinnedPath) String() string {
 }
 
 func (fp *PinnedPath) RelativeTo(root string) string {
-	return cutils.PathGetRelativeTo(fp.String(), root)
+	return utils.PathGetRelativeTo(fp.String(), root)
 }
 
 // ----------------------------------------------------------------------------------------------------------

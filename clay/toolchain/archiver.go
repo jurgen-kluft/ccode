@@ -3,6 +3,10 @@ package toolchain
 // Archiver (also known as Lib) is an interface that defines the methods required for
 // creating an archive (.a, .lib) file.
 type Archiver interface {
+
+	// Returns the file extension for the archive (e.g., ".a" or ".lib")
+	FileExtension() string
+
 	// SetupArgs prepares the arguments for the archiver based on user-defined variables.
 	// It should be called before using the Archive method.
 	SetupArgs(userVars Vars)

@@ -4,7 +4,8 @@ import (
 	"path/filepath"
 	"strings"
 
-	cutils "github.com/jurgen-kluft/ccode/cutils"
+	"github.com/jurgen-kluft/ccode/dev"
+	utils "github.com/jurgen-kluft/ccode/utils"
 )
 
 // -----------------------------------------------------------------------------------------------------
@@ -50,21 +51,21 @@ func (p *ConfigList) First() *Config {
 	return nil
 }
 
-func (p *ConfigList) Get(t DevConfigType) (*Config, bool) {
+func (p *ConfigList) Get(t dev.BuildConfig) (*Config, bool) {
 	if i, ok := p.Dict[t.ConfigString()]; ok {
 		return p.Values[i], true
 	}
 	return nil, false
 }
 
-func (p *ConfigList) Has(t DevConfigType) bool {
+func (p *ConfigList) Has(t dev.BuildConfig) bool {
 	_, ok := p.Dict[t.ConfigString()]
 	return ok
 }
 
 func (p *ConfigList) CollectByWildcard(name string, list *ConfigList) {
 	for _, p := range p.Values {
-		if cutils.PathMatchWildcard(p.String(), name, true) {
+		if utils.PathMatchWildcard(p.String(), name, true) {
 			list.Add(p)
 		}
 	}
@@ -75,10 +76,9 @@ func (p *ConfigList) CollectByWildcard(name string, list *ConfigList) {
 // -----------------------------------------------------------------------------------------------------
 
 type Config struct {
-	Type      DevConfigType
-	Workspace *Workspace
-	Project   *Project
-
+	BuildConfig       dev.BuildConfig
+	Workspace         *Workspace
+	Project           *Project
 	CppDefines        *KeyValueDict
 	CppFlags          *KeyValueDict
 	IncludeDirs       *PinnedPathSet
@@ -95,17 +95,17 @@ type Config struct {
 	VisualStudioLink      *KeyValueDict
 
 	GenDataXcode struct {
-		ProjectConfigUuid cutils.UUID
-		TargetUuid        cutils.UUID
-		TargetConfigUuid  cutils.UUID
+		ProjectConfigUuid utils.UUID
+		TargetUuid        utils.UUID
+		TargetConfigUuid  utils.UUID
 	}
 
 	Resolved *ConfigResolved
 }
 
-func NewConfig(t DevConfigType, ws *Workspace, p *Project) *Config {
+func NewConfig(t dev.BuildConfig, ws *Workspace, p *Project) *Config {
 	c := &Config{}
-	c.Type = t
+	c.BuildConfig = t
 	c.Workspace = ws
 	c.Project = p
 
@@ -126,9 +126,9 @@ func NewConfig(t DevConfigType, ws *Workspace, p *Project) *Config {
 	c.VisualStudioClCompile = NewKeyValueDict()
 	c.VisualStudioLink = NewKeyValueDict()
 
-	c.GenDataXcode.ProjectConfigUuid = cutils.GenerateUUID()
-	c.GenDataXcode.TargetUuid = cutils.GenerateUUID()
-	c.GenDataXcode.TargetConfigUuid = cutils.GenerateUUID()
+	c.GenDataXcode.ProjectConfigUuid = utils.GenerateUUID()
+	c.GenDataXcode.TargetUuid = utils.GenerateUUID()
+	c.GenDataXcode.TargetConfigUuid = utils.GenerateUUID()
 
 	c.InitTargetSettings()
 	c.InitXcodeSettings()
@@ -138,7 +138,7 @@ func NewConfig(t DevConfigType, ws *Workspace, p *Project) *Config {
 }
 
 func (c *Config) String() string {
-	return c.Type.ConfigString()
+	return c.BuildConfig.ConfigString()
 }
 
 // AddLocalIncludeDir adds a project local directory to the list of include directories
@@ -152,7 +152,7 @@ func (c *Config) AddExternalIncludeDir(includeDir string) {
 }
 
 func (c *Config) AddLibrary(projectDirectory string, lib *DevLib) {
-	if lib.Type == DevFramework {
+	if lib.LibType == dev.Framework {
 		c.LibraryFrameworks.AddMany(lib.Files...)
 		c.LibraryFrameworks.AddMany(lib.Libs...)
 	} else {
@@ -180,7 +180,7 @@ func (c *Config) InitTargetSettings() {
 		c.CppDefines.AddOrSet("_UNICODE", "_UNICODE")
 
 		c.LinkFlags.AddOrSet("-ObjC", "")
-		cocoa := &DevLib{Configs: DevConfigTypeAll, Type: DevFramework, Files: []string{"Foundation", "Cocoa", "Carbon", "Metal", "OpenGL", "IOKit", "AppKit", "CoreVideo", "QuartzCore"}}
+		cocoa := &DevLib{BuildConfigs: dev.BuildConfigAll, LibType: dev.Framework, Files: []string{"Foundation", "Cocoa", "Carbon", "Metal", "OpenGL", "IOKit", "AppKit", "CoreVideo", "QuartzCore"}}
 		c.AddLibrary(c.Project.ProjectAbsPath, cocoa)
 
 		// func (l *Library2) Merge(other *Library2) {
@@ -209,7 +209,7 @@ func (c *Config) InitXcodeSettings() {
 		settings["MACOSX_DEPLOYMENT_TARGET"] = "10.15" // c++11 require 10.10+
 	}
 
-	if c.Type.IsDebug() {
+	if c.BuildConfig.IsDebug() {
 		settings["DEBUG_INFORMATION_FORMAT"] = "dwarf"
 		settings["GCC_GENERATE_DEBUGGING_SYMBOLS"] = "YES"
 
@@ -294,12 +294,12 @@ func (c *Config) InitVisualStudioSettings() {
 	if c.Workspace.Config.Dev.CompilerIsClang() {
 		c.VisualStudioClCompile.AddOrSet("DebugInformationFormat", "None")
 	} else {
-		if c.Type.IsFinal() == false {
+		if c.BuildConfig.IsFinal() == false {
 			c.VisualStudioClCompile.AddOrSet("DebugInformationFormat", "ProgramDatabase")
 		}
 	}
 
-	if c.Type.IsDebug() {
+	if c.BuildConfig.IsDebug() {
 		c.VisualStudioClCompile.AddOrSet("Optimization", "Disabled")
 		c.VisualStudioClCompile.AddOrSet("OmitFramePointers", "false")
 	} else {
@@ -311,7 +311,7 @@ func (c *Config) InitVisualStudioSettings() {
 		c.VisualStudioClCompile.AddOrSet("BasicRuntimeChecks", "Default")
 	}
 
-	c.VisualStudioClCompile.AddOrSet("RuntimeLibrary", c.Workspace.Config.MsDev.RuntimeLibrary.String(c.Type.IsDebug()))
+	c.VisualStudioClCompile.AddOrSet("RuntimeLibrary", c.Workspace.Config.MsDev.RuntimeLibrary.String(c.BuildConfig.IsDebug()))
 }
 
 type ConfigResolved struct {
@@ -331,7 +331,7 @@ func NewConfigResolved() *ConfigResolved {
 }
 
 func (c *Config) Copy() *Config {
-	nc := NewConfig(c.Type, c.Workspace, c.Project)
+	nc := NewConfig(c.BuildConfig, c.Workspace, c.Project)
 
 	nc.CppDefines = c.CppDefines.Copy()
 	nc.CppFlags = c.CppFlags.Copy()
@@ -399,7 +399,7 @@ func (c *Config) BuildResolved(otherConfigs []*Config) *Config {
 		configMerged.CppDefines.AddOrSet("CCORE_GEN_CONFIG", "CCORE_GEN_CONFIG_"+strings.ToUpper(c.String()))
 		configMerged.CppDefines.AddOrSet("CCORE_GEN_PLATFORM_NAME", "CCORE_GEN_PLATFORM_NAME=\""+strings.ToUpper(c.Workspace.BuildTarget.OSAsString()+"\""))
 		configMerged.CppDefines.AddOrSet("CCORE_GEN_PROJECT", "CCORE_GEN_PROJECT_"+strings.ToUpper(c.Project.Name))
-		configMerged.CppDefines.AddOrSet("CCORE_GEN_TYPE", "CCORE_GEN_TYPE_"+strings.ToUpper(c.Project.Type.ConfigString()))
+		configMerged.CppDefines.AddOrSet("CCORE_GEN_TYPE", "CCORE_GEN_TYPE_"+strings.ToUpper(c.Project.BuildConfig.ConfigString()))
 	}
 
 	if c.Project != nil {
