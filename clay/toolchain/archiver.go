@@ -1,11 +1,20 @@
 package toolchain
 
+type ArchiverType int
+
+const (
+	// ArchiverTypeStatic represents a static archive (e.g., .a or .lib).
+	ArchiverTypeStatic ArchiverType = iota
+	// ArchiverTypeDynamic represents a shared/dynamic archive (e.g., .so or .dll).
+	ArchiverTypeDynamic
+)
+
 // Archiver (also known as Lib) is an interface that defines the methods required for
 // creating an archive (.a, .lib) file.
 type Archiver interface {
 
-	// Returns the file extension for the archive (e.g., ".a" or ".lib")
-	FileExtension() string
+	// Returns the filename for the archive (e.g., "libname.a" or "name.lib")
+	Filename(name string) string
 
 	// SetupArgs prepares the arguments for the archiver based on user-defined variables.
 	// It should be called before using the Archive method.

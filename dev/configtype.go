@@ -1,21 +1,19 @@
 package dev
 
 import (
-    "strings"
+	"strings"
 )
 
 type BuildType int
 
 const (
+	BuildTypeUnknown        BuildType = 0
 	BuildTypeStaticLibrary  BuildType = 1
 	BuildTypeDynamicLibrary BuildType = 2
-	BuildTypeExecutable     BuildType = 4
-	BuildTypeOutputMask               = BuildTypeStaticLibrary | BuildTypeDynamicLibrary | BuildTypeExecutable
+	BuildTypeUnittest       BuildType = 3
+	BuildTypeCli            BuildType = 4
+	BuildTypeApplication    BuildType = 5
 )
-
-func (t BuildType) GetProjectType() BuildType {
-	return t & (BuildTypeStaticLibrary | BuildTypeDynamicLibrary | BuildTypeExecutable)
-}
 
 func (t BuildType) IsStaticLibrary() bool {
 	return t&BuildTypeStaticLibrary != 0
@@ -30,15 +28,41 @@ func (t BuildType) IsLibrary() bool {
 }
 
 func (t BuildType) IsApplication() bool {
-	return t&BuildTypeExecutable != 0
+	return t&BuildTypeApplication != 0
 }
+
+func (t BuildType) IsCli() bool {
+	return t&BuildTypeCli != 0
+}
+
+func (t BuildType) IsUnittest() bool {
+	return t&BuildTypeUnittest != 0
+}
+
 func (t BuildType) IsExecutable() bool {
-	return t&BuildTypeExecutable != 0
+	return t == BuildTypeApplication || t == BuildTypeCli || t == BuildTypeUnittest
+}
+
+func (t BuildType) String() string {
+	switch t {
+	case BuildTypeApplication:
+		return "application"
+	case BuildTypeCli:
+		return "cli"
+	case BuildTypeUnittest:
+		return "unittest"
+	case BuildTypeDynamicLibrary:
+		return "dynamic library"
+	case BuildTypeStaticLibrary:
+		return "static library"
+	default:
+		return "unknown"
+	}
 }
 
 func (t BuildType) ProjectString() string {
-	switch t.GetProjectType() {
-	case BuildTypeExecutable:
+	switch t {
+	case BuildTypeApplication, BuildTypeUnittest, BuildTypeCli:
 		return "c_exe"
 	case BuildTypeDynamicLibrary:
 		return "c_dll"
@@ -48,141 +72,205 @@ func (t BuildType) ProjectString() string {
 	return "error"
 }
 
-type BuildConfig int
+type BuildBuild uint8
 
 const (
-	BuildConfigDebug       BuildConfig = 8
-	BuildConfigRelease     BuildConfig = 16
-	BuildConfigFinal       BuildConfig = 64
-	BuildConfigConfigAll               = BuildConfigDebug | BuildConfigRelease | BuildConfigFinal
-	BuildConfigConfigMask              = BuildConfigDebug | BuildConfigRelease | BuildConfigFinal
-	BuildConfigDevelopment BuildConfig = 128
-	BuildConfigTest        BuildConfig = 256
-	BuildConfigProfile     BuildConfig = 512
-	BuildConfigProduction  BuildConfig = 1024
-	BuildConfigVariantMask             = BuildConfigDevelopment | BuildConfigTest | BuildConfigProfile | BuildConfigProduction
-	BuildConfigAll         BuildConfig = BuildConfigConfigMask | BuildConfigVariantMask
+	BuildDebug   BuildBuild = 1
+	BuildRelease BuildBuild = 2
 )
+
+type BuildVariant uint8
+
+const (
+	BuildVariantDev   BuildVariant = 1
+	BuildVariantFinal BuildVariant = 2
+)
+
+type BuildMode uint8
+
+const (
+	BuildModeNone    BuildMode = 0
+	BuildModeTest    BuildMode = 1
+	BuildModeProfile BuildMode = 2
+)
+
+type BuildConfig struct {
+	Build   BuildBuild
+	Variant BuildVariant
+	Mode    BuildMode
+}
+
+type BuildConfigList struct {
+	List []BuildConfig
+}
+
+func NewBuildConfigList() *BuildConfigList {
+	return &BuildConfigList{
+		List: []BuildConfig{},
+	}
+}
+
+func (b *BuildConfigList) Add(config BuildConfig) {
+	if !b.Contains(config) {
+		b.List = append(b.List, config)
+	}
+}
+
+func (b *BuildConfigList) Contains(config BuildConfig) bool {
+	for _, existing := range b.List {
+		if existing.IsEqual(config) {
+			return true // Found a match
+		}
+	}
+	return false // No match found
+}
+
+func NewDebugDevConfig() BuildConfig {
+	return BuildConfig{
+		Build:   BuildDebug,
+		Variant: BuildVariantDev,
+		Mode:    BuildModeNone,
+	}
+}
+
+func NewReleaseDevConfig() BuildConfig {
+	return BuildConfig{
+		Build:   BuildRelease,
+		Variant: BuildVariantDev,
+		Mode:    BuildModeNone,
+	}
+}
+
+func NewDebugDevTestConfig() BuildConfig {
+	return BuildConfig{
+		Build:   BuildDebug,
+		Variant: BuildVariantDev,
+		Mode:    BuildModeTest,
+	}
+}
+
+func NewReleaseDevTestConfig() BuildConfig {
+	return BuildConfig{
+		Build:   BuildRelease,
+		Variant: BuildVariantDev,
+		Mode:    BuildModeTest,
+	}
+}
 
 func (t BuildConfig) IsEqual(o BuildConfig) bool {
 	return t == o
 }
 
-func (t BuildConfig) Contains(o BuildConfig) bool {
-	return t&o == o
-}
-
-func (t BuildConfig) GetBuildConfig() BuildConfig {
-	return t & (BuildConfigDebug | BuildConfigRelease | BuildConfigFinal)
-}
-
-func (t BuildConfig) GetBuildConfigVariant() BuildConfig {
-	return t & (BuildConfigDevelopment | BuildConfigTest | BuildConfigProfile | BuildConfigProduction)
-}
-
 func (t BuildConfig) IsDebug() bool {
-	return t&BuildConfigDebug != 0
+	return t.Build == BuildDebug
 }
 
 func (t BuildConfig) IsRelease() bool {
-	return t&BuildConfigRelease != 0
-}
-
-func (t BuildConfig) IsFinal() bool {
-	return t&BuildConfigFinal != 0
+	return t.Build == BuildRelease
 }
 
 func (t BuildConfig) IsDevelopment() bool {
-	return t&BuildConfigDevelopment != 0
+	return t.Variant == BuildVariantDev
+}
+
+func (t BuildConfig) IsFinal() bool {
+	return t.Variant == BuildVariantFinal
 }
 
 func (t BuildConfig) IsTest() bool {
-	return t&BuildConfigTest != 0
+	return t.Mode == BuildModeTest
 }
 
 func (t BuildConfig) IsProfile() bool {
-	return t&BuildConfigProfile != 0
+	return t.Mode == BuildModeProfile
 }
 
-func (t BuildConfig) IsProduction() bool {
-	return t&BuildConfigProduction != 0
+func ConcatString(str string, concat string, sep string) string {
+	if str == "" {
+		return concat
+	}
+	if concat == "" {
+		return str
+	}
+	return str + sep + concat
 }
 
-func (t BuildConfig) Build() string {
-	str := "Debug"
-
+func (t BuildConfig) BuildAsString() string {
 	if t.IsDebug() {
-		str = "Debug"
+		return "debug"
 	} else if t.IsRelease() {
-		str = "Release"
-	} else if t.IsFinal() {
-		str = "Final"
+		return "release"
 	}
-	return str
+	return "unknown"
 }
 
-func (t BuildConfig) Variant() string {
-	str := "Dev"
-
-	if t.IsTest() {
-		str += "Test"
-	} else if t.IsProfile() {
-		str += "Profile"
-	} else if t.IsProduction() {
-		str += "Prod"
+func (t BuildConfig) VariantAsString() string {
+	if t.IsDevelopment() {
+		return "dev"
+	} else if t.IsFinal() {
+		return "final"
 	}
-	return str
+	return "unknown"
 }
 
-func (t BuildConfig) ConfigString() string {
-	str := "Debug"
-	if t.IsRelease() {
-		str = "Release"
-	} else if t.IsFinal() {
-		str = "Final"
+func (t BuildConfig) AsString() string {
+	str := t.BuildAsString() + "-" + t.VariantAsString()
+	if t.Mode == BuildModeTest {
+		return str + "-test"
+	} else if t.Mode == BuildModeProfile {
+		return str + "-profile"
 	}
-
-	if t.IsTest() {
-		str += "Test"
-	} else if t.IsProfile() {
-		str += "Profile"
-	} else if t.IsProduction() {
-		str += "Prod"
-	} else if t.IsDevelopment() {
-		str += "Dev"
-	}
-
 	return str
 }
 
 // BuildConfig from config and variant
-func BuildConfigFromString(config string, variant string) BuildConfig {
-	var cfg BuildConfig
+func BuildConfigFromString(configStr string) BuildConfig {
 
-	switch strings.ToLower(config) {
-	case "debug":
-		cfg |= BuildConfigDebug
-	case "release":
-		cfg |= BuildConfigRelease
-	case "final":
-		cfg |= BuildConfigFinal
-	default:
-		cfg |= BuildConfigDebug // Default to debug if not specified
+	// Default configuration
+	cfg := BuildConfig{Build: BuildDebug, Variant: BuildVariantDev, Mode: BuildModeNone}
+
+	i := 0
+	begin := 0
+	for begin < len(configStr) {
+		end := strings.Index(configStr[begin:], "-")
+		if end == -1 {
+			end = len(configStr)
+		} else {
+			end = begin + end
+		}
+		config := configStr[begin:end]
+		begin = end + 1
+		i++
+
+		if i == 1 {
+			switch strings.ToLower(config) {
+			case "debug":
+				cfg.Build = BuildDebug
+				continue
+			case "release":
+				cfg.Build = BuildRelease
+				continue
+			}
+		} else if i == 2 {
+			switch strings.ToLower(config) {
+			case "dev":
+				cfg.Variant = BuildVariantDev
+				continue
+			case "final":
+				cfg.Variant = BuildVariantFinal
+				continue
+			}
+		} else if i == 3 {
+			switch strings.ToLower(config) {
+			case "test":
+				cfg.Mode = BuildModeTest
+				continue
+			case "profile":
+				cfg.Mode = BuildModeProfile
+				continue
+			}
+		}
 	}
-
-	switch strings.ToLower(variant) {
-	case "dev":
-		cfg |= BuildConfigDevelopment
-	case "test":
-		cfg |= BuildConfigTest
-	case "profile":
-		cfg |= BuildConfigProfile
-	case "prod":
-		cfg |= BuildConfigProduction
-	default:
-		cfg |= BuildConfigDevelopment // Default to development if not specified
-	}
-
 	return cfg
 }
 
@@ -192,25 +280,28 @@ func BuildConfigFromString(config string, variant string) BuildConfig {
 
 func (t BuildConfig) Tundra() string {
 	config := "*-*-"
-	switch t & BuildConfigConfigMask {
-	case BuildConfigDebug:
+
+	if t.IsDebug() {
 		config += "debug"
-	case BuildConfigRelease:
+	} else if t.IsRelease() {
 		config += "release"
-	case BuildConfigFinal:
-		config += "final"
+	} else {
+		config += "debug"
 	}
 
-	switch t & BuildConfigVariantMask {
-	case BuildConfigDevelopment:
-		config += "-dev"
-	case BuildConfigTest:
+	// if t.IsDevelopment() {
+	// 	config += "dev"
+	// } else if t.IsFinal() {
+	// 	config += "final"
+	// } else {
+	// 	config += "dev"
+	// }
+
+	if t.IsTest() {
 		config += "-test"
-	case BuildConfigProfile:
+	} else if t.IsProfile() {
 		config += "-profile"
-	case BuildConfigProduction:
-		config += "-prod"
-	default:
+	} else {
 		config += "-*"
 	}
 

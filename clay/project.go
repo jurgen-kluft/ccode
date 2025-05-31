@@ -4,9 +4,9 @@ import (
 	"fmt"
 	"path/filepath"
 	"runtime"
-	"strings"
 
 	"github.com/jurgen-kluft/ccode/clay/toolchain"
+	utils "github.com/jurgen-kluft/ccode/utils"
 )
 
 // TODO:
@@ -30,36 +30,56 @@ import (
 // - MINOR: Elf Size Stats
 
 // Project represents a C/C++ project that can be built using the Clay build system.
+// It can be a library or an executable.
 type Project struct {
-	Name            string
-	GlobalBuildPath string              // Path where all projects are built (e.g. build/)
-	Config          *Config             // Build configuration
-	Toolchain       toolchain.Toolchain // Build environment for this project
-	Executable      *Executable         // Executable that this project builds (if any)
+	Toolchain    toolchain.Toolchain // Build environment for this project
+	IsExecutable bool                // Is this project an executable (true) or a library (false)
+
+	Name         string
+	Config       *Config      // Build configuration
+	Defines      *ValueSet    // Compiler defines (macros) for the library
+	IncludeDirs  *IncludeMap  // Include paths for the library (system)
+	SourceFiles  []SourceFile // C/C++ Source files for the library
+	Dependencies []*Project   // Libraries that this project depends on
 }
 
-func NewProject(name string, config *Config, buildPath string) *Project {
-	exe := NewExecutable(name)
+func NewExecutableProject(name string, config *Config) *Project {
 	return &Project{
-		Name:            name,
-		GlobalBuildPath: buildPath,
-		Config:          config,
-		Executable:      exe,
+		Name:         name,
+		Config:       config,
+		Toolchain:    nil, // Will be set later
+		IsExecutable: true,
+		Defines:      NewValueSet(),
+		IncludeDirs:  NewIncludeMap(),
+		SourceFiles:  []SourceFile{},
+		Dependencies: []*Project{},
 	}
 }
 
-func (p *Project) GetBuildPath() string {
-	if len(p.GlobalBuildPath) == 0 {
-		return filepath.Join("build", p.Name)
+func NewLibraryProject(name string, config *Config) *Project {
+	return &Project{
+		Name:         name,
+		Config:       config,
+		Toolchain:    nil, // Will be set later
+		IsExecutable: false,
+		Defines:      NewValueSet(),
+		IncludeDirs:  NewIncludeMap(),
+		SourceFiles:  []SourceFile{},
+		Dependencies: []*Project{},
 	}
-	return filepath.Join(p.GlobalBuildPath, p.Name)
 }
 
-func (p *Project) GetExecutable() *Executable {
-	if p.Executable == nil {
-		p.Executable = NewExecutable(p.Name)
-	}
-	return p.Executable
+type SourceFile struct {
+	SrcAbsPath string // Absolute path to the source file
+	SrcRelPath string // Relative path of the source file (based on where it was globbed from)
+}
+
+func (p *Project) GetOutputFilepath(buildPath, filename string) string {
+	return filepath.Join(buildPath, p.Name, filename)
+}
+
+func (p *Project) GetBuildPath(buildPath string) string {
+	return filepath.Join(buildPath, p.Name)
 }
 
 func (p *Project) SetToolchain(config *Config) (err error) {
@@ -69,7 +89,7 @@ func (p *Project) SetToolchain(config *Config) (err error) {
 	if targetOS == "arduino" {
 		var tc *toolchain.ToolchainArduinoEsp32
 		targetMcu := config.Target.ArchAsString()
-		tc, err = toolchain.NewToolchainArduinoEsp32(targetMcu, p.GlobalBuildPath, p.Name)
+		tc, err = toolchain.NewToolchainArduinoEsp32(targetMcu, p.Name)
 		p.Toolchain = tc
 
 		// TODO This is a HACK!!, this should actually be moved into a 'rdno_sdk' ccode package
@@ -79,17 +99,17 @@ func (p *Project) SetToolchain(config *Config) (err error) {
 		sdkRoot := tc.Vars.GetOne("esp.sdk.path")
 		coreLibPath := filepath.Join(sdkRoot, "cores/esp32/")
 
-		coreCppLib := NewLibrary("core-cpp-"+targetMcu, p.Config)
+		coreCppLib := NewLibraryProject("core-cpp-"+targetMcu, p.Config)
 
 		// Get all the .cpp files from the core library path
 		coreCppLib.AddSourceFilesFrom(coreLibPath, OptionAddCppFiles|OptionAddCFiles|OptionAddRecursively)
 
-		p.Executable.Libraries = append(p.Executable.Libraries, coreCppLib)
+		p.Dependencies = append(p.Dependencies, coreCppLib)
 
 	} else if targetOS == "windows" {
 		p.Toolchain = toolchain.NewToolchainMsdev()
-	} else if targetOS == "darwin" {
-		p.Toolchain, err = toolchain.NewToolchainClangDarwin()
+	} else if targetOS == "mac" || targetOS == "macos" || targetOS == "darwin" {
+		p.Toolchain, err = toolchain.NewToolchainClangDarwin(runtime.GOARCH)
 	} else {
 		return fmt.Errorf("error, %s as a build target on %s is not supported", targetOS, runtime.GOOS)
 	}
@@ -97,83 +117,144 @@ func (p *Project) SetToolchain(config *Config) (err error) {
 	return nil
 }
 
-func (p *Project) AddUserLibrary(lib *Library) {
-	p.Executable.Libraries = append(p.Executable.Libraries, lib)
+func (p *Project) AddSourceFile(srcPath string, srcRelPath string) {
+	p.SourceFiles = append(p.SourceFiles, SourceFile{
+		SrcAbsPath: srcPath,
+		SrcRelPath: srcRelPath,
+	})
+}
+
+func (p *Project) AddLibrary(lib *Project) {
+	p.Dependencies = append(p.Dependencies, lib)
 }
 
 func CopyConfig(config *Config) *toolchain.Config {
 	return toolchain.NewConfig(config.Config, config.Target)
 }
 
-func (p *Project) Build() error {
+func (p *Project) Build(buildPath string) error {
 
-	cCompiler := p.Toolchain.NewCCompiler(CopyConfig(p.Config))
-	cppCompiler := p.Toolchain.NewCppCompiler(CopyConfig(p.Config))
-	archiver := p.Toolchain.NewArchiver(CopyConfig(p.Config))
+	compiler := p.Toolchain.NewCompiler(CopyConfig(p.Config))
+	staticArchiver := p.Toolchain.NewArchiver(toolchain.ArchiverTypeStatic, CopyConfig(p.Config))
+	//dynamicArchiver := p.Toolchain.NewArchiver(toolchain.ArchiverTypeDynamic, CopyConfig(p.Config))
 
-	for _, lib := range p.Executable.Libraries {
-		libBuildPath := lib.GetOutputDirpath(p.GetBuildPath())
-		MakeDir(libBuildPath)
+	//for _, dep := range p.Dependencies {
+	//	depBuildPath := dep.GetBuildPath(buildPath)
+	//	MakeDir(depBuildPath)
+    //
+	//	compiler.SetupArgs(dep.Defines.Values, dep.IncludeDirs.Values)
+    //
+	//	objFilepaths := []string{}
+	//	for _, src := range dep.SourceFiles {
+    //
+	//		srcObjRelPath := filepath.Join(depBuildPath, src.SrcRelPath+".o")
+	//		//srcDepRelPath := filepath.Join(libBuildPath, src.SrcRelPath+".d")
+    //
+	//		MakeDir(filepath.Dir(srcObjRelPath))
+    //
+	//		if err := compiler.Compile(src.SrcAbsPath, srcObjRelPath); err != nil {
+	//			return err
+	//		}
+    //
+	//		objFilepaths = append(objFilepaths, srcObjRelPath)
+	//	}
+    //
+	//	// Static library ?
+	//	staticArchiver.SetupArgs(toolchain.Vars{})
+	//	if err := staticArchiver.Archive(objFilepaths, dep.GetOutputFilepath(buildPath, staticArchiver.Filename(dep.Name))); err != nil {
+	//		return err
+	//	}
+	//}
 
-		cCompiler.SetupArgs(lib.Defines.Values, lib.IncludeDirs.Values)
-		cppCompiler.SetupArgs(lib.Defines.Values, lib.IncludeDirs.Values)
+	compiler.SetupArgs(p.Defines.Values, p.IncludeDirs.Values)
 
-		objFilepaths := []string{}
-		for _, src := range lib.SourceFiles {
+	MakeDir(p.GetBuildPath(buildPath))
+	prjObjFilepaths := []string{}
+	for _, src := range p.SourceFiles {
+		srcObjRelPath := filepath.Join(p.GetBuildPath(buildPath), src.SrcRelPath+".o")
+		//srcDepRelPath := filepath.Join(libBuildPath, src.SrcRelPath+".d")
 
-			srcObjRelPath := filepath.Join(libBuildPath, src.SrcRelPath+".o")
-			//srcDepRelPath := filepath.Join(libBuildPath, src.SrcRelPath+".d")
-
-			MakeDir(filepath.Dir(srcObjRelPath))
-
-			var err error
-			if strings.HasSuffix(src.SrcRelPath, ".c") {
-				err = cCompiler.Compile(src.SrcAbsPath, srcObjRelPath)
-			} else {
-				err = cppCompiler.Compile(src.SrcAbsPath, srcObjRelPath)
-			}
-
-			if err != nil {
-				return err
-			}
-
-			objFilepaths = append(objFilepaths, srcObjRelPath)
-		}
-
-		if err := archiver.Archive(objFilepaths, lib.GetOutputFilepath(p.GetBuildPath(), archiver.FileExtension())); err != nil {
+		MakeDir(filepath.Dir(srcObjRelPath))
+		if err := compiler.Compile(src.SrcAbsPath, srcObjRelPath); err != nil {
 			return err
 		}
+
+		prjObjFilepaths = append(prjObjFilepaths, srcObjRelPath)
 	}
 
-	linker := p.Toolchain.NewLinker(CopyConfig(p.Config))
+	if p.IsExecutable {
+		linker := p.Toolchain.NewLinker(CopyConfig(p.Config))
 
-	generateMapFile := true
-	linker.SetupArgs(generateMapFile, []string{}, []string{})
+		generateMapFile := true
+		linker.SetupArgs(generateMapFile, []string{}, []string{})
 
-	archivesToLink := []string{}
-	for _, lib := range p.Executable.Libraries {
-		libAbsFilepath := lib.GetOutputFilepath(p.GetBuildPath(), archiver.FileExtension())
-		archivesToLink = append(archivesToLink, libAbsFilepath)
-	}
-	if err := linker.Link(archivesToLink, p.Executable.GetOutputFilepath(p.GetBuildPath(), linker.FileExt())); err != nil {
-		return err
+		archivesToLink := []string{}
+		// Project object files
+		for _, obj := range prjObjFilepaths {
+			archivesToLink = append(archivesToLink, obj)
+		}
+		// Project dependency archives
+		for _, dep := range p.Dependencies {
+			libAbsFilepath := dep.GetOutputFilepath(buildPath, staticArchiver.Filename(dep.Name))
+			archivesToLink = append(archivesToLink, libAbsFilepath)
+		}
+		// Link them all together into a single executable
+		if err := linker.Link(archivesToLink, p.GetOutputFilepath(buildPath, linker.Filename(p.Name))); err != nil {
+			return err
+		}
+	} else {
+		// If this is a library, we don't link it, but we can create a static archive
+		staticArchiver.SetupArgs(toolchain.Vars{})
+		if err := staticArchiver.Archive(prjObjFilepaths, p.GetOutputFilepath(buildPath, staticArchiver.Filename(p.Name))); err != nil {
+			return err
+		}
 	}
 	return nil
 }
 
-func (p *Project) Flash() error {
-
+func (p *Project) Flash(buildPath string) error {
 	burner := p.Toolchain.NewBurner(CopyConfig(p.Config))
 
-	burner.SetupBuildArgs()
+	buildPath = p.GetBuildPath(buildPath)
+
+	burner.SetupBuildArgs(buildPath)
 	if err := burner.Build(); err != nil {
 		return err
 	}
 
-	burner.SetupBurnArgs()
+	burner.SetupBurnArgs(buildPath)
 	if err := burner.Burn(); err != nil {
 		return err
 	}
 
 	return nil
+}
+
+type AddSourceFileOptions int
+
+const (
+	OptionAddCppFiles            AddSourceFileOptions = 1
+	OptionAddCFiles              AddSourceFileOptions = 2
+	OptionAddRecursively         AddSourceFileOptions = 4
+	OptionRecursivelyAddCppFiles AddSourceFileOptions = OptionAddCppFiles | OptionAddRecursively
+	OptionRecursivelyAddCFiles   AddSourceFileOptions = OptionAddCFiles | OptionAddRecursively
+)
+
+func HasOption(options AddSourceFileOptions, option AddSourceFileOptions) bool {
+	return (options & option) != 0
+}
+
+func (p *Project) AddSourceFilesFrom(srcPath string, options AddSourceFileOptions) {
+	handleDir := func(rootPath, relPath string) bool {
+		return len(relPath) == 0 || HasOption(options, OptionAddRecursively)
+	}
+	handleFile := func(rootPath, relPath string) {
+		isCpp := HasOption(options, OptionAddCppFiles) && (filepath.Ext(relPath) == ".cpp" || filepath.Ext(relPath) == ".cxx")
+		isC := !isCpp && (HasOption(options, OptionAddCFiles) && filepath.Ext(relPath) == ".c")
+		if isCpp || isC {
+			p.AddSourceFile(filepath.Join(rootPath, relPath), relPath)
+		}
+	}
+
+	utils.AddFilesFrom(srcPath, handleDir, handleFile)
 }

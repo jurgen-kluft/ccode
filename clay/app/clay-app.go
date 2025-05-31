@@ -6,5 +6,5 @@ import (
 
 func main() {
 	clay.ClayAppCreateProjectsFunc = CreateProjects
-	clay.ClayAppMain()
+	clay.ClayAppMainArduino()
 }

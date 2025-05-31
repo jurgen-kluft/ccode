@@ -1,7 +1,6 @@
 package ccode
 
 import (
-	"os"
 	"path/filepath"
 	"strings"
 
@@ -82,8 +81,6 @@ func NewCCoreFixrConfig(prjname string, setting fixr.FixrSetting) *FixrConfig {
 
 func IncludeFixer(pkg *denv.Package, cfg *FixrConfig) {
 
-	basePath := filepath.Join(os.Getenv("GOPATH"), "src")
-
 	// Collect all projects, including dependencies
 	libraries := pkg.Libraries()
 	mainProjects := pkg.MainProjects()
@@ -98,23 +95,22 @@ func IncludeFixer(pkg *denv.Package, cfg *FixrConfig) {
 
 	// So we need the list of unique include directories of all the projects
 	for _, p := range projects {
-		projectPath := filepath.Join(basePath, p.PackageURL)
-		for _, inc := range p.CollectLocalIncludeDirs().Values {
-			includePath := filepath.Join(projectPath, inc)
+		for _, inc := range p.CollectIncludeDirs() {
+			includePath := filepath.Join(inc.Root, inc.Base, inc.Sub)
 			scanners.Add(includePath, cfg.HeaderFileFilter)
 		}
 	}
 
 	// Then we need the source and include directories of the main application(s) and main library
 	for _, mainProject := range mainProjects {
-		mainProjectPath := filepath.Join(basePath, mainProject.PackageURL)
-		for _, sp := range mainProject.CollectSourceDirs().Values {
-			sourcePath := filepath.Join(mainProjectPath, sp)
+		//mainProjectPath := filepath.Join(basePath, mainProject.PackageURL)
+		for _, sp := range mainProject.CollectSourceDirs() {
+			sourcePath := filepath.Join(sp.Path.Root, sp.Path.Base, sp.Path.Sub)
 			renamers.Add(sourcePath, cfg.RenamePolicy, cfg.SourceFileFilter, cfg.SourceFileFilter)
 			fixers.AddSourceFileFilter(sourcePath, cfg.SourceFileFilter)
 		}
-		for _, inc := range mainProject.CollectLocalIncludeDirs().Values {
-			includePath := filepath.Join(mainProjectPath, inc)
+		for _, inc := range mainProject.CollectIncludeDirs() {
+			includePath := filepath.Join(inc.Root, inc.Base, inc.Sub)
 			renamers.Add(includePath, cfg.RenamePolicy, cfg.SourceFileFilter, cfg.HeaderFileFilter)
 			fixers.AddHeaderFileFilter(includePath, cfg.HeaderFileFilter)
 		}
@@ -143,7 +139,7 @@ func Generate(pkg *denv.Package, dryrun bool, verbose bool) error {
 	if verbose {
 		setting |= fixr.Verbose
 	}
-	config := NewDefaultFixrConfig(pkg.Name, setting)
+	config := NewDefaultFixrConfig(pkg.RepoName, setting)
 	IncludeFixer(pkg, config)
 	return base.Generate(pkg)
 }

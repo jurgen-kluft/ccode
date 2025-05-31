@@ -3,7 +3,7 @@ package toolchain
 // Linker is an interface that defines the methods required for linking
 // object and archive files into an executable.
 type Linker interface {
-	FileExt() string // Returns the file extension for the linker output (e.g., ".elf", ".bin")
+	Filename(name string) string // Returns the filename for the linker output (e.g., "name.elf", "name.bin")
 	SetupArgs(generateMapFile bool, libraryPaths []string, libraryFiles []string)
 	Link(inputArchiveAbsFilepaths []string, outputAppRelFilepathNoExt string) error
 }

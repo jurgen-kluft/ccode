@@ -38,9 +38,10 @@ func (g *TundraGenerator) generateUnitsLua(ws *Workspace) {
 
 	// Get all the projects and write them out
 	for _, p := range ws.ProjectList.Values {
-		switch p.BuildType.GetProjectType() {
-		case dev.BuildTypeExecutable:
+		if p.BuildType.IsExecutable() {
 			continue
+		}
+		switch p.BuildType {
 		case dev.BuildTypeStaticLibrary:
 			units.NewLine()
 			units.WriteILine("", "local ", p.Name, "_staticlib = ", "StaticLibrary", "{")
@@ -57,19 +58,13 @@ func (g *TundraGenerator) generateUnitsLua(ws *Workspace) {
 	}
 
 	for _, p := range ws.ProjectList.Values {
-		switch p.BuildType.GetProjectType() {
-		case dev.BuildTypeStaticLibrary:
-			continue
-		case dev.BuildTypeDynamicLibrary:
-			continue
-		case dev.BuildTypeExecutable:
+		if p.BuildType.IsExecutable() {
 			units.NewLine()
 			units.WriteILine("", "local ", p.Name, "_program = ", "Program", "{")
+			g.writeUnit(units, p, true)
+			units.WriteLine("}")
+			default_unit = p.Name + "_program"
 		}
-		g.writeUnit(units, p, true)
-		units.WriteLine("}")
-
-		default_unit = p.Name + "_program"
 	}
 
 	units.WriteILine("", "Default(", default_unit, ")")
@@ -152,11 +147,13 @@ func (g *TundraGenerator) writeUnit(units *utils.LineWriter, p *Project, isProgr
 	// Source Files
 
 	units.WriteILine("+", `Sources = {`)
-	for _, src := range p.SrcFiles.Values {
-		if src.Is_SourceFile() {
-			path := p.SrcFiles.GetRelativePath(src, p.Workspace.GenerateAbsPath)
-			path = strings.Replace(path, "\\", "/", -1)
-			units.WriteILine("++", `"`, path, `",`)
+	for _, g := range p.SrcFileGroups {
+		for _, src := range g.Values {
+			if src.Is_SourceFile() {
+				path := g.GetRelativePath(src, p.Workspace.GenerateAbsPath)
+				path = strings.Replace(path, "\\", "/", -1)
+				units.WriteILine("++", `"`, path, `",`)
+			}
 		}
 	}
 	units.WriteILine("+", "},")
@@ -165,7 +162,7 @@ func (g *TundraGenerator) writeUnit(units *utils.LineWriter, p *Project, isProgr
 
 	units.WriteILine("+", "Depends = {")
 	for _, dp := range p.Dependencies.Values {
-		switch dp.BuildType.GetProjectType() {
+		switch dp.BuildType {
 		case dev.BuildTypeStaticLibrary:
 			units.WriteILine("++", dp.Name, "_staticlib,")
 		case dev.BuildTypeDynamicLibrary:

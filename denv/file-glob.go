@@ -7,13 +7,13 @@ import (
 	utils "github.com/jurgen-kluft/ccode/utils"
 )
 
-func GlobFiles(dirpath string, glob string) (filepaths []string, err error) {
+func GlobFiles(dirpath string, glob string,isExcluded func(string) bool) (filepaths []string, err error) {
 	dirpath = filepath.Clean(dirpath)
 	err = filepath.Walk(dirpath, func(path string, fi os.FileInfo, err error) error {
 		if err == nil && fi.IsDir() == false {
 			path = path[len(dirpath)+1:]
 			match := utils.GlobMatching(path, glob)
-			if match {
+			if match && !isExcluded(path) {
 				filepaths = append(filepaths, path)
 			}
 		}

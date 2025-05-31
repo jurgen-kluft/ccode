@@ -1,7 +1,11 @@
 package toolchain
 
 import (
+	"fmt"
+	"log"
 	"os/exec"
+	"path/filepath"
+	"strings"
 )
 
 type ToolchainDarwinClang struct {
@@ -10,72 +14,132 @@ type ToolchainDarwinClang struct {
 
 // --------------------------------------------------------------------------------------------------
 // --------------------------------------------------------------------------------------------------
-// C Compiler
+// C/C++ Compiler
 
-type ToolchainDarwinClangCCompiler struct {
-	toolChain *ToolchainDarwinClang
-	toolPath  string
-	args      []string
-	config    *Config
+type ToolchainDarwinClangCompiler struct {
+	toolChain       *ToolchainDarwinClang
+	config          *Config
+	cCompilerPath   string
+	cppCompilerPath string
+	cArgs           []string
+	cppArgs         []string
 }
 
-func (t *ToolchainDarwinClang) NewCCompiler(config *Config) Compiler {
-	return &ToolchainDarwinClangCCompiler{
-		toolChain: t,
-		toolPath:  t.Tools["c.compiler"],
-		config:    config,
+func (t *ToolchainDarwinClang) NewCompiler(config *Config) Compiler {
+	return &ToolchainDarwinClangCompiler{
+		toolChain:       t,
+		config:          config,
+		cCompilerPath:   t.Tools["c.compiler"],
+		cppCompilerPath: t.Tools["cpp.compiler"],
+		cArgs:           []string{},
+		cppArgs:         []string{},
 	}
 }
 
-func (cl *ToolchainDarwinClangCCompiler) SetupArgs(defines []string, includes []string) {
+func (cl *ToolchainDarwinClangCompiler) SetupArgs(_defines []string, _includes []string) {
 	// Implement the logic to setup arguments for the compiler here
-	cl.args = []string{}
+	cl.cArgs = make([]string, 0, 64)
+
+	cl.cArgs = append(cl.cArgs, `-c`)
+	archFlags := cl.toolChain.Vars[`c.compiler.flags.arch`]
+	cl.cArgs = append(cl.cArgs, archFlags...)
+	picFlags := cl.toolChain.Vars[`c.compiler.flags.pic`]
+	cl.cArgs = append(cl.cArgs, picFlags...)
+	stdFlags := cl.toolChain.Vars[`c.compiler.flags.std`]
+	cl.cArgs = append(cl.cArgs, stdFlags...)
+
+	flagsStr := `c.compiler.flags.release`
+	definesStr := `c.compiler.defines.release`
 	if cl.config.Config.IsDebug() {
-		cl.args = append(cl.args, `-g`, `-O0`)
-	} else if cl.config.Config.IsRelease() {
-		cl.args = append(cl.args, `-O3`)
+		flagsStr = `c.compiler.flags.debug`
+		definesStr = `c.compiler.defines.debug`
+	} else if cl.config.Config.IsFinal() {
+		flagsStr = `c.compiler.flags.final`
+		definesStr = `c.compiler.defines.final`
 	}
-	cl.args = append(cl.args, `-fPIC`)
-}
 
-func (cl *ToolchainDarwinClangCCompiler) Compile(sourceAbsFilepath string, objRelFilepath string) error {
-	// Implement the compile logic here
-	return nil
-}
-
-// --------------------------------------------------------------------------------------------------
-// --------------------------------------------------------------------------------------------------
-// C++ Compiler
-
-type ToolchainDarwinClangCppCompiler struct {
-	toolChain    *ToolchainDarwinClang
-	compilerPath string
-	compilerArgs []string
-	config       *Config
-}
-
-func (t *ToolchainDarwinClang) NewCppCompiler(config *Config) Compiler {
-	return &ToolchainDarwinClangCppCompiler{
-		toolChain:    t,
-		compilerPath: t.Tools["cpp.compiler"],
-		compilerArgs: []string{},
-		config:       config,
+	flags := cl.toolChain.Vars[flagsStr]
+	cl.cArgs = append(cl.cArgs, flags...)
+	defines := cl.toolChain.Vars[definesStr]
+	for _, define := range defines {
+		cl.cArgs = append(cl.cArgs, `-D`, define)
 	}
-}
+	for _, define := range _defines {
+		cl.cArgs = append(cl.cArgs, `-D`, define)
+	}
+	for _, include := range _includes {
+		cl.cArgs = append(cl.cArgs, `-I`, include)
+	}
 
-func (cl *ToolchainDarwinClangCppCompiler) SetupArgs(defines []string, includes []string) {
-	// Implement the logic to setup arguments for the compiler here
-	cl.compilerArgs = []string{}
+	cl.cArgs = append(cl.cArgs, `-MMD`) // Generate dependency file
+
+	// C++ compiler arguments
+	cl.cppArgs = make([]string, 0, 64)
+
+	cl.cppArgs = append(cl.cppArgs, `-c`)
+	archFlags = cl.toolChain.Vars[`cpp.compiler.flags.arch`]
+	cl.cppArgs = append(cl.cppArgs, archFlags...)
+	picFlags = cl.toolChain.Vars[`cpp.compiler.flags.pic`]
+	cl.cppArgs = append(cl.cppArgs, picFlags...)
+	stdFlags = cl.toolChain.Vars[`cpp.compiler.flags.std`]
+	cl.cppArgs = append(cl.cppArgs, stdFlags...)
+
+	flagsStr = `cpp.compiler.flags.release`
+	definesStr = `cpp.compiler.defines.release`
 	if cl.config.Config.IsDebug() {
-		cl.compilerArgs = append(cl.compilerArgs, `-g`, `-O0`)
-	} else if cl.config.Config.IsRelease() {
-		cl.compilerArgs = append(cl.compilerArgs, `-O3`)
+		flagsStr = `cpp.compiler.flags.debug`
+		definesStr = `cpp.compiler.defines.debug`
+	} else if cl.config.Config.IsFinal() {
+		flagsStr = `cpp.compiler.flags.final`
+		definesStr = `cpp.compiler.defines.final`
 	}
-	cl.compilerArgs = append(cl.compilerArgs, `-fPIC`)
+
+	flags = cl.toolChain.Vars[flagsStr]
+	cl.cppArgs = append(cl.cppArgs, flags...)
+	defines = cl.toolChain.Vars[definesStr]
+	for _, define := range defines {
+		cl.cppArgs = append(cl.cppArgs, `-D`, define)
+	}
+	for _, define := range _defines {
+		cl.cppArgs = append(cl.cppArgs, `-D`, define)
+	}
+	for _, include := range _includes {
+		cl.cppArgs = append(cl.cppArgs, `-I`, include)
+	}
+
+	cl.cppArgs = append(cl.cppArgs, `-MMD`) // Generate dependency file
+
 }
 
-func (cl *ToolchainDarwinClangCppCompiler) Compile(sourceFilepath string, objRelFilepath string) error {
-	// Implement the compile logic here
+func (cl *ToolchainDarwinClangCompiler) Compile(sourceAbsFilepath string, objRelFilepath string) error {
+
+	var args []string
+
+	if strings.HasSuffix(sourceAbsFilepath, ".c") {
+		args = cl.cArgs
+	} else {
+		args = cl.cppArgs
+	}
+
+	// The source file and the output object file
+	args = append(args, "-o")
+	args = append(args, objRelFilepath)
+	args = append(args, sourceAbsFilepath)
+
+	fmt.Printf("Compiling (%s) %s\n", cl.config.Config.AsString(), filepath.Base(sourceAbsFilepath))
+	var err error
+	var out []byte
+	cmd := exec.Command(cl.cCompilerPath, args...)
+	out, err = cmd.CombinedOutput()
+
+	if err != nil {
+		log.Printf("Compile failed, output:\n%s\n", string(out))
+		return fmt.Errorf("Compile failed with %s\n", err)
+	}
+	if len(out) > 0 {
+		log.Printf("Compile output:\n%s\n", string(out))
+	}
+
 	return nil
 }
 
@@ -83,29 +147,102 @@ func (cl *ToolchainDarwinClangCppCompiler) Compile(sourceFilepath string, objRel
 // --------------------------------------------------------------------------------------------------
 // Archiver
 
-type ToolchainDarwinClangArchiver struct {
-	toolChain *ToolchainDarwinClang
-	toolPath  string
+type ToolchainDarwinClangStaticArchiver struct {
+	toolChain    *ToolchainDarwinClang
+	archiverPath string
+	args         []string
 }
 
-func (t *ToolchainDarwinClang) NewArchiver(config *Config) Archiver {
-	return &ToolchainDarwinClangArchiver{
-		toolChain: t,
-		toolPath:  t.Tools["archiver"],
+type ToolchainDarwinClangDynamicArchiver struct {
+	toolChain    *ToolchainDarwinClang
+	archiverPath string
+	args         []string
+}
+
+func (t *ToolchainDarwinClang) NewArchiver(at ArchiverType, config *Config) Archiver {
+	if at == ArchiverTypeStatic {
+		return &ToolchainDarwinClangStaticArchiver{
+			toolChain:    t,
+			archiverPath: t.Tools["archiver.static"],
+			args:         []string{},
+		}
+	} else if at == ArchiverTypeDynamic {
+		return &ToolchainDarwinClangDynamicArchiver{
+			toolChain:    t,
+			archiverPath: t.Tools["archiver.dynamic"],
+			args:         []string{},
+		}
 	}
+	return nil
 }
 
-func (t *ToolchainDarwinClangArchiver) FileExtension() string {
-	// The file extension for the archive on Darwin is typically ".a"
-	return ".a"
+func (t *ToolchainDarwinClangStaticArchiver) Filename(name string) string {
+	return "lib" + name + ".a" // The file extension for the archive on Darwin is typically ".a"
 }
 
-func (t *ToolchainDarwinClangArchiver) SetupArgs(userVars Vars) {
-	// Implement the logic here
+func (t *ToolchainDarwinClangStaticArchiver) SetupArgs(userVars Vars) {
+	t.args = []string{}
+	archFlags := t.toolChain.Vars[`static.archiver.flags`]
+	t.args = append(t.args, archFlags...)
 }
 
-func (cl *ToolchainDarwinClangArchiver) Archive(inputObjectFilepaths []string, outputArchiveFilepath string) error {
-	// Implement the logic here
+func (t *ToolchainDarwinClangStaticArchiver) Archive(inputObjectFilepaths []string, outputArchiveFilepath string) error {
+	args := t.args
+	args = append(args, outputArchiveFilepath)
+	for _, inputObjectFilepath := range inputObjectFilepaths {
+		args = append(args, inputObjectFilepath)
+	}
+
+	log.Printf("Archiving static library %s\n", outputArchiveFilepath)
+
+	cmd := exec.Command(t.archiverPath, args...)
+	out, err := cmd.CombinedOutput()
+
+	if err != nil {
+		return fmt.Errorf("Archive failed with %s\n", err)
+	}
+	if len(out) > 0 {
+		log.Printf("Archive output:\n%s\n", string(out))
+	}
+
+	return nil
+}
+
+func (t *ToolchainDarwinClangDynamicArchiver) Filename(name string) string {
+	return "lib" + name + ".dylib" // The filename for the dynamic library on Darwin is typically "libname.dylib"
+}
+func (t *ToolchainDarwinClangDynamicArchiver) SetupArgs(userVars Vars) {
+	t.args = []string{}
+
+	archFlags := t.toolChain.Vars[`dynamic.archiver.flags.arch`]
+	t.args = append(t.args, archFlags...)
+}
+
+func (t *ToolchainDarwinClangDynamicArchiver) Archive(inputObjectFilepaths []string, outputArchiveFilepath string) error {
+	args := t.args
+	args = append(args, "-dynamiclib")
+	args = append(args, "-install_name")
+	args = append(args, filepath.Base(outputArchiveFilepath))
+
+	args = append(args, "-o")
+	args = append(args, outputArchiveFilepath)
+
+	for _, inputObjectFilepath := range inputObjectFilepaths {
+		args = append(args, inputObjectFilepath)
+	}
+
+	log.Printf("Archiving dynamic library %s\n", outputArchiveFilepath)
+
+	cmd := exec.Command(t.archiverPath, args...)
+	out, err := cmd.CombinedOutput()
+
+	if err != nil {
+		return fmt.Errorf("Archive failed with %s\n", err)
+	}
+	if len(out) > 0 {
+		log.Printf("Archive output:\n%s\n", string(out))
+	}
+
 	return nil
 }
 
@@ -114,38 +251,68 @@ func (cl *ToolchainDarwinClangArchiver) Archive(inputObjectFilepaths []string, o
 // Linker
 
 type ToolchainDarwinClangLinker struct {
-	toolChain *ToolchainDarwinClang
-	toolPath  string
-	args      []string
+	toolChain  *ToolchainDarwinClang
+	linkerPath string
+	args       []string
 }
 
-func (t *ToolchainDarwinClang) NewLinker(config *Config) Linker {
+func (l *ToolchainDarwinClang) NewLinker(config *Config) Linker {
 	return &ToolchainDarwinClangLinker{
-		toolChain: t,
-		toolPath:  t.Tools["linker"],
+		toolChain:  l,
+		linkerPath: l.Tools["linker"],
 	}
 }
 
-func (t *ToolchainDarwinClangLinker) FileExt() string {
-	// The file extension for the linker output on Darwin is typically ".dylib" or ".app"
-	return ".dylib"
+func (l *ToolchainDarwinClangLinker) Filename(name string) string {
+	return name // The filename for the output binary on Darwin is typically just the name without extension
 }
 
-func (t *ToolchainDarwinClangLinker) SetupArgs(generateMapFile bool, libraryPaths []string, libraryFiles []string) {
-	libPaths := t.toolChain.Vars["linker.lib.paths"]
-	t.args = []string{}
+func (l *ToolchainDarwinClangLinker) SetupArgs(generateMapFile bool, libraryPaths []string, libraryFiles []string) {
+	libPaths := l.toolChain.Vars["linker.lib.paths"]
+	l.args = []string{}
 	for _, libPath := range libPaths {
-		t.args = append(t.args, `-L`)
-		t.args = append(t.args, libPath)
-	}
-	libFiles := t.toolChain.Vars["linker.lib.files"]
-	for _, libFile := range libFiles {
-		t.args = append(t.args, `-l`)
-		t.args = append(t.args, libFile)
+		l.args = append(l.args, `-L`)
+		l.args = append(l.args, libPath)
 	}
 }
-func (cl *ToolchainDarwinClangLinker) Link(inputArchiveAbsFilepaths []string, outputAppRelFilepathNoExt string) error {
-	// Implement the compile logic here
+func (l *ToolchainDarwinClangLinker) Link(inputArchiveAbsFilepaths []string, outputAppRelFilepathNoExt string) error {
+	args := l.args
+
+	flags := l.toolChain.Vars[`linker.flags`]
+	args = append(args, flags...)
+
+	// Frameworks
+	// for _, framework := range inputFrameworks {
+	//     args = append(args, "-framework")
+	//     args = append(args, framework)
+	// }
+
+	args = append(args, "-o")
+	args = append(args, outputAppRelFilepathNoExt)
+
+	for _, inputArchiveAbsFilepath := range inputArchiveAbsFilepaths {
+		args = append(args, inputArchiveAbsFilepath)
+	}
+
+	libFiles := l.toolChain.Vars["linker.lib.files"]
+	for _, libFile := range libFiles {
+		args = append(args, "-l")
+		args = append(args, libFile)
+	}
+
+	log.Printf("Linking '%s'...\n", outputAppRelFilepathNoExt)
+	cmd := exec.Command(l.linkerPath, args...)
+	cmd.Dir = "/Users/obnosis5/dev.go/src/github.com/jurgen-kluft/cbase/target/clay"
+	out, err := cmd.CombinedOutput()
+
+	if err != nil {
+		log.Printf("Link failed, output:\n%s\n", string(out))
+		return fmt.Errorf("Link failed with %s\n", err)
+	}
+	if len(out) > 0 {
+		log.Printf("Link output:\n%s\n", string(out))
+	}
+
 	return nil
 }
 
@@ -160,55 +327,102 @@ func (t *ToolchainDarwinClang) NewBurner(config *Config) Burner {
 // --------------------------------------------------------------------------------------------------
 // --------------------------------------------------------------------------------------------------
 // Toolchain for Clang on MacOS
-func NewToolchainClangDarwin() (t *ToolchainDarwinClang, err error) {
+
+// From clang source code:
+const (
+	archtype_arm      string = "arm"      // ARM: arm, armv.*, xscale
+	archtype_arm64    string = "arm64"    // ARM: arm, armv.*, xscale
+	archtype_unknown  string = "unknown"  // Unknown architecture
+	archtype_aarch64  string = "aarch64"  // AArch64: aarch64
+	archtype_hexagon  string = "hexagon"  // Hexagon: hexagon
+	archtype_mips     string = "mips"     // MIPS: mips, mipsallegrex
+	archtype_mipsel   string = "mipsel"   // MIPSEL: mipsel, mipsallegrexel
+	archtype_mips64   string = "mips64"   // MIPS64: mips64
+	archtype_mips64el string = "mips64el" // MIPS64EL: mips64el
+	archtype_msp430   string = "msp430"   // MSP430: msp430
+	archtype_ppc      string = "ppc"      // PPC: powerpc
+	archtype_ppc64    string = "ppc64"    // PPC64: powerpc64, ppu
+	archtype_r600     string = "r600"     // R600: AMD GPUs HD2XXX - HD6XXX
+	archtype_sparc    string = "sparc"    // Sparc: sparc
+	archtype_sparcv9  string = "sparcv9"  // Sparcv9: Sparcv9
+	archtype_systemz  string = "systemz"  // SystemZ: s390x
+	archtype_tce      string = "tce"      // TCE (http://tce.cs.tut.fi/): tce
+	archtype_thumb    string = "thumb"    // Thumb: thumb, thumbv.*
+	archtype_x86      string = "x86"      // X86: i[3-9]86
+	archtype_x86_64   string = "x86_64"   // X86-64: amd64, x86_64
+	archtype_xcore    string = "xcore"    // XCore: xcore
+	archtype_mblaze   string = "mblaze"   // MBlaze: mblaze
+	archtype_nvptx    string = "nvptx"    // NVPTX: 32-bit
+	archtype_nvptx64  string = "nvptx64"  // NVPTX: 64-bit
+	archtype_le32     string = "le32"     // le32: generic little-endian 32-bit CPU (PNaCl / Emscripten)
+	archtype_amdil    string = "amdil"    // amdil: amd IL
+	archtype_spir     string = "spir"     // SPIR: standard portable IR for OpenCL 32-bit version
+	archtype_spir64   string = "spir64"   // SPIR: standard portable IR for OpenCL 64-bit version
+)
+
+func NewToolchainClangDarwin(arch string) (t *ToolchainDarwinClang, err error) {
 	var clangPath string
 	if clangPath, err = exec.LookPath("clang"); err != nil {
 		return nil, err
 	}
+	clangPath = filepath.Dir(clangPath)
+
+	var arPath string
+	if arPath, err = exec.LookPath("ar"); err != nil {
+		return nil, err
+	}
+	arPath = filepath.Dir(arPath)
 
 	t = &ToolchainDarwinClang{
 		ToolchainInstance{
 			Name: "clang",
 			Vars: map[string][]string{
-				"clang.path": {
-					clangPath,
-				},
-				"clang.bin.path": {
-					`{clang.path}/bin`,
-				},
-				"clang.lib.path": {
-					`{clang.path}/lib`,
-				},
-				"c.compiler.includes": {
-					`{clang.path}/include`,
-					`{clang.path}/usr/include`,
-					`{clang.path}/usr/local/include`,
-				},
-				"c++.compiler.includes": {
-					`{clang.path}/include`,
-					`{clang.path}/usr/include`,
-					`{clang.path}/usr/local/include`,
-				},
-				"linker.lib.paths": {
-					`{clang.lib.path}`,
-				},
-				"linker.lib.files": {
-					`libc++.dylib`,
-					`libSystem.dylib`,
-					`libc++abi.dylib`,
-					`libobjc.A.dylib`,
-				},
+				"ar.path":        {arPath},
+				"clang.path":     {clangPath},
+				"clang.lib.path": {`{clang.path}/lib`},
+
+				"c.compiler.flags.arch":      {`-arch`, archtype_arm64},
+				"c.compiler.flags.std":       {`-std=c11`},
+				"c.compiler.flags.debug":     {`-g`, `-O0`},
+				"c.compiler.flags.release":   {`-O2`},
+				"c.compiler.flags.final":     {`-O3`},
+				"c.compiler.defines.debug":   {},
+				"c.compiler.defines.release": {},
+				"c.compiler.defines.final":   {},
+
+				"cpp.compiler.flags":           {`-arch`, archtype_arm64},
+				"cpp.compiler.flags.std":       {`-std=c++17`},
+				"cpp.compiler.flags.debug":     {`-g`, `-O0`},
+				"cpp.compiler.flags.release":   {`-O2`},
+				"cpp.compiler.flags.final":     {`-O3`},
+				"cpp.compiler.defines.debug":   {},
+				"cpp.compiler.defines.release": {},
+				"cpp.compiler.defines.final":   {},
+
+				"m.compiler.includes": {},
+				"m.compiler.flags":    {`-arch`, archtype_arm64, `-fobjc-arc`},
+
+				// specific flags for archiver
+				`static.archiver.flags`:  {`-rs`},
+				`dynamic.archiver.flags`: {``},
+
+				`linker.flags`:     {},
+				"linker.lib.paths": {},
+				"linker.lib.files": {`stdc++`},
 			},
 
 			// #--------------------------------------------------
 			Tools: map[string]string{
-				"c.compiler":   `{clang.bin.path}/clang`,
-				"cpp.compiler": `{clang.bin.path}/clang`,
-				"archiver":     `{clang.bin.path}/clang`,
-				"linker":       `{clang.bin.path}/clang`,
+				"c.compiler":       `{clang.path}/clang`,
+				"cpp.compiler":     `{clang.path}/clang++`,
+				"archiver.static":  `{ar.path}/ar`,
+				"archiver.dynamic": `{clang.path}/clang`,
+				"linker":           `{clang.path}/clang`,
 			},
 		},
 	}
+
+	// We can target x86_64 and aarch64 on macOS
 
 	t.ResolveVars()
 	return t, nil

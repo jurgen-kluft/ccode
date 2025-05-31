@@ -3,7 +3,6 @@ package denv
 import (
 	"fmt"
 	"path/filepath"
-	"strings"
 
 	dev "github.com/jurgen-kluft/ccode/dev"
 	utils "github.com/jurgen-kluft/ccode/utils"
@@ -12,7 +11,7 @@ import (
 // -----------------------------------------------------------------------------------------------------
 // -----------------------------------------------------------------------------------------------------
 
-type ProjectConfig struct {
+type ProjectSettings struct {
 	Group              string
 	IsGuiApp           bool
 	PchHeader          string
@@ -23,8 +22,8 @@ type ProjectConfig struct {
 	}
 }
 
-func NewProjectConfig() *ProjectConfig {
-	config := &ProjectConfig{}
+func NewProjectSettings() *ProjectSettings {
+	config := &ProjectSettings{}
 	return config
 }
 
@@ -74,6 +73,10 @@ func NewProjectList() *ProjectList {
 		Values: []*Project{},
 		Keys:   []string{},
 	}
+}
+
+func (p *ProjectList) Len() int {
+	return len(p.Values)
 }
 
 func (p *ProjectList) IsEmpty() bool {
@@ -143,19 +146,17 @@ func (p *ProjectList) TopoSort() error {
 // -----------------------------------------------------------------------------------------------------
 
 type Project struct {
-	Workspace        *Workspace      // The workspace this project is part of
-	Name             string          // The name of the project
-	Version          string          // The version of the project
-	BuildType        dev.BuildType   // The build type of the project
-	BuildConfig      dev.BuildConfig // The build config of the project
-	SupportedTargets dev.BuildTarget // The targets that this project supports
-	ProjectAbsPath   string          // The path where the project is located on disk, under the workspace directory
-	GenerateAbsPath  string          // Where the project will be saved on disk
-	Settings         *ProjectConfig  //
-	Group            *ProjectGroup   // Set when project is added into ProjectGroups
-	SrcFiles         *FileEntryDict
-	ExternalSrcFiles []*FileEntryDict
-	ResourceEntries  *FileEntryDict
+	Workspace        *Workspace       // The workspace this project is part of
+	Name             string           // The name of the project
+	Version          string           // The version of the project
+	BuildType        dev.BuildType    // The build type of the project
+	SupportedTargets dev.BuildTarget  // The targets that this project supports
+	ProjectAbsPath   string           // The path where the project is located on disk, under the workspace directory
+	GenerateAbsPath  string           // Where the project will be saved on disk
+	Settings         *ProjectSettings //
+	Group            *ProjectGroup    // Set when project is added into ProjectGroups
+	SrcFileGroups    []*FileEntryDict
+	ResFileGroups    []*FileEntryDict
 	VirtualFolders   *VirtualDirectories // For IDE generation, this is the path that is the root path of the virtual folder/file structure
 	PchCpp           *FileEntry
 	ProjectFilename  string
@@ -165,24 +166,29 @@ type Project struct {
 	Resolved *ProjectResolved
 }
 
-func newProject2(prj *DevProject, ws *Workspace, name string, projectAbsPath string, settings *ProjectConfig) *Project {
+func newProject2(prj *DevProject, ws *Workspace, settings *ProjectSettings) *Project {
+	projectAbsPath := prj.Package.PackagePath()
 	p := &Project{
 		Workspace:        ws,
-		Name:             name,
+		Name:             prj.Name,
 		BuildType:        prj.BuildType,
-		BuildConfig:      prj.BuildConfig,
 		SupportedTargets: prj.Supported,
 		ProjectAbsPath:   projectAbsPath,
 		GenerateAbsPath:  ws.GenerateAbsPath,
 		Settings:         settings,
 		Group:            nil,
-		SrcFiles:         NewFileEntryDict(projectAbsPath),
-		ExternalSrcFiles: []*FileEntryDict{},
-		ResourceEntries:  NewFileEntryDict(projectAbsPath),
+		SrcFileGroups:    []*FileEntryDict{NewFileEntryDict(projectAbsPath)},
+		ResFileGroups:    []*FileEntryDict{NewFileEntryDict(projectAbsPath)},
 		ConfigsLocal:     NewConfigList(),
 		Dependencies:     NewProjectList(),
 	}
 	p.VirtualFolders = NewVirtualFolders(p.ProjectAbsPath) // The path that is the root path of the virtual folder/file structure
+
+	// TODO Should we copy the configurations here ?
+	for _, devCfg := range prj.Configs {
+		cfg := p.CreateConfiguration(devCfg)
+		p.ConfigsLocal.Add(cfg)
+	}
 
 	p.Settings.MultiThreadedBuild = Boolean(ws.Config.MultiThreadedBuild)
 	p.Settings.Xcode.BundleIdentifier = "$(PROJECT_NAME)"
@@ -190,14 +196,11 @@ func newProject2(prj *DevProject, ws *Workspace, name string, projectAbsPath str
 	return p
 }
 
-func (p *Project) TypeIsCpp() bool {
-	return p.BuildType == dev.BuildTypeStaticLibrary || p.BuildType == dev.BuildTypeDynamicLibrary || p.BuildType == dev.BuildTypeExecutable
-}
 func (p *Project) TypeIsExe() bool {
-	return p.BuildType == dev.BuildTypeExecutable || p.BuildType == dev.BuildTypeExecutable
+	return p.BuildType.IsExecutable()
 }
 func (p *Project) TypeIsDll() bool {
-	return p.BuildType == dev.BuildTypeDynamicLibrary || p.BuildType == dev.BuildTypeDynamicLibrary
+	return p.BuildType == dev.BuildTypeDynamicLibrary
 }
 func (p *Project) TypeIsLib() bool {
 	return p.BuildType == dev.BuildTypeDynamicLibrary || p.BuildType == dev.BuildTypeStaticLibrary
@@ -223,26 +226,27 @@ func (p *Project) FindConfig(t dev.BuildConfig) *Config {
 }
 
 func (p *Project) FileEntriesGenerateUUIDs() {
-
-	for _, i := range p.SrcFiles.Dict {
-		f := p.SrcFiles.Values[i]
-		f.UUID = utils.GenerateUUID()
-		f.BuildUUID = utils.GenerateUUID()
+	for _, g := range p.SrcFileGroups {
+		for _, i := range g.Dict {
+			f := g.Values[i]
+			f.UUID = utils.GenerateUUID()
+			f.BuildUUID = utils.GenerateUUID()
+		}
 	}
-
-	for _, i := range p.ResourceEntries.Dict {
-		f := p.SrcFiles.Values[i]
-		f.UUID = utils.GenerateUUID()
-		f.BuildUUID = utils.GenerateUUID()
+	for _, g := range p.ResFileGroups {
+		for _, i := range g.Dict {
+			f := g.Values[i]
+			f.UUID = utils.GenerateUUID()
+			f.BuildUUID = utils.GenerateUUID()
+		}
 	}
-
 	for _, f := range p.VirtualFolders.Folders {
 		f.UUID = utils.GenerateUUID()
 	}
 }
 
-func (p *Project) CreateConfiguration(cfg *DevConfig, buildConfig dev.BuildConfig) *Config {
-	config := p.GetOrCreateConfig(buildConfig)
+func (p *Project) CreateConfiguration(cfg *DevConfig) *Config {
+	config := p.GetOrCreateConfig(cfg.BuildConfig)
 
 	// C++ defines
 	for _, define := range cfg.Defines.Values {
@@ -254,17 +258,12 @@ func (p *Project) CreateConfiguration(cfg *DevConfig, buildConfig dev.BuildConfi
 		config.AddLibrary(p.ProjectAbsPath, lib)
 	}
 
-	// Local (Package) Include directories
-	for _, include := range cfg.LocalIncludeDirs {
-		config.AddLocalIncludeDir(include)
+	// Include directories
+	for _, include := range cfg.IncludeDirs {
+		config.AddIncludeDir(include)
 	}
 
-	// External (absolute path) Include directories
-	for _, include := range cfg.ExternalIncludeDirs {
-		config.AddExternalIncludeDir(include)
-	}
-
-	if buildConfig.IsTest() {
+	if cfg.BuildConfig.IsTest() {
 		config.VisualStudioClCompile.AddOrSet("ExceptionHandling", "Sync")
 	}
 
@@ -273,9 +272,10 @@ func (p *Project) CreateConfiguration(cfg *DevConfig, buildConfig dev.BuildConfi
 
 func (p *Project) AddConfigurations(configs []*DevConfig) {
 	for _, cfg := range configs {
-		buildConfig := cfg.BuildConfig
-		config := p.CreateConfiguration(cfg, buildConfig)
-		p.ConfigsLocal.Add(config)
+		if !p.ConfigsLocal.Has(cfg.BuildConfig) {
+			config := p.CreateConfiguration(cfg)
+			p.ConfigsLocal.Add(config)
+		}
 	}
 }
 
@@ -359,14 +359,15 @@ func (p *Project) Resolve(devEnum DevEnum) error {
 		resolved.PchHeader.Init(p.Settings.PchHeader, false)
 	}
 
-	for _, f := range p.SrcFiles.Values {
-		if f.Generated {
-			p.VirtualFolders.AddFile(f)
-		} else {
-			p.VirtualFolders.AddFile(f)
+	for _, g := range p.SrcFileGroups {
+		for _, f := range g.Values {
+			if f.Generated {
+				p.VirtualFolders.AddFile(f)
+			} else {
+				p.VirtualFolders.AddFile(f)
+			}
 		}
 	}
-
 	configsPerConfigTypeDb := map[dev.BuildConfig][]*Config{}
 
 	err := p.Dependencies.TopoSort()
@@ -398,7 +399,9 @@ func (p *Project) Resolve(devEnum DevEnum) error {
 	}
 
 	// Should we copy these and then sort ?
-	p.SrcFiles.SortByKey()
+	for _, g := range p.SrcFileGroups {
+		g.SortByKey()
+	}
 	p.VirtualFolders.SortByKey()
 	p.FileEntriesGenerateUUIDs()
 
@@ -416,22 +419,22 @@ func (p *Project) Resolve(devEnum DevEnum) error {
 // -----------------------------------------------------------------------------------------------------
 // -----------------------------------------------------------------------------------------------------
 
-func (p *Project) GlobFiles(dir string, pattern string, isExcluded func(string) bool) {
-	dir = utils.PathNormalize(dir)
+func (p *Project) GlobFiles(path string, sub string, pattern string, isExcluded func(string) bool) {
+    path = utils.PathNormalize(path)
+    sub = utils.PathNormalize(sub)
 	pattern = utils.PathNormalize(pattern)
-	pp := strings.Split(pattern, "^")
-	path := filepath.Join(dir, pp[0])
-	files, err := GlobFiles(path, pp[1])
+	files, err := GlobFiles(filepath.Join(path, sub), pattern, isExcluded)
 	if err != nil {
 		return
 	}
 
-	for _, file := range files {
-		if isExcluded(file) {
-			continue
-		}
-		p.SrcFiles.Add(filepath.Join(pp[0], file))
-	}
+    if len(files) > 0 {
+        fileGroup := NewFileEntryDict(path)
+        for _, file := range files {
+            fileGroup.Add(filepath.Join(sub, file))
+        }
+        p.SrcFileGroups = append(p.SrcFileGroups, fileGroup)
+    }
 }
 
 // -----------------------------------------------------------------------------------------------------

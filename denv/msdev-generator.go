@@ -146,8 +146,10 @@ func (g *MsDevGenerator) genProject(proj *Project) {
 				wr.TagWithBody("RemoteProjectDir", projectDir)
 
 				fileToCopy := ""
-				for _, f := range proj.SrcFiles.Values {
-					fileToCopy += f.Path + ":=" + projectDir + "/" + f.Path + ";"
+				for _, g := range proj.SrcFileGroups {
+					for _, f := range g.Values {
+						fileToCopy += f.Path + ":=" + projectDir + "/" + f.Path + ";"
+					}
 				}
 
 				wr.TagWithBody("SourcesToCopyRemotelyOverride", "")
@@ -219,33 +221,31 @@ func (g *MsDevGenerator) genProjectFiles(wr *utils.XmlWriter, proj *Project) {
 
 	g.genProjectPch(wr, proj)
 
-	for _, f := range proj.SrcFiles.Values {
-		tagName := ""
-		excludedFromBuild := false
-		remoteCopyFile := false
-		switch f.Type {
-		case FileTypeIxx, FileTypeCSource, FileTypeCppSource:
-			tagName = "ClCompile"
-			excludedFromBuild = f.ExcludedFromBuild
-		case FileTypeCuHeader, FileTypeCuSource:
-			tagName = "CudaCompile"
-			excludedFromBuild = f.ExcludedFromBuild
-		default:
-			tagName = "ClInclude"
-		}
+	for _, g := range proj.SrcFileGroups {
+		for _, f := range g.Values {
+			tagName := ""
+			remoteCopyFile := false
+			switch f.Type {
+			case FileTypeIxx, FileTypeCSource, FileTypeCppSource:
+				tagName = "ClCompile"
+			case FileTypeCuHeader, FileTypeCuSource:
+				tagName = "CudaCompile"
+			default:
+				tagName = "ClInclude"
+			}
 
-		tag := wr.TagScope(tagName)
-		path := proj.SrcFiles.GetRelativePath(f, proj.Workspace.GenerateAbsPath)
-		wr.Attr("Include", path)
-		if excludedFromBuild {
-			wr.TagWithBody("ExcludedFromBuild", "true")
+			tag := wr.TagScope(tagName)
+			path := g.GetRelativePath(f, proj.Workspace.GenerateAbsPath)
+			wr.Attr("Include", path)
+			// if excludedFromBuild {
+			// 	wr.TagWithBody("ExcludedFromBuild", "true")
+			// }
+			if remoteCopyFile {
+				wr.TagWithBody("RemoteCopyFile", "false")
+			}
+			tag.Close()
 		}
-		if remoteCopyFile {
-			wr.TagWithBody("RemoteCopyFile", "false")
-		}
-		tag.Close()
 	}
-
 	tag.Close()
 }
 
@@ -338,8 +338,8 @@ func (g *MsDevGenerator) genProjectConfig(wr *utils.XmlWriter, proj *Project, co
 
 			g.genConfigOptionFromKeyValueDict(wr, proj, "DisableSpecificWarnings", config.DisableWarning, false)
 			g.genConfigOptionFromKeyValueDict(wr, proj, "PreprocessorDefinitions", config.CppDefines, false)
-			g.genConfigOptionWithModifier(wr, "AdditionalIncludeDirectories", config.IncludeDirs, func(_root string, _path string) string {
-				relpath := utils.PathGetRelativeTo(path.Join(_root, _path), proj.Workspace.GenerateAbsPath)
+			g.genConfigOptionWithModifier(wr, "AdditionalIncludeDirectories", config.IncludeDirs, func(_root, _base, _sub string) string {
+				relpath := utils.PathGetRelativeTo(path.Join(_root, _base, _sub), proj.Workspace.GenerateAbsPath)
 				return relpath
 			})
 
@@ -452,7 +452,7 @@ func (g *MsDevGenerator) genConfigOptionFromValueSet(wr *utils.XmlWriter, proj *
 	wr.TagWithBody(name, option)
 }
 
-func (g *MsDevGenerator) genConfigOptionWithModifier(wr *utils.XmlWriter, name string, value *PinnedPathSet, modifier func(string, string) string) {
+func (g *MsDevGenerator) genConfigOptionWithModifier(wr *utils.XmlWriter, name string, value *PinPathSet, modifier func(string, string, string) string) {
 	option := value.Concatenated("", ";", modifier)
 	option += "%(" + name + ")"
 	wr.TagWithBody(name, option)

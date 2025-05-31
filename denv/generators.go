@@ -89,7 +89,7 @@ type Generator struct {
 	Dev             DevEnum
 	BuildTarget     dev.BuildTarget
 	Verbose         bool
-	GoPathAbs       string // $(GOPATH)/src, absolute path
+	WorkspacePath   string // $(GOPATH)/src/github.com/user, absolute path
 	ExclusionFilter *ExclusionFilter
 }
 
@@ -122,8 +122,8 @@ func (g *Generator) Generate(pkg *Package) error {
 	case DevVs2015, DevVs2017, DevVs2019, DevVs2022:
 		gg := NewMsDevGenerator(ws)
 		gg.Generate()
-	case DevEsp32, DevEsp32s3:
-		gg := NewEsp32Generator(ws, g.Verbose)
+	case DevClay:
+		gg := NewClayGenerator(ws, g.Verbose)
 		err = gg.Generate()
 	}
 
@@ -131,17 +131,18 @@ func (g *Generator) Generate(pkg *Package) error {
 }
 
 func (g *Generator) GenerateWorkspace(pkg *Package, _dev DevEnum, _buildTarget dev.BuildTarget) (*Workspace, error) {
-	g.GoPathAbs = filepath.Join(os.Getenv("GOPATH"), "src")
+	g.WorkspacePath = filepath.Join(os.Getenv("GOPATH"), "src", pkg.RepoPath)
 
 	mainApps := pkg.GetMainApp()
 	mainTests := pkg.GetUnittest()
+	testLibs := pkg.GetTestLib()
 	mainLibs := pkg.GetMainLib()
 
 	if (len(mainApps) == 0 && len(mainTests) == 0) && len(mainLibs) == 0 {
 		return nil, fmt.Errorf("this package has no application(s), unittest(s) or main lib(s)")
 	}
 
-	wsc := NewWorkspaceConfig(_dev, _buildTarget, g.GoPathAbs, pkg.Name)
+	wsc := NewWorkspaceConfig(_dev, _buildTarget, g.WorkspacePath, pkg.RepoName)
 	if len(mainApps) > 0 {
 		wsc.StartupProject = mainApps[0].Name
 	} else if len(mainTests) > 0 {
@@ -152,76 +153,36 @@ func (g *Generator) GenerateWorkspace(pkg *Package, _dev DevEnum, _buildTarget d
 	wsc.MultiThreadedBuild = true
 
 	ws := NewWorkspace(wsc)
-	ws.WorkspaceName = pkg.Name
-	ws.WorkspaceAbsPath = g.GoPathAbs
-	if len(mainApps) > 0 {
-		ws.GenerateAbsPath = filepath.Join(g.GoPathAbs, mainApps[0].PackageURL, "target", ws.Config.Dev.ToString())
-	} else if len(mainTests) > 0 {
-		ws.GenerateAbsPath = filepath.Join(g.GoPathAbs, mainTests[0].PackageURL, "target", ws.Config.Dev.ToString())
-	} else if len(mainLibs) > 0 {
-		ws.GenerateAbsPath = filepath.Join(g.GoPathAbs, mainLibs[0].PackageURL, "target", ws.Config.Dev.ToString())
-	}
+	ws.WorkspaceName = pkg.RepoName
+	ws.WorkspaceAbsPath = filepath.Join(g.WorkspacePath,pkg.RepoName)
+	ws.GenerateAbsPath = filepath.Join(ws.WorkspaceAbsPath, "target", ws.Config.Dev.ToString())
 	g.ExclusionFilter = NewExclusionFilter(ws.BuildTarget)
 
-	for _, mainTest := range mainTests {
-		if mainTest.BuildConfig.IsTest() {
-			mainTestProject := g.getOrCreateProject(mainTest, ws)
-			mainTestProject.AddConfigurations(mainTest.Configs)
+	allProjects := make([]*DevProject, 0)
+	allProjects = append(allProjects, mainApps...)
+	allProjects = append(allProjects, mainTests...)
+	allProjects = append(allProjects, mainLibs...)
+	allProjects = append(allProjects, testLibs...)
 
-			mainTestDependencies := mainTest.CollectProjectDependencies()
-			for _, dp := range mainTestDependencies {
-				dpProject := g.getOrCreateProject(dp, ws)
-				mainTestProject.Dependencies.Add(dpProject)
+	for _, prj := range allProjects {
+		project := g.getOrCreateProject(prj, ws)
 
-				dpProject.AddConfigurations(dp.Configs)
+		// TODO We have been doing this in the past, however we are going to restrict this.
+		//      You should only be able to add a dependency that is matching your configurations
+		// project.AddConfigurations(prj.Configs)
 
-				dpDependencies := dp.CollectProjectDependencies()
-				for _, dpd := range dpDependencies {
-					dpdProject := g.getOrCreateProject(dpd, ws)
-					dpProject.Dependencies.Add(dpdProject)
-				}
-			}
-		}
-	}
+		projectDependencies := prj.CollectProjectDependencies()
+		for _, dp := range projectDependencies.Values {
+			depProject := g.getOrCreateProject(dp, ws)
+			project.Dependencies.Add(depProject)
 
-	for _, mainApp := range mainApps {
-		if mainApp.BuildType.IsApplication() {
-			mainAppProject := g.getOrCreateProject(mainApp, ws)
-			mainAppProject.AddConfigurations(mainApp.Configs)
+			// TODO See comment above
+			// depProject.AddConfigurations(dp.Configs)
 
-			mainAppDependencies := mainApp.CollectProjectDependencies()
-			for _, dp := range mainAppDependencies {
-				depProject := g.getOrCreateProject(dp, ws)
-				mainAppProject.Dependencies.Add(depProject)
-
-				depProject.AddConfigurations(dp.Configs)
-
-				dpDependencies := dp.CollectProjectDependencies()
-				for _, dpd := range dpDependencies {
-					dpdProject := g.getOrCreateProject(dpd, ws)
-					depProject.Dependencies.Add(dpdProject)
-				}
-			}
-		}
-	}
-
-	for _, mainLib := range mainLibs {
-		if mainLib.BuildType.IsLibrary() {
-			mainLibProject := g.getOrCreateProject(mainLib, ws)
-			mainLibProject.AddConfigurations(mainLib.Configs)
-
-			mainLibDependencies := mainLib.CollectProjectDependencies()
-			for _, dp := range mainLibDependencies {
-				depProject := g.getOrCreateProject(dp, ws)
-				mainLibProject.Dependencies.Add(depProject)
-
-				depProject.AddConfigurations(dp.Configs)
-
-				dpDependencies := dp.CollectProjectDependencies()
-				for _, dpd := range dpDependencies {
-					dpdProject := g.getOrCreateProject(dpd, ws)
-					depProject.Dependencies.Add(dpdProject)
-				}
+			dpDependencies := dp.CollectProjectDependencies()
+			for _, dpd := range dpDependencies.Values {
+				dpdProject := g.getOrCreateProject(dpd, ws)
+				depProject.Dependencies.Add(dpdProject)
 			}
 		}
 	}
@@ -239,72 +200,39 @@ func (g *Generator) getOrCreateProject(devProj *DevProject, ws *Workspace) *Proj
 		return p
 	}
 
-	projectConfig := NewProjectConfig()
+	projectSettings := NewProjectSettings()
 	{
 		if !devProj.BuildType.IsExecutable() {
-			if devProj.BuildConfig.IsTest() {
-				projectConfig.Group = "unittest/cpp-library"
+			if devProj.BuildType.IsUnittest() {
+				projectSettings.Group = "unittest/cpp-library"
 			} else {
-				projectConfig.Group = "main/cpp-library"
+				projectSettings.Group = "main/cpp-library"
 			}
-			//projectConfig.Type = ProjectTypeCppLib
+			//projectSettings.Type = ProjectTypeCppLib
 		} else {
-			if devProj.BuildConfig.IsTest() {
-				projectConfig.Group = "unittest/cpp-exe"
+			if devProj.BuildType.IsUnittest() {
+				projectSettings.Group = "unittest/cpp-exe"
+			} else if devProj.BuildType.IsCli() {
+				projectSettings.Group = "cli/cpp-exe"
 			} else {
-				projectConfig.Group = "main/cpp-exe"
+				projectSettings.Group = "main/cpp-exe"
 			}
-			//projectConfig.Type = ProjectTypeCppExe
+			//projectSettings.Type = ProjectTypeCppExe
 		}
 
-		projectConfig.IsGuiApp = false
-		projectConfig.PchHeader = ""
-		projectConfig.MultiThreadedBuild = true
-		projectConfig.CppAsObjCpp = false
+		projectSettings.IsGuiApp = false
+		projectSettings.PchHeader = ""
+		projectSettings.MultiThreadedBuild = true
+		projectSettings.CppAsObjCpp = false
 
-		projAbsPath := filepath.Join(g.GoPathAbs, devProj.PackageURL)
-		newProject := ws.NewProject2(devProj, devProj.Name, projAbsPath, projectConfig)
+		newProject := ws.NewProject2(devProj, projectSettings)
 		newProject.ProjectFilename = devProj.Name
-
-		// Generate file entry dictionaries for groups of external source files to the new project
-		for _, externalSource := range devProj.ExternalSources {
-			if externalSource.Supported.Contains(ws.BuildTarget) {
-				externalSrcFileDict := NewFileEntryDict(externalSource.Path)
-				for _, srcFile := range externalSource.SrcFiles {
-					externalSrcFileDict.Add(srcFile)
-				}
-				newProject.ExternalSrcFiles = append(newProject.ExternalSrcFiles, externalSrcFileDict)
-			}
-		}
 
 		exclusionFilter := func(_filepath string) bool { return g.ExclusionFilter.IsExcluded(_filepath) }
 
-		if devProj.BuildConfig.IsTest() {
-			// Unittest executable
-			newProject.GlobFiles(projAbsPath, filepath.Join("source", "test", "cpp", "^**", "*.cpp"), exclusionFilter)
-			newProject.GlobFiles(projAbsPath, filepath.Join("source", "test", "include", "^**", "*.h"), exclusionFilter)
-			newProject.GlobFiles(projAbsPath, filepath.Join("source", "test", "include", "^**", "*.hpp"), exclusionFilter)
-			newProject.GlobFiles(projAbsPath, filepath.Join("source", "test", "include", "^**", "*.inl"), exclusionFilter)
-		} else if devProj.BuildType.IsApplication() {
-			// Application
-			newProject.GlobFiles(projAbsPath, filepath.Join("source", "app", "cpp", "^**", "*.cpp"), exclusionFilter)
-			newProject.GlobFiles(projAbsPath, filepath.Join("source", "app", "include", "^**", "*.h"), exclusionFilter)
-			newProject.GlobFiles(projAbsPath, filepath.Join("source", "app", "include", "^**", "*.hpp"), exclusionFilter)
-			newProject.GlobFiles(projAbsPath, filepath.Join("source", "app", "include", "^**", "*.inl"), exclusionFilter)
-			if ws.BuildTarget.Mac() {
-				newProject.GlobFiles(projAbsPath, filepath.Join("source", "app", "cpp", "^**", "*.m"), exclusionFilter)
-				newProject.GlobFiles(projAbsPath, filepath.Join("source", "app", "cpp", "^**", "*.mm"), exclusionFilter)
-			}
-		} else if devProj.BuildType.IsLibrary() {
-			newProject.GlobFiles(projAbsPath, filepath.Join("source", "main", "cpp", "^**", "*.c"), exclusionFilter)
-			newProject.GlobFiles(projAbsPath, filepath.Join("source", "main", "cpp", "^**", "*.cpp"), exclusionFilter)
-			newProject.GlobFiles(projAbsPath, filepath.Join("source", "main", "include", "^**", "*.h"), exclusionFilter)
-			newProject.GlobFiles(projAbsPath, filepath.Join("source", "main", "include", "^**", "*.hpp"), exclusionFilter)
-			newProject.GlobFiles(projAbsPath, filepath.Join("source", "main", "include", "^**", "*.inl"), exclusionFilter)
-			if ws.BuildTarget.Mac() {
-				newProject.GlobFiles(projAbsPath, filepath.Join("source", "main", "cpp", "^**", "*.m"), exclusionFilter)
-				newProject.GlobFiles(projAbsPath, filepath.Join("source", "main", "cpp", "^**", "*.mm"), exclusionFilter)
-			}
+		// Glob source files
+		for _, srcPinPath := range devProj.SourceDirs {
+			newProject.GlobFiles(filepath.Join(srcPinPath.Path.Root, srcPinPath.Path.Base), srcPinPath.Path.Sub, srcPinPath.Glob, exclusionFilter)
 		}
 
 		return newProject

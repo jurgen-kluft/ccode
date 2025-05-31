@@ -14,7 +14,7 @@ import (
 // Init will initialize ccode before anything else is run
 
 var (
-	// tundra, vs2022, make, cmake, xcode, esp32/esp32s3
+	// tundra, vs2022, make, cmake, xcode, clay
 	cdev = "tundra"
 
 	// win32, win64, linux32, linux64, macos64
@@ -29,14 +29,15 @@ var (
 
 func Init() bool {
 
-	flag.StringVar(&cdev, "dev", "", "the build system to generate for (vs2022, tundra, make, cmake, xcode, esp32)")
+	flag.StringVar(&cdev, "dev", "", "the build system to generate for (vs2022, tundra, make, cmake, xcode, clay)")
+	flag.StringVar(&carch, "arch", "", "the architecture to target (x64, arm64, amd64, 386, esp32, esp32c3, esp32s3)")
 	flag.BoolVar(&cverbose, "verbose", false, "verbose output")
 	flag.Parse()
 
-	// Currently supported: esp32, esp32s3
-	if strings.HasPrefix(cdev, "esp32") {
+	// If architecture is targetting esp32
+	if strings.HasPrefix(carch, "esp32") {
+		cdev = "clay"
 		cos = "arduino"
-		carch = cdev
 	}
 
 	if cos == "" {
@@ -66,7 +67,8 @@ func Init() bool {
 		fmt.Println("    -> Usage: go run cbase.go -dev=tundra")
 		fmt.Println("    -> Usage: go run cbase.go -dev=make")
 		fmt.Println("    -> Usage: go run cbase.go -dev=xcode")
-		fmt.Println("    -> Usage: go run cbase.go -dev=esp32 / esp32s3")
+		fmt.Println("    -> Usage: go run cbase.go -dev=clay")
+		fmt.Println("    -> Usage: go run cbase.go -arch=esp32 / esp32s3")
 		return false
 	}
 

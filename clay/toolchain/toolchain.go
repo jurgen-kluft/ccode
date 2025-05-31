@@ -14,15 +14,14 @@ func NewConfig(config dev.BuildConfig, target dev.BuildTarget) *Config {
 	}
 }
 
-// GetDirname returns "os-arch-build-variant"
+// GetDirname returns "os-arch-build-variant-mode"
 func (c *Config) GetDirname() string {
-	return c.Target.OSAsString() + "-" + c.Target.ArchAsString() + "-" + c.Config.Build() + "-" + c.Config.Variant()
+	return c.Target.OSAsString() + "-" + c.Target.ArchAsString() + "-" + c.Config.AsString()
 }
 
 type Toolchain interface {
-	NewCCompiler(config *Config) Compiler
-	NewCppCompiler(config *Config) Compiler
-	NewArchiver(config *Config) Archiver
+	NewCompiler(config *Config) Compiler
+	NewArchiver(a ArchiverType, config *Config) Archiver
 	NewLinker(config *Config) Linker
 	//NewInformer(config *Config) Informer  // List information about the executable
 	NewBurner(config *Config) Burner

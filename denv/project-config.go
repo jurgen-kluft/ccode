@@ -16,22 +16,22 @@ import (
 // -----------------------------------------------------------------------------------------------------
 
 type ConfigList struct {
-	Dict   map[string]int
+	Dict   map[dev.BuildConfig]int
 	Values []*Config
 	Keys   []string
 }
 
 func NewConfigList() *ConfigList {
 	return &ConfigList{
-		Dict:   map[string]int{},
+		Dict:   map[dev.BuildConfig]int{},
 		Values: []*Config{},
 		Keys:   []string{},
 	}
 }
 
 func (p *ConfigList) Add(config *Config) {
-	if _, ok := p.Dict[config.String()]; !ok {
-		p.Dict[config.String()] = len(p.Values)
+	if _, ok := p.Dict[config.BuildConfig]; !ok {
+		p.Dict[config.BuildConfig] = len(p.Values)
 		p.Values = append(p.Values, config)
 		p.Keys = append(p.Keys, config.String())
 	}
@@ -52,14 +52,14 @@ func (p *ConfigList) First() *Config {
 }
 
 func (p *ConfigList) Get(t dev.BuildConfig) (*Config, bool) {
-	if i, ok := p.Dict[t.ConfigString()]; ok {
+	if i, ok := p.Dict[t]; ok {
 		return p.Values[i], true
 	}
 	return nil, false
 }
 
 func (p *ConfigList) Has(t dev.BuildConfig) bool {
-	_, ok := p.Dict[t.ConfigString()]
+	_, ok := p.Dict[t]
 	return ok
 }
 
@@ -81,12 +81,11 @@ type Config struct {
 	Project           *Project
 	CppDefines        *KeyValueDict
 	CppFlags          *KeyValueDict
-	IncludeDirs       *PinnedPathSet
-	IncludeFiles      *PinnedPathSet
+	IncludeDirs       *PinPathSet
 	LibraryFrameworks *DevValueSet // MacOS specific
 	LibraryFiles      *DevValueSet
 	LibraryLibs       *DevValueSet
-	LibraryDirs       *PinnedPathSet
+	LibraryDirs       *PinPathSet
 	LinkFlags         *KeyValueDict
 	DisableWarning    *KeyValueDict
 
@@ -109,10 +108,9 @@ func NewConfig(t dev.BuildConfig, ws *Workspace, p *Project) *Config {
 	c.Workspace = ws
 	c.Project = p
 
-	c.CppDefines = NewKeyValueDict()    // e.g. "DEBUG" "PROFILE"
-	c.CppFlags = NewKeyValueDict()      // e.g. "-g"
-	c.IncludeDirs = NewPinnedPathSet()  // e.g. "source/main/include", "source/test/include"
-	c.IncludeFiles = NewPinnedPathSet() // e.g. "source/main/include/file.h", "source/test/include/file.h"
+	c.CppDefines = NewKeyValueDict()   // e.g. "DEBUG" "PROFILE"
+	c.CppFlags = NewKeyValueDict()     // e.g. "-g"
+	c.IncludeDirs = NewPinnedPathSet() // e.g. "source/main/include", "source/test/include"
 
 	c.LibraryFrameworks = NewDevValueSet() // e.g. "Foundation", "Cocoa"
 	c.LibraryFiles = NewDevValueSet()      // e.g. "libfoo.a", "libbar.a"
@@ -138,27 +136,22 @@ func NewConfig(t dev.BuildConfig, ws *Workspace, p *Project) *Config {
 }
 
 func (c *Config) String() string {
-	return c.BuildConfig.ConfigString()
+	return c.BuildConfig.AsString()
 }
 
-// AddLocalIncludeDir adds a project local directory to the list of include directories
-func (c *Config) AddLocalIncludeDir(includeDir string) {
-	c.IncludeDirs.AddOrSet(c.Project.ProjectAbsPath, includeDir)
-}
-
-// AddExternalIncludeDir adds an external include directory to the list of include files
-func (c *Config) AddExternalIncludeDir(includeDir string) {
-	c.IncludeDirs.AddOrSet("", includeDir)
+// AddIncludeDir adds an include to the list of include directories
+func (c *Config) AddIncludeDir(includeDir dev.PinPath) {
+    c.IncludeDirs.AddOrSet(includeDir)
 }
 
 func (c *Config) AddLibrary(projectDirectory string, lib *DevLib) {
-	if lib.LibType == dev.Framework {
+	if lib.LibType == dev.LibraryTypeFramework {
 		c.LibraryFrameworks.AddMany(lib.Files...)
 		c.LibraryFrameworks.AddMany(lib.Libs...)
 	} else {
 		c.LibraryFiles.AddMany(lib.Files...)
 		c.LibraryLibs.AddMany(lib.Libs...)
-		c.LibraryDirs.AddOrSet(projectDirectory, lib.Dir)
+		c.LibraryDirs.AddOrSet(dev.PinPath{Root: projectDirectory, Base: lib.Dir, Sub: ""})
 	}
 }
 
@@ -180,7 +173,12 @@ func (c *Config) InitTargetSettings() {
 		c.CppDefines.AddOrSet("_UNICODE", "_UNICODE")
 
 		c.LinkFlags.AddOrSet("-ObjC", "")
-		cocoa := &DevLib{BuildConfigs: dev.BuildConfigAll, LibType: dev.Framework, Files: []string{"Foundation", "Cocoa", "Carbon", "Metal", "OpenGL", "IOKit", "AppKit", "CoreVideo", "QuartzCore"}}
+
+		cocoa := NewDevLib()
+		cocoa.BuildConfigs.Add(dev.NewDebugDevConfig())
+		cocoa.BuildConfigs.Add(dev.NewReleaseDevConfig())
+		cocoa.LibType = dev.LibraryTypeFramework
+		cocoa.Files = []string{"Foundation", "Cocoa", "Carbon", "Metal", "OpenGL", "IOKit", "AppKit", "CoreVideo", "QuartzCore"}
 		c.AddLibrary(c.Project.ProjectAbsPath, cocoa)
 
 		// func (l *Library2) Merge(other *Library2) {
@@ -336,7 +334,6 @@ func (c *Config) Copy() *Config {
 	nc.CppDefines = c.CppDefines.Copy()
 	nc.CppFlags = c.CppFlags.Copy()
 	nc.IncludeDirs = c.IncludeDirs.Copy()
-	nc.IncludeFiles = c.IncludeFiles.Copy()
 	nc.LibraryFrameworks = c.LibraryFrameworks.Copy()
 	nc.LibraryFiles = c.LibraryFiles.Copy()
 	nc.LibraryLibs = c.LibraryLibs.Copy()
@@ -363,7 +360,6 @@ func (c *Config) BuildResolved(otherConfigs []*Config) *Config {
 		configMerged.CppDefines.Merge(otherConfig.CppDefines)
 		configMerged.CppFlags.Merge(otherConfig.CppFlags)
 		configMerged.IncludeDirs.Merge(otherConfig.IncludeDirs)
-		configMerged.IncludeFiles.Merge(otherConfig.IncludeFiles)
 		configMerged.LibraryFrameworks.Merge(otherConfig.LibraryFrameworks)
 		configMerged.LibraryFiles.Merge(otherConfig.LibraryFiles)
 		configMerged.LibraryLibs.Merge(otherConfig.LibraryLibs)
@@ -399,7 +395,9 @@ func (c *Config) BuildResolved(otherConfigs []*Config) *Config {
 		configMerged.CppDefines.AddOrSet("CCORE_GEN_CONFIG", "CCORE_GEN_CONFIG_"+strings.ToUpper(c.String()))
 		configMerged.CppDefines.AddOrSet("CCORE_GEN_PLATFORM_NAME", "CCORE_GEN_PLATFORM_NAME=\""+strings.ToUpper(c.Workspace.BuildTarget.OSAsString()+"\""))
 		configMerged.CppDefines.AddOrSet("CCORE_GEN_PROJECT", "CCORE_GEN_PROJECT_"+strings.ToUpper(c.Project.Name))
-		configMerged.CppDefines.AddOrSet("CCORE_GEN_TYPE", "CCORE_GEN_TYPE_"+strings.ToUpper(c.Project.BuildConfig.ConfigString()))
+		genType := strings.ToUpper(c.Project.BuildType.String())
+		genType = strings.ReplaceAll(genType, " ", "_")
+		configMerged.CppDefines.AddOrSet("CCORE_GEN_TYPE", "CCORE_GEN_TYPE_"+genType)
 	}
 
 	if c.Project != nil {

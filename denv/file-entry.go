@@ -29,21 +29,21 @@ const (
 // -----------------------------------------------------------------------------------------------
 
 type FileEntry struct {
-	Path              string            // Relative to the workspace
-	Type              FileType          // File type
-	Parent            *VirtualDirectory // Parent directory
-	ExcludedFromBuild bool              // Excluded from build
-	Generated         bool              // Generated file
-	UUID              utils.UUID
-	BuildUUID         utils.UUID
+	Path               string            // Relative to the workspace
+	Type               FileType          // File type
+	Parent             *VirtualDirectory // Parent directory
+	ExcludedFromBuild2 bool              // Excluded from build
+	Generated          bool              // Generated file
+	UUID               utils.UUID
+	BuildUUID          utils.UUID
 }
 
 func NewFileEntry() *FileEntry {
-	return &FileEntry{Parent: nil, ExcludedFromBuild: true, Generated: false}
+	return &FileEntry{Parent: nil, ExcludedFromBuild2: true, Generated: false}
 }
 
 func NewFileEntryInit(path string, isGenerated bool) *FileEntry {
-	fe := &FileEntry{Parent: nil, ExcludedFromBuild: true, Generated: false}
+	fe := &FileEntry{Parent: nil, ExcludedFromBuild2: true, Generated: false}
 	fe.Init(path, isGenerated)
 	return fe
 }
@@ -51,13 +51,13 @@ func NewFileEntryInit(path string, isGenerated bool) *FileEntry {
 func (fe *FileEntry) Init(path string, isGenerated bool) {
 
 	fe.Path = path
-	fe.ExcludedFromBuild = false
+	fe.ExcludedFromBuild2 = false
 
 	ext := utils.PathFileExtension(fe.Path)
 	switch ext {
 	case ".h", ".hpp", ".inl":
 		fe.Type = FileTypeCppHeader
-		fe.ExcludedFromBuild = true
+		fe.ExcludedFromBuild2 = true
 	case ".cpp", ".cc", ".cxx":
 		fe.Type = FileTypeCppSource
 	case ".c":

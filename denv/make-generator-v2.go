@@ -188,10 +188,15 @@ func (g *MakeGenerator2) generateProjectMakefile(project *Project, isMain bool) 
 	// mk.WriteLine(`LIBS_RELEASE        := -L../ccore/target/make/release/products/arm64 -lccore`)
 	for _, cfg := range project.Resolved.Configs.Values {
 		mk.WriteAligned(`LIBS_`, strings.ToLower(cfg.String()), utils.TabStop(0), `:=`)
+
 		// Library directories are tight up with how make lib is registering the output directories
 		for _, dep := range project.Dependencies.Values {
 			mk.Write(` -L../`, dep.Name, `/$(DIR_BUILD_PRODUCTS)`, ` -l`, dep.Name)
 		}
+
+		// Add standard c++ lib
+		mk.Write(` -lstdc++`)
+
 		mk.NewLine()
 	}
 
@@ -315,7 +320,7 @@ func (g *MakeGenerator2) generateProjectTargets(project *Project, isMain bool, m
 	directories := project.VirtualFolders.GetAllLeafDirectories()
 	for _, dir := range directories {
 		for _, f := range dir.Files {
-			if !f.ExcludedFromBuild && (f.Is_C_or_CPP() || f.Is_ObjC()) {
+			if f.Is_C_or_CPP() || f.Is_ObjC() {
 				path := utils.PathGetRelativeTo(dir.DiskPath, utils.PathParent(project.ProjectAbsPath))
 				mk.WriteILine(`+`, `@mkdir -p $(DIR_BUILD_TEMP)`, path)
 				break
@@ -326,20 +331,22 @@ func (g *MakeGenerator2) generateProjectTargets(project *Project, isMain bool, m
 
 	lineEnds := []string{"  \\", ""}
 
-	isObjCFileNotExcluded := func(f *FileEntry) bool { return f.Is_ObjC() && !f.ExcludedFromBuild }
-	isObjCppFileNotExcluded := func(f *FileEntry) bool { return f.Is_ObjCpp() && !f.ExcludedFromBuild }
-	isCFileNotExcluded := func(f *FileEntry) bool { return f.Is_C() && !f.ExcludedFromBuild }
-	isCppFileNotExcluded := func(f *FileEntry) bool { return f.Is_CPP() && !f.ExcludedFromBuild }
+	isObjCFileNotExcluded := func(f *FileEntry) bool { return f.Is_ObjC() }
+	isObjCppFileNotExcluded := func(f *FileEntry) bool { return f.Is_ObjCpp() }
+	isCFileNotExcluded := func(f *FileEntry) bool { return f.Is_C() }
+	isCppFileNotExcluded := func(f *FileEntry) bool { return f.Is_CPP() }
 
 	// ---------- Framework       -------------------------------------------------------------------------
 
 	mk.WriteLine(`# Framework target`)
 	mk.WriteLine(`$(PRODUCT_FRAMEWORK)$(EXT_FRAMEWORK):     \`)
 
-	project.SrcFiles.Enumerate(isCppFileNotExcluded, func(i int, key string, value *FileEntry, last int) {
-		path := utils.PathGetRelativeTo(filepath.Join(project.ProjectAbsPath, value.Path), utils.PathParent(project.ProjectAbsPath))
-		mk.WriteILine(`+`, `$(DIR_BUILD_TEMP)`, path, `$(EXT_O)`, lineEnds[last])
-	})
+	for _, group := range project.SrcFileGroups {
+		group.Enumerate(isCppFileNotExcluded, func(i int, key string, value *FileEntry, last int) {
+			path := utils.PathGetRelativeTo(filepath.Join(group.Path, value.Path), utils.PathParent(project.ProjectAbsPath))
+			mk.WriteILine(`+`, `$(DIR_BUILD_TEMP)`, path, `$(EXT_O)`, lineEnds[last])
+		})
+	}
 
 	mk.WriteILine(`+`, `@rm -rf $@`)
 	mk.WriteILine(`+`, `@echo -e $(call PRINT,$(notdir $@),$(TARGET_ARCH),Linking the $(TARGET_ARCH) binary)`)
@@ -353,10 +360,12 @@ func (g *MakeGenerator2) generateProjectTargets(project *Project, isMain bool, m
 	mk.WriteLine(`$(PRODUCT_DYLIB)$(EXT_DYLIB):     \`)
 
 	// Example: $(DIR_BUILD_TEMP)ccore/source/main/cpp/c_allocator.cpp.o     \
-	project.SrcFiles.Enumerate(isCppFileNotExcluded, func(i int, key string, value *FileEntry, last int) {
-		path := utils.PathGetRelativeTo(filepath.Join(project.ProjectAbsPath, value.Path), utils.PathParent(project.ProjectAbsPath))
-		mk.WriteILine(`+`, `$(DIR_BUILD_TEMP)`, path, `$(EXT_O)`, lineEnds[last])
-	})
+	for _, group := range project.SrcFileGroups {
+		group.Enumerate(isCppFileNotExcluded, func(i int, key string, value *FileEntry, last int) {
+			path := utils.PathGetRelativeTo(filepath.Join(group.Path, value.Path), utils.PathParent(project.ProjectAbsPath))
+			mk.WriteILine(`+`, `$(DIR_BUILD_TEMP)`, path, `$(EXT_O)`, lineEnds[last])
+		})
+	}
 
 	mk.WriteILine(`+`, `@echo -e $(call PRINT,$(notdir $@),$(TARGET_ARCH),Linking the $(TARGET_ARCH) dynamic binary)`)
 	mk.WriteILine(`+`, `@mkdir -p $(DIR_BUILD_PRODUCTS)`)
@@ -369,11 +378,12 @@ func (g *MakeGenerator2) generateProjectTargets(project *Project, isMain bool, m
 	mk.WriteLine(`$(PRODUCT_LIB)$(EXT_LIB):    \`)
 
 	// Example: $(DIR_BUILD_TEMP)ccore/source/main/cpp/c_allocator.cpp.o     \
-	project.SrcFiles.Enumerate(isCppFileNotExcluded, func(i int, key string, value *FileEntry, last int) {
-		path := utils.PathGetRelativeTo(filepath.Join(project.ProjectAbsPath, value.Path), utils.PathParent(project.ProjectAbsPath))
-		mk.WriteILine(`+`, `$(DIR_BUILD_TEMP)`, path, `$(EXT_O)`, lineEnds[last])
-	})
-
+	for _, group := range project.SrcFileGroups {
+		group.Enumerate(isCppFileNotExcluded, func(i int, key string, value *FileEntry, last int) {
+			path := utils.PathGetRelativeTo(filepath.Join(group.Path, value.Path), utils.PathParent(project.ProjectAbsPath))
+			mk.WriteILine(`+`, `$(DIR_BUILD_TEMP)`, path, `$(EXT_O)`, lineEnds[last])
+		})
+	}
 	mk.WriteILine(`+`, `@echo -e $(call PRINT,$(notdir $@),$(TARGET_ARCH),Linking the $(TARGET_ARCH) static binary)`)
 	mk.WriteILine(`+`, `@mkdir -p $(DIR_BUILD_PRODUCTS)`)
 	mk.WriteILine(`+`, `@$(AR) $(AR_FLAGS_$(TARGET_ARCH)) $(DIR_BUILD_PRODUCTS)$@ $^`)
@@ -385,52 +395,56 @@ func (g *MakeGenerator2) generateProjectTargets(project *Project, isMain bool, m
 
 	// ----- C
 
-	project.SrcFiles.Enumerate(isCFileNotExcluded, func(i int, key string, f *FileEntry, last int) {
-		srcfile := utils.PathGetRelativeTo(filepath.Join(project.ProjectAbsPath, f.Path), filepath.Join(g.TargetAbsPath, project.Name))
-		buildfile := utils.PathGetRelativeTo(filepath.Join(project.ProjectAbsPath, f.Path), utils.PathParent(project.ProjectAbsPath))
-		mk.WriteLine(`-include $(DIR_BUILD_TEMP)`, buildfile+`.d`)
-		mk.WriteLine(`$(DIR_BUILD_TEMP)`, buildfile+`.o: `, srcfile)
-		mk.WriteILine(`+`, `@echo -e $(call PRINT,compiling C,`, buildfile, `)`)
-		mk.WriteILine(`+`, `@$(CC) $(CC_FLAGS_$(TARGET_ARCH)) -fPIC -std=$(FLAGS_STD_C) $(FLAGS_C) $(FLAGS_WARN_$(CONFIG)) $(FLAGS_OTHER_$(CONFIG)) $(INCLUDES_CPP_$(CONFIG)) $(DEFINES_CPP_$(CONFIG)) -o $@ -c $< -MT $@ -MMD -MP`)
-		mk.NewLine()
-	})
-
+	for _, group := range project.SrcFileGroups {
+		group.Enumerate(isCFileNotExcluded, func(i int, key string, f *FileEntry, last int) {
+			srcfile := utils.PathGetRelativeTo(filepath.Join(group.Path, f.Path), filepath.Join(g.TargetAbsPath, project.Name))
+			buildfile := utils.PathGetRelativeTo(filepath.Join(group.Path, f.Path), utils.PathParent(group.Path))
+			mk.WriteLine(`-include $(DIR_BUILD_TEMP)`, buildfile+`.d`)
+			mk.WriteLine(`$(DIR_BUILD_TEMP)`, buildfile+`.o: `, srcfile)
+			mk.WriteILine(`+`, `@echo -e $(call PRINT,compiling C,`, buildfile, `)`)
+			mk.WriteILine(`+`, `@$(CC) $(CC_FLAGS_$(TARGET_ARCH)) -fPIC -std=$(FLAGS_STD_C) $(FLAGS_C) $(FLAGS_WARN_$(CONFIG)) $(FLAGS_OTHER_$(CONFIG)) $(INCLUDES_CPP_$(CONFIG)) $(DEFINES_CPP_$(CONFIG)) -o $@ -c $< -MT $@ -MMD -MP`)
+			mk.NewLine()
+		})
+	}
 	// ----- C++
 
-	project.SrcFiles.Enumerate(isCppFileNotExcluded, func(i int, key string, f *FileEntry, last int) {
-		srcfile := utils.PathGetRelativeTo(filepath.Join(project.ProjectAbsPath, f.Path), filepath.Join(g.TargetAbsPath, project.Name))
-		buildfile := utils.PathGetRelativeTo(filepath.Join(project.ProjectAbsPath, f.Path), utils.PathParent(project.ProjectAbsPath))
-		mk.WriteLine(`-include $(DIR_BUILD_TEMP)`, buildfile+`.d`)
-		mk.WriteLine(`$(DIR_BUILD_TEMP)`, buildfile+`.o: `, srcfile)
-		mk.WriteILine(`+`, `@echo -e $(call PRINT,compiling C++,`, buildfile, `)`)
-		mk.WriteILine(`+`, `@$(CC) $(CC_FLAGS_$(TARGET_ARCH)) -fPIC -std=$(FLAGS_STD_CPP) $(FLAGS_CPP) $(FLAGS_WARN_$(CONFIG)) $(FLAGS_OTHER_$(CONFIG)) $(INCLUDES_CPP_$(CONFIG)) $(DEFINES_CPP_$(CONFIG)) -o $@ -c $< -MT $@ -MMD -MP`)
-		mk.NewLine()
-	})
-
+	for _, group := range project.SrcFileGroups {
+		group.Enumerate(isCppFileNotExcluded, func(i int, key string, f *FileEntry, last int) {
+			srcfile := utils.PathGetRelativeTo(filepath.Join(group.Path, f.Path), filepath.Join(g.TargetAbsPath, project.Name))
+			buildfile := utils.PathGetRelativeTo(filepath.Join(group.Path, f.Path), utils.PathParent(group.Path))
+			mk.WriteLine(`-include $(DIR_BUILD_TEMP)`, buildfile+`.d`)
+			mk.WriteLine(`$(DIR_BUILD_TEMP)`, buildfile+`.o: `, srcfile)
+			mk.WriteILine(`+`, `@echo -e $(call PRINT,compiling C++,`, buildfile, `)`)
+			mk.WriteILine(`+`, `@$(CC) $(CC_FLAGS_$(TARGET_ARCH)) -fPIC -std=$(FLAGS_STD_CPP) $(FLAGS_CPP) $(FLAGS_WARN_$(CONFIG)) $(FLAGS_OTHER_$(CONFIG)) $(INCLUDES_CPP_$(CONFIG)) $(DEFINES_CPP_$(CONFIG)) -o $@ -c $< -MT $@ -MMD -MP`)
+			mk.NewLine()
+		})
+	}
 	// ----- Objective-C
 
-	project.SrcFiles.Enumerate(isObjCFileNotExcluded, func(i int, key string, f *FileEntry, last int) {
-		srcfile := utils.PathGetRelativeTo(filepath.Join(project.ProjectAbsPath, f.Path), filepath.Join(g.TargetAbsPath, project.Name))
-		buildfile := utils.PathGetRelativeTo(filepath.Join(project.ProjectAbsPath, f.Path), utils.PathParent(project.ProjectAbsPath))
-		mk.WriteLine(`-include $(DIR_BUILD_TEMP)`, buildfile+`.d`)
-		mk.WriteLine(`$(DIR_BUILD_TEMP)`, buildfile+`.o: `, srcfile)
-		mk.WriteILine(`+`, `@echo -e $(call PRINT,compiling objective-c,`, buildfile, `)`)
-		mk.WriteILine(`+`, `@$(CC) $(CC_FLAGS_$(TARGET_ARCH)) -fPIC -std=$(FLAGS_STD_C) $(FLAGS_M) $(FLAGS_WARN_$(CONFIG)) $(FLAGS_OTHER_$(CONFIG)) $(INCLUDES_CPP_$(CONFIG)) $(DEFINES_CPP_$(CONFIG)) -o $@ -c $< -MT $@ -MMD -MP`)
-		mk.NewLine()
-	})
-
+	for _, group := range project.SrcFileGroups {
+		group.Enumerate(isObjCFileNotExcluded, func(i int, key string, f *FileEntry, last int) {
+			srcfile := utils.PathGetRelativeTo(filepath.Join(group.Path, f.Path), filepath.Join(g.TargetAbsPath, project.Name))
+			buildfile := utils.PathGetRelativeTo(filepath.Join(group.Path, f.Path), utils.PathParent(group.Path))
+			mk.WriteLine(`-include $(DIR_BUILD_TEMP)`, buildfile+`.d`)
+			mk.WriteLine(`$(DIR_BUILD_TEMP)`, buildfile+`.o: `, srcfile)
+			mk.WriteILine(`+`, `@echo -e $(call PRINT,compiling objective-c,`, buildfile, `)`)
+			mk.WriteILine(`+`, `@$(CC) $(CC_FLAGS_$(TARGET_ARCH)) -fPIC -std=$(FLAGS_STD_C) $(FLAGS_M) $(FLAGS_WARN_$(CONFIG)) $(FLAGS_OTHER_$(CONFIG)) $(INCLUDES_CPP_$(CONFIG)) $(DEFINES_CPP_$(CONFIG)) -o $@ -c $< -MT $@ -MMD -MP`)
+			mk.NewLine()
+		})
+	}
 	// ----- Objective-C++
 
-	project.SrcFiles.Enumerate(isObjCppFileNotExcluded, func(i int, key string, f *FileEntry, last int) {
-		srcfile := utils.PathGetRelativeTo(filepath.Join(project.ProjectAbsPath, f.Path), filepath.Join(g.TargetAbsPath, project.Name))
-		buildfile := utils.PathGetRelativeTo(filepath.Join(project.ProjectAbsPath, f.Path), utils.PathParent(project.ProjectAbsPath))
-		mk.WriteLine(`-include $(DIR_BUILD_TEMP)`, buildfile+`.d`)
-		mk.WriteLine(`$(DIR_BUILD_TEMP)`, buildfile+`.o: `, srcfile)
-		mk.WriteILine(`+`, `@echo -e $(call PRINT,compiling objective-c++,`, buildfile, `)`)
-		mk.WriteILine(`+`, `@$(CC) $(CC_FLAGS_$(TARGET_ARCH)) -fPIC -std=$(FLAGS_STD_CPP) $(FLAGS_MM) $(FLAGS_WARN_$(CONFIG)) $(FLAGS_OTHER_$(CONFIG)) $(INCLUDES_CPP_$(CONFIG)) $(DEFINES_CPP_$(CONFIG)) -o $@ -c $< -MT $@ -MMD -MP`)
-		mk.NewLine()
-	})
-
+	for _, group := range project.SrcFileGroups {
+		group.Enumerate(isObjCppFileNotExcluded, func(i int, key string, f *FileEntry, last int) {
+			srcfile := utils.PathGetRelativeTo(filepath.Join(group.Path, f.Path), filepath.Join(g.TargetAbsPath, project.Name))
+			buildfile := utils.PathGetRelativeTo(filepath.Join(group.Path, f.Path), utils.PathParent(project.ProjectAbsPath))
+			mk.WriteLine(`-include $(DIR_BUILD_TEMP)`, buildfile+`.d`)
+			mk.WriteLine(`$(DIR_BUILD_TEMP)`, buildfile+`.o: `, srcfile)
+			mk.WriteILine(`+`, `@echo -e $(call PRINT,compiling objective-c++,`, buildfile, `)`)
+			mk.WriteILine(`+`, `@$(CC) $(CC_FLAGS_$(TARGET_ARCH)) -fPIC -std=$(FLAGS_STD_CPP) $(FLAGS_MM) $(FLAGS_WARN_$(CONFIG)) $(FLAGS_OTHER_$(CONFIG)) $(INCLUDES_CPP_$(CONFIG)) $(DEFINES_CPP_$(CONFIG)) -o $@ -c $< -MT $@ -MMD -MP`)
+			mk.NewLine()
+		})
+	}
 	mk.NewLine()
 }
 
@@ -611,7 +625,7 @@ func (g *MakeGenerator2) generateLibMakePlatformLinux() error {
 	mk.WriteLine(`#-------------------------------------------------------------------------------`)
 	mk.NewLine()
 	mk.WriteLine(`# Architecture specific flags for ld`)
-	mk.WriteLine(` LD_FLAGS_$(TARGET_ARCH)      := -m elf_$(TARGET_ARCH)`)
+	mk.WriteLine(`LD_FLAGS_$(TARGET_ARCH)      := -m elf_$(TARGET_ARCH)`)
 	mk.NewLine()
 	mk.WriteLine(`# Architecture specific flags for ar`)
 	mk.WriteLine(`AR_FLAGS_$(TARGET_ARCH)       := rcs`)

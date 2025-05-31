@@ -1,10 +1,11 @@
 package dev
 
-// LibType defines the type of lib, there are 2 types of libraries, system and user
-type LibType int
+// LibraryType defines the type of lib, there are 2 types of libraries, system and user
+type LibraryType int
 
 const (
-	SystemLibrary LibType = 1 //
-	UserLibrary   LibType = 2 //
-	Framework     LibType = 4 //
+	LibraryTypeUnknown   LibraryType = 0 // Unknown type, used for error handling
+	LibraryTypeSystem    LibraryType = 1 //
+	LibraryTypeUser      LibraryType = 2 //
+	LibraryTypeFramework LibraryType = 4 //
 )

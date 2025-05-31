@@ -259,7 +259,7 @@ func (pt BuildTarget) OSAsString() string {
 	case pt.Windows():
 		return "windows"
 	case pt.Mac():
-		return "mac"
+		return "darwin"
 	case pt.Linux():
 		return "linux"
 	case pt.AppleiOS():

@@ -1,72 +1,54 @@
 package denv
 
 import (
-	"path"
 	"strings"
 
-	utils "github.com/jurgen-kluft/ccode/utils"
+	dev "github.com/jurgen-kluft/ccode/dev"
 )
 
 // ----------------------------------------------------------------------------------------------------------
 // ----------------------------------------------------------------------------------------------------------
 
-type PinnedPath struct {
-	Root string
-	Path string
-}
-
-func (fp *PinnedPath) String() string {
-	return path.Join(fp.Root, fp.Path)
-}
-
-func (fp *PinnedPath) RelativeTo(root string) string {
-	return utils.PathGetRelativeTo(fp.String(), root)
-}
-
-// ----------------------------------------------------------------------------------------------------------
-// ----------------------------------------------------------------------------------------------------------
-
-type PinnedPathSet struct {
+type PinPathSet struct {
 	Entries map[string]int
-	Values  []*PinnedPath
+	Values  []dev.PinPath
 }
 
-func NewPinnedPathSet() *PinnedPathSet {
-	d := &PinnedPathSet{}
+func NewPinnedPathSet() *PinPathSet {
+	d := &PinPathSet{}
 	d.Entries = make(map[string]int)
-	d.Values = make([]*PinnedPath, 0)
+	d.Values = make([]dev.PinPath, 0)
 	return d
 }
 
-func (d *PinnedPathSet) Merge(other *PinnedPathSet) {
+func (d *PinPathSet) Merge(other *PinPathSet) {
 	for _, value := range other.Values {
-		d.AddOrSet(value.Root, value.Path)
+		d.AddOrSet(value)
 	}
 }
 
-func (d *PinnedPathSet) Copy() *PinnedPathSet {
+func (d *PinPathSet) Copy() *PinPathSet {
 	c := NewPinnedPathSet()
 	c.Merge(d)
 	return c
 }
 
-func (d *PinnedPathSet) Extend(rhs *PinnedPathSet) {
+func (d *PinPathSet) Extend(rhs *PinPathSet) {
 	for _, fp := range rhs.Values {
-		d.AddOrSet(fp.Root, fp.Path)
+		d.AddOrSet(fp)
 	}
 }
 
-func (d *PinnedPathSet) UniqueExtend(rhs *PinnedPathSet) {
+func (d *PinPathSet) UniqueExtend(rhs *PinPathSet) {
 	for _, fp := range rhs.Values {
 		fullpath := fp.String()
 		if _, ok := d.Entries[fullpath]; !ok {
-			d.AddOrSet(fp.Root, fp.Path)
+			d.AddOrSet(fp)
 		}
 	}
 }
 
-func (d *PinnedPathSet) AddOrSet(base string, dir string) {
-	fp := &PinnedPath{Root: base, Path: dir}
+func (d *PinPathSet) AddOrSet(fp dev.PinPath) {
 	fullpath := fp.String()
 	i, ok := d.Entries[fullpath]
 	if !ok {
@@ -80,23 +62,24 @@ func (d *PinnedPathSet) AddOrSet(base string, dir string) {
 // Enumerate will call the enumerator function for each key-value pair in the dictionary.
 //
 //	'last' will be 0 for all but the last key-value pair, and 1 for the last key-value pair.
-func (d *PinnedPathSet) Enumerate(enumerator func(i int, base string, dir string, last int)) {
+func (d *PinPathSet) Enumerate(enumerator func(i int, root string, base string, dir string, last int)) {
 	n := (len(d.Values) - 1)
 	for i, fp := range d.Values {
-		base := fp.Root
-		dir := fp.Path
+		root := fp.Root
+		base := fp.Base
+		dir := fp.Sub
 		last := 0
 		if i == n {
 			last = 1
 		}
-		enumerator(i, base, dir, last)
+		enumerator(i, root, base, dir, last)
 	}
 }
 
-func (d *PinnedPathSet) Concatenated(prefix string, suffix string, modifier func(base string, dir string) string) string {
+func (d *PinPathSet) Concatenated(prefix string, suffix string, modifier func(root, base, sub string) string) string {
 	concat := ""
 	for _, fp := range d.Values {
-		newFullPath := modifier(fp.Root, fp.Path)
+		newFullPath := modifier(fp.Root, fp.Base, fp.Sub)
 		concat += prefix + newFullPath + suffix
 	}
 	return concat
