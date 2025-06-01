@@ -5,6 +5,14 @@
 - Q: How do identify stale entries that should be pruned?
   A: We do not need this, since we do not modify a DB, we only build
      them, which means everything acts in an 'appending/additive' manner.
+- Q: At what level do we do the dependency tracking for a single DB?
+  A: We do it at the library/executable level. So each library or
+     executable has its own dependency DB, which contains the dependencies 
+     for that library or executable.
+     This also means that we can compile a library or executable in isolation,
+     and thus in parallel.
+     We already have a toolchain instance per project, where each project is
+     either a library or an executable, so this is a natural fit.
 
 ## Design and Implementation Notes:
 
@@ -62,28 +70,10 @@ Note: The hash of data for Item ID should be different from the hash of the
       We could do this by prefixing the data with 'src' for Item and 'dep' for
       Dep, before generating the digest.
 
-## item db
+## Data Structures
 
-Item (16 bytes) (shared)
+We use 'soa' (structure of arrays) to store the data, this is because we want to
+have a single array for each field, this allows us to simplify the loading and
+saving of the data, and since we mainly use indexing and no pointers, we also do
+not have to do anything when we load the data from disk.
 
-- int32, index to Hash-Node, this is the ID of the item (filepath, label (e.g. 'MSVC C++ compiler cmd-line arguments))
-- int32, index to Hash-Node, this identifies the 'change' (modification-time, file-size, file-content, command-line arguments, string, etc..)
-- int32, start into global array of []uint32, this is the global array of dependency indices
-- int32, number of dependencies
-
-## hash db
-
-Hash Node (32 bytes) (unique)
-
-- hash (byte[20])
-- uint32, index to Data
-- uint32, index to Item
-- uint32, flags
-
-## data db
-
-Data
-
-- aligned to 8 bytes
-- has a length prefix of uint32
-- `[length][bytes[length]]{padding}`

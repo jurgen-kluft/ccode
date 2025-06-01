@@ -131,7 +131,7 @@ func Init() bool {
 	return base.Init()
 }
 
-func Generate(pkg *denv.Package, dryrun bool, verbose bool) error {
+func Generate(pkg *denv.Package, dryrun bool, verbose bool) {
 	var setting fixr.FixrSetting
 	if dryrun {
 		setting |= fixr.DryRun
@@ -141,7 +141,7 @@ func Generate(pkg *denv.Package, dryrun bool, verbose bool) error {
 	}
 	config := NewDefaultFixrConfig(pkg.RepoName, setting)
 	IncludeFixer(pkg, config)
-	return base.Generate(pkg)
+	base.Generate(pkg)
 }
 
 func GenerateFiles(pkg *denv.Package) {

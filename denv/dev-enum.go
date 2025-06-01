@@ -97,9 +97,9 @@ func (d DevEnum) ToString() string {
 	return "__invalid__"
 }
 
-func NewDevEnum(dev string) DevEnum {
-	dev = strings.ToLower(dev)
-	if devEnum, ok := DevStrToEnumMap[dev]; ok {
+func NewDevEnum(_dev string) DevEnum {
+	_dev = strings.ToLower(_dev)
+	if devEnum, ok := DevStrToEnumMap[_dev]; ok {
 		return devEnum
 	}
 

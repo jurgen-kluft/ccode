@@ -2,9 +2,12 @@ package deptrackr
 
 import (
 	"crypto/sha1"
+	"encoding/binary"
 	"fmt"
 	"hash"
 	"os"
+	"strings"
+	"time"
 )
 
 // Note: For archives and executables, the toolchain is required to write out a .d file that
@@ -43,7 +46,7 @@ type depTrackrDotD struct {
 }
 
 func LoadDotdDepTrackr(buildDir string) DepTrackr {
-	current := loadDepTrackr(buildDir, ".d deptrackr, v1.0.0")
+	current := loadDepTrackr(buildDir, "deptrackr (.d files), v1.0.0")
 	tracker := current.newDepTrackr()
 	return &depTrackrDotD{
 		current:      current,
@@ -126,7 +129,7 @@ func (d *depTrackrDotD) CopyItem(item string) {
 
 // item = depfileAbsFilepath
 func (d *depTrackrDotD) AddItem(item string, stringItem []StringItem) error {
-	content, err := os.ReadFile(item)
+	contentBytes, err := os.ReadFile(item)
 	if err != nil {
 		return err
 	}
@@ -137,33 +140,38 @@ func (d *depTrackrDotD) AddItem(item string, stringItem []StringItem) error {
 	}
 
 	// Parse the .d file content
-	parts := []part{}
+	content := string(contentBytes)
+	var parts []part
 	current := part{from: 0, to: 0} // Start with an empty part
-	for i, c := range content {
-		if c == '\\' {
-			// If we encounter a backslash, we assume the next part starts
-			// Figure out the 'to' index of the current part by stepping back
-			// ignoring any spaces, tabs, or newlines before the backslash
-			end := i - 1
-			for end >= 0 && (content[end] == ' ' || content[end] == '\t' || content[end] == '\n' || content[end] == '\r' || content[end] == ':') {
-				end-- // move back until we find a non-(space,tab,cr,ln,:) character
-			}
-			current.to = end + 1 // set the 'to' index of the last part
-			parts = append(parts, current)
-
-			// Now we need to find the beginning of the next part, but first
-			// skip space, tab, and newline characters after a backslash
-			begin := i + 1
-			for begin < len(content) && (content[begin] == ' ' || content[begin] == '\t' || content[begin] == '\n' || content[begin] == '\r') {
-				begin++ // move forward until we find a non-(space,tab,cr,ln) character
-			}
-			current = part{from: begin, to: begin} // Start a new part
-
-			i = begin // Set the index to continue scanning
+	startPos := 0
+	for startPos < len(content) {
+		endPos := strings.Index(content[startPos:], "\\")
+		if endPos == -1 {
+			endPos = len(content)
+		} else {
+			endPos += startPos
 		}
+
+		// If we encounter a backslash, we assume the next part starts
+		// Figure out the 'to' index of the current part by stepping back
+		// ignoring any spaces, tabs, or newlines before the backslash
+		end := endPos - 1
+		for end >= 0 && (content[end] == ' ' || content[end] == '\t' || content[end] == '\n' || content[end] == '\r' || content[end] == ':') {
+			end-- // move back until we find a non-(space,tab,cr,ln,:) character
+		}
+		current.to = end + 1 // set the 'to' index of the last part
+		parts = append(parts, current)
+
+		// Now we need to find the beginning of the next part, but first
+		// skip space, tab, and newline characters after a backslash
+		begin := endPos + 1
+		for begin < len(content) && (content[begin] == ' ' || content[begin] == '\t' || content[begin] == '\n' || content[begin] == '\r') {
+			begin++ // move forward until we find a non-(space,tab,cr,ln) character
+		}
+		current = part{from: begin, to: begin} // Start a new part
+
+		startPos = begin // Set the index to continue scanning
 	}
-	current.to = len(content)      // Set the 'to' index of the last part
-	parts = append(parts, current) // Add the last part
 
 	// part[0] is the object file, the rest are dependencies
 	// Note: also add the .d file itself as a dependency
@@ -174,16 +182,16 @@ func (d *depTrackrDotD) AddItem(item string, stringItem []StringItem) error {
 	mainHash := d.hasher.Sum(nil)
 
 	// For the 'change', we want the file modification time and hash it
+	modTimeBytes := make([]byte, 8)
 	fileInfo, err := os.Stat(item)
 	if err != nil {
-		return err
+		binary.LittleEndian.PutUint64(modTimeBytes, uint64(time.Now().Unix())) // If the file does not exist, use the current time
+	} else {
+		binary.LittleEndian.PutUint64(modTimeBytes, uint64(fileInfo.ModTime().Unix()))
 	}
 
 	// We are adding a new item, so the state is out of date
 	d.currentState = StateOutOfDate
-
-	// Use the file modification time as part of the item data
-	modTimeBytes, err := fileInfo.ModTime().MarshalBinary()
 
 	itemToAdd := ItemToAdd{
 		IdData:       []byte(item),
@@ -194,28 +202,27 @@ func (d *depTrackrDotD) AddItem(item string, stringItem []StringItem) error {
 		ChangeFlags:  ChangeFlagModTime,
 	}
 
-	depItems := []ItemToAdd{}
-
+	var depItems []ItemToAdd
 	for _, p := range parts {
 		// Make sure the digest of a dependency will be unique and
-		// not collide when the same file is used as a main item
+		// not identical when the same file is used as a main item
+		pStr := content[p.from:p.to]
 		d.hasher.Reset()
 		d.hasher.Write([]byte{'d', 'e', 'p'})
-		d.hasher.Write(content[p.from:p.to])
+		d.hasher.Write([]byte(pStr))
 		depDigest := d.hasher.Sum(nil)
 
 		// For the 'change', we want the file modification time and hash it
 		fileInfo, err = os.Stat(string(content[p.from:p.to]))
 		if err != nil {
-			return err
+			binary.LittleEndian.PutUint64(modTimeBytes, uint64(time.Now().Unix()))
+		} else {
+			binary.LittleEndian.PutUint64(modTimeBytes, uint64(fileInfo.ModTime().Unix()))
 		}
-
-		// Use the file modification time as part of the item data
-		modTimeBytes, err = fileInfo.ModTime().MarshalBinary()
 
 		depItemToAdd := ItemToAdd{
 			IdDigest:     depDigest,
-			IdData:       content[p.from:p.to],
+			IdData:       []byte(content[p.from:p.to]),
 			IdFlags:      ItemFlagDependency,
 			ChangeDigest: nil, // mod-time is small enough, we do not need a hash
 			ChangeData:   modTimeBytes,
@@ -227,7 +234,6 @@ func (d *depTrackrDotD) AddItem(item string, stringItem []StringItem) error {
 	// Add the string items as dependencies
 	for _, strItem := range stringItem {
 		d.hasher.Reset()
-		d.hasher.Write([]byte{'s', 't', 'r'})
 		d.hasher.Write([]byte(strItem.Label))
 		depDigest := d.hasher.Sum(nil)
 
