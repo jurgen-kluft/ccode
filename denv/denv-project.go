@@ -167,17 +167,20 @@ func (prj *DevProject) AddDependencies(deps ...*DevProject) {
 	}
 }
 
-func (prj *DevProject) AddInclude(base string, sub string) {
+func (prj *DevProject) AddInclude(root string, base string, sub string) {
+	root = prj.ResolveEnvironmentVariables(root)
 	base = prj.ResolveEnvironmentVariables(base)
 	sub = prj.ResolveEnvironmentVariables(sub)
 	for _, cfg := range prj.Configs {
-		cfg.IncludeDirs = append(cfg.IncludeDirs, dev.PinPath{Base: base, Sub: sub})
+		cfg.IncludeDirs = append(cfg.IncludeDirs, dev.PinPath{Root: root, Base: base, Sub: sub})
 	}
 }
 
-func (prj *DevProject) SourceFilesFrom(path string) {
-	path = prj.ResolveEnvironmentVariables(path)
-	prj.SourceDirs = append(prj.SourceDirs, dev.PinPathGlob{Path: dev.PinPath{Root: path, Base: ""}, Glob: "**/*.cpp"})
+func (prj *DevProject) SourceFilesFrom(root, base, sub string) {
+	root = prj.ResolveEnvironmentVariables(root)
+	base = prj.ResolveEnvironmentVariables(base)
+	sub = prj.ResolveEnvironmentVariables(sub)
+	prj.SourceDirs = append(prj.SourceDirs, dev.PinPathGlob{Path: dev.PinPath{Root: root, Base: base, Sub: sub}, Glob: "**/*.cpp"})
 }
 
 func (prj *DevProject) AddDefine(define string) {
