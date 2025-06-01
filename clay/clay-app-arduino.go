@@ -7,7 +7,7 @@ import (
 	"os"
 	"time"
 
-	cutils "github.com/jurgen-kluft/ccode/utils"
+	utils "github.com/jurgen-kluft/ccode/utils"
 )
 
 // Clay App Arduino
@@ -77,7 +77,7 @@ func ClayAppMainArduino() {
 	case "list-flash-sizes":
 		err = ListFlashSizes(ParseCpuAndBoardName())
 	case "version":
-		version := cutils.NewVersionInfo()
+		version := utils.NewVersionInfo()
 		fmt.Printf("Version: %s\n", version.Version)
 	default:
 		UsageAppArduino()

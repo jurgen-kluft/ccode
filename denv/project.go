@@ -420,44 +420,44 @@ func (p *Project) Resolve(devEnum DevEnum) error {
 // -----------------------------------------------------------------------------------------------------
 
 func (p *Project) GlobFiles(path string, sub string, pattern string, isExcluded func(string) bool) {
-    path = utils.PathNormalize(path)
-    sub = utils.PathNormalize(sub)
+	path = utils.PathNormalize(path)
+	sub = utils.PathNormalize(sub)
 	pattern = utils.PathNormalize(pattern)
 	files, err := GlobFiles(filepath.Join(path, sub), pattern, isExcluded)
 	if err != nil {
 		return
 	}
 
-    if len(files) > 0 {
-        fileGroup := NewFileEntryDict(path)
-        for _, file := range files {
-            fileGroup.Add(filepath.Join(sub, file))
-        }
-        p.SrcFileGroups = append(p.SrcFileGroups, fileGroup)
-    }
+	if len(files) > 0 {
+		fileGroup := NewFileEntryDict(path)
+		for _, file := range files {
+			fileGroup.Add(filepath.Join(sub, file))
+		}
+		p.SrcFileGroups = append(p.SrcFileGroups, fileGroup)
+	}
 }
 
 // -----------------------------------------------------------------------------------------------------
 // -----------------------------------------------------------------------------------------------------
 
-func (p *Project) BuildLibraryInformation(dev DevEnum, config *Config, workspaceGenerateAbsPath string) (linkDirs, linkFiles, linkLibs *DevValueSet) {
-	linkDirs = NewDevValueSet()
-	linkFiles = NewDevValueSet()
-	linkLibs = NewDevValueSet()
+func (p *Project) BuildLibraryInformation(devEnum DevEnum, config *Config, workspaceGenerateAbsPath string) (linkDirs, linkFiles, linkLibs *dev.ValueSet) {
+	linkDirs = dev.NewValueSet()
+	linkFiles = dev.NewValueSet()
+	linkLibs = dev.NewValueSet()
 
-	// Library directories, these will be relative to the workspace generate path
-	for _, dir := range config.LibraryDirs.Values {
+	// Library directories
+	for _, dir := range config.LibraryPaths.Values {
 		relpath := utils.PathGetRelativeTo(dir.String(), workspaceGenerateAbsPath)
 		linkDirs.Add(relpath)
 	}
 
-	// Library libs
-	for _, file := range config.LibraryLibs.Values {
+	// Library files
+	for _, file := range config.LibraryFiles.Values {
 		linkLibs.Add(file)
 	}
 
 	// For all project dependencies, get their matching config and take the OutputLib and add it to the linkLibs
-	if dev.IsVisualStudio() {
+	if devEnum.IsVisualStudio() {
 		for _, dep := range p.Dependencies.Values {
 			if cfg, has := dep.Resolved.Configs.Get(config.BuildConfig); has {
 				relpath := utils.PathGetRelativeTo(cfg.Resolved.OutputLib.Path, workspaceGenerateAbsPath)
@@ -474,8 +474,8 @@ func (p *Project) BuildLibraryInformation(dev DevEnum, config *Config, workspace
 	return
 }
 
-func (p *Project) BuildFrameworkInformation(config *Config) (frameworks *DevValueSet) {
-	frameworks = NewDevValueSet()
+func (p *Project) BuildFrameworkInformation(config *Config) (frameworks *dev.ValueSet) {
+	frameworks = dev.NewValueSet()
 
 	// Library directories and files
 	for _, fw := range config.LibraryFrameworks.Values {

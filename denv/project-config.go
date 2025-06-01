@@ -79,19 +79,18 @@ type Config struct {
 	BuildConfig       dev.BuildConfig
 	Workspace         *Workspace
 	Project           *Project
-	CppDefines        *KeyValueDict
-	CppFlags          *KeyValueDict
+	CppDefines        *dev.KeyValueSet
+	CppFlags          *dev.KeyValueSet
 	IncludeDirs       *PinPathSet
-	LibraryFrameworks *DevValueSet // MacOS specific
-	LibraryFiles      *DevValueSet
-	LibraryLibs       *DevValueSet
-	LibraryDirs       *PinPathSet
-	LinkFlags         *KeyValueDict
-	DisableWarning    *KeyValueDict
+	LibraryPaths      *PinPathSet
+	LibraryFiles      *dev.ValueSet
+	LibraryFrameworks *dev.ValueSet // MacOS specific
+	LinkFlags         *dev.KeyValueSet
+	DisableWarning    *dev.KeyValueSet
 
-	XcodeSettings         *KeyValueDict
-	VisualStudioClCompile *KeyValueDict
-	VisualStudioLink      *KeyValueDict
+	XcodeSettings         *dev.KeyValueSet
+	VisualStudioClCompile *dev.KeyValueSet
+	VisualStudioLink      *dev.KeyValueSet
 
 	GenDataXcode struct {
 		ProjectConfigUuid utils.UUID
@@ -108,21 +107,20 @@ func NewConfig(t dev.BuildConfig, ws *Workspace, p *Project) *Config {
 	c.Workspace = ws
 	c.Project = p
 
-	c.CppDefines = NewKeyValueDict()   // e.g. "DEBUG" "PROFILE"
-	c.CppFlags = NewKeyValueDict()     // e.g. "-g"
-	c.IncludeDirs = NewPinnedPathSet() // e.g. "source/main/include", "source/test/include"
+	c.CppDefines = dev.NewKeyValueSet() // e.g. "DEBUG" "PROFILE"
+	c.CppFlags = dev.NewKeyValueSet()   // e.g. "-g"
+	c.IncludeDirs = NewPinnedPathSet()  // e.g. "source/main/include", "source/test/include"
 
-	c.LibraryFrameworks = NewDevValueSet() // e.g. "Foundation", "Cocoa"
-	c.LibraryFiles = NewDevValueSet()      // e.g. "libfoo.a", "libbar.a"
-	c.LibraryLibs = NewDevValueSet()       // e.g. "libfoo.a", "libbar.a"
-	c.LibraryDirs = NewPinnedPathSet()     // e.g. "source/main/lib", "source/test/lib"
+	c.LibraryFrameworks = dev.NewValueSet() // e.g. "Foundation", "Cocoa"
+	c.LibraryPaths = NewPinnedPathSet()     // e.g. "source/main/lib", "source/test/lib"
+	c.LibraryFiles = dev.NewValueSet()      // e.g. "libfoo.a", "libbar.a"
 
-	c.LinkFlags = NewKeyValueDict()      // e.g. "-lstdc++"
-	c.DisableWarning = NewKeyValueDict() // e.g. "unused-variable"
+	c.LinkFlags = dev.NewKeyValueSet()      // e.g. "-lstdc++"
+	c.DisableWarning = dev.NewKeyValueSet() // e.g. "unused-variable"
 
-	c.XcodeSettings = NewKeyValueDict()
-	c.VisualStudioClCompile = NewKeyValueDict()
-	c.VisualStudioLink = NewKeyValueDict()
+	c.XcodeSettings = dev.NewKeyValueSet()
+	c.VisualStudioClCompile = dev.NewKeyValueSet()
+	c.VisualStudioLink = dev.NewKeyValueSet()
 
 	c.GenDataXcode.ProjectConfigUuid = utils.GenerateUUID()
 	c.GenDataXcode.TargetUuid = utils.GenerateUUID()
@@ -141,18 +139,18 @@ func (c *Config) String() string {
 
 // AddIncludeDir adds an include to the list of include directories
 func (c *Config) AddIncludeDir(includeDir dev.PinPath) {
-    c.IncludeDirs.AddOrSet(includeDir)
+	c.IncludeDirs.AddOrSet(includeDir)
 }
 
-func (c *Config) AddLibrary(projectDirectory string, lib *DevLib) {
-	if lib.LibType == dev.LibraryTypeFramework {
-		c.LibraryFrameworks.AddMany(lib.Files...)
-		c.LibraryFrameworks.AddMany(lib.Libs...)
-	} else {
-		c.LibraryFiles.AddMany(lib.Files...)
-		c.LibraryLibs.AddMany(lib.Libs...)
-		c.LibraryDirs.AddOrSet(dev.PinPath{Root: projectDirectory, Base: lib.Dir, Sub: ""})
-	}
+func (c *Config) AddLibrary(projectDirectory string, lib dev.PinFilepath) {
+	c.LibraryPaths.AddOrSet(lib.Path)
+
+	libfile := lib.Filename
+	c.LibraryFiles.Add(libfile)
+}
+
+func (c *Config) AddFramework(framework string) {
+	c.LibraryFrameworks.Add(framework)
 }
 
 func (c *Config) InitTargetSettings() {
@@ -174,12 +172,9 @@ func (c *Config) InitTargetSettings() {
 
 		c.LinkFlags.AddOrSet("-ObjC", "")
 
-		cocoa := NewDevLib()
-		cocoa.BuildConfigs.Add(dev.NewDebugDevConfig())
-		cocoa.BuildConfigs.Add(dev.NewReleaseDevConfig())
-		cocoa.LibType = dev.LibraryTypeFramework
-		cocoa.Files = []string{"Foundation", "Cocoa", "Carbon", "Metal", "OpenGL", "IOKit", "AppKit", "CoreVideo", "QuartzCore"}
-		c.AddLibrary(c.Project.ProjectAbsPath, cocoa)
+		for _, cocoa := range []string{"Foundation", "Cocoa", "Carbon", "Metal", "OpenGL", "IOKit", "AppKit", "CoreVideo", "QuartzCore"} {
+			c.AddFramework(cocoa)
+		}
 
 		// func (l *Library2) Merge(other *Library2) {
 		// 	l.Frameworks.Merge(other.Frameworks)
@@ -274,14 +269,14 @@ func (c *Config) InitXcodeSettings() {
 	settings["GCC_WARN_UNUSED_FUNCTION"] = "YES"
 	settings["GCC_WARN_UNUSED_VARIABLE"] = "YES"
 
-	c.XcodeSettings = NewKeyValueDict()
+	c.XcodeSettings = dev.NewKeyValueSet()
 	for k, v := range settings {
 		c.XcodeSettings.AddOrSet(k, v)
 	}
 }
 
 func (c *Config) InitVisualStudioSettings() {
-	c.VisualStudioClCompile = NewKeyValueDict()
+	c.VisualStudioClCompile = dev.NewKeyValueSet()
 	c.VisualStudioClCompile.AddOrSet("MinimalRebuild", "false")
 	c.VisualStudioClCompile.AddOrSet("ExceptionHandling", "false")
 	c.VisualStudioClCompile.AddOrSet("CompileAs", "CompileAsCpp")
@@ -336,8 +331,8 @@ func (c *Config) Copy() *Config {
 	nc.IncludeDirs = c.IncludeDirs.Copy()
 	nc.LibraryFrameworks = c.LibraryFrameworks.Copy()
 	nc.LibraryFiles = c.LibraryFiles.Copy()
-	nc.LibraryLibs = c.LibraryLibs.Copy()
-	nc.LibraryDirs = c.LibraryDirs.Copy()
+	nc.LibraryPaths = c.LibraryPaths.Copy()
+	nc.LibraryFiles = c.LibraryFiles.Copy()
 	nc.LinkFlags = c.LinkFlags.Copy()
 	nc.DisableWarning = c.DisableWarning.Copy()
 
@@ -362,8 +357,8 @@ func (c *Config) BuildResolved(otherConfigs []*Config) *Config {
 		configMerged.IncludeDirs.Merge(otherConfig.IncludeDirs)
 		configMerged.LibraryFrameworks.Merge(otherConfig.LibraryFrameworks)
 		configMerged.LibraryFiles.Merge(otherConfig.LibraryFiles)
-		configMerged.LibraryLibs.Merge(otherConfig.LibraryLibs)
-		configMerged.LibraryDirs.Merge(otherConfig.LibraryDirs)
+		configMerged.LibraryPaths.Merge(otherConfig.LibraryPaths)
+		configMerged.LibraryFiles.Merge(otherConfig.LibraryFiles)
 		configMerged.LinkFlags.Merge(otherConfig.LinkFlags)
 
 		configMerged.DisableWarning.Merge(otherConfig.DisableWarning)

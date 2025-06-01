@@ -1,41 +1,41 @@
-package denv
+package dev
 
 // ----------------------------------------------------------------------------------------------------------
 // ----------------------------------------------------------------------------------------------------------
 
-type KeyValueDict struct {
+type KeyValueSet struct {
 	Entries map[string]int
 	Keys    []string
 	Values  []string
 }
 
-func (d *KeyValueDict) Merge(other *KeyValueDict) {
+func (d *KeyValueSet) Merge(other *KeyValueSet) {
 	for i, value := range other.Values {
 		d.AddOrSet(other.Keys[i], value)
 	}
 }
 
-func NewKeyValueDict() *KeyValueDict {
-	d := &KeyValueDict{}
+func NewKeyValueSet() *KeyValueSet {
+	d := &KeyValueSet{}
 	d.Entries = make(map[string]int)
 	d.Keys = make([]string, 0)
 	d.Values = make([]string, 0)
 	return d
 }
 
-func (d *KeyValueDict) Copy() *KeyValueDict {
-	c := NewKeyValueDict()
+func (d *KeyValueSet) Copy() *KeyValueSet {
+	c := NewKeyValueSet()
 	c.Merge(d)
 	return c
 }
 
-func (d *KeyValueDict) Extend(rhs *KeyValueDict) {
+func (d *KeyValueSet) Extend(rhs *KeyValueSet) {
 	for i, value := range rhs.Values {
 		d.AddOrSet(rhs.Keys[i], value)
 	}
 }
 
-func (d *KeyValueDict) UniqueExtend(rhs *KeyValueDict) {
+func (d *KeyValueSet) UniqueExtend(rhs *KeyValueSet) {
 	for i, key := range rhs.Keys {
 		if _, ok := d.Entries[key]; !ok {
 			d.AddOrSet(key, rhs.Values[i])
@@ -43,7 +43,7 @@ func (d *KeyValueDict) UniqueExtend(rhs *KeyValueDict) {
 	}
 }
 
-func (d *KeyValueDict) AddOrSet(key string, value string) {
+func (d *KeyValueSet) AddOrSet(key string, value string) {
 	i, ok := d.Entries[key]
 	if !ok {
 		d.Entries[key] = len(d.Values)
@@ -54,7 +54,7 @@ func (d *KeyValueDict) AddOrSet(key string, value string) {
 	}
 }
 
-func (s *KeyValueDict) ValuesToAdd(values ...string) {
+func (s *KeyValueSet) ValuesToAdd(values ...string) {
 	for _, value := range values {
 		s.AddOrSet(value, value)
 	}
@@ -63,7 +63,7 @@ func (s *KeyValueDict) ValuesToAdd(values ...string) {
 // Enumerate will call the enumerator function for each key-value pair in the dictionary.
 //
 //	'last' will be 0 for all but the last key-value pair, and 1 for the last key-value pair.
-func (d *KeyValueDict) Enumerate(enumerator func(i int, key string, value string, last int)) {
+func (d *KeyValueSet) Enumerate(enumerator func(i int, key string, value string, last int)) {
 	for i, key := range d.Keys {
 		if i == len(d.Keys)-1 {
 			enumerator(i, key, d.Values[i], 1)
@@ -73,7 +73,7 @@ func (d *KeyValueDict) Enumerate(enumerator func(i int, key string, value string
 	}
 }
 
-func (d *KeyValueDict) Concatenated(prefix string, suffix string, valueModifier func(string, string) string) string {
+func (d *KeyValueSet) Concatenated(prefix string, suffix string, valueModifier func(string, string) string) string {
 	concat := ""
 	for i, value := range d.Values {
 		concat += prefix + valueModifier(d.Keys[i], value) + suffix

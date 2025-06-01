@@ -190,13 +190,12 @@ func (prj *DevProject) AddDefine(define string) {
 	}
 }
 
-func (prj *DevProject) AddLibs(libs []*DevLib) {
+func (prj *DevProject) AddLib(path string, file string) {
 	for _, cfg := range prj.Configs {
-		for _, lib := range libs {
-			if lib.BuildConfigs.Contains(cfg.BuildConfig) {
-				cfg.Libs = append(cfg.Libs, lib)
-			}
+		lib := dev.PinFilepath{Path: dev.PinPath{Root: prj.ResolveEnvironmentVariables(path), Base: "", Sub: ""},
+			Filename: file,
 		}
+		cfg.Libs = append(cfg.Libs, lib)
 	}
 }
 
@@ -323,19 +322,6 @@ func SetupCppLibProjectForArduino(pkg *Package, name string) *DevProject {
 	project := SetupDefaultCppLibProject(pkg, "library_"+name, "main", dev.BuildTargetArduinoEsp32)
 	project.Configs = append(project.Configs, NewDevConfig(dev.BuildTypeStaticLibrary, dev.NewDebugDevConfig()))
 	project.Configs = append(project.Configs, NewDevConfig(dev.BuildTypeStaticLibrary, dev.NewReleaseDevConfig()))
-	project.Supported = dev.BuildTargetsArduino
-	for _, cfg := range project.Configs {
-		configureProjectCompilerDefines(cfg)
-		cfg.IncludeDirs = append(cfg.IncludeDirs, dev.PinPath{Root: pkg.WorkspacePath(), Base: pkg.RepoName, Sub: "source/main/include"})
-	}
-	return project
-}
-
-func SetupCppLibProjectWithLibs(pkg *Package, name string, Libs []*DevLib) *DevProject {
-	project := SetupDefaultCppLibProject(pkg, name, "main", dev.GetBuildTarget())
-	project.Configs = append(project.Configs, NewDevConfig(dev.BuildTypeStaticLibrary, dev.NewDebugDevConfig()))
-	project.Configs = append(project.Configs, NewDevConfig(dev.BuildTypeStaticLibrary, dev.NewReleaseDevConfig()))
-	project.AddLibs(Libs)
 	project.Supported = dev.BuildTargetsArduino
 	for _, cfg := range project.Configs {
 		configureProjectCompilerDefines(cfg)

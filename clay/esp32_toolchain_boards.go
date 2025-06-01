@@ -4,7 +4,7 @@ import (
 	"fmt"
 	"sort"
 
-	cutils "github.com/jurgen-kluft/ccode/utils"
+	utils "github.com/jurgen-kluft/ccode/utils"
 )
 
 // opName: Any of the following:
@@ -137,7 +137,7 @@ func PrintAllMatchingBoards(espSdkPath string, fuzzy string, max int) error {
 		names = append(names, board.Name)
 	}
 
-	cm := cutils.NewClosestMatch(names, []int{2})
+	cm := utils.NewClosestMatch(names, []int{2})
 	closest := cm.ClosestN(fuzzy, max)
 	if len(closest) > 0 {
 
@@ -165,7 +165,7 @@ func PrintAllMatchingBoards(espSdkPath string, fuzzy string, max int) error {
 		for _, board := range toolchain.Boards {
 			descriptions = append(descriptions, board.Description)
 		}
-		cm = cutils.NewClosestMatch(descriptions, []int{2})
+		cm = utils.NewClosestMatch(descriptions, []int{2})
 		closest = cm.ClosestN(fuzzy, max-len(closest))
 		if len(closest) > 0 {
 

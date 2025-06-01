@@ -10,7 +10,7 @@ import (
 	"strings"
 	"time"
 
-	cutils "github.com/jurgen-kluft/ccode/utils"
+	utils "github.com/jurgen-kluft/ccode/utils"
 )
 
 const (
@@ -191,7 +191,7 @@ func AddBuildInfoAsCppLibrary(prj *Project, cfg *Config) {
 	buildPath := prj.GetBuildPath(cfg.GetSubDir())
 	hdrFilepath := filepath.Join(prj.GetBuildPath(buildPath), name+".h")
 	srcFilepath := filepath.Join(prj.GetBuildPath(buildPath), name+".cpp")
-	if cutils.FileExists(hdrFilepath) && cutils.FileExists(srcFilepath) {
+	if utils.FileExists(hdrFilepath) && utils.FileExists(srcFilepath) {
 		library := NewLibraryProject(name, prj.Config)
 		library.IncludeDirs.Add(filepath.Dir(hdrFilepath))
 		library.AddSourceFile(srcFilepath, filepath.Base(srcFilepath))

@@ -6,7 +6,7 @@ import (
 	"os"
 	"time"
 
-	cutils "github.com/jurgen-kluft/ccode/utils"
+	utils "github.com/jurgen-kluft/ccode/utils"
 )
 
 // Clay App Desktop
@@ -36,7 +36,7 @@ func ClayAppMainDesktop() {
 	case "list-libraries":
 		err = ListLibraries()
 	case "version":
-		version := cutils.NewVersionInfo()
+		version := utils.NewVersionInfo()
 		fmt.Printf("Version: %s\n", version.Version)
 	default:
 		UsageDesktop()

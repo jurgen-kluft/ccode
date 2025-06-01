@@ -232,7 +232,7 @@ func (l *ToolchainArduinoEsp32Linker) SetupArgs(generateMapFile bool, libraryPat
 		l.linkerArgs = append(l.linkerArgs, "genmap")
 	}
 
-	linkerSystemLibraryPaths := l.toolChain.Vars["linker.system.library.paths"]
+	linkerSystemLibraryPaths := l.toolChain.Vars.GetAll("linker.system.library.paths")
 	for _, libPath := range linkerSystemLibraryPaths {
 		l.linkerArgs = append(l.linkerArgs, "-L")
 		l.linkerArgs = append(l.linkerArgs, libPath)
@@ -246,12 +246,12 @@ func (l *ToolchainArduinoEsp32Linker) SetupArgs(generateMapFile bool, libraryPat
 
 	l.linkerArgs = append(l.linkerArgs, "-Wl,--wrap=esp_panic_handler")
 
-	linkerResponseFile := l.toolChain.Vars["linker.response.ldflags"]
+	linkerResponseFile := l.toolChain.Vars.GetAll("linker.response.ldflags")
 	if len(linkerResponseFile) == 1 {
 		l.linkerArgs = append(l.linkerArgs, "@"+linkerResponseFile[0])
 	}
 
-	linkerResponseFile = l.toolChain.Vars["linker.response.ldscripts"]
+	linkerResponseFile = l.toolChain.Vars.GetAll("linker.response.ldscripts")
 	if len(linkerResponseFile) == 1 {
 		l.linkerArgs = append(l.linkerArgs, "@"+linkerResponseFile[0])
 	}
@@ -263,7 +263,7 @@ func (l *ToolchainArduinoEsp32Linker) SetupArgs(generateMapFile bool, libraryPat
 			l.linkerArgs = append(l.linkerArgs, libFile)
 		}
 
-		linkerResponseFile = l.toolChain.Vars["linker.response.ldlibs"]
+		linkerResponseFile = l.toolChain.Vars.GetAll("linker.response.ldlibs")
 		if len(linkerResponseFile) == 1 {
 			l.linkerArgs = append(l.linkerArgs, "@"+linkerResponseFile[0])
 		}
@@ -495,95 +495,97 @@ func NewToolchainArduinoEsp32(espMcu string, projectName string) (t *ToolchainAr
 		return nil, err
 	}
 
+	vars := map[string][]string{
+		"esp.mcu":              {espMcu},
+		"esp.sdk.path":         {espSdkPath},
+		"esp.sdk.version":      {`3.2.0`},
+		"esp.arduino.sdk.path": {`{esp.sdk.path}/tools/esp32-arduino-libs/{esp.mcu}`},
+
+		"c.compiler.generate.mapfile":  {"-MMD"},
+		"c.compiler.response.flags":    {`{esp.arduino.sdk.path}/flags/c_flags`},
+		"c.compiler.response.defines":  {`{esp.arduino.sdk.path}/flags/defines`},
+		"c.compiler.response.includes": {`{esp.arduino.sdk.path}/flags/includes`},
+		"c.compiler.switches":          {`-w`, `-Os`},
+		"c.compiler.warning.switches":  {`-Werror=return-type`},
+		"c.compiler.defines": {
+			`F_CPU=240000000L`,
+			`ARDUINO=10605`,
+			`ARDUINO_ESP32_DEV`,
+			`ARDUINO_ARCH_ESP32`,
+			`ARDUINO_BOARD="ESP32_DEV"`,
+			`ARDUINO_VARIANT="{esp.mcu}"`,
+			`ARDUINO_PARTITION_default`,
+			`ARDUINO_HOST_OS="` + runtime.GOOS + `"`,
+			`ARDUINO_FQBN="generic"`,
+			`ESP32=ESP32`,
+			`CORE_DEBUG_LEVEL=0`,
+			`ARDUINO_USB_CDC_ON_BOOT=0`,
+		},
+		"c.compiler.system.prefix.include": {`{esp.arduino.sdk.path}/include`},
+		"c.compiler.system.includes": {
+			`{esp.sdk.path}/cores/esp32`,
+			`{esp.sdk.path}/variants/{esp.mcu}`,
+		},
+
+		"cpp.compiler.generate.mapfile":  {"-MMD"},
+		"cpp.compiler.response.flags":    {`{esp.arduino.sdk.path}/flags/cpp_flags`},
+		"cpp.compiler.response.defines":  {`{esp.arduino.sdk.path}/flags/defines`},
+		"cpp.compiler.response.includes": {`{esp.arduino.sdk.path}/flags/includes`},
+		"cpp.compiler.switches":          {`-w`, `-Os`},
+		"cpp.compiler.warning.switches":  {`-Werror=return-type`},
+		"cpp.compiler.defines": {
+			`F_CPU=240000000L`,
+			`ARDUINO=10605`,
+			`ARDUINO_ESP32_DEV`,
+			`ARDUINO_ARCH_ESP32`,
+			`ARDUINO_BOARD="ESP32_DEV"`,
+			`ARDUINO_VARIANT="{esp.mcu}"`,
+			`ARDUINO_PARTITION_default`,
+			`ARDUINO_HOST_OS="` + runtime.GOOS + `"`,
+			`ARDUINO_FQBN="generic"`,
+			`ESP32=ESP32`,
+			`CORE_DEBUG_LEVEL=0`,
+			`ARDUINO_USB_CDC_ON_BOOT=0`,
+		},
+		"cpp.compiler.system.prefix.include": {`{esp.arduino.sdk.path}/include`},
+		"cpp.compiler.system.includes": {
+			`{esp.sdk.path}/cores/esp32`,
+			`{esp.sdk.path}/variants/{esp.mcu}`,
+		},
+
+		"archiver": {},
+
+		"linker":                    {},
+		"linker.response.ldflags":   {`{esp.arduino.sdk.path}/flags/ld_flags`},
+		"linker.response.ldscripts": {`{esp.arduino.sdk.path}/flags/ld_scripts`},
+		"linker.response.ldlibs":    {`{esp.arduino.sdk.path}/flags/ld_libs`},
+		"linker.system.library.paths": {
+			`{esp.arduino.sdk.path}/lib`,
+			`{esp.arduino.sdk.path}/ld`,
+		},
+
+		"burner.generate-image-bin.script":      {`{esp.sdk}/tools/gen_esp32part.py`},
+		"burner.generate-partitions-bin.script": {`{esp.sdk.path}/tools/gen_esp32part.py`},
+
+		"burner.flash.baud":                    {`921600`},
+		"burner.flash.mode":                    {`dio`},
+		"burner.flash.frequency":               {`40m`},
+		"burner.flash.size":                    {`4MB`},
+		"burner.flash.port":                    {`/dev/tty.usbmodem4101`},
+		"burner.flash.elf.share.offset":        {`0xb0`},
+		"burner.bootapp0.bin.filepath":         {`{esp.sdk.path}/tools/partitions/boot_app0.bin`},
+		"burner.flash.partitions.csv.filepath": {`{esp.sdk.path}/tools/partitions/default.csv`},
+		"burner.flash.bootloader.bin.offset":   {`0x1000`},
+		"burner.flash.partitions.bin.offset":   {`0x8000`},
+		"burner.flash.bootapp0.bin.offset":     {`0xe000`},
+		"burner.flash.application.bin.offset":  {`0x10000`},
+	}
+
 	t = &ToolchainArduinoEsp32{
 		projectName: projectName,
 		ToolchainInstance: ToolchainInstance{
 			Name: "xtensa-esp32",
-			Vars: Vars{
-				"esp.mcu":              {espMcu},
-				"esp.sdk.path":         {espSdkPath},
-				"esp.sdk.version":      {`3.2.0`},
-				"esp.arduino.sdk.path": {`{esp.sdk.path}/tools/esp32-arduino-libs/{esp.mcu}`},
-
-				"c.compiler.generate.mapfile":  {"-MMD"},
-				"c.compiler.response.flags":    {`{esp.arduino.sdk.path}/flags/c_flags`},
-				"c.compiler.response.defines":  {`{esp.arduino.sdk.path}/flags/defines`},
-				"c.compiler.response.includes": {`{esp.arduino.sdk.path}/flags/includes`},
-				"c.compiler.switches":          {`-w`, `-Os`},
-				"c.compiler.warning.switches":  {`-Werror=return-type`},
-				"c.compiler.defines": {
-					`F_CPU=240000000L`,
-					`ARDUINO=10605`,
-					`ARDUINO_ESP32_DEV`,
-					`ARDUINO_ARCH_ESP32`,
-					`ARDUINO_BOARD="ESP32_DEV"`,
-					`ARDUINO_VARIANT="{esp.mcu}"`,
-					`ARDUINO_PARTITION_default`,
-					`ARDUINO_HOST_OS="` + runtime.GOOS + `"`,
-					`ARDUINO_FQBN="generic"`,
-					`ESP32=ESP32`,
-					`CORE_DEBUG_LEVEL=0`,
-					`ARDUINO_USB_CDC_ON_BOOT=0`,
-				},
-				"c.compiler.system.prefix.include": {`{esp.arduino.sdk.path}/include`},
-				"c.compiler.system.includes": {
-					`{esp.sdk.path}/cores/esp32`,
-					`{esp.sdk.path}/variants/{esp.mcu}`,
-				},
-
-				"cpp.compiler.generate.mapfile":  {"-MMD"},
-				"cpp.compiler.response.flags":    {`{esp.arduino.sdk.path}/flags/cpp_flags`},
-				"cpp.compiler.response.defines":  {`{esp.arduino.sdk.path}/flags/defines`},
-				"cpp.compiler.response.includes": {`{esp.arduino.sdk.path}/flags/includes`},
-				"cpp.compiler.switches":          {`-w`, `-Os`},
-				"cpp.compiler.warning.switches":  {`-Werror=return-type`},
-				"cpp.compiler.defines": {
-					`F_CPU=240000000L`,
-					`ARDUINO=10605`,
-					`ARDUINO_ESP32_DEV`,
-					`ARDUINO_ARCH_ESP32`,
-					`ARDUINO_BOARD="ESP32_DEV"`,
-					`ARDUINO_VARIANT="{esp.mcu}"`,
-					`ARDUINO_PARTITION_default`,
-					`ARDUINO_HOST_OS="` + runtime.GOOS + `"`,
-					`ARDUINO_FQBN="generic"`,
-					`ESP32=ESP32`,
-					`CORE_DEBUG_LEVEL=0`,
-					`ARDUINO_USB_CDC_ON_BOOT=0`,
-				},
-				"cpp.compiler.system.prefix.include": {`{esp.arduino.sdk.path}/include`},
-				"cpp.compiler.system.includes": {
-					`{esp.sdk.path}/cores/esp32`,
-					`{esp.sdk.path}/variants/{esp.mcu}`,
-				},
-
-				"archiver": {},
-
-				"linker":                    {},
-				"linker.response.ldflags":   {`{esp.arduino.sdk.path}/flags/ld_flags`},
-				"linker.response.ldscripts": {`{esp.arduino.sdk.path}/flags/ld_scripts`},
-				"linker.response.ldlibs":    {`{esp.arduino.sdk.path}/flags/ld_libs`},
-				"linker.system.library.paths": {
-					`{esp.arduino.sdk.path}/lib`,
-					`{esp.arduino.sdk.path}/ld`,
-				},
-
-				"burner.generate-image-bin.script":      {`{esp.sdk}/tools/gen_esp32part.py`},
-				"burner.generate-partitions-bin.script": {`{esp.sdk.path}/tools/gen_esp32part.py`},
-
-				"burner.flash.baud":                    {`921600`},
-				"burner.flash.mode":                    {`dio`},
-				"burner.flash.frequency":               {`40m`},
-				"burner.flash.size":                    {`4MB`},
-				"burner.flash.port":                    {`/dev/tty.usbmodem4101`},
-				"burner.flash.elf.share.offset":        {`0xb0`},
-				"burner.bootapp0.bin.filepath":         {`{esp.sdk.path}/tools/partitions/boot_app0.bin`},
-				"burner.flash.partitions.csv.filepath": {`{esp.sdk.path}/tools/partitions/default.csv`},
-				"burner.flash.bootloader.bin.offset":   {`0x1000`},
-				"burner.flash.partitions.bin.offset":   {`0x8000`},
-				"burner.flash.bootapp0.bin.offset":     {`0xe000`},
-				"burner.flash.application.bin.offset":  {`0x10000`},
-			},
+			Vars: NewVars(),
 			Tools: map[string]string{
 				"c.compiler":                     `{esp.sdk.path}/tools/xtensa-esp-elf/bin/xtensa-{esp.mcu}-elf-gcc`,
 				"cpp.compiler":                   `{esp.sdk.path}/tools/xtensa-esp-elf/bin/xtensa-{esp.mcu}-elf-g++`,
@@ -596,6 +598,10 @@ func NewToolchainArduinoEsp32(espMcu string, projectName string) (t *ToolchainAr
 				"burner.flash":                   `{esp.sdk.path}/tools/esptool/esptool`,
 			},
 		},
+	}
+
+	for key, values := range vars {
+		t.Vars.Append(key, values...)
 	}
 
 	if espMcu == "esp32" {

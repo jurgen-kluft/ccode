@@ -29,15 +29,14 @@ type Toolchain interface {
 
 type ToolchainInstance struct {
 	Name  string
-	Vars  Vars
+	Vars  *Vars
 	Tools map[string]string
 }
 
 func (t *ToolchainInstance) ResolveVars() {
-
-	for key, values := range t.Vars {
-		for i, value := range values {
-			t.Vars[key][i] = ResolveString(value, t.Vars)
+	for ki, values := range t.Vars.Values {
+		for vi, value := range values {
+			t.Vars.Values[ki][vi] = ResolveString(value, t.Vars)
 		}
 	}
 

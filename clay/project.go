@@ -41,6 +41,7 @@ type Project struct {
 	IncludeDirs  *IncludeMap  // Include paths for the library (system)
 	SourceFiles  []SourceFile // C/C++ Source files for the library
 	Dependencies []*Project   // Libraries that this project depends on
+	Frameworks   []string     // Frameworks to link against (for macOS)
 }
 
 func NewExecutableProject(name string, config *Config) *Project {
@@ -109,7 +110,7 @@ func (p *Project) SetToolchain(config *Config) (err error) {
 	} else if targetOS == "windows" {
 		p.Toolchain = toolchain.NewToolchainMsdev()
 	} else if targetOS == "mac" || targetOS == "macos" || targetOS == "darwin" {
-		p.Toolchain, err = toolchain.NewToolchainClangDarwin(runtime.GOARCH)
+		p.Toolchain, err = toolchain.NewToolchainClangDarwin(runtime.GOARCH, p.Frameworks)
 	} else {
 		return fmt.Errorf("error, %s as a build target on %s is not supported", targetOS, runtime.GOOS)
 	}
@@ -141,24 +142,24 @@ func (p *Project) Build(buildPath string) error {
 	//for _, dep := range p.Dependencies {
 	//	depBuildPath := dep.GetBuildPath(buildPath)
 	//	MakeDir(depBuildPath)
-    //
+	//
 	//	compiler.SetupArgs(dep.Defines.Values, dep.IncludeDirs.Values)
-    //
+	//
 	//	objFilepaths := []string{}
 	//	for _, src := range dep.SourceFiles {
-    //
+	//
 	//		srcObjRelPath := filepath.Join(depBuildPath, src.SrcRelPath+".o")
 	//		//srcDepRelPath := filepath.Join(libBuildPath, src.SrcRelPath+".d")
-    //
+	//
 	//		MakeDir(filepath.Dir(srcObjRelPath))
-    //
+	//
 	//		if err := compiler.Compile(src.SrcAbsPath, srcObjRelPath); err != nil {
 	//			return err
 	//		}
-    //
+	//
 	//		objFilepaths = append(objFilepaths, srcObjRelPath)
 	//	}
-    //
+	//
 	//	// Static library ?
 	//	staticArchiver.SetupArgs(toolchain.Vars{})
 	//	if err := staticArchiver.Archive(objFilepaths, dep.GetOutputFilepath(buildPath, staticArchiver.Filename(dep.Name))); err != nil {

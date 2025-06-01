@@ -6,9 +6,9 @@ type DevConfig struct {
 	BuildType   dev.BuildType // Static, Dynamic, Executable
 	BuildConfig dev.BuildConfig
 	IncludeDirs []dev.PinPath
-	Defines     *DevValueSet
-	LinkFlags   *DevValueSet
-	Libs        []*DevLib
+	Defines     *dev.ValueSet
+	LinkFlags   *dev.ValueSet
+	Libs        []dev.PinFilepath // Libraries to link against
 }
 
 func NewDevConfig(buildType dev.BuildType, buildConfig dev.BuildConfig) *DevConfig {
@@ -19,9 +19,9 @@ func NewDevConfig(buildType dev.BuildType, buildConfig dev.BuildConfig) *DevConf
 		// Build:   "Dev",    // Development(dev), Unittest(test), Profile(prof), Production(prod)
 		BuildConfig: buildConfig,
 		IncludeDirs: []dev.PinPath{},
-		Defines:     NewDevValueSet(),
-		LinkFlags:   NewDevValueSet(),
-		Libs:        []*DevLib{},
+		Defines:     dev.NewValueSet(),
+		LinkFlags:   dev.NewValueSet(),
+		Libs:        []dev.PinFilepath{},
 	}
 
 	return config

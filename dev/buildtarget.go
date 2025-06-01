@@ -122,21 +122,31 @@ func SetBuildTarget(os string, arch string) BuildTarget {
 	CurrentBuildTarget = EmptyBuildTarget
 
 	if os == "arduino" {
-		if arch == "esp32" {
-			CurrentBuildTarget.Targets[BuildTargetOsArduino] |= BuildTargetArchEsp32
-		} else if arch == "esp32s3" {
+		if arch == "esp32s3" {
 			CurrentBuildTarget.Targets[BuildTargetOsArduino] |= BuildTargetArchEsp32s3
+		} else {
+			CurrentBuildTarget.Targets[BuildTargetOsArduino] |= BuildTargetArchEsp32
 		}
-	} else if os == "windows" && arch == "x64" {
-		CurrentBuildTarget.Targets[BuildTargetOsWindows] |= BuildTargetArchX64
-	} else if os == "darwin" && arch == "x64" {
-		CurrentBuildTarget.Targets[BuildTargetOsMac] |= BuildTargetArchX64
-	} else if os == "darwin" && arch == "arm64" {
-		CurrentBuildTarget.Targets[BuildTargetOsMac] |= BuildTargetArchArm64
-	} else if os == "linux" && arch == "x64" {
-		CurrentBuildTarget.Targets[BuildTargetOsLinux] |= BuildTargetArchX64
-	} else if os == "linux" && arch == "arm64" {
-		CurrentBuildTarget.Targets[BuildTargetOsLinux] |= BuildTargetArchArm64
+	} else if os == "windows" {
+		if arch == "x64" {
+			CurrentBuildTarget.Targets[BuildTargetOsWindows] |= BuildTargetArchX64
+		}
+	} else if os == "darwin" {
+		if arch == "x64" {
+			CurrentBuildTarget.Targets[BuildTargetOsMac] |= BuildTargetArchX64
+		}
+	} else if os == "darwin" {
+		if arch == "arm64" {
+			CurrentBuildTarget.Targets[BuildTargetOsMac] |= BuildTargetArchArm64
+		}
+	} else if os == "linux" {
+		if arch == "x64" {
+			CurrentBuildTarget.Targets[BuildTargetOsLinux] |= BuildTargetArchX64
+		}
+	} else if os == "linux" {
+		if arch == "arm64" {
+			CurrentBuildTarget.Targets[BuildTargetOsLinux] |= BuildTargetArchArm64
+		}
 	}
 
 	return CurrentBuildTarget
@@ -148,28 +158,34 @@ func GetBuildTarget() BuildTarget {
 
 func GetBuildTargetTargettingHost() BuildTarget {
 	// Just looking at the host OS and arch
-	switch {
-	case runtime.GOOS == "windows" && runtime.GOARCH == "amd64":
-		return BuildTargetWindowsX64
-	case runtime.GOOS == "windows" && runtime.GOARCH == "x64":
-		return BuildTargetWindowsX64
-	case runtime.GOOS == "windows" && runtime.GOARCH == "x86":
-		return BuildTargetWindowsX86
-	case runtime.GOOS == "darwin" && runtime.GOARCH == "amd64":
-		return BuildTargetMacX64
-	case runtime.GOOS == "darwin" && runtime.GOARCH == "arm64":
-		return BuildTargetMacArm64
-	case runtime.GOOS == "linux" && runtime.GOARCH == "amd64":
-		return BuildTargetLinuxX64
-	case runtime.GOOS == "linux" && runtime.GOARCH == "arm64":
-		return BuildTargetLinuxArm64
-	case runtime.GOOS == "linux" && runtime.GOARCH == "x86":
-		return BuildTargetLinuxX86
-	case runtime.GOOS == "linux" && runtime.GOARCH == "arm":
-		return BuildTargetLinuxArm32
-	default:
-		return EmptyBuildTarget
+	b := EmptyBuildTarget
+	if runtime.GOOS == "windows" {
+		switch runtime.GOARCH {
+		case "amd64", "x64":
+			b = BuildTargetWindowsX64
+		case "x86":
+			b = BuildTargetWindowsX86
+		}
+	} else if runtime.GOOS == "darwin" {
+		switch runtime.GOARCH {
+		case "amd64", "x64":
+			b = BuildTargetMacX64
+		case "arm64":
+			b = BuildTargetMacArm64
+		}
+	} else if runtime.GOOS == "linux" {
+		switch runtime.GOARCH {
+		case "amd64", "x64":
+			b = BuildTargetLinuxX64
+		case "arm64":
+			b = BuildTargetLinuxArm64
+		case "x86":
+			b = BuildTargetLinuxX86
+		case "arm":
+			b = BuildTargetLinuxArm32
+		}
 	}
+	return b
 }
 
 func (pt BuildTarget) IsEqual(other BuildTarget) bool {

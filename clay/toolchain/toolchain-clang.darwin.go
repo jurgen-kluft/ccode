@@ -41,11 +41,11 @@ func (cl *ToolchainDarwinClangCompiler) SetupArgs(_defines []string, _includes [
 	cl.cArgs = make([]string, 0, 64)
 
 	cl.cArgs = append(cl.cArgs, `-c`)
-	archFlags := cl.toolChain.Vars[`c.compiler.flags.arch`]
+	archFlags := cl.toolChain.Vars.GetAll(`c.compiler.flags.arch`)
 	cl.cArgs = append(cl.cArgs, archFlags...)
-	picFlags := cl.toolChain.Vars[`c.compiler.flags.pic`]
+	picFlags := cl.toolChain.Vars.GetAll(`c.compiler.flags.pic`)
 	cl.cArgs = append(cl.cArgs, picFlags...)
-	stdFlags := cl.toolChain.Vars[`c.compiler.flags.std`]
+	stdFlags := cl.toolChain.Vars.GetAll(`c.compiler.flags.std`)
 	cl.cArgs = append(cl.cArgs, stdFlags...)
 
 	flagsStr := `c.compiler.flags.release`
@@ -58,9 +58,9 @@ func (cl *ToolchainDarwinClangCompiler) SetupArgs(_defines []string, _includes [
 		definesStr = `c.compiler.defines.final`
 	}
 
-	flags := cl.toolChain.Vars[flagsStr]
+	flags := cl.toolChain.Vars.GetAll(flagsStr)
 	cl.cArgs = append(cl.cArgs, flags...)
-	defines := cl.toolChain.Vars[definesStr]
+	defines := cl.toolChain.Vars.GetAll(definesStr)
 	for _, define := range defines {
 		cl.cArgs = append(cl.cArgs, `-D`, define)
 	}
@@ -77,11 +77,11 @@ func (cl *ToolchainDarwinClangCompiler) SetupArgs(_defines []string, _includes [
 	cl.cppArgs = make([]string, 0, 64)
 
 	cl.cppArgs = append(cl.cppArgs, `-c`)
-	archFlags = cl.toolChain.Vars[`cpp.compiler.flags.arch`]
+	archFlags = cl.toolChain.Vars.GetAll(`cpp.compiler.flags.arch`)
 	cl.cppArgs = append(cl.cppArgs, archFlags...)
-	picFlags = cl.toolChain.Vars[`cpp.compiler.flags.pic`]
+	picFlags = cl.toolChain.Vars.GetAll(`cpp.compiler.flags.pic`)
 	cl.cppArgs = append(cl.cppArgs, picFlags...)
-	stdFlags = cl.toolChain.Vars[`cpp.compiler.flags.std`]
+	stdFlags = cl.toolChain.Vars.GetAll(`cpp.compiler.flags.std`)
 	cl.cppArgs = append(cl.cppArgs, stdFlags...)
 
 	flagsStr = `cpp.compiler.flags.release`
@@ -94,9 +94,9 @@ func (cl *ToolchainDarwinClangCompiler) SetupArgs(_defines []string, _includes [
 		definesStr = `cpp.compiler.defines.final`
 	}
 
-	flags = cl.toolChain.Vars[flagsStr]
+	flags = cl.toolChain.Vars.GetAll(flagsStr)
 	cl.cppArgs = append(cl.cppArgs, flags...)
-	defines = cl.toolChain.Vars[definesStr]
+	defines = cl.toolChain.Vars.GetAll(definesStr)
 	for _, define := range defines {
 		cl.cppArgs = append(cl.cppArgs, `-D`, define)
 	}
@@ -182,7 +182,7 @@ func (t *ToolchainDarwinClangStaticArchiver) Filename(name string) string {
 
 func (t *ToolchainDarwinClangStaticArchiver) SetupArgs(userVars Vars) {
 	t.args = []string{}
-	archFlags := t.toolChain.Vars[`static.archiver.flags`]
+	archFlags := t.toolChain.Vars.GetAll(`static.archiver.flags`)
 	t.args = append(t.args, archFlags...)
 }
 
@@ -214,8 +214,8 @@ func (t *ToolchainDarwinClangDynamicArchiver) Filename(name string) string {
 func (t *ToolchainDarwinClangDynamicArchiver) SetupArgs(userVars Vars) {
 	t.args = []string{}
 
-	archFlags := t.toolChain.Vars[`dynamic.archiver.flags.arch`]
-	t.args = append(t.args, archFlags...)
+	flags := t.toolChain.Vars.GetAll(`dynamic.archiver.flags`)
+	t.args = append(t.args, flags...)
 }
 
 func (t *ToolchainDarwinClangDynamicArchiver) Archive(inputObjectFilepaths []string, outputArchiveFilepath string) error {
@@ -268,24 +268,28 @@ func (l *ToolchainDarwinClangLinker) Filename(name string) string {
 }
 
 func (l *ToolchainDarwinClangLinker) SetupArgs(generateMapFile bool, libraryPaths []string, libraryFiles []string) {
-	libPaths := l.toolChain.Vars["linker.lib.paths"]
 	l.args = []string{}
+
+	// Library paths
+	libPaths := l.toolChain.Vars.GetAll("linker.lib.paths")
 	for _, libPath := range libPaths {
 		l.args = append(l.args, `-L`)
 		l.args = append(l.args, libPath)
 	}
+
+	// Frameworks
+	frameworks := l.toolChain.Vars.GetAll("linker.frameworks")
+	for _, framework := range frameworks {
+		l.args = append(l.args, "-framework")
+		l.args = append(l.args, framework)
+	}
 }
+
 func (l *ToolchainDarwinClangLinker) Link(inputArchiveAbsFilepaths []string, outputAppRelFilepathNoExt string) error {
 	args := l.args
 
-	flags := l.toolChain.Vars[`linker.flags`]
+	flags := l.toolChain.Vars.GetAll(`linker.flags`)
 	args = append(args, flags...)
-
-	// Frameworks
-	// for _, framework := range inputFrameworks {
-	//     args = append(args, "-framework")
-	//     args = append(args, framework)
-	// }
 
 	args = append(args, "-o")
 	args = append(args, outputAppRelFilepathNoExt)
@@ -294,7 +298,7 @@ func (l *ToolchainDarwinClangLinker) Link(inputArchiveAbsFilepaths []string, out
 		args = append(args, inputArchiveAbsFilepath)
 	}
 
-	libFiles := l.toolChain.Vars["linker.lib.files"]
+	libFiles := l.toolChain.Vars.GetAll("linker.lib.files")
 	for _, libFile := range libFiles {
 		args = append(args, "-l")
 		args = append(args, libFile)
@@ -360,7 +364,7 @@ const (
 	archtype_spir64   string = "spir64"   // SPIR: standard portable IR for OpenCL 64-bit version
 )
 
-func NewToolchainClangDarwin(arch string) (t *ToolchainDarwinClang, err error) {
+func NewToolchainClangDarwin(arch string, frameworks []string) (t *ToolchainDarwinClang, err error) {
 	var clangPath string
 	if clangPath, err = exec.LookPath("clang"); err != nil {
 		return nil, err
@@ -376,41 +380,7 @@ func NewToolchainClangDarwin(arch string) (t *ToolchainDarwinClang, err error) {
 	t = &ToolchainDarwinClang{
 		ToolchainInstance{
 			Name: "clang",
-			Vars: map[string][]string{
-				"ar.path":        {arPath},
-				"clang.path":     {clangPath},
-				"clang.lib.path": {`{clang.path}/lib`},
-
-				"c.compiler.flags.arch":      {`-arch`, archtype_arm64},
-				"c.compiler.flags.std":       {`-std=c11`},
-				"c.compiler.flags.debug":     {`-g`, `-O0`},
-				"c.compiler.flags.release":   {`-O2`},
-				"c.compiler.flags.final":     {`-O3`},
-				"c.compiler.defines.debug":   {},
-				"c.compiler.defines.release": {},
-				"c.compiler.defines.final":   {},
-
-				"cpp.compiler.flags":           {`-arch`, archtype_arm64},
-				"cpp.compiler.flags.std":       {`-std=c++17`},
-				"cpp.compiler.flags.debug":     {`-g`, `-O0`},
-				"cpp.compiler.flags.release":   {`-O2`},
-				"cpp.compiler.flags.final":     {`-O3`},
-				"cpp.compiler.defines.debug":   {},
-				"cpp.compiler.defines.release": {},
-				"cpp.compiler.defines.final":   {},
-
-				"m.compiler.includes": {},
-				"m.compiler.flags":    {`-arch`, archtype_arm64, `-fobjc-arc`},
-
-				// specific flags for archiver
-				`static.archiver.flags`:  {`-rs`},
-				`dynamic.archiver.flags`: {``},
-
-				`linker.flags`:     {},
-				"linker.lib.paths": {},
-				"linker.lib.files": {`stdc++`},
-			},
-
+			Vars: NewVars(),
 			// #--------------------------------------------------
 			Tools: map[string]string{
 				"c.compiler":       `{clang.path}/clang`,
@@ -420,6 +390,49 @@ func NewToolchainClangDarwin(arch string) (t *ToolchainDarwinClang, err error) {
 				"linker":           `{clang.path}/clang`,
 			},
 		},
+	}
+
+	vars := map[string][]string{
+		"ar.path":        {arPath},
+		"clang.path":     {clangPath},
+		"clang.lib.path": {`{clang.path}/lib`},
+
+		"c.compiler.flags.arch":      {`-arch`, archtype_arm64},
+		"c.compiler.flags.std":       {`-std=c11`},
+		"c.compiler.flags.debug":     {`-g`, `-O0`},
+		"c.compiler.flags.release":   {`-O2`},
+		"c.compiler.flags.final":     {`-O3`},
+		"c.compiler.defines.debug":   {},
+		"c.compiler.defines.release": {},
+		"c.compiler.defines.final":   {},
+
+		"cpp.compiler.flags":           {`-arch`, archtype_arm64},
+		"cpp.compiler.flags.std":       {`-std=c++17`},
+		"cpp.compiler.flags.debug":     {`-g`, `-O0`},
+		"cpp.compiler.flags.release":   {`-O2`},
+		"cpp.compiler.flags.final":     {`-O3`},
+		"cpp.compiler.defines.debug":   {},
+		"cpp.compiler.defines.release": {},
+		"cpp.compiler.defines.final":   {},
+
+		"m.compiler.includes": {},
+		"m.compiler.flags":    {`-arch`, archtype_arm64, `-fobjc-arc`},
+
+		// specific flags for archiver
+		`static.archiver.flags`:  {`-rs`},
+		`dynamic.archiver.flags`: {``},
+
+		`linker.flags`:      {},
+		"linker.lib.paths":  {},
+		"linker.lib.files":  {`stdc++`},
+		"linker.frameworks": {},
+	}
+	for key, value := range vars {
+		t.Vars.Set(key, value...)
+	}
+
+	if len(frameworks) > 0 {
+		t.Vars.Set("linker.frameworks", frameworks...)
 	}
 
 	// We can target x86_64 and aarch64 on macOS
