@@ -110,6 +110,17 @@ func NewBuildConfigList() *BuildConfigList {
 	}
 }
 
+func NewBuildAllConfigList() *BuildConfigList {
+	return &BuildConfigList{
+		List: []BuildConfig{
+			NewDebugDevConfig(),
+			NewReleaseDevConfig(),
+			NewDebugDevTestConfig(),
+			NewReleaseDevTestConfig(),
+		},
+	}
+}
+
 func (b *BuildConfigList) Add(config BuildConfig) {
 	if !b.Contains(config) {
 		b.List = append(b.List, config)
