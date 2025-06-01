@@ -12,8 +12,8 @@ func Init() bool {
 
 // Generate is the main function that requires 'arguments' to then generate
 // workspace and project files for a specified IDE.
-func Generate(pkg *denv.Package) error {
-	return base.Generate(pkg)
+func Generate(pkg *denv.Package) {
+	base.Generate(pkg)
 }
 
 func GenerateGitIgnore() {

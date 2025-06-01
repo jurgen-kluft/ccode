@@ -84,16 +84,16 @@ func BuildDesktop(projectName string, buildConfig *Config) error {
 	for _, prj := range prjs {
 		if projectName == "" || projectName == prj.Name {
 			if prj.Config.Matches(buildConfig) {
-				log.Printf("Building project: %s, config: %s, arch: %s\n", prj.Name, prj.Config.Config.AsString(), prj.Config.Target.ArchAsString())
+				log.Printf("Building project: %s, config: %s, arch: %s\n", prj.Name, prj.Config.String(), prj.Config.Target.ArchAsString())
 				startTime := time.Now()
 				{
 					AddBuildInfoAsCppLibrary(prj, buildConfig)
 					if err := prj.Build(buildConfig, buildPath); err != nil {
-						return fmt.Errorf("Build failed on project %s with config %s: %v", prj.Name, prj.Config, err)
+						return fmt.Errorf("Build failed on project %s with config %s: %v", prj.Name, prj.Config.String(), err)
 					}
 				}
 				log.Printf("Building done ... (duration %s)\n", time.Since(startTime).Round(time.Second))
-				log.Println()
+				fmt.Println()
 			}
 		}
 	}

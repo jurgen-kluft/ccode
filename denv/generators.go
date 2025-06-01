@@ -101,12 +101,13 @@ func NewGenerator(dev string, buildTarget dev.BuildTarget, verbose bool) *Genera
 	return g
 }
 
-func (g *Generator) Generate(pkg *Package) error {
+func (g *Generator) Generate(pkg *Package) {
 	var ws *Workspace
 	var err error
 
 	if ws, err = g.GenerateWorkspace(pkg, g.Dev, g.BuildTarget); err != nil {
-		return err
+		fmt.Printf("Error generating workspace: %v\n", err)
+		return
 	}
 
 	switch g.Dev {
@@ -127,7 +128,9 @@ func (g *Generator) Generate(pkg *Package) error {
 		err = gg.Generate()
 	}
 
-	return err
+	if err != nil {
+		fmt.Printf("Error: %v\n", err)
+	}
 }
 
 func (g *Generator) GenerateWorkspace(pkg *Package, _dev DevEnum, _buildTarget dev.BuildTarget) (*Workspace, error) {
@@ -154,7 +157,7 @@ func (g *Generator) GenerateWorkspace(pkg *Package, _dev DevEnum, _buildTarget d
 
 	ws := NewWorkspace(wsc)
 	ws.WorkspaceName = pkg.RepoName
-	ws.WorkspaceAbsPath = filepath.Join(g.WorkspacePath,pkg.RepoName)
+	ws.WorkspaceAbsPath = filepath.Join(g.WorkspacePath, pkg.RepoName)
 	ws.GenerateAbsPath = filepath.Join(ws.WorkspaceAbsPath, "target", ws.Config.Dev.ToString())
 	g.ExclusionFilter = NewExclusionFilter(ws.BuildTarget)
 

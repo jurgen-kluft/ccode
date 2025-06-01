@@ -101,7 +101,7 @@ func (g *ClayGenerator) generateProjectFile(out *utils.LineWriter) {
 	out.WriteLine()
 	out.WriteLine("import \"github.com/jurgen-kluft/ccode/clay\"")
 	out.WriteLine()
-	out.WriteLine("func CreateProjects(arch, buildPath string) []*clay.Project {")
+	out.WriteLine("func CreateProjects(arch string) []*clay.Project {")
 	out.WriteILine("", "projects := []*clay.Project{}")
 
 	// Here we create a clay.Project per ccode_gen.Project+Config:

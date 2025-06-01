@@ -80,10 +80,10 @@ func Init() bool {
 
 // Generate is the main function that requires 'arguments' to then generate
 // workspace and project files for a specified IDE.
-func Generate(pkg *denv.Package) error {
+func Generate(pkg *denv.Package) {
 	buildTarget := dev.GetBuildTarget()
 	generator := denv.NewGenerator(cdev, buildTarget, cverbose)
-	return generator.Generate(pkg)
+	generator.Generate(pkg)
 }
 
 func GenerateGitIgnore() {

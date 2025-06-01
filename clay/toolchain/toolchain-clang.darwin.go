@@ -9,9 +9,8 @@ import (
 )
 
 type DarwinClang struct {
-	Name  string
-	Vars  *Vars
-	Tools map[string]string
+	Name string
+	Vars *Vars
 }
 
 // --------------------------------------------------------------------------------------------------
@@ -31,8 +30,8 @@ func (t *DarwinClang) NewCompiler(config *Config) Compiler {
 	return &ToolchainDarwinClangCompiler{
 		toolChain:       t,
 		config:          config,
-		cCompilerPath:   t.Tools["c.compiler"],
-		cppCompilerPath: t.Tools["cpp.compiler"],
+		cCompilerPath:   t.Vars.GetOne("c.compiler"),
+		cppCompilerPath: t.Vars.GetOne("cpp.compiler"),
 		cArgs:           []string{},
 		cppArgs:         []string{},
 	}
@@ -116,7 +115,6 @@ func (cl *ToolchainDarwinClangCompiler) SetupArgs(_defines []string, _includes [
 func (cl *ToolchainDarwinClangCompiler) Compile(sourceAbsFilepath string, objRelFilepath string) error {
 
 	var args []string
-
 	if strings.HasSuffix(sourceAbsFilepath, ".c") {
 		args = cl.cArgs
 	} else {
@@ -129,11 +127,9 @@ func (cl *ToolchainDarwinClangCompiler) Compile(sourceAbsFilepath string, objRel
 	args = append(args, sourceAbsFilepath)
 
 	fmt.Printf("Compiling (%s) %s\n", cl.config.Config.AsString(), filepath.Base(sourceAbsFilepath))
-	var err error
-	var out []byte
-	cmd := exec.Command(cl.cCompilerPath, args...)
-	out, err = cmd.CombinedOutput()
 
+	cmd := exec.Command(cl.cCompilerPath, args...)
+	out, err := cmd.CombinedOutput()
 	if err != nil {
 		log.Printf("Compile failed, output:\n%s\n", string(out))
 		return fmt.Errorf("Compile failed with %s\n", err)
@@ -165,13 +161,13 @@ func (t *DarwinClang) NewArchiver(at ArchiverType, config *Config) Archiver {
 	if at == ArchiverTypeStatic {
 		return &ToolchainDarwinClangStaticArchiver{
 			toolChain:    t,
-			archiverPath: t.Tools["archiver.static"],
+			archiverPath: t.Vars.GetOne("archiver.static"),
 			args:         []string{},
 		}
 	} else if at == ArchiverTypeDynamic {
 		return &ToolchainDarwinClangDynamicArchiver{
 			toolChain:    t,
-			archiverPath: t.Tools["archiver.dynamic"],
+			archiverPath: t.Vars.GetOne("archiver.dynamic"),
 			args:         []string{},
 		}
 	}
@@ -201,10 +197,8 @@ func (t *ToolchainDarwinClangStaticArchiver) Archive(inputObjectFilepaths []stri
 	out, err := cmd.CombinedOutput()
 
 	if err != nil {
+		log.Printf("Archive failed with output:\n%s\n", string(out))
 		return fmt.Errorf("Archive failed with %s\n", err)
-	}
-	if len(out) > 0 {
-		log.Printf("Archive output:\n%s\n", string(out))
 	}
 
 	return nil
@@ -261,7 +255,7 @@ type ToolchainDarwinClangLinker struct {
 func (l *DarwinClang) NewLinker(config *Config) Linker {
 	return &ToolchainDarwinClangLinker{
 		toolChain:  l,
-		linkerPath: l.Tools["linker"],
+		linkerPath: l.Vars.GetOne("linker"),
 	}
 }
 
@@ -308,7 +302,6 @@ func (l *ToolchainDarwinClangLinker) Link(inputArchiveAbsFilepaths []string, out
 
 	log.Printf("Linking '%s'...\n", outputAppRelFilepathNoExt)
 	cmd := exec.Command(l.linkerPath, args...)
-	cmd.Dir = "/Users/obnosis5/dev.go/src/github.com/jurgen-kluft/cbase/target/clay"
 	out, err := cmd.CombinedOutput()
 
 	if err != nil {

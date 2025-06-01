@@ -34,3 +34,7 @@ func (c *Config) Matches(other *Config) bool {
 func (c *Config) ConfigString() string {
 	return c.Config.AsString()
 }
+
+func (c *Config) String() string {
+	return c.Target.OSAsString() + "-" + c.Target.ArchAsString() + "-" + c.Config.AsString()
+}

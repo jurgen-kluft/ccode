@@ -131,23 +131,21 @@ func SetBuildTarget(os string, arch string) BuildTarget {
 			CurrentBuildTarget.Targets[BuildTargetOsArduino] |= BuildTargetArchEsp32
 		}
 	} else if os == "windows" {
-		if arch == "x64" {
-			CurrentBuildTarget.Targets[BuildTargetOsWindows] |= BuildTargetArchX64
-		}
+		if arch == "x86" {
+			CurrentBuildTarget.Targets[BuildTargetOsWindows] |= BuildTargetArchX86
+		} else {
+            CurrentBuildTarget.Targets[BuildTargetOsWindows] |= BuildTargetArchX64
+        }
 	} else if os == "darwin" {
 		if arch == "x64" {
 			CurrentBuildTarget.Targets[BuildTargetOsMac] |= BuildTargetArchX64
-		}
-	} else if os == "darwin" {
-		if arch == "arm64" {
-			CurrentBuildTarget.Targets[BuildTargetOsMac] |= BuildTargetArchArm64
-		}
+		} else {
+            CurrentBuildTarget.Targets[BuildTargetOsMac] |= BuildTargetArchArm64
+        }
 	} else if os == "linux" {
 		if arch == "x64" {
 			CurrentBuildTarget.Targets[BuildTargetOsLinux] |= BuildTargetArchX64
-		}
-	} else if os == "linux" {
-		if arch == "arm64" {
+		} else {
 			CurrentBuildTarget.Targets[BuildTargetOsLinux] |= BuildTargetArchArm64
 		}
 	}
