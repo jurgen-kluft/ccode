@@ -19,7 +19,7 @@ func (c *Config) GetDirname() string {
 	return c.Target.OSAsString() + "-" + c.Target.ArchAsString() + "-" + c.Config.AsString()
 }
 
-type Toolchain interface {
+type Environment interface {
 	NewCompiler(config *Config) Compiler
 	NewArchiver(a ArchiverType, config *Config) Archiver
 	NewLinker(config *Config) Linker
@@ -27,21 +27,11 @@ type Toolchain interface {
 	NewBurner(config *Config) Burner
 }
 
-type ToolchainInstance struct {
-	Name  string
-	Vars  *Vars
-	Tools map[string]string
-}
-
-func (t *ToolchainInstance) ResolveVars() {
-	for ki, values := range t.Vars.Values {
+func ResolveVars(v *Vars) {
+	for ki, values := range v.Values {
 		for vi, value := range values {
-			t.Vars.Values[ki][vi] = ResolveString(value, t.Vars)
+			v.Values[ki][vi] = ResolveString(value, v)
 		}
-	}
-
-	for toolKey, toolPath := range t.Tools {
-		t.Tools[toolKey] = ResolveString(toolPath, t.Vars)
 	}
 }
 

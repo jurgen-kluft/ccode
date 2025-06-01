@@ -8,8 +8,10 @@ import (
 	"strings"
 )
 
-type ToolchainDarwinClang struct {
-	ToolchainInstance
+type DarwinClang struct {
+	Name  string
+	Vars  *Vars
+	Tools map[string]string
 }
 
 // --------------------------------------------------------------------------------------------------
@@ -17,7 +19,7 @@ type ToolchainDarwinClang struct {
 // C/C++ Compiler
 
 type ToolchainDarwinClangCompiler struct {
-	toolChain       *ToolchainDarwinClang
+	toolChain       *DarwinClang
 	config          *Config
 	cCompilerPath   string
 	cppCompilerPath string
@@ -25,7 +27,7 @@ type ToolchainDarwinClangCompiler struct {
 	cppArgs         []string
 }
 
-func (t *ToolchainDarwinClang) NewCompiler(config *Config) Compiler {
+func (t *DarwinClang) NewCompiler(config *Config) Compiler {
 	return &ToolchainDarwinClangCompiler{
 		toolChain:       t,
 		config:          config,
@@ -148,18 +150,18 @@ func (cl *ToolchainDarwinClangCompiler) Compile(sourceAbsFilepath string, objRel
 // Archiver
 
 type ToolchainDarwinClangStaticArchiver struct {
-	toolChain    *ToolchainDarwinClang
+	toolChain    *DarwinClang
 	archiverPath string
 	args         []string
 }
 
 type ToolchainDarwinClangDynamicArchiver struct {
-	toolChain    *ToolchainDarwinClang
+	toolChain    *DarwinClang
 	archiverPath string
 	args         []string
 }
 
-func (t *ToolchainDarwinClang) NewArchiver(at ArchiverType, config *Config) Archiver {
+func (t *DarwinClang) NewArchiver(at ArchiverType, config *Config) Archiver {
 	if at == ArchiverTypeStatic {
 		return &ToolchainDarwinClangStaticArchiver{
 			toolChain:    t,
@@ -251,12 +253,12 @@ func (t *ToolchainDarwinClangDynamicArchiver) Archive(inputObjectFilepaths []str
 // Linker
 
 type ToolchainDarwinClangLinker struct {
-	toolChain  *ToolchainDarwinClang
+	toolChain  *DarwinClang
 	linkerPath string
 	args       []string
 }
 
-func (l *ToolchainDarwinClang) NewLinker(config *Config) Linker {
+func (l *DarwinClang) NewLinker(config *Config) Linker {
 	return &ToolchainDarwinClangLinker{
 		toolChain:  l,
 		linkerPath: l.Tools["linker"],
@@ -324,47 +326,21 @@ func (l *ToolchainDarwinClangLinker) Link(inputArchiveAbsFilepaths []string, out
 // --------------------------------------------------------------------------------------------------
 // Burner
 
-func (t *ToolchainDarwinClang) NewBurner(config *Config) Burner {
-	return &ToolchainEmptyBurner{}
+func (t *DarwinClang) NewBurner(config *Config) Burner {
+	return &EmptyBurner{}
 }
 
 // --------------------------------------------------------------------------------------------------
 // --------------------------------------------------------------------------------------------------
 // Toolchain for Clang on MacOS
-
-// From clang source code:
 const (
-	archtype_arm      string = "arm"      // ARM: arm, armv.*, xscale
-	archtype_arm64    string = "arm64"    // ARM: arm, armv.*, xscale
-	archtype_unknown  string = "unknown"  // Unknown architecture
-	archtype_aarch64  string = "aarch64"  // AArch64: aarch64
-	archtype_hexagon  string = "hexagon"  // Hexagon: hexagon
-	archtype_mips     string = "mips"     // MIPS: mips, mipsallegrex
-	archtype_mipsel   string = "mipsel"   // MIPSEL: mipsel, mipsallegrexel
-	archtype_mips64   string = "mips64"   // MIPS64: mips64
-	archtype_mips64el string = "mips64el" // MIPS64EL: mips64el
-	archtype_msp430   string = "msp430"   // MSP430: msp430
-	archtype_ppc      string = "ppc"      // PPC: powerpc
-	archtype_ppc64    string = "ppc64"    // PPC64: powerpc64, ppu
-	archtype_r600     string = "r600"     // R600: AMD GPUs HD2XXX - HD6XXX
-	archtype_sparc    string = "sparc"    // Sparc: sparc
-	archtype_sparcv9  string = "sparcv9"  // Sparcv9: Sparcv9
-	archtype_systemz  string = "systemz"  // SystemZ: s390x
-	archtype_tce      string = "tce"      // TCE (http://tce.cs.tut.fi/): tce
-	archtype_thumb    string = "thumb"    // Thumb: thumb, thumbv.*
-	archtype_x86      string = "x86"      // X86: i[3-9]86
-	archtype_x86_64   string = "x86_64"   // X86-64: amd64, x86_64
-	archtype_xcore    string = "xcore"    // XCore: xcore
-	archtype_mblaze   string = "mblaze"   // MBlaze: mblaze
-	archtype_nvptx    string = "nvptx"    // NVPTX: 32-bit
-	archtype_nvptx64  string = "nvptx64"  // NVPTX: 64-bit
-	archtype_le32     string = "le32"     // le32: generic little-endian 32-bit CPU (PNaCl / Emscripten)
-	archtype_amdil    string = "amdil"    // amdil: amd IL
-	archtype_spir     string = "spir"     // SPIR: standard portable IR for OpenCL 32-bit version
-	archtype_spir64   string = "spir64"   // SPIR: standard portable IR for OpenCL 64-bit version
+	archtype_arm    string = "arm"    // ARM: arm, armv.*, xscale
+	archtype_arm64  string = "arm64"  // ARM: arm, armv.*, xscale
+	archtype_x86    string = "x86"    // X86: i[3-9]86
+	archtype_x86_64 string = "x86_64" // X86-64: amd64, x86_64
 )
 
-func NewToolchainClangDarwin(arch string, frameworks []string) (t *ToolchainDarwinClang, err error) {
+func NewDarwinClang(arch string, frameworks []string) (t *DarwinClang, err error) {
 	var clangPath string
 	if clangPath, err = exec.LookPath("clang"); err != nil {
 		return nil, err
@@ -377,19 +353,9 @@ func NewToolchainClangDarwin(arch string, frameworks []string) (t *ToolchainDarw
 	}
 	arPath = filepath.Dir(arPath)
 
-	t = &ToolchainDarwinClang{
-		ToolchainInstance{
-			Name: "clang",
-			Vars: NewVars(),
-			// #--------------------------------------------------
-			Tools: map[string]string{
-				"c.compiler":       `{clang.path}/clang`,
-				"cpp.compiler":     `{clang.path}/clang++`,
-				"archiver.static":  `{ar.path}/ar`,
-				"archiver.dynamic": `{clang.path}/clang`,
-				"linker":           `{clang.path}/clang`,
-			},
-		},
+	t = &DarwinClang{
+		Name: "clang",
+		Vars: NewVars(),
 	}
 
 	vars := map[string][]string{
@@ -426,7 +392,14 @@ func NewToolchainClangDarwin(arch string, frameworks []string) (t *ToolchainDarw
 		"linker.lib.paths":  {},
 		"linker.lib.files":  {`stdc++`},
 		"linker.frameworks": {},
+
+		"c.compiler":       {`{clang.path}/clang`},
+		"cpp.compiler":     {`{clang.path}/clang++`},
+		"archiver.static":  {`{ar.path}/ar`},
+		"archiver.dynamic": {`{clang.path}/clang`},
+		"linker":           {`{clang.path}/clang`},
 	}
+
 	for key, value := range vars {
 		t.Vars.Set(key, value...)
 	}
@@ -437,6 +410,6 @@ func NewToolchainClangDarwin(arch string, frameworks []string) (t *ToolchainDarw
 
 	// We can target x86_64 and aarch64 on macOS
 
-	t.ResolveVars()
+	ResolveVars(t.Vars)
 	return t, nil
 }

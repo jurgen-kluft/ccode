@@ -7,10 +7,9 @@ import (
 	"github.com/jurgen-kluft/ccode/clay"
 )
 
-func CreateProjects(buildPath string) []*clay.Project {
-
+func CreateProjects(arch string) []*clay.Project {
 	projectName := "test_project"
-	projectConfig := clay.NewConfig("macos", "arm64", "debug-dev")
+	projectConfig := clay.NewConfig("macos", arch, "debug-dev")
 	project := clay.NewExecutableProject(projectName, projectConfig)
 	clay.AddBuildInfoAsCppLibrary(project, projectConfig)
 	AddLibraries(project)

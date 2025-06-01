@@ -16,7 +16,7 @@ func NewVars() *Vars {
 	}
 }
 
-func (v Vars) Set(key string, value ...string) {
+func (v *Vars) Set(key string, value ...string) {
 	if i, ok := v.Keys[key]; !ok {
 		v.Keys[key] = len(v.Values)
 		v.Values = append(v.Values, value)
@@ -25,7 +25,7 @@ func (v Vars) Set(key string, value ...string) {
 	}
 }
 
-func (v Vars) Append(key string, value ...string) {
+func (v *Vars) Append(key string, value ...string) {
 	if i, ok := v.Keys[key]; !ok {
 		v.Keys[key] = len(v.Values)
 		v.Values = append(v.Values, value)
@@ -34,7 +34,7 @@ func (v Vars) Append(key string, value ...string) {
 	}
 }
 
-func (v Vars) GetOne(key string) string {
+func (v *Vars) GetOne(key string) string {
 	if i, ok := v.Keys[key]; ok {
 		values := v.Values[i]
 		if len(values) > 0 {
@@ -44,7 +44,7 @@ func (v Vars) GetOne(key string) string {
 	return ""
 }
 
-func (v Vars) GetAll(key string) []string {
+func (v *Vars) GetAll(key string) []string {
 	if i, ok := v.Keys[key]; ok {
 		return v.Values[i]
 	}

@@ -13,17 +13,17 @@ import (
 // Clay App Arduino
 //    <project>: name of a project (if you have more than one project)
 //    <config>: debug, release (default), final
-//    <board>: esp32 (default), esp32s3
+//    <arch>: esp32 (default), esp32s3
 //    <cpuName>: esp32 (default), esp32s3
 //
 //    Commands:
-//    - build -b <board> -p <project> -c <config>
-//    - build-info -b <board> -p <project> -c <config>
-//    - clean -b <board> -p <project> -c <config>
-//    - flash -b <board> -p <project> -c <config>
+//    - build -arch <arch> -p <project> -build <config>
+//    - build-info -arch <arch> -p <project> -build <config>
+//    - clean -arch <arch> -p <project> -build <config>
+//    - flash -arch <arch> -p <project> -build <config>
 //    - list-libraries
-//    - list-boards <board>
-//    - list-flash-sizes -c <cpuName> -b <board>
+//    - list-boards <arch>
+//    - list-flash-sizes -c <cpuName> -arch <arch>
 
 func ParseBoardNameAndMax() (string, int) {
 	var boardName string
@@ -92,16 +92,16 @@ func ClayAppMainArduino() {
 func UsageAppArduino() {
 	fmt.Println("Usage: clay [command] [options]")
 	fmt.Println("Commands:")
-	fmt.Println("  build-info -p <projectName> -x <projectConfig> -b <boardName>")
-	fmt.Println("  build -p <projectName> -x <projectConfig> -b <boardName>")
-	fmt.Println("  clean -p <projectName> -x <projectConfig> -b <boardName>")
-	fmt.Println("  flash -p <projectName> -x <projectConfig> -b <boardName>")
+	fmt.Println("  build-info -p <projectName> -build <projectConfig> -arch <arch>")
+	fmt.Println("  build -p <projectName> -build <projectConfig> -arch <arch>")
+	fmt.Println("  clean -p <projectName> -build <projectConfig> -arch <arch>")
+	fmt.Println("  flash -p <projectName> -build <projectConfig> -arch <arch>")
 	fmt.Println("  list-libraries")
 	fmt.Println("  list-boards -b <boardName> -m <matches>")
 	fmt.Println("  list-flash-sizes -c <cpuName> -b <boardName>")
 	fmt.Println("Options:")
 	fmt.Println("  projectName       Project name (if more than one) ")
-	fmt.Println("  configName        Config name (debug, release, final) ")
+	fmt.Println("  projectConfig     Config name (debug, release, final) ")
 	fmt.Println("  boardName         Board name (e.g. esp32, esp32s3) ")
 	fmt.Println("  matches           Maximum number of boards to list")
 	fmt.Println("  cpuName           CPU name for listing flash sizes")
@@ -110,11 +110,11 @@ func UsageAppArduino() {
 
 	fmt.Println("Examples:")
 	fmt.Println("  clay build-info (generates buildinfo.h and buildinfo.cpp)")
-	fmt.Println("  clay build-info -c debug -b esp32s3")
+	fmt.Println("  clay build-info -build debug -arch esp32s3")
 	fmt.Println("  clay build")
-	fmt.Println("  clay build -c debug -b esp32s3")
-	fmt.Println("  clay clean -c debug -b esp32s3")
-	fmt.Println("  clay flash -c debug -b esp32s3")
+	fmt.Println("  clay build -build debug -arch esp32s3")
+	fmt.Println("  clay clean -build debug -arch esp32s3")
+	fmt.Println("  clay flash -build debug-dev -arch esp32s3")
 	fmt.Println("  clay list-libraries")
 	fmt.Println("  clay list-boards -b esp32 -m 5")
 	fmt.Println("  clay list-flash-sizes -c esp32 -b esp32")
@@ -126,7 +126,7 @@ func BuildInfo(projectName string, buildConfig *Config) error {
 		EspSdkPath = env
 	}
 
-	prjs := ClayAppCreateProjectsFunc("build")
+	prjs := ClayAppCreateProjectsFunc(buildConfig.Target.ArchAsString())
 	for _, prj := range prjs {
 		if projectName == "" || projectName == prj.Name {
 			if prj.Config.Matches(buildConfig) {
@@ -144,19 +144,19 @@ func BuildInfo(projectName string, buildConfig *Config) error {
 
 func Flash(projectName string, buildConfig *Config) error {
 
-	prjs := ClayAppCreateProjectsFunc("build")
+	prjs := ClayAppCreateProjectsFunc(buildConfig.Target.ArchAsString())
 	for _, prj := range prjs {
 		prj.SetToolchain(buildConfig)
 	}
 
+	buildPath := GetBuildPath(buildConfig.GetSubDir())
 	for _, prj := range prjs {
 		if projectName == prj.Name || projectName == "" {
-			if prj.Config.Matches(buildConfig) {
-				log.Printf("Flashing project: %s, config: %s\n", prj.Name, prj.Config)
+			if prj.IsExecutable && prj.Config.Matches(buildConfig) {
+				log.Printf("Flashing project: %s, config: %s\n", prj.Name, prj.Config.ConfigString())
 				startTime := time.Now()
 				{
-					buildPath := GetBuildPath(buildConfig.GetSubDir())
-					if err := prj.Flash(buildPath); err != nil {
+					if err := prj.Flash(buildConfig, buildPath); err != nil {
 						return fmt.Errorf("Build failed: %v", err)
 					}
 				}

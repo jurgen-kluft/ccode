@@ -1,7 +1,11 @@
 package toolchain
 
-type ToolchainMsdev struct {
-	ToolchainInstance
+import "fmt"
+
+type Msdev struct {
+	Name  string
+	Vars  *Vars
+	Tools map[string]string
 }
 
 // Compiler options
@@ -9,20 +13,20 @@ type ToolchainMsdev struct {
 // Linker options
 //      https://github.com/MicrosoftDocs/cpp-docs/blob/main/docs/build/reference/linker-options.md
 
-func NewToolchainMsdev() *ToolchainMsdev {
-	return &ToolchainMsdev{}
+func NewWindowsMsdev() (*Msdev, error) {
+	return nil, fmt.Errorf("Msdev is not implemented yet")
 }
 
-func (ms *ToolchainMsdev) NewCompiler(config *Config) Compiler {
+func (ms *Msdev) NewCompiler(config *Config) Compiler {
 	return nil
 }
-func (ms *ToolchainMsdev) NewArchiver(a ArchiverType, config *Config) Archiver {
+func (ms *Msdev) NewArchiver(a ArchiverType, config *Config) Archiver {
 	return nil
 }
-func (ms *ToolchainMsdev) NewLinker(config *Config) Linker {
+func (ms *Msdev) NewLinker(config *Config) Linker {
 	return nil
 }
 
-func (t *ToolchainMsdev) NewBurner(config *Config) Burner {
-	return &ToolchainEmptyBurner{}
+func (t *Msdev) NewBurner(config *Config) Burner {
+	return &EmptyBurner{}
 }

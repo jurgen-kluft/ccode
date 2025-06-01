@@ -167,6 +167,12 @@ func (prj *DevProject) AddDependencies(deps ...*DevProject) {
 	}
 }
 
+func (prj *DevProject) ClearIncludes() {
+	for _, cfg := range prj.Configs {
+		cfg.IncludeDirs = make([]dev.PinPath, 0)
+	}
+}
+
 func (prj *DevProject) AddInclude(root string, base string, sub string) {
 	root = prj.ResolveEnvironmentVariables(root)
 	base = prj.ResolveEnvironmentVariables(base)
@@ -176,10 +182,15 @@ func (prj *DevProject) AddInclude(root string, base string, sub string) {
 	}
 }
 
+func (prj *DevProject) ClearSourcePaths() {
+	prj.SourceDirs = make([]dev.PinPathGlob, 0)
+}
+
 func (prj *DevProject) SourceFilesFrom(root, base, sub string) {
 	root = prj.ResolveEnvironmentVariables(root)
 	base = prj.ResolveEnvironmentVariables(base)
 	sub = prj.ResolveEnvironmentVariables(sub)
+	prj.SourceDirs = append(prj.SourceDirs, dev.PinPathGlob{Path: dev.PinPath{Root: root, Base: base, Sub: sub}, Glob: "**/*.c"})
 	prj.SourceDirs = append(prj.SourceDirs, dev.PinPathGlob{Path: dev.PinPath{Root: root, Base: base, Sub: sub}, Glob: "**/*.cpp"})
 }
 
@@ -296,7 +307,7 @@ func SetupCppTestLibProject(pkg *Package, name string) *DevProject {
 	project := SetupDefaultCppLibProject(pkg, "unittest_library_"+name, "main", dev.GetBuildTarget())
 	project.Configs = append(project.Configs, NewDevConfig(dev.BuildTypeStaticLibrary, dev.NewDebugDevTestConfig()))
 	project.Configs = append(project.Configs, NewDevConfig(dev.BuildTypeStaticLibrary, dev.NewReleaseDevTestConfig()))
-	project.Supported = dev.BuildTargetsAll
+	project.Supported = dev.BuildTargetsDesktop
 	for _, cfg := range project.Configs {
 		configureProjectCompilerDefines(cfg)
 		cfg.IncludeDirs = append(cfg.IncludeDirs, dev.PinPath{Root: pkg.WorkspacePath(), Base: pkg.RepoName, Sub: "source/main/include"})
@@ -351,13 +362,6 @@ func SetupDefaultCppTestProject(pkg *Package, name string, buildTarget dev.Build
 }
 
 func SetupCppTestProject(pkg *Package, name string) *DevProject {
-	// Windows, Mac and Linux, build for the Host platform
-	project := SetupDefaultCppTestProject(pkg, "unittest_"+name, dev.GetBuildTarget())
-	project.Supported = dev.BuildTargetsDesktop
-	return project
-}
-
-func SetupCppTestProjectForDesktop(pkg *Package, name string) *DevProject {
 	// Windows, Mac and Linux, build for the Host platform
 	project := SetupDefaultCppTestProject(pkg, "unittest_"+name, dev.GetBuildTarget())
 	project.Supported = dev.BuildTargetsDesktop

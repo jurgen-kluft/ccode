@@ -70,25 +70,25 @@ func UsageDesktop() {
 	fmt.Println("  clay list-libraries")
 }
 
-func BuildDesktop(projectName string, targetConfig *Config) error {
+func BuildDesktop(projectName string, buildConfig *Config) error {
 	// Note: We should be running this from the "target/{build target}" directory
 	// Create the build directory
-	buildPath := GetBuildPath(targetConfig.GetSubDir())
+	buildPath := GetBuildPath(buildConfig.GetSubDir())
 	os.MkdirAll(buildPath+"/", os.ModePerm)
 
-	prjs := ClayAppCreateProjectsFunc(buildPath)
+	prjs := ClayAppCreateProjectsFunc(buildConfig.Target.ArchAsString())
 	for _, prj := range prjs {
-		prj.SetToolchain(targetConfig)
+		prj.SetToolchain(buildConfig)
 	}
 
 	for _, prj := range prjs {
 		if projectName == "" || projectName == prj.Name {
-			if prj.Config.Matches(targetConfig) {
+			if prj.Config.Matches(buildConfig) {
 				log.Printf("Building project: %s, config: %s, arch: %s\n", prj.Name, prj.Config.Config.AsString(), prj.Config.Target.ArchAsString())
 				startTime := time.Now()
 				{
-					AddBuildInfoAsCppLibrary(prj, targetConfig)
-					if err := prj.Build(buildPath); err != nil {
+					AddBuildInfoAsCppLibrary(prj, buildConfig)
+					if err := prj.Build(buildConfig, buildPath); err != nil {
 						return fmt.Errorf("Build failed on project %s with config %s: %v", prj.Name, prj.Config, err)
 					}
 				}
@@ -108,7 +108,7 @@ func BuildInfoDesktop(projectName string, buildConfig *Config) error {
 	EspSdkPath := "/Users/obnosis5/sdk/arduino/esp32"
 	buildPath := GetBuildPath(buildConfig.GetSubDir())
 
-	prjs := ClayAppCreateProjectsFunc("build")
+	prjs := ClayAppCreateProjectsFunc(buildConfig.Target.ArchAsString())
 	for _, prj := range prjs {
 		if projectName == "" || projectName == prj.Name {
 			if prj.Config.Matches(buildConfig) {

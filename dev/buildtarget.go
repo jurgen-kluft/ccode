@@ -7,6 +7,7 @@ import "runtime"
 // - The target architecture (x86, x64, arm32, arm64, esp32)
 // - The bitness (32-bit, 64-bit)
 
+// BuildTargetOs indicates the target OS to build for
 type BuildTargetOs uint8
 
 const (
@@ -18,6 +19,7 @@ const (
 	BuildTargetOsCount   BuildTargetOs = 5
 )
 
+// BuildTargetArch indicates the target architecture
 type BuildTargetArch uint32
 
 const (
@@ -61,6 +63,7 @@ func (arch BuildTargetArch) String() string {
 	return full
 }
 
+// BuildTarget indicates per OS the supported architectures
 type BuildTarget struct {
 	Targets [BuildTargetOsCount]BuildTargetArch
 }
@@ -338,35 +341,29 @@ func BuildTargetFromString(os string, arch string) BuildTarget {
 	// Set the build target based on the provided os and arch
 	switch os {
 	case "arduino":
-		if arch == "esp32" {
-			return BuildTargetArduinoEsp32
-		} else if arch == "esp32s3" {
+		if arch == "esp32s3" {
 			return BuildTargetArduinoEsp32s3
 		}
+		return BuildTargetArduinoEsp32
 	case "windows":
-		if arch == "x64" {
-			return BuildTargetWindowsX64
-		} else if arch == "x86" {
+		if arch == "x86" {
 			return BuildTargetWindowsX86
-		} else if arch == "amd64" {
-			return BuildTargetWindowsX64
 		}
+		return BuildTargetWindowsX64
 	case "darwin":
 		if arch == "x64" {
 			return BuildTargetMacX64
-		} else if arch == "arm64" {
-			return BuildTargetMacArm64
 		}
+		return BuildTargetMacArm64
 	case "linux":
-		if arch == "x64" {
-			return BuildTargetLinuxX64
-		} else if arch == "arm64" {
+		if arch == "arm64" {
 			return BuildTargetLinuxArm64
 		} else if arch == "arm32" {
 			return BuildTargetLinuxArm32
 		} else if arch == "x86" {
 			return BuildTargetLinuxX86
 		}
+		return BuildTargetLinuxX64
 	default:
 		break
 	}

@@ -101,7 +101,7 @@ func (g *ClayGenerator) generateProjectFile(out *utils.LineWriter) {
 	out.WriteLine()
 	out.WriteLine("import \"github.com/jurgen-kluft/ccode/clay\"")
 	out.WriteLine()
-	out.WriteLine("func CreateProjects(buildPath string) []*clay.Project {")
+	out.WriteLine("func CreateProjects(arch, buildPath string) []*clay.Project {")
 	out.WriteILine("", "projects := []*clay.Project{}")
 
 	// Here we create a clay.Project per ccode_gen.Project+Config:
@@ -111,7 +111,6 @@ func (g *ClayGenerator) generateProjectFile(out *utils.LineWriter) {
 	// clay.Project = ublinky + release
 
 	os := g.BuildTarget.OSAsString()
-	arch := g.BuildTarget.ArchAsString()
 
 	projectToIndex := map[string]int{}
 	for _, prj := range g.Workspace.ProjectList.Values {
@@ -121,7 +120,7 @@ func (g *ClayGenerator) generateProjectFile(out *utils.LineWriter) {
 			depVersionInfo := utils.NewGitVersionInfo(prj.ProjectAbsPath)
 			prj.Version = depVersionInfo.Commit
 
-			projectBaseDir := prj.ProjectAbsPath
+			//			projectBaseDir := prj.ProjectAbsPath
 
 			for _, prjCfg := range prj.Resolved.Configs.Values {
 				configName := prjCfg.BuildConfig.AsString()
@@ -130,8 +129,8 @@ func (g *ClayGenerator) generateProjectFile(out *utils.LineWriter) {
 				out.WriteILine("+", "// Project Index = "+strconv.Itoa(len(projectToIndex)))
 				out.WriteILine("+", "configName := ", `"`, configName, `"`)
 				out.WriteILine("+", "projectName := ", `"`, prj.Name, `"`)
-				out.WriteILine("+", "projectConfig := clay.NewConfig(\""+os+"\", \"", arch, `", configName)`)
-				out.WriteILine("+", `projectBaseDir := "`, projectBaseDir, `"`)
+				out.WriteILine("+", `projectConfig := clay.NewConfig("`+os+`", arch, configName)`)
+				//				out.WriteILine("+", `projectBaseDir := "`, projectBaseDir, `"`)
 				if prj.BuildType.IsExecutable() {
 					out.WriteILine("+", "project := clay.NewExecutableProject(projectName, projectConfig)")
 				} else {
@@ -144,12 +143,7 @@ func (g *ClayGenerator) generateProjectFile(out *utils.LineWriter) {
 					for _, inc := range prjCfg.IncludeDirs.Values {
 						includePath := filepath.Join(inc.Root, inc.Base, inc.Sub)
 						includePath = strings.Replace(includePath, "\\", "/", -1)
-						if strings.HasPrefix(includePath, projectBaseDir) {
-							includePath = strings.TrimPrefix(includePath, projectBaseDir)
-							out.WriteILine("+", "project.IncludeDirs.Add(projectBaseDir+", `"`, includePath, `")`)
-						} else {
-							out.WriteILine("+", "project.IncludeDirs.Add(", `"`, includePath, `")`)
-						}
+						out.WriteILine("+", "project.IncludeDirs.Add(", `"`, includePath, `")`)
 					}
 					out.WriteLine()
 				}
@@ -168,14 +162,9 @@ func (g *ClayGenerator) generateProjectFile(out *utils.LineWriter) {
 					for _, group := range prj.SrcFileGroups {
 						for _, src := range group.Values {
 							if src.Is_SourceFile() {
-								path := filepath.Join(prj.ProjectAbsPath, src.Path)
+								path := filepath.Join(group.Path, src.Path)
 								path = strings.Replace(path, "\\", "/", -1)
-								if strings.HasPrefix(path, projectBaseDir) {
-									path = strings.TrimPrefix(path, projectBaseDir)
-									out.WriteILine("+", "project.AddSourceFile(", `projectBaseDir+"`, path, `", "`, filepath.Base(path), `")`)
-								} else {
-									out.WriteILine("+", "project.AddSourceFile(", `"`, path, `", "`, filepath.Base(path), `")`)
-								}
+								out.WriteILine("+", "project.AddSourceFile(", `"`, path, `", "`, filepath.Base(path), `")`)
 							}
 						}
 					}
@@ -215,3 +204,17 @@ func (g *ClayGenerator) generateProjectFile(out *utils.LineWriter) {
 	out.WriteLine("}")
 	out.WriteLine()
 }
+
+// func (g *ClayGenerator) registerEsp32CoreLibrary() {
+
+// 		// System Library is at ESP_ROOT+'cores/esp32', collect
+// 		// all the C and Cpp source files in this directory and create a Library.
+// 		sdkRoot := tc.Vars.GetOne("esp.sdk.path")
+// 		coreLibPath := filepath.Join(sdkRoot, "cores/esp32/")
+
+// 		coreCppLib := NewLibraryProject("core-cpp-"+targetMcu, p.Config)
+
+// 		// Get all the .cpp files from the core library path
+// 		coreCppLib.AddSourceFilesFrom(coreLibPath, OptionAddCppFiles|OptionAddCFiles|OptionAddRecursively)
+
+// }

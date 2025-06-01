@@ -17,7 +17,7 @@ const (
 	BuildInfoFilenameWithoutExt = "buildinfo"
 )
 
-var ClayAppCreateProjectsFunc func(buildPath string) []*Project
+var ClayAppCreateProjectsFunc func(arch string) []*Project
 
 func GetBuildPath(subdir string) string {
 	buildPath := filepath.Join("build", subdir)
@@ -100,7 +100,7 @@ func Build(projectName string, targetConfig *Config) error {
 	buildPath := GetBuildPath(targetConfig.GetSubDir())
 	os.MkdirAll(buildPath+"/", os.ModePerm)
 
-	prjs := ClayAppCreateProjectsFunc(buildPath)
+	prjs := ClayAppCreateProjectsFunc(targetConfig.Target.ArchAsString())
 	for _, prj := range prjs {
 		prj.SetToolchain(targetConfig)
 	}
@@ -115,7 +115,7 @@ func Build(projectName string, targetConfig *Config) error {
 						AddBuildInfoAsCppLibrary(prj, targetConfig)
 					}
 
-					if err := prj.Build(prj.GetBuildPath(buildPath)); err != nil {
+					if err := prj.Build(targetConfig, buildPath); err != nil {
 						return fmt.Errorf("Build failed on project %s with config %s: %v", prj.Name, prj.Config.ConfigString(), err)
 					}
 				}
@@ -128,7 +128,7 @@ func Build(projectName string, targetConfig *Config) error {
 }
 
 func Clean(projectName string, buildConfig *Config) error {
-	prjs := ClayAppCreateProjectsFunc("build")
+	prjs := ClayAppCreateProjectsFunc(buildConfig.Target.ArchAsString())
 	for _, prj := range prjs {
 		if projectName == "" || projectName == prj.Name {
 			if prj.Config.Matches(buildConfig) {
@@ -152,8 +152,8 @@ func Clean(projectName string, buildConfig *Config) error {
 }
 
 func ListLibraries() error {
-	buildPath := ""
-	prjs := ClayAppCreateProjectsFunc(buildPath)
+	arch := ""
+	prjs := ClayAppCreateProjectsFunc(arch)
 
 	configs := make([]string, 0, 16)
 	nameToIndex := make(map[string]int)
@@ -170,11 +170,14 @@ func ListLibraries() error {
 	for _, prj := range prjs {
 		if i, ok := nameToIndex[prj.Name]; ok {
 			fmt.Printf("Project: %s\n", prj.Name)
-			fmt.Printf("Configs: %s\n", configs[i])
-			fmt.Printf("  Libraries:\n")
-			for _, dep := range prj.Dependencies {
-				fmt.Printf("  - %s\n", dep.Name)
+			fmt.Printf("  Configs: %s\n", configs[i])
+			if len(prj.Dependencies) > 0 {
+				fmt.Printf("  Libraries:\n")
+				for _, dep := range prj.Dependencies {
+					fmt.Printf("  - %s\n", dep.Name)
+				}
 			}
+			fmt.Println()
 
 			// Remove the entry from the map to avoid duplicates
 			delete(nameToIndex, prj.Name)

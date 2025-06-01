@@ -5,9 +5,9 @@ package toolchain
 // For example, the Xtensa Espressif toolchain implements this interface
 // to prepare the project for burning to an ESP32 device.
 type Burner interface {
-	SetupBuildArgs(buildPath string)
+	SetupBuild(buildPath string)
 	Build() error
-	SetupBurnArgs(buildPath string)
+	SetupBurn(buildPath string) error
 	Burn() error
 }
 
@@ -15,18 +15,18 @@ type Burner interface {
 // --------------------------------------------------------------------------------------------------
 // Empty Burner
 
-type ToolchainEmptyBurner struct {
+type EmptyBurner struct {
 	// For some toolchains, the burner is empty as the toolchain does not handle
 	// burning to a USB device.
 }
 
-func (cl *ToolchainEmptyBurner) SetupBuildArgs(buildPath string) {
+func (cl *EmptyBurner) SetupBuild(buildPath string) {
 }
-func (cl *ToolchainEmptyBurner) Build() error {
+func (cl *EmptyBurner) Build() error {
 	return nil
 }
-func (cl *ToolchainEmptyBurner) SetupBurnArgs(buildPath string) {
+func (cl *EmptyBurner) SetupBurn(buildPath string) error {return nil
 }
-func (cl *ToolchainEmptyBurner) Burn() error {
+func (cl *EmptyBurner) Burn() error {
 	return nil
 }

@@ -32,8 +32,8 @@ import (
 // Project represents a C/C++ project that can be built using the Clay build system.
 // It can be a library or an executable.
 type Project struct {
-	Toolchain    toolchain.Toolchain // Build environment for this project
-	IsExecutable bool                // Is this project an executable (true) or a library (false)
+	Toolchain    toolchain.Environment // Build environment for this project
+	IsExecutable bool                  // Is this project an executable (true) or a library (false)
 
 	Name         string
 	Config       *Config      // Build configuration
@@ -84,38 +84,17 @@ func (p *Project) GetBuildPath(buildPath string) string {
 }
 
 func (p *Project) SetToolchain(config *Config) (err error) {
-
 	targetOS := config.Target.OSAsString()
-
 	if targetOS == "arduino" {
-		var tc *toolchain.ToolchainArduinoEsp32
-		targetMcu := config.Target.ArchAsString()
-		tc, err = toolchain.NewToolchainArduinoEsp32(targetMcu, p.Name)
-		p.Toolchain = tc
-
-		// TODO This is a HACK!!, this should actually be moved into a 'rdno_sdk' ccode package
-
-		// System Library is at ESP_ROOT+'cores/esp32/', collect
-		// all the C and Cpp source files in this directory and create a Library.
-		sdkRoot := tc.Vars.GetOne("esp.sdk.path")
-		coreLibPath := filepath.Join(sdkRoot, "cores/esp32/")
-
-		coreCppLib := NewLibraryProject("core-cpp-"+targetMcu, p.Config)
-
-		// Get all the .cpp files from the core library path
-		coreCppLib.AddSourceFilesFrom(coreLibPath, OptionAddCppFiles|OptionAddCFiles|OptionAddRecursively)
-
-		p.Dependencies = append(p.Dependencies, coreCppLib)
-
+		p.Toolchain, err = toolchain.NewArduinoEsp32(config.Target.ArchAsString(), p.Name)
 	} else if targetOS == "windows" {
-		p.Toolchain = toolchain.NewToolchainMsdev()
+		p.Toolchain, err = toolchain.NewWindowsMsdev()
 	} else if targetOS == "mac" || targetOS == "macos" || targetOS == "darwin" {
-		p.Toolchain, err = toolchain.NewToolchainClangDarwin(runtime.GOARCH, p.Frameworks)
+		p.Toolchain, err = toolchain.NewDarwinClang(runtime.GOARCH, p.Frameworks)
 	} else {
-		return fmt.Errorf("error, %s as a build target on %s is not supported", targetOS, runtime.GOOS)
+		err = fmt.Errorf("error, %s as a build target on %s is not supported", targetOS, runtime.GOOS)
 	}
-
-	return nil
+	return err
 }
 
 func (p *Project) AddSourceFile(srcPath string, srcRelPath string) {
@@ -133,39 +112,11 @@ func CopyConfig(config *Config) *toolchain.Config {
 	return toolchain.NewConfig(config.Config, config.Target)
 }
 
-func (p *Project) Build(buildPath string) error {
+func (p *Project) Build(buildConfig *Config, buildPath string) error {
 
-	compiler := p.Toolchain.NewCompiler(CopyConfig(p.Config))
-	staticArchiver := p.Toolchain.NewArchiver(toolchain.ArchiverTypeStatic, CopyConfig(p.Config))
+	compiler := p.Toolchain.NewCompiler(CopyConfig(buildConfig))
+	staticArchiver := p.Toolchain.NewArchiver(toolchain.ArchiverTypeStatic, CopyConfig(buildConfig))
 	//dynamicArchiver := p.Toolchain.NewArchiver(toolchain.ArchiverTypeDynamic, CopyConfig(p.Config))
-
-	//for _, dep := range p.Dependencies {
-	//	depBuildPath := dep.GetBuildPath(buildPath)
-	//	MakeDir(depBuildPath)
-	//
-	//	compiler.SetupArgs(dep.Defines.Values, dep.IncludeDirs.Values)
-	//
-	//	objFilepaths := []string{}
-	//	for _, src := range dep.SourceFiles {
-	//
-	//		srcObjRelPath := filepath.Join(depBuildPath, src.SrcRelPath+".o")
-	//		//srcDepRelPath := filepath.Join(libBuildPath, src.SrcRelPath+".d")
-	//
-	//		MakeDir(filepath.Dir(srcObjRelPath))
-	//
-	//		if err := compiler.Compile(src.SrcAbsPath, srcObjRelPath); err != nil {
-	//			return err
-	//		}
-	//
-	//		objFilepaths = append(objFilepaths, srcObjRelPath)
-	//	}
-	//
-	//	// Static library ?
-	//	staticArchiver.SetupArgs(toolchain.Vars{})
-	//	if err := staticArchiver.Archive(objFilepaths, dep.GetOutputFilepath(buildPath, staticArchiver.Filename(dep.Name))); err != nil {
-	//		return err
-	//	}
-	//}
 
 	compiler.SetupArgs(p.Defines.Values, p.IncludeDirs.Values)
 
@@ -184,7 +135,7 @@ func (p *Project) Build(buildPath string) error {
 	}
 
 	if p.IsExecutable {
-		linker := p.Toolchain.NewLinker(CopyConfig(p.Config))
+		linker := p.Toolchain.NewLinker(CopyConfig(buildConfig))
 
 		generateMapFile := true
 		linker.SetupArgs(generateMapFile, []string{}, []string{})
@@ -213,17 +164,19 @@ func (p *Project) Build(buildPath string) error {
 	return nil
 }
 
-func (p *Project) Flash(buildPath string) error {
-	burner := p.Toolchain.NewBurner(CopyConfig(p.Config))
+func (p *Project) Flash(buildConfig *Config, buildPath string) error {
+	burner := p.Toolchain.NewBurner(CopyConfig(buildConfig))
 
 	buildPath = p.GetBuildPath(buildPath)
 
-	burner.SetupBuildArgs(buildPath)
+	burner.SetupBuild(buildPath)
 	if err := burner.Build(); err != nil {
 		return err
 	}
 
-	burner.SetupBurnArgs(buildPath)
+    if err := burner.SetupBurn(buildPath); err != nil {
+        return err
+    }
 	if err := burner.Burn(); err != nil {
 		return err
 	}
