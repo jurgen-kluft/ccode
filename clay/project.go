@@ -6,6 +6,7 @@ import (
 	"runtime"
 
 	"github.com/jurgen-kluft/ccode/clay/toolchain"
+	"github.com/jurgen-kluft/ccode/clay/toolchain/dpenc"
 	utils "github.com/jurgen-kluft/ccode/utils"
 )
 
@@ -112,7 +113,7 @@ func CopyConfig(config *Config) *toolchain.Config {
 	return toolchain.NewConfig(config.Config, config.Target)
 }
 
-func (p *Project) Build(buildConfig *Config, buildPath string) error {
+func (p *Project) Build(buildConfig *Config, buildPath string) (state int, err error) {
 
 	compiler := p.Toolchain.NewCompiler(CopyConfig(buildConfig))
 	staticArchiver := p.Toolchain.NewArchiver(toolchain.ArchiverTypeStatic, CopyConfig(buildConfig))
@@ -120,48 +121,73 @@ func (p *Project) Build(buildConfig *Config, buildPath string) error {
 
 	compiler.SetupArgs(p.Defines.Values, p.IncludeDirs.Values)
 
-	MakeDir(p.GetBuildPath(buildPath))
+	projectBuildPath := p.GetBuildPath(buildPath)
+	projectDepFileTrackr := p.Toolchain.NewDependencyTracker(projectBuildPath)
+
+	MakeDir(projectBuildPath)
 	prjObjFilepaths := []string{}
 	for _, src := range p.SourceFiles {
-		srcObjRelPath := filepath.Join(p.GetBuildPath(buildPath), src.SrcRelPath+".o")
-		//srcDepRelPath := filepath.Join(libBuildPath, src.SrcRelPath+".d")
-
-		MakeDir(filepath.Dir(srcObjRelPath))
-		if err := compiler.Compile(src.SrcAbsPath, srcObjRelPath); err != nil {
-			return err
+		srcObjRelPath := filepath.Join(projectBuildPath, src.SrcRelPath+".o")
+		if !projectDepFileTrackr.QueryItem(srcObjRelPath) {
+			MakeDir(filepath.Dir(srcObjRelPath))
+			if err := compiler.Compile(src.SrcAbsPath, srcObjRelPath); err != nil {
+				return -1, err
+			}
+			srcDepRelPath := filepath.Join(projectBuildPath, src.SrcRelPath+".d")
+			if mainItem, depItems, err := dpenc.ParseDotDependencyFile(srcDepRelPath); err == nil {
+				projectDepFileTrackr.AddItem(mainItem, depItems)
+			} else {
+				return -1, err
+			}
+		} else {
+			projectDepFileTrackr.CopyItem(srcObjRelPath)
 		}
-
 		prjObjFilepaths = append(prjObjFilepaths, srcObjRelPath)
 	}
 
 	if p.IsExecutable {
-		linker := p.Toolchain.NewLinker(CopyConfig(buildConfig))
-
 		generateMapFile := true
+
+		linker := p.Toolchain.NewLinker(CopyConfig(buildConfig))
 		linker.SetupArgs(generateMapFile, []string{}, []string{})
 
 		archivesToLink := []string{}
-		// Project object files
-		for _, obj := range prjObjFilepaths {
-			archivesToLink = append(archivesToLink, obj)
+		executableOutputFilepath := p.GetOutputFilepath(buildPath, linker.Filename(p.Name))
+
+		if !projectDepFileTrackr.QueryItem(executableOutputFilepath) {
+			// Project object files
+			for _, obj := range prjObjFilepaths {
+				archivesToLink = append(archivesToLink, obj)
+			}
+			// Project dependency archives
+			for _, dep := range p.Dependencies {
+				libAbsFilepath := dep.GetOutputFilepath(buildPath, staticArchiver.Filename(dep.Name))
+				archivesToLink = append(archivesToLink, libAbsFilepath)
+			}
+			// Link them all together into a single executable
+			if err := linker.Link(archivesToLink, executableOutputFilepath); err != nil {
+				return -1, err
+			}
+			projectDepFileTrackr.AddItem(executableOutputFilepath, archivesToLink)
+		} else {
+			projectDepFileTrackr.CopyItem(executableOutputFilepath)
 		}
-		// Project dependency archives
-		for _, dep := range p.Dependencies {
-			libAbsFilepath := dep.GetOutputFilepath(buildPath, staticArchiver.Filename(dep.Name))
-			archivesToLink = append(archivesToLink, libAbsFilepath)
-		}
-		// Link them all together into a single executable
-		if err := linker.Link(archivesToLink, p.GetOutputFilepath(buildPath, linker.Filename(p.Name))); err != nil {
-			return err
-		}
+		state, err = projectDepFileTrackr.Save()
 	} else {
-		// If this is a library, we don't link it, but we can create a static archive
-		staticArchiver.SetupArgs(toolchain.Vars{})
-		if err := staticArchiver.Archive(prjObjFilepaths, p.GetOutputFilepath(buildPath, staticArchiver.Filename(p.Name))); err != nil {
-			return err
+		archiveOutputFilepath := p.GetOutputFilepath(buildPath, staticArchiver.Filename(p.Name))
+		if !projectDepFileTrackr.QueryItem(archiveOutputFilepath) {
+			// If this is a library, we don't link it, but we can create a static archive
+			staticArchiver.SetupArgs(toolchain.Vars{})
+			if err := staticArchiver.Archive(prjObjFilepaths, archiveOutputFilepath); err != nil {
+				return -1, err
+			}
+			projectDepFileTrackr.AddItem(archiveOutputFilepath, prjObjFilepaths)
+		} else {
+			projectDepFileTrackr.CopyItem(archiveOutputFilepath)
 		}
+		state, err = projectDepFileTrackr.Save()
 	}
-	return nil
+	return state, err
 }
 
 func (p *Project) Flash(buildConfig *Config, buildPath string) error {
@@ -174,9 +200,9 @@ func (p *Project) Flash(buildConfig *Config, buildPath string) error {
 		return err
 	}
 
-    if err := burner.SetupBurn(buildPath); err != nil {
-        return err
-    }
+	if err := burner.SetupBurn(buildPath); err != nil {
+		return err
+	}
 	if err := burner.Burn(); err != nil {
 		return err
 	}

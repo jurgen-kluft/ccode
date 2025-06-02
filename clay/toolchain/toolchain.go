@@ -1,6 +1,9 @@
 package toolchain
 
-import "github.com/jurgen-kluft/ccode/dev"
+import (
+	"github.com/jurgen-kluft/ccode/clay/toolchain/dpenc"
+	"github.com/jurgen-kluft/ccode/dev"
+)
 
 type Config struct {
 	Config dev.BuildConfig
@@ -25,6 +28,7 @@ type Environment interface {
 	NewLinker(config *Config) Linker
 	//NewInformer(config *Config) Informer  // List information about the executable
 	NewBurner(config *Config) Burner
+	NewDependencyTracker(dirpath string) dpenc.FileTrackr
 }
 
 func ResolveVars(v *Vars) {

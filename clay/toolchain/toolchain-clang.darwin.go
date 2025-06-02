@@ -6,6 +6,8 @@ import (
 	"os/exec"
 	"path/filepath"
 	"strings"
+
+	"github.com/jurgen-kluft/ccode/clay/toolchain/dpenc"
 )
 
 type DarwinClang struct {
@@ -321,6 +323,13 @@ func (l *ToolchainDarwinClangLinker) Link(inputArchiveAbsFilepaths []string, out
 
 func (t *DarwinClang) NewBurner(config *Config) Burner {
 	return &EmptyBurner{}
+}
+
+// --------------------------------------------------------------------------------------------------
+// --------------------------------------------------------------------------------------------------
+// Dependency Tracker
+func (t *DarwinClang) NewDependencyTracker(dirpath string) dpenc.FileTrackr {
+	return dpenc.LoadDotdFileTrackr(dirpath)
 }
 
 // --------------------------------------------------------------------------------------------------

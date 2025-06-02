@@ -9,14 +9,13 @@ import (
 	"runtime"
 	"strings"
 
-	"github.com/jurgen-kluft/ccode/clay/toolchain/deptrackr"
+	"github.com/jurgen-kluft/ccode/clay/toolchain/dpenc"
 	utils "github.com/jurgen-kluft/ccode/utils"
 )
 
 type ArduinoEsp32 struct {
 	Vars        *Vars
 	ProjectName string // The name of the project, used for output files
-	depTrackr   deptrackr.DepTrackr
 }
 
 // --------------------------------------------------------------------------------------------------
@@ -567,6 +566,13 @@ func (b *ToolchainArduinoEsp32Burner) Burn() error {
 	}
 
 	return nil
+}
+
+// --------------------------------------------------------------------------------------------------
+// --------------------------------------------------------------------------------------------------
+// Dependency Tracker
+func (t *ArduinoEsp32) NewDependencyTracker(dirpath string) dpenc.FileTrackr {
+	return dpenc.LoadDotdFileTrackr(dirpath)
 }
 
 // --------------------------------------------------------------------------------------------------

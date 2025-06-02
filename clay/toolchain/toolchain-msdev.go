@@ -1,6 +1,10 @@
 package toolchain
 
-import "fmt"
+import (
+	"fmt"
+
+	"github.com/jurgen-kluft/ccode/clay/toolchain/dpenc"
+)
 
 type Msdev struct {
 	Name  string
@@ -26,7 +30,9 @@ func (ms *Msdev) NewArchiver(a ArchiverType, config *Config) Archiver {
 func (ms *Msdev) NewLinker(config *Config) Linker {
 	return nil
 }
-
 func (t *Msdev) NewBurner(config *Config) Burner {
 	return &EmptyBurner{}
+}
+func (t *Msdev) NewDependencyTracker(dirpath string) dpenc.FileTrackr {
+	return nil
 }

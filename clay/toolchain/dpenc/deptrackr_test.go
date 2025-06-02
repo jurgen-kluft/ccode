@@ -1,4 +1,4 @@
-package deptrackr
+package dpenc
 
 import (
 	"crypto/sha1"
@@ -7,8 +7,8 @@ import (
 )
 
 func TestDepTrackrSimple(t *testing.T) {
-	current := loadDepTrackr("testdb", "test deptrackr, v1.0.0")
-	tracker := current.newDepTrackr()
+	current := loadTrackr("testdb", "test deptrackr, v1.0.0")
+	tracker := current.newTrackr()
 
 	hasher := sha1.New()
 
@@ -58,7 +58,7 @@ func TestDepTrackrSimple(t *testing.T) {
 
 	// Query the main item
 	dependencyCount := 0
-	mainItemState, err := tracker.QueryItem(mainItem.IdDigest, true, func(itemChangeFlags uint16, itemChangeData []byte, itemIdFlags uint16, itemIdData []byte) State {
+	mainItemState, err := tracker.QueryItem(mainItem.IdDigest, true, func(itemState State, itemChangeFlags uint8, itemChangeData []byte, itemIdFlags uint8, itemIdData []byte) State {
 		if itemChangeFlags == mainItem.ChangeFlags && string(itemChangeData) == string(mainItem.ChangeData) &&
 			itemIdFlags == mainItem.IdFlags && string(itemIdData) == string(mainItem.IdData) {
 			return StateUpToDate
@@ -84,9 +84,9 @@ func TestDepTrackrSimple(t *testing.T) {
 // each item has more than 3 dependencies. Here we do not test for
 // out-of-date items, but rather focus on the addition of multiple dependencies.
 func TestDepTrackrMultipleDependencies(t *testing.T) {
-	current := loadDepTrackr("testdb", "test deptrackr, v1.0.0")
+	current := loadTrackr("testdb", "test deptrackr, v1.0.0")
 
-	tracker := current.newDepTrackr()
+	tracker := current.newTrackr()
 	hasher := sha1.New()
 
 	items := map[string]int{
@@ -122,8 +122,8 @@ func TestDepTrackrMultipleDependencies(t *testing.T) {
 			IdData:       []byte(itemData),
 			ChangeDigest: changeHash,
 			ChangeData:   changeData,
-			IdFlags:      uint16(itemFlag),
-			ChangeFlags:  uint16(itemFlag),
+			IdFlags:      uint8(itemFlag),
+			ChangeFlags:  uint8(itemFlag),
 		}
 
 		var depItems []ItemToAdd
@@ -142,8 +142,8 @@ func TestDepTrackrMultipleDependencies(t *testing.T) {
 				IdData:       []byte(depData),
 				ChangeDigest: depChangeHash,
 				ChangeData:   depChangeData,
-				IdFlags:      uint16(depFlag),
-				ChangeFlags:  uint16(depFlag),
+				IdFlags:      uint8(depFlag),
+				ChangeFlags:  uint8(depFlag),
 			}
 			depItems = append(depItems, depItem)
 		}
@@ -160,9 +160,13 @@ func TestDepTrackrMultipleDependencies(t *testing.T) {
 		hasher.Write([]byte(itemData))
 		itemHash := hasher.Sum(nil)
 
+		wrongState := false
 		depCount := 0
-		mainItemState, err := tracker.QueryItem(itemHash, true, func(itemChangeFlags uint16, itemChangeData []byte, itemIdFlags uint16, itemIdData []byte) State {
-			if itemIdFlags == uint16(itemFlag) && string(itemIdData) == itemData {
+		mainItemState, err := tracker.QueryItem(itemHash, true, func(itemState State, itemChangeFlags uint8, itemChangeData []byte, itemIdFlags uint8, itemIdData []byte) State {
+			if itemState != StateNone {
+				wrongState = true
+			}
+			if itemIdFlags == uint8(itemFlag) && string(itemIdData) == itemData {
 				return StateUpToDate
 			} else if itemIdFlags >= 100 {
 				depCount++
@@ -170,6 +174,10 @@ func TestDepTrackrMultipleDependencies(t *testing.T) {
 			}
 			return StateOutOfDate
 		})
+
+		if wrongState {
+			t.Fatal("Expected state to be none")
+		}
 
 		if depCount != len(dependencies) {
 			t.Fatalf("Expected %d dependencies, got %d", len(dependencies), depCount)

@@ -70,7 +70,7 @@ func UsageDesktop() {
 	fmt.Println("  clay list-libraries")
 }
 
-func BuildDesktop(projectName string, buildConfig *Config) error {
+func BuildDesktop(projectName string, buildConfig *Config) (err error) {
 	// Note: We should be running this from the "target/{build target}" directory
 	// Create the build directory
 	buildPath := GetBuildPath(buildConfig.GetSubDir())
@@ -88,12 +88,18 @@ func BuildDesktop(projectName string, buildConfig *Config) error {
 				startTime := time.Now()
 				{
 					AddBuildInfoAsCppLibrary(prj, buildConfig)
-					if err := prj.Build(buildConfig, buildPath); err != nil {
-						return fmt.Errorf("Build failed on project %s with config %s: %v", prj.Name, prj.Config.String(), err)
+
+					var state int
+					if state, err = prj.Build(buildConfig, buildPath); err != nil {
+						return err
 					}
+					if state == 0 { // 0 means project is up to date
+						log.Printf("Building done ... %s is up to date (skipped build)\n", prj.Name)
+					} else if state == 1 { // 1 means project was built successfully
+						log.Printf("Building done ... (duration %s)\n", time.Since(startTime).Round(time.Second))
+					}
+					fmt.Println()
 				}
-				log.Printf("Building done ... (duration %s)\n", time.Since(startTime).Round(time.Second))
-				fmt.Println()
 			}
 		}
 	}

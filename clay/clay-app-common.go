@@ -94,7 +94,7 @@ func ParseProjectNameAndConfig() (string, *Config) {
 	return projectName, config
 }
 
-func Build(projectName string, targetConfig *Config) error {
+func Build(projectName string, targetConfig *Config) (err error) {
 	// Note: We should be running this from the "target/{build target}" directory
 	// Create the build directory
 	buildPath := GetBuildPath(targetConfig.GetSubDir())
@@ -115,16 +115,21 @@ func Build(projectName string, targetConfig *Config) error {
 						AddBuildInfoAsCppLibrary(prj, targetConfig)
 					}
 
-					if err := prj.Build(targetConfig, buildPath); err != nil {
-						return fmt.Errorf("Build failed on project %s with config %s: %v", prj.Name, prj.Config.ConfigString(), err)
+					var state int
+					if state, err = prj.Build(targetConfig, buildPath); err != nil {
+						return err
+					}
+					if state == 0 { // 0 means project is up to date
+						log.Printf("Building done ... %s is up to date (skipped build)\n", prj.Name)
+					} else if state == 1 { // 1 means project was built successfully
+						log.Printf("Building done ... (duration %s)\n", time.Since(startTime).Round(time.Second))
 					}
 				}
-				log.Printf("Building done ... (duration %s)\n", time.Since(startTime).Round(time.Second))
 				log.Println()
 			}
 		}
 	}
-	return nil
+	return err
 }
 
 func Clean(projectName string, buildConfig *Config) error {
