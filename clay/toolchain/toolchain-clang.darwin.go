@@ -193,7 +193,7 @@ func (t *ToolchainDarwinClangStaticArchiver) Archive(inputObjectFilepaths []stri
 		args = append(args, inputObjectFilepath)
 	}
 
-	log.Printf("Archiving static library %s\n", outputArchiveFilepath)
+	// log.Printf("Archiving static library %s\n", outputArchiveFilepath)
 
 	cmd := exec.Command(t.archiverPath, args...)
 	out, err := cmd.CombinedOutput()
@@ -229,7 +229,7 @@ func (t *ToolchainDarwinClangDynamicArchiver) Archive(inputObjectFilepaths []str
 		args = append(args, inputObjectFilepath)
 	}
 
-	log.Printf("Archiving dynamic library %s\n", outputArchiveFilepath)
+	// log.Printf("Archiving dynamic library %s\n", outputArchiveFilepath)
 
 	cmd := exec.Command(t.archiverPath, args...)
 	out, err := cmd.CombinedOutput()
@@ -302,7 +302,7 @@ func (l *ToolchainDarwinClangLinker) Link(inputArchiveAbsFilepaths []string, out
 		args = append(args, libFile)
 	}
 
-	log.Printf("Linking '%s'...\n", outputAppRelFilepathNoExt)
+	// log.Printf("Linking '%s'...\n", outputAppRelFilepathNoExt)
 	cmd := exec.Command(l.linkerPath, args...)
 	out, err := cmd.CombinedOutput()
 

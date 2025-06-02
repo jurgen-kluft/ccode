@@ -4,7 +4,6 @@ import (
 	"fmt"
 	"log"
 	"os"
-	"time"
 
 	utils "github.com/jurgen-kluft/ccode/utils"
 )
@@ -81,27 +80,21 @@ func BuildDesktop(projectName string, buildConfig *Config) (err error) {
 		prj.SetToolchain(buildConfig)
 	}
 
+	var outOfDate int
 	for _, prj := range prjs {
 		if projectName == "" || projectName == prj.Name {
 			if prj.Config.Matches(buildConfig) {
-				log.Printf("Building project: %s, config: %s, arch: %s\n", prj.Name, prj.Config.String(), prj.Config.Target.ArchAsString())
-				startTime := time.Now()
-				{
+				if prj.IsExecutable {
 					AddBuildInfoAsCppLibrary(prj, buildConfig)
-
-					var state int
-					if state, err = prj.Build(buildConfig, buildPath); err != nil {
-						return err
-					}
-					if state == 0 { // 0 means project is up to date
-						log.Printf("Building done ... %s is up to date (skipped build)\n", prj.Name)
-					} else if state == 1 { // 1 means project was built successfully
-						log.Printf("Building done ... (duration %s)\n", time.Since(startTime).Round(time.Second))
-					}
-					fmt.Println()
+				}
+				if outOfDate, err = prj.Build(buildConfig, buildPath); err != nil {
+					return err
 				}
 			}
 		}
+	}
+	if outOfDate == 0 {
+		fmt.Println("Nothing to build, everything is up to date...")
 	}
 	return nil
 }

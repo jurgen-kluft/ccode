@@ -2,8 +2,10 @@ package clay
 
 import (
 	"fmt"
+	"log"
 	"path/filepath"
 	"runtime"
+	"time"
 
 	"github.com/jurgen-kluft/ccode/clay/toolchain"
 	"github.com/jurgen-kluft/ccode/clay/toolchain/dpenc"
@@ -113,7 +115,7 @@ func CopyConfig(config *Config) *toolchain.Config {
 	return toolchain.NewConfig(config.Config, config.Target)
 }
 
-func (p *Project) Build(buildConfig *Config, buildPath string) (state int, err error) {
+func (p *Project) Build(buildConfig *Config, buildPath string) (outOfDate int, err error) {
 
 	compiler := p.Toolchain.NewCompiler(CopyConfig(buildConfig))
 	staticArchiver := p.Toolchain.NewArchiver(toolchain.ArchiverTypeStatic, CopyConfig(buildConfig))
@@ -124,25 +126,37 @@ func (p *Project) Build(buildConfig *Config, buildPath string) (state int, err e
 	projectBuildPath := p.GetBuildPath(buildPath)
 	projectDepFileTrackr := p.Toolchain.NewDependencyTracker(projectBuildPath)
 
-	MakeDir(projectBuildPath)
 	prjObjFilepaths := []string{}
 	for _, src := range p.SourceFiles {
 		srcObjRelPath := filepath.Join(projectBuildPath, src.SrcRelPath+".o")
-		if !projectDepFileTrackr.QueryItem(srcObjRelPath) {
-			MakeDir(filepath.Dir(srcObjRelPath))
-			if err := compiler.Compile(src.SrcAbsPath, srcObjRelPath); err != nil {
-				return -1, err
-			}
-			srcDepRelPath := filepath.Join(projectBuildPath, src.SrcRelPath+".d")
-			if mainItem, depItems, err := dpenc.ParseDotDependencyFile(srcDepRelPath); err == nil {
-				projectDepFileTrackr.AddItem(mainItem, depItems)
-			} else {
-				return -1, err
-			}
-		} else {
-			projectDepFileTrackr.CopyItem(srcObjRelPath)
-		}
 		prjObjFilepaths = append(prjObjFilepaths, srcObjRelPath)
+		if !projectDepFileTrackr.QueryItem(srcObjRelPath) {
+			outOfDate += 1
+		}
+	}
+
+	buildStartTime := time.Now()
+	if outOfDate > 0 {
+		log.Printf("Building project: %s, config: %s\n", p.Name, p.Config.String())
+		buildStartTime = time.Now()
+
+		for _, src := range p.SourceFiles {
+			srcObjRelPath := filepath.Join(projectBuildPath, src.SrcRelPath+".o")
+			if !projectDepFileTrackr.QueryItem(srcObjRelPath) {
+				MakeDir(filepath.Dir(srcObjRelPath))
+				if err := compiler.Compile(src.SrcAbsPath, srcObjRelPath); err != nil {
+					return outOfDate, err
+				}
+				srcDepRelPath := filepath.Join(projectBuildPath, src.SrcRelPath+".d")
+				if mainItem, depItems, err := dpenc.ParseDotDependencyFile(srcDepRelPath); err == nil {
+					projectDepFileTrackr.AddItem(mainItem, depItems)
+				} else {
+					return outOfDate, err
+				}
+			} else {
+				projectDepFileTrackr.CopyItem(srcObjRelPath)
+			}
+		}
 	}
 
 	if p.IsExecutable {
@@ -154,7 +168,13 @@ func (p *Project) Build(buildConfig *Config, buildPath string) (state int, err e
 		archivesToLink := []string{}
 		executableOutputFilepath := p.GetOutputFilepath(buildPath, linker.Filename(p.Name))
 
-		if !projectDepFileTrackr.QueryItem(executableOutputFilepath) {
+		if outOfDate > 0 || !projectDepFileTrackr.QueryItem(executableOutputFilepath) {
+			if outOfDate == 0 {
+				log.Printf("Linking project: %s, config: %s\n", p.Name, p.Config.String())
+				buildStartTime = time.Now()
+				outOfDate += 1
+			}
+
 			// Project object files
 			for _, obj := range prjObjFilepaths {
 				archivesToLink = append(archivesToLink, obj)
@@ -166,28 +186,44 @@ func (p *Project) Build(buildConfig *Config, buildPath string) (state int, err e
 			}
 			// Link them all together into a single executable
 			if err := linker.Link(archivesToLink, executableOutputFilepath); err != nil {
-				return -1, err
+				return outOfDate, err
 			}
 			projectDepFileTrackr.AddItem(executableOutputFilepath, archivesToLink)
+
 		} else {
 			projectDepFileTrackr.CopyItem(executableOutputFilepath)
 		}
-		state, err = projectDepFileTrackr.Save()
+		_, err = projectDepFileTrackr.Save()
 	} else {
 		archiveOutputFilepath := p.GetOutputFilepath(buildPath, staticArchiver.Filename(p.Name))
-		if !projectDepFileTrackr.QueryItem(archiveOutputFilepath) {
+		if outOfDate > 0 || !projectDepFileTrackr.QueryItem(archiveOutputFilepath) {
+			if outOfDate == 0 {
+				log.Printf("Archiving project: %s, config: %s\n", p.Name, p.Config.String())
+				buildStartTime = time.Now()
+				outOfDate += 1
+			}
+
 			// If this is a library, we don't link it, but we can create a static archive
 			staticArchiver.SetupArgs(toolchain.Vars{})
 			if err := staticArchiver.Archive(prjObjFilepaths, archiveOutputFilepath); err != nil {
-				return -1, err
+				return outOfDate, err
 			}
 			projectDepFileTrackr.AddItem(archiveOutputFilepath, prjObjFilepaths)
+			_, err = projectDepFileTrackr.Save()
+			if err != nil {
+				return outOfDate, err
+			}
 		} else {
 			projectDepFileTrackr.CopyItem(archiveOutputFilepath)
+			_, err = projectDepFileTrackr.Save()
 		}
-		state, err = projectDepFileTrackr.Save()
 	}
-	return state, err
+
+	if outOfDate > 0 {
+		log.Printf("Building done ... (duration %s)\n", time.Since(buildStartTime).Round(time.Second))
+	}
+
+	return outOfDate, err
 }
 
 func (p *Project) Flash(buildConfig *Config, buildPath string) error {

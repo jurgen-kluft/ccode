@@ -3,12 +3,10 @@ package clay
 import (
 	"flag"
 	"fmt"
-	"log"
 	"os"
 	"path/filepath"
 	"runtime"
 	"strings"
-	"time"
 
 	utils "github.com/jurgen-kluft/ccode/utils"
 )
@@ -105,29 +103,21 @@ func Build(projectName string, targetConfig *Config) (err error) {
 		prj.SetToolchain(targetConfig)
 	}
 
+	var outOfDate int
 	for _, prj := range prjs {
 		if projectName == "" || projectName == prj.Name {
 			if prj.Config.Matches(targetConfig) {
-				log.Printf("Building project: %s, config: %s, arch: %s\n", prj.Name, prj.Config.ConfigString(), prj.Config.Target.ArchAsString())
-				startTime := time.Now()
-				{
-					if prj.IsExecutable {
-						AddBuildInfoAsCppLibrary(prj, targetConfig)
-					}
-
-					var state int
-					if state, err = prj.Build(targetConfig, buildPath); err != nil {
-						return err
-					}
-					if state == 0 { // 0 means project is up to date
-						log.Printf("Building done ... %s is up to date (skipped build)\n", prj.Name)
-					} else if state == 1 { // 1 means project was built successfully
-						log.Printf("Building done ... (duration %s)\n", time.Since(startTime).Round(time.Second))
-					}
+				if prj.IsExecutable {
+					AddBuildInfoAsCppLibrary(prj, targetConfig)
 				}
-				log.Println()
+				if outOfDate, err = prj.Build(targetConfig, buildPath); err != nil {
+					return err
+				}
 			}
 		}
+	}
+	if outOfDate == 0 {
+		fmt.Println("Nothing to build, everything is up to date...")
 	}
 	return err
 }
