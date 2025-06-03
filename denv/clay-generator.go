@@ -37,23 +37,17 @@ func (g *ClayGenerator) Generate() error {
 	// Current directory
 	currentDir, _ := os.Getwd()
 
-	appDir := filepath.Join(g.TargetAbsPath, "clay-app")
+	appDir := g.TargetAbsPath
 	utils.MakeDir(appDir)
 
 	log.Printf("Generating clay project files in '%s' for target %s", utils.PathGetRelativeTo(appDir, currentDir), g.BuildTarget)
 
 	out := utils.NewLineWriter(utils.IndentModeSpaces)
 	g.generateMain(out)
-	appGoFilepath := filepath.Join(appDir, "main.go")
-	if err := out.WriteToFile(appGoFilepath); err != nil {
-		log.Printf("Error writing file %s: %v", appGoFilepath, err)
-	}
-
-	out = utils.NewLineWriter(utils.IndentModeSpaces)
 	g.generateProjectFile(out)
 
 	// Write the generated file to the target path
-	projectDotGoFilepath := filepath.Join(appDir, "project.go")
+	projectDotGoFilepath := filepath.Join(appDir, "clay.go")
 	if err := out.WriteToFile(projectDotGoFilepath); err != nil {
 		log.Printf("Error writing file %s: %v", projectDotGoFilepath, err)
 	}
@@ -76,6 +70,9 @@ func (g *ClayGenerator) Generate() error {
 }
 
 func (g *ClayGenerator) generateMain(out *utils.LineWriter) {
+	out.WriteLine("// --------------------------------------------------------------------")
+	out.WriteLine("// ---------------------- GENERATED -----------------------------------")
+	out.WriteLine("// --------------------------------------------------------------------")
 	out.WriteLine("package main")
 	out.WriteLine()
 	out.WriteLine("import (")
@@ -90,16 +87,9 @@ func (g *ClayGenerator) generateMain(out *utils.LineWriter) {
 		out.WriteILine("", "clay.ClayAppMainDesktop()")
 	}
 	out.WriteLine("}")
-	out.WriteLine()
 }
 
 func (g *ClayGenerator) generateProjectFile(out *utils.LineWriter) {
-	out.WriteLine("// --------------------------------------------------------------------")
-	out.WriteLine("// ---------------------- GENERATED -----------------------------------")
-	out.WriteLine("// --------------------------------------------------------------------")
-	out.WriteLine("package main")
-	out.WriteLine()
-	out.WriteLine("import \"github.com/jurgen-kluft/ccode/clay\"")
 	out.WriteLine()
 	out.WriteLine("func CreateProjects(arch string) []*clay.Project {")
 	out.WriteILine("", "projects := []*clay.Project{}")
