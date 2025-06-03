@@ -29,6 +29,11 @@
   previous DB. On the next run, we load the new DB from disk and use it to
   query the state of a file.
 - When nothing has changed, we do not write the new DB to disk.
+- The largest part of the DB is the Data array, it contains all the item
+  data (filepaths) with a lot of duplication, so it should be a very good 
+  candidate for compression. Something like `zlib` from the standard 
+  library would likely compress this data very well.
+  Furthermore, the Shards array is also a very good candidate for compression.
 
 ## Dependency Tracking General Information:
 

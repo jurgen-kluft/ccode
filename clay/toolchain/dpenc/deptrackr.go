@@ -435,6 +435,19 @@ func (d *trackr) save() error {
 		return err
 	}
 
+	// Compression on Data works very well !!!!---!!!!
+	// Compression on Shards works very well !!!!---!!!!
+
+	//compressed := bytes.NewBuffer(make([]byte, 0, len(d.Shards) * 4))
+	//compressor := zlib.NewWriter(compressed)
+	//shardsBytes := castInt32ArrayToByteArray(d.Shards)
+	//if n, err := compressor.Write(shardsBytes); err  != nil || n != len(shardsBytes) {
+	//    return err
+	//}
+	//if err := compressor.Close(); err != nil {
+	//    return err
+	//}
+
 	// Flush the file to ensure all data is written
 
 	if err := dbFile.Sync(); err != nil {
