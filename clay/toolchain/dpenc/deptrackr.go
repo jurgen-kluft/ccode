@@ -2,9 +2,11 @@ package dpenc
 
 import (
 	"bytes"
+	"compress/zlib"
 	"crypto/sha1"
 	"fmt"
 	"hash"
+	"io"
 	"os"
 	"slices"
 	"unsafe"
@@ -64,41 +66,39 @@ type trackr struct {
 	EmptyShard           []int32     // A shard initialized to a size of S and full of NillIndex
 }
 
-func newTrackr(storageFilepath string, signature string) *trackr {
+func constructTrackr(storageFilepath string, signature string, numItems int, dataSize int) *trackr {
 	hs := int32(20) // SHA1 hash size is 20 bytes
 	n := int32(10)  // how many bits we take from the hash to index into the buckets (0-15)
 	s := int32(512) // size of a shard, this is the number of items per shard, default is 512
 
-	reserve := 32
-
 	d := &trackr{
-		hasher:               sha1.New(),                       // Create a new SHA1 hasher
-		scratchBuffer:        NewBinaryData(256),               // A temporary byte buffer for hashing and other operations, not saved to disk
-		storageFilepath:      storageFilepath,                  //
-		signature:            signature,                        // copy the signature from the source
-		hashSize:             hs,                               //
-		itemState:            make([]State, 0, reserve),        // State of the item, this is used to track if the item is up to date or not
-		ItemIdHash:           make([]byte, 0, reserve*int(hs)), //
-		ItemChangeHash:       make([]byte, 0, reserve*int(hs)), //
-		ItemIdFlags:          make([]uint8, 0, reserve),        //
-		ItemChangeFlags:      make([]uint8, 0, reserve),        //
-		ItemDepsStart:        make([]int32, 0, reserve),        //
-		ItemDepsCount:        make([]int32, 0, reserve),        //
-		ItemIdDataOffset:     make([]int32, 0, reserve),        //
-		ItemIdDataSize:       make([]int32, 0, reserve),        //
-		ItemExtraDataOffset:  make([]int32, 0, reserve),        //
-		ItemExtraDataSize:    make([]uint8, 0, reserve),        //
-		ItemChangeDataOffset: make([]int32, 0, reserve),        //
-		ItemChangeDataSize:   make([]uint8, 0, reserve),        //
-		N:                    n,                                //
-		S:                    s,                                //
-		ShardOffsets:         make([]int32, 1<<n),              // initial capacity of 2^N shards
-		ShardSizes:           make([]int16, 1<<n),              // initial capacity of 2^N shards
-		DirtyFlags:           make([]uint8, ((1<<n)+7)>>3),     // initial capacity of N bits for dirty flags (rounded up to the nearest byte)
-		Shards:               make([]int32, 0, (1<<n)*s),       // initial capacity of 2^N shards where each shard has s elements
-		EmptyShard:           make([]int32, s),                 // an empty shard, used to copy when making a new shard in Shards
-		Deps:                 make([]int32, 0, reserve),        // Array for each item to list their dependencies, this is a flat array of item indices
-		Data:                 make([]byte, 0, reserve),         // Data for Id and Change, this is a flat array of bytes
+		hasher:               sha1.New(),                        // Create a new SHA1 hasher
+		scratchBuffer:        NewBinaryData(256),                // A temporary byte buffer for hashing and other operations, not saved to disk
+		storageFilepath:      storageFilepath,                   //
+		signature:            signature,                         // copy the signature from the source
+		hashSize:             hs,                                //
+		itemState:            make([]State, 0, numItems),        // State of the item, this is used to track if the item is up to date or not
+		ItemIdHash:           make([]byte, 0, numItems*int(hs)), //
+		ItemChangeHash:       make([]byte, 0, numItems*int(hs)), //
+		ItemIdFlags:          make([]uint8, 0, numItems),        //
+		ItemChangeFlags:      make([]uint8, 0, numItems),        //
+		ItemDepsStart:        make([]int32, 0, numItems),        //
+		ItemDepsCount:        make([]int32, 0, numItems),        //
+		ItemIdDataOffset:     make([]int32, 0, numItems),        //
+		ItemIdDataSize:       make([]int32, 0, numItems),        //
+		ItemExtraDataOffset:  make([]int32, 0, numItems),        //
+		ItemExtraDataSize:    make([]uint8, 0, numItems),        //
+		ItemChangeDataOffset: make([]int32, 0, numItems),        //
+		ItemChangeDataSize:   make([]uint8, 0, numItems),        //
+		N:                    n,                                 //
+		S:                    s,                                 //
+		ShardOffsets:         make([]int32, 1<<n),               // initial capacity of 2^N shards
+		ShardSizes:           make([]int16, 1<<n),               // initial capacity of 2^N shards
+		DirtyFlags:           make([]uint8, ((1<<n)+7)>>3),      // initial capacity of N bits for dirty flags (rounded up to the nearest byte)
+		Shards:               make([]int32, 0, (1<<n)*s),        // initial capacity of 2^N shards where each shard has s elements
+		EmptyShard:           make([]int32, s),                  // an empty shard, used to copy when making a new shard in Shards
+		Deps:                 make([]int32, 0, numItems),        // Array for each item to list their dependencies, this is a flat array of item indices
+		Data:                 make([]byte, 0, dataSize),         // Data for Id and Change, this is a flat array of bytes
 	}
 
 	// Set the first 8 elements of EmptyShard to -1
@@ -118,52 +118,14 @@ func newTrackr(storageFilepath string, signature string) *trackr {
 	return d
 }
 
+func newTrackr(storageFilepath string, signature string) *trackr {
+	return constructTrackr(storageFilepath, signature, 1024, 1024*1024)
+}
+
 func (src *trackr) newTrackr() *trackr {
 	numItems := max(1024, len(src.ItemIdFlags)+len(src.ItemIdFlags)/8)
-
-	hs := src.hashSize
-	n := src.N
-	s := src.S
-
-	newTrackr := &trackr{
-		hasher:               sha1.New(),                                         // Create a new SHA1 hasher
-		scratchBuffer:        NewBinaryData(256),                                 // A temporary byte buffer for hashing and other operations, not saved to disk
-		storageFilepath:      src.storageFilepath,                                //
-		signature:            src.signature,                                      // copy the signature from the source
-		hashSize:             hs,                                                 //
-		itemState:            make([]State, 0, numItems),                         // State of the item, this is used to track if the item is up to date or not
-		ItemIdHash:           make([]byte, 0, numItems*int(hs)),                  //
-		ItemChangeHash:       make([]byte, 0, numItems*int(hs)),                  //
-		ItemIdFlags:          make([]uint8, 0, numItems),                         //
-		ItemChangeFlags:      make([]uint8, 0, numItems),                         //
-		ItemDepsStart:        make([]int32, 0, numItems),                         //
-		ItemDepsCount:        make([]int32, 0, numItems),                         //
-		ItemIdDataOffset:     make([]int32, 0, numItems),                         //
-		ItemIdDataSize:       make([]int32, 0, numItems),                         //
-		ItemExtraDataOffset:  make([]int32, 0, numItems),                         //
-		ItemExtraDataSize:    make([]uint8, 0, numItems),                         //
-		ItemChangeDataOffset: make([]int32, 0, numItems),                         //
-		ItemChangeDataSize:   make([]uint8, 0, numItems),                         //
-		N:                    n,                                                  //
-		S:                    s,                                                  //
-		ShardOffsets:         make([]int32, 1<<n),                                // initial capacity of 2^N shards
-		ShardSizes:           make([]int16, 1<<n),                                // initial capacity of 2^N shards
-		DirtyFlags:           make([]uint8, ((1<<n)+7)>>3),                       // initial capacity of N bits for dirty flags (rounded up to the nearest byte)
-		Shards:               make([]int32, 0, (1<<n)*s),                         // initial capacity of 2^N shards where each shard has s elements
-		EmptyShard:           src.EmptyShard,                                     // an empty shard, used to copy when making a new shard in Shards
-		Deps:                 make([]int32, 0, len(src.Deps)+(len(src.Deps)/10)), //
-		Data:                 make([]byte, 0, len(src.Data)+(len(src.Data)/10)),  //
-	}
-
-	pattern := []int32{NilIndex, NilIndex, NilIndex, NilIndex, NilIndex, NilIndex, NilIndex, NilIndex}
-	copy(newTrackr.ShardOffsets, pattern)
-
-	// Fill the rest of the shard with the pattern, increasing the size of the pattern
-	for j := len(pattern); j < len(newTrackr.ShardOffsets); j *= 2 {
-		copy(newTrackr.ShardOffsets[j:], newTrackr.ShardOffsets[:j])
-	}
-
-	return newTrackr
+	dataSize := len(src.Data) + (len(src.Data) / 2)
+	return constructTrackr(src.storageFilepath, src.signature, numItems, dataSize)
 }
 
 // --------------------------------------------------------------------------
@@ -182,114 +144,174 @@ func castInt32ArrayToByteArray(i []int32) []byte {
 	return unsafe.Slice((*byte)(unsafe.Pointer(&i[0])), len(i)<<2)
 }
 
-func (d *trackr) writeArray(signature string, numItems int, f *os.File) error {
+func castByteArrayToInt16Array(b []byte) (array []int16, err error) {
+	if len(b)&1 != 0 {
+		err = fmt.Errorf("byte array length is not a multiple of 2, cannot cast to int16 array")
+	} else {
+		array = unsafe.Slice((*int16)(unsafe.Pointer(&b[0])), len(b)>>1)
+	}
+	return
+}
+
+func castByteArrayToInt32Array(b []byte) (array []int32, err error) {
+	if len(b)&3 != 0 {
+		err = fmt.Errorf("byte array length is not a multiple of 4, cannot cast to int32 array")
+	} else {
+		array = unsafe.Slice((*int32)(unsafe.Pointer(&b[0])), len(b)>>2)
+	}
+	return
+}
+
+func (d *trackr) getHashOfSignature(signature string) []byte {
 	d.hasher.Reset()
 	d.hasher.Write([]byte(d.signature)) // trackr signature
 	d.hasher.Write([]byte(signature))   // array signature
-	signatureHash := d.hasher.Sum(nil)
+	return d.hasher.Sum(nil)
+}
+
+func (d *trackr) writeArray(signature string, byteArray []byte, compress bool, f *os.File) error {
+	arrayCompressedSizeInBytes := 0
+	arrayOriginalSizeInBytes := len(byteArray)
+	byteArrayToWrite := byteArray
+
+	if compress {
+		compressed := bytes.NewBuffer(make([]byte, 0, len(byteArray)))
+		compressor := zlib.NewWriter(compressed)
+		n, err1 := compressor.Write(byteArray)
+		err2 := compressor.Close()
+		if err1 == nil && n == len(byteArray) && err2 == nil {
+			byteArrayToWrite = compressed.Bytes()
+			arrayCompressedSizeInBytes = len(byteArrayToWrite)
+		}
+	}
+
+	signatureHash := d.getHashOfSignature(signature)
+
 	d.scratchBuffer.reset()
-	d.scratchBuffer.writeBytes(signatureHash[:10])
-	d.scratchBuffer.writeInt(numItems)
-	d.scratchBuffer.writeBytes(signatureHash[10:])
+	d.scratchBuffer.writeBytes(signatureHash[:8])        // First 8 bytes of the signature hash
+	d.scratchBuffer.writeInt(arrayOriginalSizeInBytes)   // Original size of the array
+	d.scratchBuffer.writeInt(arrayCompressedSizeInBytes) // Compressed size of the array
+	d.scratchBuffer.writeInt(0)                          // Reserved
+	d.scratchBuffer.writeInt(0)                          // Reserved
+	d.scratchBuffer.writeBytes(signatureHash[(20 - 8):]) // Last 8 bytes of the signature hash
 	if err := d.scratchBuffer.writeToFile(f); err != nil {
 		return err
 	}
+
+	if numBytesWritten, err := f.Write(byteArrayToWrite); err != nil || numBytesWritten != len(byteArrayToWrite) {
+		return fmt.Errorf("failed to write compressed int32 array for signature '%s': %w", signature, err)
+	}
 	return nil
 }
 
-func (d *trackr) readArray(signature string, f *os.File) (readNumItems int, err error) {
-	d.hasher.Reset()
-	d.hasher.Write([]byte(d.signature)) // trackr signature
-	d.hasher.Write([]byte(signature))   // array signature
-	signatureHash := d.hasher.Sum(nil)
-
-	headerSize := 24
+func (d *trackr) readArray(signature string, f *os.File) (byteArray []byte, err error) {
+	headerSize := 32
 	if err := d.scratchBuffer.readFromFile(headerSize, f); err != nil {
-		return 0, err
+		return nil, err
 	}
 
-	readSignatureHash := d.scratchBuffer.readNBytes(10)
-	if bytes.Compare(signatureHash[:10], readSignatureHash) != 0 {
-		return 0, fmt.Errorf("signature mismatch for '%s'", signature)
+	signatureHash := d.getHashOfSignature(signature)
+	firstSignatureHash := d.scratchBuffer.readNBytes(8)
+	arrayOriginalSizeInBytes := d.scratchBuffer.readInt()
+	arrayCompressedSizeInBytes := d.scratchBuffer.readInt()
+	_ = d.scratchBuffer.readInt() // Reserved, not used
+	_ = d.scratchBuffer.readInt() // Reserved, not used
+	lastSignatureHash := d.scratchBuffer.readNBytes(8)
+	if bytes.Compare(signatureHash[:8], firstSignatureHash) != 0 || bytes.Compare(signatureHash[(20-8):], lastSignatureHash) != 0 {
+		return nil, fmt.Errorf("signature mismatch for '%s'", signature)
 	}
 
-	readNumItems = d.scratchBuffer.readInt()
-
-	readSignatureHash = d.scratchBuffer.readNBytes(10)
-	if bytes.Compare(signatureHash[10:], readSignatureHash) != 0 {
-		return 0, fmt.Errorf("signature mismatch for '%s'", signature)
+	numBytesToRead := arrayOriginalSizeInBytes
+	if arrayCompressedSizeInBytes > 0 {
+		numBytesToRead = arrayCompressedSizeInBytes
 	}
-	return readNumItems, nil
+
+	byteArray = make([]byte, numBytesToRead)
+	if numBytesRead, err := f.Read(byteArray); err != nil || numBytesRead != numBytesToRead {
+		return nil, fmt.Errorf("failed to read byte array for signature '%s': %w", signature, err)
+	}
+
+	if arrayCompressedSizeInBytes > 0 { // Decompress the data
+		decompressor, err := zlib.NewReader(bytes.NewReader(byteArray))
+		if err != nil {
+			return nil, fmt.Errorf("failed to create decompressor for signature '%s': %w", signature, err)
+		}
+
+		decompressedByteArray := make([]byte, arrayOriginalSizeInBytes)
+        totalDecompressedNumBytes := 0
+
+		var err1 error
+		for totalDecompressedNumBytes < arrayOriginalSizeInBytes {
+			var decompressedNumBytes int
+			decompressedNumBytes, err1 = decompressor.Read(decompressedByteArray[totalDecompressedNumBytes:])
+			totalDecompressedNumBytes += decompressedNumBytes
+			if err1 == io.EOF {
+				err1 = nil
+				break
+			} else if err1 != nil {
+				break
+			}
+		}
+		err2 := decompressor.Close()
+
+		if err1 != nil || err2 != nil || totalDecompressedNumBytes != arrayOriginalSizeInBytes {
+			return nil, fmt.Errorf("failed to decompress byte array for signature '%s': %w", signature, err1)
+		}
+		byteArray = decompressedByteArray
+	}
+
+	return byteArray, nil
 }
 
 func (d *trackr) writeByteArray(signature string, array []byte, f *os.File) error {
-	if err := d.writeArray(signature, len(array), f); err != nil {
-		return err
-	}
-	if numBytesWritten, err := f.Write(array); err != nil || numBytesWritten != len(array) {
-		return fmt.Errorf("failed to write byte array for signature '%s': %w", signature, err)
-	}
-	return nil
+	compressed := false
+	return d.writeArray(signature, array, compressed, f)
 }
 
-func (d *trackr) readByteArray(signature string, f *os.File) ([]byte, error) {
-	if arrayLen, err := d.readArray(signature, f); err != nil {
-		return nil, err
-	} else {
-		arrayData := make([]byte, arrayLen)
-		if numBytesRead, err := f.Read(arrayData); err != nil || numBytesRead != arrayLen {
-			return nil, fmt.Errorf("failed to read byte array for signature '%s': %w", signature, err)
-		}
-		return arrayData, nil
-	}
+func (d *trackr) writeByteArrayCompressed(signature string, array []byte, f *os.File) error {
+	compressed := true
+	return d.writeArray(signature, array, compressed, f)
+}
+
+func (d *trackr) readByteArray(signature string, f *os.File) (byteArray []byte, err error) {
+	byteArray, err = d.readArray(signature, f)
+	return byteArray, err
 }
 
 func (d *trackr) writeInt32Array(signature string, array []int32, f *os.File) error {
-	if err := d.writeArray(signature, len(array), f); err != nil {
-		return err
-	}
-	arrayBytes := castInt32ArrayToByteArray(array)
-	if numBytesWritten, err := f.Write(arrayBytes); err != nil || numBytesWritten != len(arrayBytes) {
-		return fmt.Errorf("failed to write int32 array for signature '%s': %w", signature, err)
-	}
-	return nil
+	compressed := false
+	return d.writeArray(signature, castInt32ArrayToByteArray(array), compressed, f)
 }
 
-func (d *trackr) readInt32Array(signature string, f *os.File) ([]int32, error) {
-	if arrayLen, err := d.readArray(signature, f); err != nil {
-		return nil, err
-	} else {
-		arrayData := make([]int32, arrayLen)
-		arrayDataBytes := castInt32ArrayToByteArray(arrayData)
-		if numBytesRead, err := f.Read(arrayDataBytes); err != nil || numBytesRead != len(arrayDataBytes) {
-			return nil, fmt.Errorf("failed to read int32 array for signature '%s': %w", signature, err)
-		}
-		return arrayData, nil
+func (d *trackr) writeInt32ArrayCompressed(signature string, array []int32, f *os.File) error {
+	compressed := true
+	return d.writeArray(signature, castInt32ArrayToByteArray(array), compressed, f)
+}
+
+func (d *trackr) readInt32Array(signature string, f *os.File) (arrayData []int32, err error) {
+	var byteArray []byte
+	if byteArray, err = d.readArray(signature, f); err == nil {
+		arrayData, err = castByteArrayToInt32Array(byteArray)
 	}
+	return arrayData, err
 }
 
 func (d *trackr) writeInt16Array(signature string, array []int16, f *os.File) error {
-	if err := d.writeArray(signature, len(array), f); err != nil {
-		return err
-	}
-	arrayBytes := castInt16ArrayToByteArray(array)
-	if numBytesWritten, err := f.Write(arrayBytes); err != nil || numBytesWritten != len(arrayBytes) {
-		return fmt.Errorf("failed to write int16 array for signature '%s': %w", signature, err)
-	}
-	return nil
+	compressed := false
+	return d.writeArray(signature, castInt16ArrayToByteArray(array), compressed, f)
 }
 
-func (d *trackr) readInt16Array(signature string, f *os.File) ([]int16, error) {
-	if arrayLen, err := d.readArray(signature, f); err != nil {
-		return nil, err
-	} else {
-		arrayData := make([]int16, arrayLen)
-		arrayDataBytes := castInt16ArrayToByteArray(arrayData)
-		if numBytesRead, err := f.Read(arrayDataBytes); err != nil || numBytesRead != len(arrayDataBytes) {
-			return nil, fmt.Errorf("failed to read int16 array for signature '%s': %w", signature, err)
-		}
-		return arrayData, nil
+// func (d *trackr) writeInt16ArrayCompressed(signature string, array []int16, f *os.File) error {
+// 	compressed := true
+// 	return d.writeArray(signature, castInt16ArrayToByteArray(array), compressed, f)
+// }
+
+func (d *trackr) readInt16Array(signature string, f *os.File) (arrayData []int16, err error) {
+	var byteArray []byte
+	if byteArray, err = d.readArray(signature, f); err == nil {
+		arrayData, err = castByteArrayToInt16Array(byteArray)
 	}
+	return arrayData, err
 }
 
 // --------------------------------------------------------------------------
@@ -416,7 +438,7 @@ func (d *trackr) save() error {
 	if err := d.writeInt32Array("item.deps.array", d.Deps, dbFile); err != nil {
 		return err
 	}
-	if err := d.writeByteArray("item.data.array", d.Data, dbFile); err != nil {
+	if err := d.writeByteArrayCompressed("item.data.array", d.Data, dbFile); err != nil {
 		return err
 	}
 
@@ -431,22 +453,9 @@ func (d *trackr) save() error {
 	if err := d.writeByteArray("shard.dirty.flags.array", d.DirtyFlags, dbFile); err != nil {
 		return err
 	}
-	if err := d.writeInt32Array("shard.items.array", d.Shards, dbFile); err != nil {
+	if err := d.writeInt32ArrayCompressed("shard.items.array", d.Shards, dbFile); err != nil {
 		return err
 	}
-
-	// Compression on Data works very well !!!!---!!!!
-	// Compression on Shards works very well !!!!---!!!!
-
-	//compressed := bytes.NewBuffer(make([]byte, 0, len(d.Shards) * 4))
-	//compressor := zlib.NewWriter(compressed)
-	//shardsBytes := castInt32ArrayToByteArray(d.Shards)
-	//if n, err := compressor.Write(shardsBytes); err  != nil || n != len(shardsBytes) {
-	//    return err
-	//}
-	//if err := compressor.Close(); err != nil {
-	//    return err
-	//}
 
 	// Flush the file to ensure all data is written
 
