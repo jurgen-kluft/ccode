@@ -329,7 +329,7 @@ func (t *DarwinClang) NewBurner(config *Config) Burner {
 // --------------------------------------------------------------------------------------------------
 // Dependency Tracker
 func (t *DarwinClang) NewDependencyTracker(dirpath string) dpenc.FileTrackr {
-	return dpenc.LoadDotdFileTrackr(dirpath)
+	return dpenc.LoadFileTrackr(filepath.Join(dirpath, "deptrackr"))
 }
 
 // --------------------------------------------------------------------------------------------------

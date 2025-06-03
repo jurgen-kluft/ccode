@@ -9,13 +9,10 @@ That would mean we could:
   - Windows OS:
     - MSVC
     - Clang
-    - GCC
   - Linux OS:
     - Clang
-    - GCC
   - MacOS:
     - Clang
-    - GCC
 
 This would make all the other generators obsolete, as they would be able to use the same codebase and just change the compiler.
 

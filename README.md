@@ -1,7 +1,7 @@
 # CCODE - Package Manager + Project Generator
 
 This is a project generator that uses Go and its package management for C++ packages. 
-The structure of packages are defined in Go and files can be generated for Visual Studio (.sln, .vcxproj and .filters), Make, CMake, Xcode as well as Tundra. Work in progress for also supporting Zig as a build system.
+The structure of packages are defined in Go and files can be generated for `Visual Studio` (.sln, .vcxproj and .filters), `Make`, `Xcode`, `Tundra` and also a custom C++ buildsystem called `Clay`. 
 
 If you like my work and want to support me. Please consider to buy me a [coffee!](https://www.buymeacoffee.com/Jur93n)
 <img src="bmacoffee.png" width="100">
@@ -21,11 +21,8 @@ This allows me to write packages (C++ libraries) and use them in another C++ pac
 * [Visual Studio](https://visualstudio.microsoft.com) (supported, Windows)
 * [Xcode](https://developer.apple.com/xcode/) (supported, Mac)
 * [Tundra](https://github.com/deplinenoise/tundra) (supported, Mac, Linux and Windows)
-* [CMake](https://cmake.org/) (supported, Mac, Linux and Windows)
 * [Make](https://www.gnu.org/software/make/manual/make.html) (supported, Mac and Linux, untested on Windows)
-* [Zig](https://ziglang.org/learn/build-system/) (WIP)
-
-Note: Not happy with CMake, there must be a better way of doing this, if you know how please let me know.
+* [Clay](https://github.com/jurgen-kluft/ccode/tree/master/clay) (supported on Mac, (Linux and Windows are coming soon))
 
 Currently the design is quite set and the goal is to keep API changes to a minimum.
 
@@ -48,6 +45,12 @@ For Tundra build files (on Mac and Linux, Tundra is the default generator):
 1. `go run cbase.go --dev=tundra`
 2. cd into `target/tundra`
 3. run `tundra2 debug` or `tundra2 release`
+
+For Clay (on Mac):
+
+1. `go run cbase.go --dev=clay`
+2. cd into `target/clay`
+3. run `./clay build --build debug-dev-test`
 
 These are the steps to make a new package, or take a peek at one of my libraries, 
 like `github.com/jurgen-kluft/cbase`:
@@ -72,24 +75,25 @@ import (
 )
 
 func main() {
-    ccode.Init()
+    if ccode.Init() {
+        // This will generate
+        // - ./.gitignore
+        // - ./.clang-format
+        // - ./source/test/cpp/test_main.cpp    
+        ccode.GenerateFiles()
+        
+        // This will generate the Visual Studio solution and projects, 
+        // makefile, tundra or clay build files
+        ccode.Generate(mylibrary.GetPackage())
 
-    // This will generate
-    // - ./.gitignore
-    // - ./.clang-format
-    // - ./source/test/cpp/test_main.cpp    
-    ccode.GenerateFiles()
-    
-    // This will generate the Visual Studio solution and projects, makefile, or tundra build files
-    ccode.Generate(mylibrary.GetPackage())
+        // You can also insert generated C++ enums with ToString and other functions, the my_enums.h
+        // file should already exist and have 2 delimiter lines that you can configure as 
+        // 'between' (take a peek inside the `embedded/my_enums.h.json` file)
+        ccode.GenerateCppEnums("embedded/my_enums.h.json", "main/include/cbase/my_enums.h")
 
-    // You can also insert generated C++ enums with ToString and other functions, the my_enums.h
-    // file should already exist and have 2 delimiter lines that you can configure as 
-    // 'between' (take a peek inside the `embedded/my_enums.h.json` file)
-    ccode.GenerateCppEnums("embedded/my_enums.h.json", "main/include/cbase/my_enums.h")
-
-    // Or if you are up to it, even generating structs is (wip) possible
-    ccode.GenerateCppStructs("embedded/my_structs.h.json", "main/include/cbase/my_structs.h")
+        // Or if you are up to it, even generating structs is (wip) possible
+        ccode.GenerateCppStructs("embedded/my_structs.h.json", "main/include/cbase/my_structs.h")
+    }
 }
 ```
 
@@ -99,34 +103,50 @@ The content of the ```/package/package.go``` file with one dependency on 'myunit
 package mylibrary
 
 import (
-    "github.com/jurgen-kluft/ccode/denv"
-    "github.com/githubusername/myunittest/package"
+	cbase "github.com/jurgen-kluft/cbase/package"
+	denv "github.com/jurgen-kluft/ccode/denv"
+	cunittest "github.com/jurgen-kluft/cunittest/package"
 )
 
-// GetPackage returns the package object of 'mylibrary'
+const (
+	repo_path = "github.com\\jurgen-kluft"
+	repo_name = "mylibrary"
+)
+
 func GetPackage() *denv.Package {
-    // Dependencies
-    unittestpkg := myunittest.GetPackage()
+	name := repo_name
 
-    // The main (mylibrary) package
-    mainpkg := denv.NewPackage("mylibrary")
-    mainpkg.AddPackage(unittestpkg)
+	// dependencies
+	cunittestpkg := cunittest.GetPackage()
+	cbasepkg := cbase.GetPackage()
 
-    // 'mylibrary' library
-    mainlib := denv.SetupDefaultCppLibProject("mylibrary", "github.com/githubusername/mylibrary")
-    mainlib.Dependencies = append(mainlib.Dependencies, unittestpkg.GetMainLib())
+	// main package
+	mainpkg := denv.NewPackage(repo_path, repo_name)
+	mainpkg.AddPackage(cunittestpkg)
+	mainpkg.AddPackage(cbasepkg)
 
-    // 'mylibrary' unittest project
-    maintest := denv.SetupDefaultCppTestProject("mylibrary_test", "github.com/githubusername/mylibrary")
+	// main library
+	mainlib := denv.SetupCppLibProject(mainpkg, name)
+	mainlib.AddDependencies(cbasepkg.GetMainLib()...)
 
-    mainpkg.AddMainLib(mainlib)
-    mainpkg.AddUnittest(maintest)
-    return mainpkg
+	// test library
+	testlib := denv.SetupCppTestLibProject(mainpkg, name)
+	testlib.AddDependencies(cbasepkg.GetTestLib()...)
+	testlib.AddDependencies(cunittestpkg.GetTestLib()...)
+
+	// unittest project
+	maintest := denv.SetupCppTestProject(mainpkg, name)
+	maintest.AddDependencies(cunittestpkg.GetMainLib()...)
+	maintest.AddDependency(testlib)
+
+	mainpkg.AddMainLib(mainlib)
+	mainpkg.AddTestLib(testlib)
+	mainpkg.AddUnittest(maintest)
+	return mainpkg
 }
 ```
 
-There are some requirements for the layout of folders inside of your repository to hold the 
-library and unittest files, this is the layout:
+There are some requirements for the layout of folders inside of your repository to hold the library and unittest files, this is the layout:
 
 1. `source\main\cpp`: the cpp files of your library. Header files should be 
    included as ```#include "mylibrary/header.h"```

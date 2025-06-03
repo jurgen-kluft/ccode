@@ -1,12 +1,13 @@
 package dpenc
 
 import (
+	"path/filepath"
 	"testing"
 )
 
 func TestLoadDotdDepTrackr(t *testing.T) {
 	buildDir := "test_build_dir"
-	d := LoadDotdFileTrackr(buildDir)
+	d := LoadFileTrackr(filepath.Join(buildDir, "deptrackr.test"))
 
 	if d == nil {
 		t.Fatal("Expected deptrackr to be loaded, but got nil")

@@ -1,7 +1,11 @@
 package toolchain
 
 import (
+	"bufio"
+	"crypto/sha1"
 	"fmt"
+	"hash"
+	"io"
 	"log"
 	"os"
 	"os/exec"
@@ -383,65 +387,110 @@ func (l *ToolchainArduinoEsp32Linker) Link(inputArchiveAbsFilepaths []string, ou
 // Burner
 
 type ToolchainArduinoEsp32Burner struct {
-	toolChain                       *ArduinoEsp32
-	config                          *Config // Configuration for the burner, e.g., debug or release
-	generateImageBinToolArgs        *Arguments
-	generateImageBinToolPath        string
-	generateImagePartitionsToolArgs *Arguments
-	generateImagePartitionsToolPath string
-	generateBootloaderToolArgs      *Arguments
-	generateBootloaderToolPath      string
-	flashToolArgs                   *Arguments
-	flashToolPath                   string
+	toolChain                            *ArduinoEsp32
+	config                               *Config          // Configuration for the burner, e.g., debug or release
+	dependencyTracker                    dpenc.FileTrackr // Dependency tracker for the burner
+	hasher                               hash.Hash        // Hasher for generating digests of arguments
+	genImageBinToolArgs                  *Arguments
+	genImageBinToolArgsHash              []byte   // Hash of the arguments for the image bin tool
+	genImageBinToolOutputFilepath        string   // The output file for the image bin
+	genImageBinToolInputFilepaths        []string // The input files for the image bin
+	genImageBinToolPath                  string
+	genImagePartitionsToolArgs           *Arguments
+	genImagePartitionsToolArgsHash       []byte   // Hash of the arguments for the image partitions tool
+	genImagePartitionsToolOutputFilepath string   // The output file for the image partitions
+	genImagePartitionsToolInputFilepaths []string // The input files for the image partitions
+	genImagePartitionsToolPath           string
+	genBootloaderToolArgs                *Arguments
+	genBootloaderToolArgsHash            []byte   // Hash of the arguments for the bootloader tool
+	genBootloaderToolOutputFilepath      string   // The output file for the bootloader
+	genBootloaderToolInputFilepaths      []string // The input files for the bootloader
+	genBootloaderToolPath                string
+	flashToolArgs                        *Arguments
+	flashToolPath                        string
 }
 
 func (t *ArduinoEsp32) NewBurner(config *Config) Burner {
 	return &ToolchainArduinoEsp32Burner{
-		toolChain:                       t,
-		config:                          config,
-		generateImageBinToolArgs:        NewArguments(64),
-		generateImageBinToolPath:        t.Vars.GetOne("burner.generate-image-bin"),
-		generateImagePartitionsToolArgs: NewArguments(64),
-		generateImagePartitionsToolPath: t.Vars.GetOne("burner.generate-partitions-bin"),
-		generateBootloaderToolArgs:      NewArguments(64),
-		generateBootloaderToolPath:      t.Vars.GetOne("burner.generate-bootloader"),
-		flashToolArgs:                   NewArguments(64),
-		flashToolPath:                   t.Vars.GetOne("burner.flash"),
+		toolChain:                            t,
+		config:                               config,
+		dependencyTracker:                    nil,
+		hasher:                               sha1.New(),
+		genImageBinToolArgs:                  NewArguments(64),
+		genImageBinToolArgsHash:              nil, // Will be set later
+		genImageBinToolOutputFilepath:        "",
+		genImageBinToolInputFilepaths:        []string{},
+		genImageBinToolPath:                  t.Vars.GetOne("burner.generate-image-bin"),
+		genImagePartitionsToolArgs:           NewArguments(64),
+		genImagePartitionsToolArgsHash:       nil, // Will be set later
+		genImagePartitionsToolOutputFilepath: "",
+		genImagePartitionsToolInputFilepaths: []string{},
+		genImagePartitionsToolPath:           t.Vars.GetOne("burner.generate-partitions-bin"),
+		genBootloaderToolArgs:                NewArguments(64),
+		genBootloaderToolArgsHash:            nil, // Will be set later
+		genBootloaderToolOutputFilepath:      "",
+		genBootloaderToolInputFilepaths:      []string{},
+		genBootloaderToolPath:                t.Vars.GetOne("burner.generate-bootloader"),
+		flashToolArgs:                        NewArguments(64),
+		flashToolPath:                        t.Vars.GetOne("burner.flash"),
 	}
 }
 
+func (b *ToolchainArduinoEsp32Burner) hashArguments(args []string) []byte {
+	b.hasher.Reset()
+	for _, arg := range args {
+		b.hasher.Write([]byte(arg))
+	}
+	return b.hasher.Sum(nil)
+}
+
 func (b *ToolchainArduinoEsp32Burner) SetupBuild(buildPath string) {
+
 	projectElfFilepath := filepath.Join(buildPath, b.toolChain.ProjectName+".elf")
 	projectBinFilepath := filepath.Join(buildPath, b.toolChain.ProjectName+".bin")
 	projectPartitionsBinFilepath := filepath.Join(buildPath, b.toolChain.ProjectName+".partitions.bin")
 	projectBootloaderBinFilepath := filepath.Join(buildPath, b.toolChain.ProjectName+".bootloader.bin")
 
-	b.generateImageBinToolArgs.Clear()
-	b.generateImageBinToolArgs.Add("--chip", b.toolChain.Vars.GetOne("esp.mcu"))
-	b.generateImageBinToolArgs.Add("elf2image")
-	b.generateImageBinToolArgs.Add("--flash_mode", b.toolChain.Vars.GetOne("burner.flash.mode"))
-	b.generateImageBinToolArgs.Add("--flash_freq", b.toolChain.Vars.GetOne("burner.flash.frequency"))
-	b.generateImageBinToolArgs.Add("--flash_size", b.toolChain.Vars.GetOne("burner.flash.size"))
-	b.generateImageBinToolArgs.Add("--elf-sha256-offset", b.toolChain.Vars.GetOne("burner.flash.elf.share.offset"))
-	b.generateImageBinToolArgs.Add("-o", projectBinFilepath)
-	b.generateImageBinToolArgs.Add(projectElfFilepath)
+	b.genImageBinToolArgs.Clear()
+	b.genImageBinToolArgs.Add("--chip", b.toolChain.Vars.GetOne("esp.mcu"))
+	b.genImageBinToolArgs.Add("elf2image")
+	b.genImageBinToolArgs.Add("--flash_mode", b.toolChain.Vars.GetOne("burner.flash.mode"))
+	b.genImageBinToolArgs.Add("--flash_freq", b.toolChain.Vars.GetOne("burner.flash.frequency"))
+	b.genImageBinToolArgs.Add("--flash_size", b.toolChain.Vars.GetOne("burner.flash.size"))
+	b.genImageBinToolArgs.Add("--elf-sha256-offset", b.toolChain.Vars.GetOne("burner.flash.elf.share.offset"))
+	b.genImageBinToolArgs.Add("-o", projectBinFilepath)
+	b.genImageBinToolArgs.Add(projectElfFilepath)
 
-	b.generateImagePartitionsToolArgs.Clear()
-	b.generateImagePartitionsToolArgs.Add(b.toolChain.Vars.GetOne("burner.generate-partitions-bin.script"))
-	b.generateImagePartitionsToolArgs.Add("-q")
-	b.generateImagePartitionsToolArgs.Add(b.toolChain.Vars.GetOne("burner.flash.partitions.csv.filepath"))
-	b.generateImagePartitionsToolArgs.Add(projectPartitionsBinFilepath)
+	b.genImagePartitionsToolArgs.Clear()
+	b.genImagePartitionsToolArgs.Add(b.toolChain.Vars.GetOne("burner.generate-partitions-bin.script"))
+	b.genImagePartitionsToolArgs.Add("-q")
+	b.genImagePartitionsToolArgs.Add(b.toolChain.Vars.GetOne("burner.flash.partitions.csv.filepath"))
+	b.genImagePartitionsToolArgs.Add(projectPartitionsBinFilepath)
 
-	b.generateBootloaderToolArgs.Clear()
-	b.generateBootloaderToolArgs.Add("--chip", b.toolChain.Vars.GetOne("esp.mcu"))
-	b.generateBootloaderToolArgs.Add("elf2image")
-	b.generateBootloaderToolArgs.Add("--flash_mode", b.toolChain.Vars.GetOne("burner.flash.mode"))
-	b.generateBootloaderToolArgs.Add("--flash_freq", b.toolChain.Vars.GetOne("burner.flash.frequency"))
-	b.generateBootloaderToolArgs.Add("--flash_size", b.toolChain.Vars.GetOne("burner.flash.size"))
-	b.generateBootloaderToolArgs.Add("-o", projectBootloaderBinFilepath)
-
+	b.genBootloaderToolArgs.Clear()
+	b.genBootloaderToolArgs.Add("--chip", b.toolChain.Vars.GetOne("esp.mcu"))
+	b.genBootloaderToolArgs.Add("elf2image")
+	b.genBootloaderToolArgs.Add("--flash_mode", b.toolChain.Vars.GetOne("burner.flash.mode"))
+	b.genBootloaderToolArgs.Add("--flash_freq", b.toolChain.Vars.GetOne("burner.flash.frequency"))
+	b.genBootloaderToolArgs.Add("--flash_size", b.toolChain.Vars.GetOne("burner.flash.size"))
+	b.genBootloaderToolArgs.Add("-o", projectBootloaderBinFilepath)
 	sdkBootLoaderElfPath := b.toolChain.Vars.GetOne("burner.sdk.bootloader.elf.path")
-	b.generateBootloaderToolArgs.Add(sdkBootLoaderElfPath)
+	b.genBootloaderToolArgs.Add(sdkBootLoaderElfPath)
+
+	// File Dependency Tracker and Information
+	b.dependencyTracker = dpenc.LoadFileTrackr(filepath.Join(buildPath, "deptrackr.burn"))
+
+	b.genImageBinToolOutputFilepath = projectBinFilepath
+	b.genImageBinToolInputFilepaths = []string{projectElfFilepath}
+	b.genImageBinToolArgsHash = b.hashArguments(b.genImageBinToolArgs.List)
+
+	b.genImagePartitionsToolOutputFilepath = projectPartitionsBinFilepath
+	b.genImagePartitionsToolInputFilepaths = []string{}
+	b.genImagePartitionsToolArgsHash = b.hashArguments(b.genImagePartitionsToolArgs.List)
+
+	b.genBootloaderToolOutputFilepath = projectBootloaderBinFilepath
+	b.genBootloaderToolInputFilepaths = []string{}
+	b.genBootloaderToolArgsHash = b.hashArguments(b.genBootloaderToolArgs.List)
 }
 
 func (b *ToolchainArduinoEsp32Burner) Build() error {
@@ -451,9 +500,9 @@ func (b *ToolchainArduinoEsp32Burner) Build() error {
 	// - Generate bootloader image ('PROJECT.NAME.bootloader.bin'):
 
 	// Generate the image partitions bin file
-	{
-		img, _ := exec.LookPath(b.generateImagePartitionsToolPath)
-		args := b.generateImagePartitionsToolArgs
+	if !b.dependencyTracker.QueryItemWithExtraData(b.genImagePartitionsToolOutputFilepath, b.genImagePartitionsToolArgsHash) {
+		img, _ := exec.LookPath(b.genImagePartitionsToolPath)
+		args := b.genImagePartitionsToolArgs
 
 		cmd := exec.Command(img, args.List...)
 		log.Printf("Creating image partitions '%s' ...\n", b.toolChain.ProjectName+".partitions.bin")
@@ -465,12 +514,16 @@ func (b *ToolchainArduinoEsp32Burner) Build() error {
 			log.Printf("Image partitions output:\n%s\n", string(out))
 		}
 		fmt.Println()
+
+		b.dependencyTracker.AddItemWithExtraData(b.genImagePartitionsToolOutputFilepath, b.genImagePartitionsToolArgsHash, b.genImagePartitionsToolInputFilepaths)
+	} else {
+		b.dependencyTracker.CopyItem(b.genImagePartitionsToolOutputFilepath)
 	}
 
 	// Generate the image bin file
-	{
-		imgPath := b.generateImageBinToolPath
-		args := b.generateImageBinToolArgs
+	if !b.dependencyTracker.QueryItemWithExtraData(b.genImageBinToolOutputFilepath, b.genImageBinToolArgsHash) {
+		imgPath := b.genImageBinToolPath
+		args := b.genImageBinToolArgs
 
 		cmd := exec.Command(imgPath, args.List...)
 		log.Printf("Generating image '%s'\n", b.toolChain.ProjectName+".bin")
@@ -481,12 +534,17 @@ func (b *ToolchainArduinoEsp32Burner) Build() error {
 		if len(out) > 0 {
 			log.Printf("Image generation output:\n%s\n", string(out))
 		}
+		fmt.Println()
+
+		b.dependencyTracker.AddItemWithExtraData(b.genImageBinToolOutputFilepath, b.genImageBinToolArgsHash, b.genImageBinToolInputFilepaths)
+	} else {
+		b.dependencyTracker.CopyItem(b.genImageBinToolOutputFilepath)
 	}
 
 	// Generate the bootloader image
-	{
-		imgPath := b.generateBootloaderToolPath
-		args := b.generateBootloaderToolArgs
+	if !b.dependencyTracker.QueryItemWithExtraData(b.genBootloaderToolOutputFilepath, b.genBootloaderToolArgsHash) {
+		imgPath := b.genBootloaderToolPath
+		args := b.genBootloaderToolArgs
 
 		cmd := exec.Command(imgPath, args.List...)
 		log.Printf("Generating bootloader '%s'\n", b.toolChain.ProjectName+".bootloader.bin")
@@ -498,7 +556,14 @@ func (b *ToolchainArduinoEsp32Burner) Build() error {
 		if len(out) > 0 {
 			log.Printf("Bootloader generation output:\n%s\n", string(out))
 		}
+		fmt.Println()
+
+		b.dependencyTracker.AddItemWithExtraData(b.genBootloaderToolOutputFilepath, b.genBootloaderToolArgsHash, b.genBootloaderToolInputFilepaths)
+	} else {
+		b.dependencyTracker.CopyItem(b.genBootloaderToolOutputFilepath)
 	}
+
+	b.dependencyTracker.Save()
 
 	return nil
 }
@@ -517,52 +582,69 @@ func (b *ToolchainArduinoEsp32Burner) SetupBurn(buildPath string) error {
 	b.flashToolArgs.Add("--flash_freq", "keep")
 	b.flashToolArgs.Add("--flash_size", "keep")
 
-	projectNameFilepath := filepath.Join(buildPath, b.toolChain.ProjectName)
-
-	bootloaderBinFilepath := projectNameFilepath + ".bootloader.bin"
-	partitionsBinFilepath := projectNameFilepath + ".partitions.bin"
 	bootApp0BinFilePath := b.toolChain.Vars.GetOne("burner.bootapp0.bin.filepath")
-	applicationBinFilepath := projectNameFilepath + ".bin"
-
-	if !utils.FileExists(bootloaderBinFilepath) {
-		return fmt.Errorf("Bootloader bin file '%s' does not exist", bootloaderBinFilepath)
-	}
-	if !utils.FileExists(partitionsBinFilepath) {
-		return fmt.Errorf("Partitions bin file '%s' does not exist", partitionsBinFilepath)
-	}
 	if !utils.FileExists(bootApp0BinFilePath) {
 		return fmt.Errorf("Boot app0 bin file '%s' does not exist", bootApp0BinFilePath)
 	}
-	if !utils.FileExists(applicationBinFilepath) {
-		return fmt.Errorf("Application bin file '%s' does not exist", applicationBinFilepath)
-	}
 
 	b.flashToolArgs.Add(b.toolChain.Vars.GetOne("burner.flash.bootloader.bin.offset"))
-	b.flashToolArgs.Add(bootloaderBinFilepath)
+	b.flashToolArgs.Add(b.genBootloaderToolOutputFilepath)
 	b.flashToolArgs.Add(b.toolChain.Vars.GetOne("burner.flash.partitions.bin.offset"))
-	b.flashToolArgs.Add(partitionsBinFilepath)
+	b.flashToolArgs.Add(b.genImagePartitionsToolOutputFilepath)
 	b.flashToolArgs.Add(b.toolChain.Vars.GetOne("burner.flash.bootapp0.bin.offset"))
 	b.flashToolArgs.Add(bootApp0BinFilePath)
 	b.flashToolArgs.Add(b.toolChain.Vars.GetOne("burner.flash.application.bin.offset"))
-	b.flashToolArgs.Add(applicationBinFilepath)
+	b.flashToolArgs.Add(b.genImageBinToolOutputFilepath)
 
 	return nil
 }
 
 func (b *ToolchainArduinoEsp32Burner) Burn() error {
+	if !utils.FileExists(b.genBootloaderToolOutputFilepath) {
+		return fmt.Errorf("Cannot burn, bootloader bin file '%s' doesn't exist", b.genBootloaderToolOutputFilepath)
+	}
+	if !utils.FileExists(b.genImagePartitionsToolOutputFilepath) {
+		return fmt.Errorf("Cannot burn, partitions bin file '%s' doesn't exist", b.genImagePartitionsToolOutputFilepath)
+	}
+	if !utils.FileExists(b.genImageBinToolOutputFilepath) {
+		return fmt.Errorf("Cannot burn, application bin file '%s' doesn't exist", b.genImageBinToolOutputFilepath)
+	}
+
 	flashToolPath := b.flashToolPath
 	flashToolArgs := b.flashToolArgs
 
-	// TODO Verify that the 4 files exist before proceeding?
+	log.Printf("Flashing '%s'...\n", b.toolChain.ProjectName+".bin")
 
 	flashToolCmd := exec.Command(flashToolPath, flashToolArgs.List...)
-	log.Printf("Flashing '%s'...\n", b.toolChain.ProjectName+".bin")
-	out, err := flashToolCmd.CombinedOutput()
-	if err != nil {
+
+	// out, err := flashToolCmd.CombinedOutput()
+	// if err != nil {
+	// 	return fmt.Errorf("Flashing failed with %s\n", err)
+	// }
+	// if len(out) > 0 {
+	// 	log.Printf("Flashing output:\n%s\n", string(out))
+	// }
+
+	pipe, _ := flashToolCmd.StdoutPipe()
+
+	if err := flashToolCmd.Start(); err != nil {
 		return fmt.Errorf("Flashing failed with %s\n", err)
 	}
-	if len(out) > 0 {
-		log.Printf("Flashing output:\n%s\n", string(out))
+
+	reader := bufio.NewReader(pipe)
+	line, err := reader.ReadString('\n')
+	for err == nil {
+		fmt.Print(line)
+		line, err = reader.ReadString('\n')
+		if err == io.EOF {
+			err = nil
+			break
+		}
+	}
+	fmt.Println()
+
+	if err != nil {
+		return fmt.Errorf("Flashing failed with %s\n", err)
 	}
 
 	return nil
@@ -572,7 +654,7 @@ func (b *ToolchainArduinoEsp32Burner) Burn() error {
 // --------------------------------------------------------------------------------------------------
 // Dependency Tracker
 func (t *ArduinoEsp32) NewDependencyTracker(dirpath string) dpenc.FileTrackr {
-	return dpenc.LoadDotdFileTrackr(dirpath)
+	return dpenc.LoadFileTrackr(filepath.Join(dirpath, "deptrackr"))
 }
 
 // --------------------------------------------------------------------------------------------------

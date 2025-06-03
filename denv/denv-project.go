@@ -9,94 +9,6 @@ import (
 	utils "github.com/jurgen-kluft/ccode/utils"
 )
 
-// -----------------------------------------------------------------------------------------------------
-// -----------------------------------------------------------------------------------------------------
-type DevProjectList struct {
-	Dict   map[string]int
-	Values []*DevProject
-	Keys   []string
-}
-
-func NewDevProjectList() *DevProjectList {
-	return &DevProjectList{
-		Dict:   map[string]int{},
-		Values: []*DevProject{},
-		Keys:   []string{},
-	}
-}
-
-func (p *DevProjectList) Len() int {
-	return len(p.Values)
-}
-
-func (p *DevProjectList) IsEmpty() bool {
-	return len(p.Values) == 0
-}
-
-func (p *DevProjectList) Add(project *DevProject) {
-	if _, ok := p.Dict[project.Name]; !ok {
-		p.Dict[project.Name] = len(p.Values)
-		p.Values = append(p.Values, project)
-		p.Keys = append(p.Keys, project.Name)
-	}
-}
-
-func (p *DevProjectList) Has(name string) bool {
-	_, ok := p.Dict[name]
-	return ok
-}
-
-func (p *DevProjectList) Get(name string) (*DevProject, bool) {
-	if i, ok := p.Dict[name]; ok {
-		return p.Values[i], true
-	}
-	return nil, false
-}
-
-func (p *DevProjectList) CollectByWildcard(name string, list *DevProjectList) {
-	for _, p := range p.Values {
-		if utils.PathMatchWildcard(p.Name, name, true) {
-			list.Add(p)
-		}
-	}
-}
-
-func (p *DevProjectList) TopoSort() error {
-	var edges []Edge
-
-	// Sort the projects by dependencies
-	for i, project := range p.Values {
-		if project.Dependencies.IsEmpty() {
-			edges = append(edges, Edge{Vertex(i), InvalidVertex})
-		} else {
-			for _, dep := range project.Dependencies.Values {
-				edges = append(edges, Edge{S: Vertex(i), D: Vertex(p.Dict[dep.Name])})
-			}
-		}
-	}
-
-	sorted, err := Toposort(edges)
-	if err != nil {
-		return err
-	}
-
-	var sortedProjects []*DevProject
-	for i := len(sorted) - 1; i >= 0; i-- {
-		sortedProjects = append(sortedProjects, p.Values[sorted[i]])
-	}
-
-	p.Dict = map[string]int{}
-	p.Values = sortedProjects
-	p.Keys = []string{}
-
-	for i, project := range sortedProjects {
-		p.Dict[project.Name] = i
-		p.Keys = append(p.Keys, project.Name)
-	}
-
-	return nil
-}
-
 // DevProject is a structure that holds all the information that defines a project in an IDE
 type DevProject struct {
 	Package      *Package
@@ -452,4 +364,92 @@ func configureProjectCompilerDefines(config *DevConfig) {
 	if configType.IsTest() {
 		config.Defines.AddMany("TARGET_TEST")
 	}
+}
+
+// -----------------------------------------------------------------------------------------------------
+// -----------------------------------------------------------------------------------------------------
+type DevProjectList struct {
+	Dict   map[string]int
+	Values []*DevProject
+	Keys   []string
+}
+
+func NewDevProjectList() *DevProjectList {
+	return &DevProjectList{
+		Dict:   map[string]int{},
+		Values: []*DevProject{},
+		Keys:   []string{},
+	}
+}
+
+func (p *DevProjectList) Len() int {
+	return len(p.Values)
+}
+
+func (p *DevProjectList) IsEmpty() bool {
+	return len(p.Values) == 0
+}
+
+func (p *DevProjectList) Add(project *DevProject) {
+	if _, ok := p.Dict[project.Name]; !ok {
+		p.Dict[project.Name] = len(p.Values)
+		p.Values = append(p.Values, project)
+		p.Keys = append(p.Keys, project.Name)
+	}
+}
+
+func (p *DevProjectList) Has(name string) bool {
+	_, ok := p.Dict[name]
+	return ok
+}
+
+func (p *DevProjectList) Get(name string) (*DevProject, bool) {
+	if i, ok := p.Dict[name]; ok {
+		return p.Values[i], true
+	}
+	return nil, false
+}
+
+func (p *DevProjectList) CollectByWildcard(name string, list *DevProjectList) {
+	for _, p := range p.Values {
+		if utils.PathMatchWildcard(p.Name, name, true) {
+			list.Add(p)
+		}
+	}
+}
+
+func (p *DevProjectList) TopoSort() error {
+	var edges []Edge
+
+	// Sort the projects by dependencies
+	for i, project := range p.Values {
+		if project.Dependencies.IsEmpty() {
+			edges = append(edges, Edge{Vertex(i), InvalidVertex})
+		} else {
+			for _, dep := range project.Dependencies.Values {
+				edges = append(edges, Edge{S: Vertex(i), D: Vertex(p.Dict[dep.Name])})
+			}
+		}
+	}
+
+	sorted, err := Toposort(edges)
+	if err != nil {
+		return err
+	}
+
+	var sortedProjects []*DevProject
+	for i := len(sorted) - 1; i >= 0; i-- {
+		sortedProjects = append(sortedProjects, p.Values[sorted[i]])
+	}
+
+	p.Dict = map[string]int{}
+	p.Values = sortedProjects
+	p.Keys = []string{}
+
+	for i, project := range sortedProjects {
+		p.Dict[project.Name] = i
+		p.Keys = append(p.Keys, project.Name)
+	}
+
+	return nil
 }

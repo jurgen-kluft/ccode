@@ -2,12 +2,13 @@ package dpenc
 
 import (
 	"crypto/sha1"
+	"path/filepath"
 	"testing"
 	"time"
 )
 
 func TestDepTrackrSimple(t *testing.T) {
-	current := loadTrackr("testdb", "test deptrackr, v1.0.0")
+	current := loadTrackr(filepath.Join("testdb", "deptrackr.simple"), "test deptrackr, v1.0.0")
 	tracker := current.newTrackr()
 
 	hasher := sha1.New()
@@ -58,7 +59,7 @@ func TestDepTrackrSimple(t *testing.T) {
 
 	// Query the main item
 	dependencyCount := 0
-	mainItemState, err := tracker.QueryItem(mainItem.IdDigest, true, func(itemState State, itemChangeFlags uint8, itemChangeData []byte, itemIdFlags uint8, itemIdData []byte) State {
+	mainItemState, err := tracker.QueryItem(mainItem.IdDigest, true, func(itemState State, itemIdFlags uint8, itemIdData []byte, itemChangeFlags uint8, itemChangeData []byte) State {
 		if itemChangeFlags == mainItem.ChangeFlags && string(itemChangeData) == string(mainItem.ChangeData) &&
 			itemIdFlags == mainItem.IdFlags && string(itemIdData) == string(mainItem.IdData) {
 			return StateUpToDate
@@ -84,7 +85,7 @@ func TestDepTrackrSimple(t *testing.T) {
 // each item has more than 3 dependencies. Here we do not test for
 // out-of-date items, but rather focus on the addition of multiple dependencies.
 func TestDepTrackrMultipleDependencies(t *testing.T) {
-	current := loadTrackr("testdb", "test deptrackr, v1.0.0")
+	current := loadTrackr(filepath.Join("testdb", "deptrackr.multi"), "test deptrackr, v1.0.0")
 
 	tracker := current.newTrackr()
 	hasher := sha1.New()
@@ -162,7 +163,7 @@ func TestDepTrackrMultipleDependencies(t *testing.T) {
 
 		wrongState := false
 		depCount := 0
-		mainItemState, err := tracker.QueryItem(itemHash, true, func(itemState State, itemChangeFlags uint8, itemChangeData []byte, itemIdFlags uint8, itemIdData []byte) State {
+		mainItemState, err := tracker.QueryItem(itemHash, true, func(itemState State, itemIdFlags uint8, itemIdData []byte, itemChangeFlags uint8, itemChangeData []byte) State {
 			if itemState != StateNone {
 				wrongState = true
 			}

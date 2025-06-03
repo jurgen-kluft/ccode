@@ -325,7 +325,7 @@ func (g *MsDevGenerator) genProjectConfig(wr *utils.XmlWriter, proj *Project, co
 				wr.TagWithBody("Verbose", "true")
 			} else {
 				wr.TagWithBody("SDLCheck", "true")
-				wr.TagWithBodyBool("MultiProcessorCompilation", proj.Settings.MultiThreadedBuild.Bool())
+				wr.TagWithBodyBool("MultiProcessorCompilation", proj.Settings.MultiThreadedBuild)
 			}
 
 			if proj.Resolved.PchHeader != nil {

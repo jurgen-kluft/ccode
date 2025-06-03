@@ -3,11 +3,9 @@ package dpenc
 import (
 	"bytes"
 	"crypto/sha1"
-	"encoding/binary"
 	"fmt"
 	"hash"
 	"os"
-	"path/filepath"
 	"slices"
 	"unsafe"
 )
@@ -26,20 +24,6 @@ import (
 //      hash in a shard that has many linked shards. This can only occur when the hash
 //      keeps hitting this shard, so it is not a very common case.
 //
-// e.g.
-// currentTrackr := deptrackr.Load("path/to/storage")
-// futureTrackr := currentTrackr.NewDB() // create a new database based on the current one
-//
-// // Query item
-// state, err := currentTrackr.QueryItem(itemHash, true, verifyCb)
-// if state == deptrackr.StateUpToDate {
-//     currentTrackr.CopyItem(futureTrackr, itemHash) // copy the item to the new database
-// } else {
-//     // Build a new item and add it to the new database
-// }
-//
-// futureTrackr.Save()
-//
 
 type State int8
 
@@ -52,34 +36,35 @@ const (
 
 type trackr struct {
 	hasher               hash.Hash
-	scratchBuffer        []byte  // A temporary byte buffer for hashing and other operations, not saved to disk
-	scratchBufferCursor  int     // Cursor for the scratch byte buffer, used to write data to it
-	StoragePath          string  // Path to the directory where we store the database file
-	Signature            string  // max 32 characters signature, e.g. ".d deptracker v1.0.0"
-	HashSize             int32   // Size of the hash, this is 20 bytes for SHA1
-	ItemState            []State // Hash, this is the state of the item that is modified during a query
-	ItemIdHash           []byte  // Hash, this is the ID of the item (filepath, label (e.g. 'MSVC C++ compiler cmd-line arguments))
-	ItemChangeHash       []byte  // Hash, this identifies the 'change' (modification-time, file-size, file-content, command-line arguments, string, etc..)
-	ItemIdFlags          []uint8 //
-	ItemChangeFlags      []uint8 //
-	ItemDepsStart        []int32 // Item, start of dependencies
-	ItemDepsCount        []int32 // Item, count of dependencies
-	ItemIdDataOffset     []int32 // data for Id, 4 bytes (0 means no data)
-	ItemIdDataSize       []int32 //
-	ItemChangeDataOffset []int32 // data for Change, 4 bytes (0 means no data)
-	ItemChangeDataSize   []int32 //
-	Deps                 []int32 // Array for each item to list their dependencies, this is a flat array of item indices
-	Data                 []byte  // Here the data for Id and Change is stored, this is a flat array of bytes
-	N                    int32   // how many bits we take from the hash to index into the shards (0-15)
-	S                    int32   // size of a shard, this is the number of items per shard, default is 512
-	ShardOffsets         []int32 // This is an array of offsets into the Shards array, each offset corresponds to a shard, 0 means the shard doesn't exist yet
-	ShardSizes           []int32 // This is an array of sizes of each shard, 0 means the shard is empty
-	DirtyFlags           []uint8 // A bit per shard, indicates if the shard is dirty (unsorted) and needs to be sorted
-	Shards               []int32 // An array of shards, a shard is a region of item-indices
-	EmptyShard           []int32 // A shard initialized to a size of S and full of NillIndex
+	scratchBuffer        *BinaryData // A temporary byte buffer for hashing and other operations, not saved to disk
+	storageFilepath      string      // Filepath where we store the database file
+	signature            string      // max 32 characters signature, e.g. ".d deptracker v1.0.0"
+	hashSize             int32       // Size of the hash, this is 20 bytes for SHA1
+	itemState            []State     // Hash, this is the state of the item that is modified during a query
+	ItemIdHash           []byte      // Hash, this is the ID of the item (filepath, label (e.g. 'MSVC C++ compiler cmd-line arguments))
+	ItemChangeHash       []byte      // Hash, this identifies the 'change' (modification-time, file-size, file-content, command-line arguments, string, etc..)
+	ItemIdFlags          []uint8     //
+	ItemChangeFlags      []uint8     //
+	ItemDepsStart        []int32     // Item, start of dependencies
+	ItemDepsCount        []int32     // Item, count of dependencies
+	ItemIdDataOffset     []int32     // data for Id (-1 means no data)
+	ItemIdDataSize       []int32     // (size=0 means no data)
+	ItemExtraDataOffset  []int32     // extra data for item
+	ItemExtraDataSize    []uint8     // (size=0 means no data)
+	ItemChangeDataOffset []int32     // data for Change (-1 means no data)
+	ItemChangeDataSize   []uint8     // (size=0 means no data)
+	Deps                 []int32     // Array for each item to list their dependencies, this is a flat array of item indices
+	Data                 []byte      // Here any data (id, change, extra) is stored, this is a flat array of bytes
+	N                    int32       // how many bits we take from the hash to index into the shards (0-15)
+	S                    int32       // size of a shard, this is the number of items per shard, default is 512
+	ShardOffsets         []int32     // This is an array of offsets into the Shards array, each offset corresponds to a shard, 0 means the shard doesn't exist yet
+	ShardSizes           []int16     // This is an array of sizes of each shard, 0 means the shard is empty
+	DirtyFlags           []uint8     // A bit per shard, indicates if the shard is dirty (unsorted) and needs to be sorted
+	Shards               []int32     // An array of shards, a shard is a region of item-indices
+	EmptyShard           []int32     // A shard initialized to a size of S and full of NillIndex
 }
 
-func newTrackr(storageDir string, signature string) *trackr {
+func newTrackr(storageFilepath string, signature string) *trackr {
 	hs := int32(20) // SHA1 hash size is 20 bytes
 	n := int32(10)  // how many bits we take from the hash to index into the buckets (0-15)
 	s := int32(512) // size of a shard, this is the number of items per shard, default is 512
@@ -88,12 +73,11 @@ func newTrackr(storageDir string, signature string) *trackr {
 
 	d := &trackr{
 		hasher:               sha1.New(),                       // Create a new SHA1 hasher
-		scratchBuffer:        make([]byte, 1024),               // A temporary byte buffer for hashing and other operations, not saved to disk
-		scratchBufferCursor:  0,                                // Cursor for the scratch byte buffer, used to write data to it
-		StoragePath:          storageDir,                       //
-		Signature:            signature,                        // copy the signature from the source
-		HashSize:             hs,                               //
-		ItemState:            make([]State, 0, reserve),        // State of the item, this is used to track if the item is up to date or not
+		scratchBuffer:        NewBinaryData(256),               // A temporary byte buffer for hashing and other operations, not saved to disk
+		storageFilepath:      storageFilepath,                  //
+		signature:            signature,                        // copy the signature from the source
+		hashSize:             hs,                               //
+		itemState:            make([]State, 0, reserve),        // State of the item, this is used to track if the item is up to date or not
 		ItemIdHash:           make([]byte, 0, reserve*int(hs)), //
 		ItemChangeHash:       make([]byte, 0, reserve*int(hs)), //
 		ItemIdFlags:          make([]uint8, 0, reserve),        //
@@ -102,12 +86,14 @@ func newTrackr(storageDir string, signature string) *trackr {
 		ItemDepsCount:        make([]int32, 0, reserve),        //
 		ItemIdDataOffset:     make([]int32, 0, reserve),        //
 		ItemIdDataSize:       make([]int32, 0, reserve),        //
+		ItemExtraDataOffset:  make([]int32, 0, reserve),        //
+		ItemExtraDataSize:    make([]uint8, 0, reserve),        //
 		ItemChangeDataOffset: make([]int32, 0, reserve),        //
-		ItemChangeDataSize:   make([]int32, 0, reserve),        //
+		ItemChangeDataSize:   make([]uint8, 0, reserve),        //
 		N:                    n,                                //
 		S:                    s,                                //
 		ShardOffsets:         make([]int32, 1<<n),              // initial capacity of 2^N shards
-		ShardSizes:           make([]int32, 1<<n),              // initial capacity of 2^N shards
+		ShardSizes:           make([]int16, 1<<n),              // initial capacity of 2^N shards
 		DirtyFlags:           make([]uint8, ((1<<n)+7)>>3),     // initial capacity of N bits for dirty flags (rounded up to the nearest byte)
 		Shards:               make([]int32, 0, (1<<n)*s),       // initial capacity of 2^N shards where each shard has s elements
 		EmptyShard:           make([]int32, s),                 // an empty shard, used to copy when making a new shard in Shards
@@ -133,34 +119,35 @@ func newTrackr(storageDir string, signature string) *trackr {
 }
 
 func (src *trackr) newTrackr() *trackr {
-	reserve := max(1024, len(src.ItemIdHash)+len(src.ItemIdHash)/8)
+	numItems := max(1024, len(src.ItemIdFlags)+len(src.ItemIdFlags)/8)
 
-	hs := src.HashSize
+	hs := src.hashSize
 	n := src.N
 	s := src.S
 
 	newTrackr := &trackr{
 		hasher:               sha1.New(),                                         // Create a new SHA1 hasher
-		scratchBuffer:        make([]byte, 1024),                                 // A temporary byte buffer for hashing and other operations, not saved to disk
-		scratchBufferCursor:  0,                                                  // Cursor for the scratch byte buffer, used to write data to it
-		StoragePath:          src.StoragePath,                                    //
-		Signature:            src.Signature,                                      // copy the signature from the source
-		HashSize:             hs,                                                 //
-		ItemState:            make([]State, 0, reserve),                          // State of the item, this is used to track if the item is up to date or not
-		ItemIdHash:           make([]byte, 0, reserve*int(hs)),                   //
-		ItemChangeHash:       make([]byte, 0, reserve*int(hs)),                   //
-		ItemIdFlags:          make([]uint8, 0, reserve),                          //
-		ItemChangeFlags:      make([]uint8, 0, reserve),                          //
-		ItemDepsStart:        make([]int32, 0, reserve),                          //
-		ItemDepsCount:        make([]int32, 0, reserve),                          //
-		ItemIdDataOffset:     make([]int32, 0, reserve),                          //
-		ItemIdDataSize:       make([]int32, 0, reserve),                          //
-		ItemChangeDataOffset: make([]int32, 0, reserve),                          //
-		ItemChangeDataSize:   make([]int32, 0, reserve),                          //
+		scratchBuffer:        NewBinaryData(256),                                 // A temporary byte buffer for hashing and other operations, not saved to disk
+		storageFilepath:      src.storageFilepath,                                //
+		signature:            src.signature,                                      // copy the signature from the source
+		hashSize:             hs,                                                 //
+		itemState:            make([]State, 0, numItems),                         // State of the item, this is used to track if the item is up to date or not
+		ItemIdHash:           make([]byte, 0, numItems*int(hs)),                  //
+		ItemChangeHash:       make([]byte, 0, numItems*int(hs)),                  //
+		ItemIdFlags:          make([]uint8, 0, numItems),                         //
+		ItemChangeFlags:      make([]uint8, 0, numItems),                         //
+		ItemDepsStart:        make([]int32, 0, numItems),                         //
+		ItemDepsCount:        make([]int32, 0, numItems),                         //
+		ItemIdDataOffset:     make([]int32, 0, numItems),                         //
+		ItemIdDataSize:       make([]int32, 0, numItems),                         //
+		ItemExtraDataOffset:  make([]int32, 0, numItems),                         //
+		ItemExtraDataSize:    make([]uint8, 0, numItems),                         //
+		ItemChangeDataOffset: make([]int32, 0, numItems),                         //
+		ItemChangeDataSize:   make([]uint8, 0, numItems),                         //
 		N:                    n,                                                  //
 		S:                    s,                                                  //
 		ShardOffsets:         make([]int32, 1<<n),                                // initial capacity of 2^N shards
-		ShardSizes:           make([]int32, 1<<n),                                // initial capacity of 2^N shards
+		ShardSizes:           make([]int16, 1<<n),                                // initial capacity of 2^N shards
 		DirtyFlags:           make([]uint8, ((1<<n)+7)>>3),                       // initial capacity of N bits for dirty flags (rounded up to the nearest byte)
 		Shards:               make([]int32, 0, (1<<n)*s),                         // initial capacity of 2^N shards where each shard has s elements
 		EmptyShard:           src.EmptyShard,                                     // an empty shard, used to copy when making a new shard in Shards
@@ -180,7 +167,14 @@ func (src *trackr) newTrackr() *trackr {
 }
 
 // --------------------------------------------------------------------------
-// Helper functions to cast loaded byte arrays to other types
+// Helper functions to cast to byte array (used for load/save)
+func castInt16ArrayToByteArray(i []int16) []byte {
+	if len(i) == 0 {
+		return []byte{}
+	}
+	return unsafe.Slice((*byte)(unsafe.Pointer(&i[0])), len(i)<<1)
+}
+
 func castInt32ArrayToByteArray(i []int32) []byte {
 	if len(i) == 0 {
 		return []byte{}
@@ -188,64 +182,49 @@ func castInt32ArrayToByteArray(i []int32) []byte {
 	return unsafe.Slice((*byte)(unsafe.Pointer(&i[0])), len(i)<<2)
 }
 
-func (d *trackr) writeBytesToScratch(b []byte) {
-	d.scratchBufferCursor += copy(d.scratchBuffer[d.scratchBufferCursor:], b)
-}
-
-func (d *trackr) writeIntToScratch(value int) {
-	binary.LittleEndian.PutUint32(d.scratchBuffer[d.scratchBufferCursor:d.scratchBufferCursor+4], uint32(value))
-	d.scratchBufferCursor += 4
-}
-
-func (d *trackr) writeInt32ToScratch(value int32) {
-	binary.LittleEndian.PutUint32(d.scratchBuffer[d.scratchBufferCursor:d.scratchBufferCursor+4], uint32(value))
-	d.scratchBufferCursor += 4
-}
-
-func (d *trackr) readNBytesFromScratch(n int) []byte {
-	if d.scratchBufferCursor+n > len(d.scratchBuffer) {
-		return nil // or handle error
-	}
-	value := d.scratchBuffer[d.scratchBufferCursor : d.scratchBufferCursor+n]
-	d.scratchBufferCursor += n
-	return value
-}
-
-func (d *trackr) readIntFromScratch() int {
-	if d.scratchBufferCursor+4 > len(d.scratchBuffer) {
-		return 0 // or handle error
-	}
-	value := binary.LittleEndian.Uint32(d.scratchBuffer[d.scratchBufferCursor : d.scratchBufferCursor+4])
-	d.scratchBufferCursor += 4
-	return int(value)
-}
-
-func (d *trackr) readInt32FromScratch() int32 {
-	if d.scratchBufferCursor+4 > len(d.scratchBuffer) {
-		return 0 // or handle error
-	}
-	value := binary.LittleEndian.Uint32(d.scratchBuffer[d.scratchBufferCursor : d.scratchBufferCursor+4])
-	d.scratchBufferCursor += 4
-	return int32(value)
-}
-
-func (d *trackr) writeByteArray(signature string, numItems int, array []byte, sizeofElement int, f *os.File) error {
-	if (numItems * sizeofElement) != len(array) {
-		return fmt.Errorf("number of items*sizeof(item) (%d) does not match the length of the array (%d)", numItems*sizeofElement, len(array))
-	}
-
+func (d *trackr) writeArray(signature string, numItems int, f *os.File) error {
 	d.hasher.Reset()
-	d.hasher.Write([]byte(signature))
+	d.hasher.Write([]byte(d.signature)) // trackr signature
+	d.hasher.Write([]byte(signature))   // array signature
+	signatureHash := d.hasher.Sum(nil)
+	d.scratchBuffer.reset()
+	d.scratchBuffer.writeBytes(signatureHash[:10])
+	d.scratchBuffer.writeInt(numItems)
+	d.scratchBuffer.writeBytes(signatureHash[10:])
+	if err := d.scratchBuffer.writeToFile(f); err != nil {
+		return err
+	}
+	return nil
+}
+
+func (d *trackr) readArray(signature string, f *os.File) (readNumItems int, err error) {
+	d.hasher.Reset()
+	d.hasher.Write([]byte(d.signature)) // trackr signature
+	d.hasher.Write([]byte(signature))   // array signature
 	signatureHash := d.hasher.Sum(nil)
 
-	d.scratchBufferCursor = 0
-	d.writeBytesToScratch(signatureHash[:10])
-	d.writeIntToScratch(numItems)
-	d.writeIntToScratch(sizeofElement)
-	d.writeIntToScratch(len(array))
-	d.writeBytesToScratch(signatureHash[10:])
-	if numBytesWritten, err := f.Write(d.scratchBuffer[:d.scratchBufferCursor]); err != nil || numBytesWritten != d.scratchBufferCursor {
-		return fmt.Errorf("failed to write header for signature '%s': %w", signature, err)
+	headerSize := 24
+	if err := d.scratchBuffer.readFromFile(headerSize, f); err != nil {
+		return 0, err
+	}
+
+	readSignatureHash := d.scratchBuffer.readNBytes(10)
+	if bytes.Compare(signatureHash[:10], readSignatureHash) != 0 {
+		return 0, fmt.Errorf("signature mismatch for '%s'", signature)
+	}
+
+	readNumItems = d.scratchBuffer.readInt()
+
+	readSignatureHash = d.scratchBuffer.readNBytes(10)
+	if bytes.Compare(signatureHash[10:], readSignatureHash) != 0 {
+		return 0, fmt.Errorf("signature mismatch for '%s'", signature)
+	}
+	return readNumItems, nil
+}
+
+func (d *trackr) writeByteArray(signature string, array []byte, f *os.File) error {
+	if err := d.writeArray(signature, len(array), f); err != nil {
+		return err
 	}
 	if numBytesWritten, err := f.Write(array); err != nil || numBytesWritten != len(array) {
 		return fmt.Errorf("failed to write byte array for signature '%s': %w", signature, err)
@@ -253,65 +232,21 @@ func (d *trackr) writeByteArray(signature string, numItems int, array []byte, si
 	return nil
 }
 
-func (d *trackr) readByteArray(signature string, numItems int, itemSize int, f *os.File) ([]byte, error) {
-	d.hasher.Reset()
-	d.hasher.Write([]byte(signature))
-	signatureHash := d.hasher.Sum(nil)
-
-	headerSize := 32
-
-	d.scratchBufferCursor = 0
-	if numBytesRead, err := f.Read(d.scratchBuffer[:headerSize]); err != nil || numBytesRead != headerSize {
-		return nil, fmt.Errorf("failed to read header for signature '%s': %w", signature, err)
+func (d *trackr) readByteArray(signature string, f *os.File) ([]byte, error) {
+	if arrayLen, err := d.readArray(signature, f); err != nil {
+		return nil, err
+	} else {
+		arrayData := make([]byte, arrayLen)
+		if numBytesRead, err := f.Read(arrayData); err != nil || numBytesRead != arrayLen {
+			return nil, fmt.Errorf("failed to read byte array for signature '%s': %w", signature, err)
+		}
+		return arrayData, nil
 	}
-
-	readSignatureHash := d.readNBytesFromScratch(10)
-	if bytes.Compare(signatureHash[:10], readSignatureHash) != 0 {
-		return nil, fmt.Errorf("signature mismatch for '%s'", signature)
-	}
-
-	readNumItems := d.readIntFromScratch()
-	if numItems != 0 && readNumItems != numItems {
-		return nil, fmt.Errorf("number of items (%d) does not match the expected number (%d)", readNumItems, numItems)
-	}
-
-	sizeOfElement := d.readIntFromScratch()
-	if sizeOfElement <= 0 || sizeOfElement != itemSize {
-		return nil, fmt.Errorf("expected size of element to be greater than 0, got %d", sizeOfElement)
-	}
-
-	totalSize := d.readIntFromScratch()
-	if totalSize != readNumItems*sizeOfElement {
-		return nil, fmt.Errorf("total size (%d) does not match the expected size (%d)", totalSize, numItems*sizeOfElement)
-	}
-
-	readSignatureHash = d.readNBytesFromScratch(10)
-	if bytes.Compare(signatureHash[10:], readSignatureHash) != 0 {
-		return nil, fmt.Errorf("signature mismatch for '%s'", signature)
-	}
-
-	arrayData := make([]byte, totalSize)
-	if numBytesRead, err := f.Read(arrayData); err != nil || numBytesRead != totalSize {
-		return nil, fmt.Errorf("failed to read byte array for signature '%s': %w", signature, err)
-	}
-
-	return arrayData, nil
 }
 
-func (d *trackr) writeInt32Array(signature string, numItems int, array []int32, f *os.File) error {
-
-	d.hasher.Reset()
-	d.hasher.Write([]byte(signature))
-	signatureHash := d.hasher.Sum(nil)
-
-	d.scratchBufferCursor = 0
-	d.writeBytesToScratch(signatureHash[:10])
-	d.writeIntToScratch(numItems)
-	d.writeIntToScratch(4)              // size of int32 is 4 bytes
-	d.writeIntToScratch(len(array) * 4) // total size of the array in bytes
-	d.writeBytesToScratch(signatureHash[10:])
-	if numBytesWritten, err := f.Write(d.scratchBuffer[:d.scratchBufferCursor]); err != nil || numBytesWritten != d.scratchBufferCursor {
-		return fmt.Errorf("failed to write header for signature '%s': %w", signature, err)
+func (d *trackr) writeInt32Array(signature string, array []int32, f *os.File) error {
+	if err := d.writeArray(signature, len(array), f); err != nil {
+		return err
 	}
 	arrayBytes := castInt32ArrayToByteArray(array)
 	if numBytesWritten, err := f.Write(arrayBytes); err != nil || numBytesWritten != len(arrayBytes) {
@@ -320,129 +255,183 @@ func (d *trackr) writeInt32Array(signature string, numItems int, array []int32, 
 	return nil
 }
 
-func (d *trackr) readInt32Array(signature string, numItems int, f *os.File) ([]int32, error) {
-	d.hasher.Reset()
-	d.hasher.Write([]byte(signature))
-	signatureHash := d.hasher.Sum(nil)
+func (d *trackr) readInt32Array(signature string, f *os.File) ([]int32, error) {
+	if arrayLen, err := d.readArray(signature, f); err != nil {
+		return nil, err
+	} else {
+		arrayData := make([]int32, arrayLen)
+		arrayDataBytes := castInt32ArrayToByteArray(arrayData)
+		if numBytesRead, err := f.Read(arrayDataBytes); err != nil || numBytesRead != len(arrayDataBytes) {
+			return nil, fmt.Errorf("failed to read int32 array for signature '%s': %w", signature, err)
+		}
+		return arrayData, nil
+	}
+}
 
-	headerSize := 32
+func (d *trackr) writeInt16Array(signature string, array []int16, f *os.File) error {
+	if err := d.writeArray(signature, len(array), f); err != nil {
+		return err
+	}
+	arrayBytes := castInt16ArrayToByteArray(array)
+	if numBytesWritten, err := f.Write(arrayBytes); err != nil || numBytesWritten != len(arrayBytes) {
+		return fmt.Errorf("failed to write int16 array for signature '%s': %w", signature, err)
+	}
+	return nil
+}
 
-	d.scratchBufferCursor = 0
-	if numBytesRead, err := f.Read(d.scratchBuffer[:headerSize]); err != nil || numBytesRead != headerSize {
-		return nil, fmt.Errorf("failed to read header for signature '%s': %w", signature, err)
+func (d *trackr) readInt16Array(signature string, f *os.File) ([]int16, error) {
+	if arrayLen, err := d.readArray(signature, f); err != nil {
+		return nil, err
+	} else {
+		arrayData := make([]int16, arrayLen)
+		arrayDataBytes := castInt16ArrayToByteArray(arrayData)
+		if numBytesRead, err := f.Read(arrayDataBytes); err != nil || numBytesRead != len(arrayDataBytes) {
+			return nil, fmt.Errorf("failed to read int16 array for signature '%s': %w", signature, err)
+		}
+		return arrayData, nil
+	}
+}
+
+// --------------------------------------------------------------------------
+func (d *trackr) validate() error {
+
+	// most of the array's have a deterministic size based on the number of items.
+	// we can thus verify the size of those arrays against the number of items.
+	hashSize := int(d.hashSize)
+	numItems := len(d.ItemIdFlags)
+
+	if len(d.ItemIdHash) != numItems*hashSize {
+		return fmt.Errorf("ItemIdHash size mismatch: expected %d, got %d", numItems*hashSize, len(d.ItemIdHash))
+	}
+	if len(d.ItemChangeHash) != numItems*hashSize {
+		return fmt.Errorf("ItemChangeHash size mismatch: expected %d, got %d", numItems*hashSize, len(d.ItemChangeHash))
+	}
+	if len(d.ItemChangeFlags) != numItems {
+		return fmt.Errorf("ItemChangeFlags size mismatch: expected %d, got %d", numItems, len(d.ItemChangeFlags))
+	}
+	if len(d.ItemDepsStart) != numItems {
+		return fmt.Errorf("ItemDepsStart size mismatch: expected %d, got %d", numItems, len(d.ItemDepsStart))
+	}
+	if len(d.ItemDepsCount) != numItems {
+		return fmt.Errorf("ItemDepsCount size mismatch: expected %d, got %d", numItems, len(d.ItemDepsCount))
+	}
+	if len(d.ItemIdDataOffset) != numItems {
+		return fmt.Errorf("ItemIdDataOffset size mismatch: expected %d, got %d", numItems, len(d.ItemIdDataOffset))
+	}
+	if len(d.ItemIdDataSize) != numItems {
+		return fmt.Errorf("ItemIdDataSize size mismatch: expected %d, got %d", numItems, len(d.ItemIdDataSize))
+	}
+	if len(d.ItemExtraDataOffset) != numItems {
+		return fmt.Errorf("ItemExtraDataOffset size mismatch: expected %d, got %d", numItems, len(d.ItemExtraDataOffset))
+	}
+	if len(d.ItemExtraDataSize) != numItems {
+		return fmt.Errorf("ItemExtraDataSize size mismatch: expected %d, got %d", numItems, len(d.ItemExtraDataSize))
+	}
+	if len(d.ItemChangeDataOffset) != numItems {
+		return fmt.Errorf("ItemChangeDataOffset size mismatch: expected %d, got %d", numItems, len(d.ItemChangeDataOffset))
+	}
+	if len(d.ItemChangeDataSize) != numItems {
+		return fmt.Errorf("ItemChangeDataSize size mismatch: expected %d, got %d", numItems, len(d.ItemChangeDataSize))
 	}
 
-	readSignatureHash := d.readNBytesFromScratch(10)
-	if bytes.Compare(signatureHash[:10], readSignatureHash) != 0 {
-		return nil, fmt.Errorf("signature mismatch for '%s'", signature)
+	shardCount := 1 << d.N // Number of shards is 2^N
+	if len(d.ShardOffsets) != shardCount {
+		return fmt.Errorf("ShardOffsets size mismatch: expected %d, got %d", shardCount, len(d.ShardOffsets))
+	}
+	if len(d.ShardSizes) != shardCount {
+		return fmt.Errorf("ShardSizes size mismatch: expected %d, got %d", shardCount, len(d.ShardSizes))
+	}
+	if len(d.DirtyFlags) != ((shardCount + 7) >> 3) {
+		return fmt.Errorf("DirtyFlags size mismatch: expected %d, got %d", (shardCount+7)>>3, len(d.DirtyFlags))
 	}
 
-	readNumElements := d.readIntFromScratch()
-	if numItems != 0 && numItems != readNumElements {
-		return nil, fmt.Errorf("number of items (%d) does not match the expected number (%d)", readNumElements, numItems)
-	}
-
-	sizeOfElement := d.readIntFromScratch()
-	if sizeOfElement != 4 {
-		return nil, fmt.Errorf("expected size of element to be 4 bytes, got %d", sizeOfElement)
-	}
-
-	totalSize := d.readIntFromScratch()
-	if totalSize != readNumElements*sizeOfElement {
-		return nil, fmt.Errorf("total size (%d) does not match the expected size (%d)", totalSize, numItems*sizeOfElement)
-	}
-
-	readSignatureHash = d.readNBytesFromScratch(10)
-	if bytes.Compare(signatureHash[10:], readSignatureHash) != 0 {
-		return nil, fmt.Errorf("signature mismatch for '%s'", signature)
-	}
-
-	arrayData := make([]int32, readNumElements)
-	arrayBytes := castInt32ArrayToByteArray(arrayData)
-	if numBytesRead, err := f.Read(arrayBytes); err != nil || numBytesRead != totalSize {
-		return nil, fmt.Errorf("failed to read int32 array for signature '%s': %w", signature, err)
-	}
-
-	return arrayData, nil
+	return nil
 }
 
 // --------------------------------------------------------------------------
 func (d *trackr) save() error {
-	dbFile, err := os.Create(filepath.Join(d.StoragePath, "deptrackr.point.db"))
+	dbFile, err := os.Create(d.storageFilepath + ".point.db")
 	if err != nil {
 		return err
 	}
 	defer dbFile.Close()
 
-	// header := newHeader()
-
 	numItems := len(d.ItemIdFlags)
 
-	d.hasher.Reset()
-	d.hasher.Write([]byte(d.Signature))
-	signatureHash := d.hasher.Sum(nil)
-
 	// Write the header, 32 bytes
-	d.scratchBufferCursor = 0
-	d.writeBytesToScratch(signatureHash[:10]) // First 10 bytes of the signature hash
-	d.writeIntToScratch(numItems)             // Number of items
-	d.writeInt32ToScratch(d.N)                // Number of bits for the hash
-	d.writeInt32ToScratch(d.S)                // Size of a shard
-	d.writeBytesToScratch(signatureHash[10:]) // Last 10 bytes of the signature hash
+	d.hasher.Reset()
+	d.hasher.Write([]byte(d.signature))
+	signatureHash := d.hasher.Sum(nil)
+	d.scratchBuffer.reset()
+	d.scratchBuffer.writeBytes(signatureHash[:10]) // First 10 bytes of the signature hash
+	d.scratchBuffer.writeInt(numItems)             // Number of items
+	d.scratchBuffer.writeInt32(d.N)                // Number of bits for the hash
+	d.scratchBuffer.writeInt32(d.S)                // Size of a shard
+	d.scratchBuffer.writeBytes(signatureHash[10:]) // Last 10 bytes of the signature hash
 
-	if numBytesWritten, err := dbFile.Write(d.scratchBuffer[:d.scratchBufferCursor]); err != nil || numBytesWritten != d.scratchBufferCursor {
-		return fmt.Errorf("failed to write DB header: %w", err)
+	if err := d.scratchBuffer.writeToFile(dbFile); err != nil {
+		return err
 	}
 
-	if err := d.writeByteArray("item.id.hash.array(v1.0)", numItems, d.ItemIdHash, int(d.HashSize), dbFile); err != nil {
+	if err := d.validate(); err != nil {
 		return err
 	}
-	if err := d.writeByteArray("item.change.hash.array(v1.0)", numItems, d.ItemChangeHash, int(d.HashSize), dbFile); err != nil {
+
+	if err := d.writeByteArray("item.id.hash.array", d.ItemIdHash, dbFile); err != nil {
 		return err
 	}
-	if err := d.writeByteArray("item.id.flags.array(v1.0)", numItems, d.ItemIdFlags, 1, dbFile); err != nil {
+	if err := d.writeByteArray("item.change.hash.array", d.ItemChangeHash, dbFile); err != nil {
 		return err
 	}
-	if err := d.writeByteArray("item.change.flags.array(v1.0)", numItems, d.ItemChangeFlags, 1, dbFile); err != nil {
+	if err := d.writeByteArray("item.id.flags.array", d.ItemIdFlags, dbFile); err != nil {
 		return err
 	}
-	if err := d.writeInt32Array("item.deps.start.array(v1.0)", numItems, d.ItemDepsStart, dbFile); err != nil {
+	if err := d.writeByteArray("item.change.flags.array", d.ItemChangeFlags, dbFile); err != nil {
 		return err
 	}
-	if err := d.writeInt32Array("item.deps.count.array(v1.0)", numItems, d.ItemDepsCount, dbFile); err != nil {
+	if err := d.writeInt32Array("item.deps.start.array", d.ItemDepsStart, dbFile); err != nil {
 		return err
 	}
-	if err := d.writeInt32Array("item.id.data.offset.array(v1.0)", numItems, d.ItemIdDataOffset, dbFile); err != nil {
+	if err := d.writeInt32Array("item.deps.count.array", d.ItemDepsCount, dbFile); err != nil {
 		return err
 	}
-	if err := d.writeInt32Array("item.id.data.size.array(v1.0)", numItems, d.ItemIdDataSize, dbFile); err != nil {
+	if err := d.writeInt32Array("item.id.data.offset.array", d.ItemIdDataOffset, dbFile); err != nil {
 		return err
 	}
-	if err := d.writeInt32Array("item.change.data.offset.array(v1.0)", numItems, d.ItemChangeDataOffset, dbFile); err != nil {
+	if err := d.writeInt32Array("item.id.data.size.array", d.ItemIdDataSize, dbFile); err != nil {
 		return err
 	}
-	if err := d.writeInt32Array("item.change.data.size.array(v1.0)", numItems, d.ItemChangeDataSize, dbFile); err != nil {
+	if err := d.writeInt32Array("item.extra.data.offset.array", d.ItemExtraDataOffset, dbFile); err != nil {
 		return err
 	}
-	if err := d.writeInt32Array("item.deps.array(v1.0)", len(d.Deps), d.Deps, dbFile); err != nil {
+	if err := d.writeByteArray("item.extra.data.size.array", d.ItemExtraDataSize, dbFile); err != nil {
 		return err
 	}
-	if err := d.writeByteArray("item.data.array(v1.0)", len(d.Data), d.Data, 1, dbFile); err != nil {
+	if err := d.writeInt32Array("item.change.data.offset.array", d.ItemChangeDataOffset, dbFile); err != nil {
+		return err
+	}
+	if err := d.writeByteArray("item.change.data.size.array", d.ItemChangeDataSize, dbFile); err != nil {
+		return err
+	}
+	if err := d.writeInt32Array("item.deps.array", d.Deps, dbFile); err != nil {
+		return err
+	}
+	if err := d.writeByteArray("item.data.array", d.Data, dbFile); err != nil {
 		return err
 	}
 
 	// Write shard database
 
-	if err := d.writeInt32Array("shard.offsets.array(v1.0)", len(d.ShardOffsets), d.ShardOffsets, dbFile); err != nil {
+	if err := d.writeInt32Array("shard.offsets.array", d.ShardOffsets, dbFile); err != nil {
 		return err
 	}
-	if err := d.writeInt32Array("shard.sizes.array(v1.0)", len(d.ShardSizes), d.ShardSizes, dbFile); err != nil {
+	if err := d.writeInt16Array("shard.sizes.array", d.ShardSizes, dbFile); err != nil {
 		return err
 	}
-	if err := d.writeByteArray("shard.dirty.flags.array(v1.0)", len(d.DirtyFlags), d.DirtyFlags, 1, dbFile); err != nil {
+	if err := d.writeByteArray("shard.dirty.flags.array", d.DirtyFlags, dbFile); err != nil {
 		return err
 	}
-	if err := d.writeInt32Array("shard.items.array(v1.0)", len(d.Shards), d.Shards, dbFile); err != nil {
+	if err := d.writeInt32Array("shard.items.array", d.Shards, dbFile); err != nil {
 		return err
 	}
 
@@ -455,13 +444,13 @@ func (d *trackr) save() error {
 	return nil
 }
 
-func loadTrackr(storagePath string, signature string) *trackr {
+func loadTrackr(storageFilepath string, signature string) *trackr {
 
-	// If "/deptrackr.main.db" exists and "/deptrackr.point.db" then
-	// delete "/deptrackr.main.db" and rename "/deptrackr.point.db" to "/deptrackr.main.db".
+	// If "/name.main.db" exists and "/name.point.db" then
+	// delete "/name.main.db" and rename "/name.point.db" to "/name.main.db".
 	var err error
-	pointDbFilepath := filepath.Join(storagePath, "deptrackr.point.db")
-	mainDbFilepath := filepath.Join(storagePath, "deptrackr.main.db")
+	pointDbFilepath := storageFilepath + ".point.db"
+	mainDbFilepath := storageFilepath + ".main.db"
 	if _, err = os.Stat(pointDbFilepath); err == nil {
 		if _, err = os.Stat(mainDbFilepath); err == nil {
 			if err = os.Remove(mainDbFilepath); err == nil {
@@ -477,19 +466,19 @@ func loadTrackr(storagePath string, signature string) *trackr {
 
 	// On any error, we just create a new database
 	if err != nil {
-		return newTrackr(storagePath, signature)
+		return newTrackr(storageFilepath, signature)
 	}
 
 	// Open the database file
 	dbFile, err := os.Open(mainDbFilepath)
 	if err != nil {
 		// No database exists on disk, so we just create an empty one
-		d := newTrackr(storagePath, signature)
+		d := newTrackr(storageFilepath, signature)
 		return d
 	}
 	defer dbFile.Close()
 
-	d := newTrackr(storagePath, signature)
+	d := newTrackr(storageFilepath, signature)
 
 	d.hasher.Reset()
 	d.hasher.Write([]byte(signature))
@@ -498,25 +487,24 @@ func loadTrackr(storagePath string, signature string) *trackr {
 	headerSize := 32
 
 	// Read the header
-	d.scratchBufferCursor = 0
-	if numBytesRead, err := dbFile.Read(d.scratchBuffer[:headerSize]); err != nil || numBytesRead != headerSize {
-		return newTrackr(storagePath, signature)
+	if err := d.scratchBuffer.readFromFile(headerSize, dbFile); err != nil {
+		return newTrackr(storageFilepath, signature)
 	}
 
 	// The first 10 bytes is the first 10 bytes of the SHA1 of the signature
-	readSignatureHash := d.readNBytesFromScratch(10)
+	readSignatureHash := d.scratchBuffer.readNBytes(10)
 	if bytes.Compare(signatureHash[:10], readSignatureHash) != 0 {
-		return newTrackr(storagePath, signature)
+		return newTrackr(storageFilepath, signature)
 	}
 
-	numItems := d.readIntFromScratch()
-	shardN := d.readInt32FromScratch()
-	shardS := d.readInt32FromScratch()
+	numItems := d.scratchBuffer.readInt()
+	shardN := d.scratchBuffer.readInt32()
+	shardS := d.scratchBuffer.readInt32()
 
 	// The last 10 bytes are the last 10 bytes of the SHA1 of the signature
-	readSignatureHash = d.readNBytesFromScratch(10)
+	readSignatureHash = d.scratchBuffer.readNBytes(10)
 	if bytes.Compare(signatureHash[10:], readSignatureHash) != 0 {
-		return newTrackr(storagePath, signature)
+		return newTrackr(storageFilepath, signature)
 	}
 
 	var newItemIdHash []byte
@@ -527,67 +515,75 @@ func loadTrackr(storagePath string, signature string) *trackr {
 	var newItemDepsCount []int32
 	var newItemIdDataOffset []int32
 	var newItemIdDataSize []int32
+	var newItemExtraDataOffset []int32
+	var newItemExtraDataSize []uint8
 	var newItemChangeDataOffset []int32
-	var newItemChangeDataSize []int32
+	var newItemChangeDataSize []uint8
 	var newShardOffsets []int32
-	var newShardSizes []int32
+	var newShardSizes []int16
 	var newDirtyFlags []uint8
 	var newShards []int32
 	var newDeps []int32
 	var newData []byte
 
-	if newItemIdHash, err = d.readByteArray("item.id.hash.array(v1.0)", numItems, int(d.HashSize), dbFile); err != nil {
-		return newTrackr(storagePath, signature)
+	if newItemIdHash, err = d.readByteArray("item.id.hash.array", dbFile); err != nil {
+		return newTrackr(storageFilepath, signature)
 	}
-	if newItemChangeHash, err = d.readByteArray("item.change.hash.array(v1.0)", numItems, int(d.HashSize), dbFile); err != nil {
-		return newTrackr(storagePath, signature)
+	if newItemChangeHash, err = d.readByteArray("item.change.hash.array", dbFile); err != nil {
+		return newTrackr(storageFilepath, signature)
 	}
-	if newItemIdFlags, err = d.readByteArray("item.id.flags.array(v1.0)", numItems, 1, dbFile); err != nil {
-		return newTrackr(storagePath, signature)
+	if newItemIdFlags, err = d.readByteArray("item.id.flags.array", dbFile); err != nil {
+		return newTrackr(storageFilepath, signature)
 	}
-	if newItemChangeFlags, err = d.readByteArray("item.change.flags.array(v1.0)", numItems, 1, dbFile); err != nil {
-		return newTrackr(storagePath, signature)
+	if newItemChangeFlags, err = d.readByteArray("item.change.flags.array", dbFile); err != nil {
+		return newTrackr(storageFilepath, signature)
 	}
-	if newItemDepsStart, err = d.readInt32Array("item.deps.start.array(v1.0)", numItems, dbFile); err != nil {
-		return newTrackr(storagePath, signature)
+	if newItemDepsStart, err = d.readInt32Array("item.deps.start.array", dbFile); err != nil {
+		return newTrackr(storageFilepath, signature)
 	}
-	if newItemDepsCount, err = d.readInt32Array("item.deps.count.array(v1.0)", numItems, dbFile); err != nil {
-		return newTrackr(storagePath, signature)
+	if newItemDepsCount, err = d.readInt32Array("item.deps.count.array", dbFile); err != nil {
+		return newTrackr(storageFilepath, signature)
 	}
-	if newItemIdDataOffset, err = d.readInt32Array("item.id.data.offset.array(v1.0)", numItems, dbFile); err != nil {
-		return newTrackr(storagePath, signature)
+	if newItemIdDataOffset, err = d.readInt32Array("item.id.data.offset.array", dbFile); err != nil {
+		return newTrackr(storageFilepath, signature)
 	}
-	if newItemIdDataSize, err = d.readInt32Array("item.id.data.size.array(v1.0)", numItems, dbFile); err != nil {
-		return newTrackr(storagePath, signature)
+	if newItemIdDataSize, err = d.readInt32Array("item.id.data.size.array", dbFile); err != nil {
+		return newTrackr(storageFilepath, signature)
 	}
-	if newItemChangeDataOffset, err = d.readInt32Array("item.change.data.offset.array(v1.0)", numItems, dbFile); err != nil {
-		return newTrackr(storagePath, signature)
+	if newItemExtraDataOffset, err = d.readInt32Array("item.extra.data.offset.array", dbFile); err != nil {
+		return newTrackr(storageFilepath, signature)
 	}
-	if newItemChangeDataSize, err = d.readInt32Array("item.change.data.size.array(v1.0)", numItems, dbFile); err != nil {
-		return newTrackr(storagePath, signature)
+	if newItemExtraDataSize, err = d.readByteArray("item.extra.data.size.array", dbFile); err != nil {
+		return newTrackr(storageFilepath, signature)
 	}
-	if newDeps, err = d.readInt32Array("item.deps.array(v1.0)", 0, dbFile); err != nil {
-		return newTrackr(storagePath, signature)
+	if newItemChangeDataOffset, err = d.readInt32Array("item.change.data.offset.array", dbFile); err != nil {
+		return newTrackr(storageFilepath, signature)
 	}
-	if newData, err = d.readByteArray("item.data.array(v1.0)", 0, 1, dbFile); err != nil {
-		return newTrackr(storagePath, signature)
+	if newItemChangeDataSize, err = d.readByteArray("item.change.data.size.array", dbFile); err != nil {
+		return newTrackr(storageFilepath, signature)
+	}
+	if newDeps, err = d.readInt32Array("item.deps.array", dbFile); err != nil {
+		return newTrackr(storageFilepath, signature)
+	}
+	if newData, err = d.readByteArray("item.data.array", dbFile); err != nil {
+		return newTrackr(storageFilepath, signature)
 	}
 
-	if newShardOffsets, err = d.readInt32Array("shard.offsets.array(v1.0)", 1<<shardN, dbFile); err != nil {
-		return newTrackr(storagePath, signature)
+	if newShardOffsets, err = d.readInt32Array("shard.offsets.array", dbFile); err != nil {
+		return newTrackr(storageFilepath, signature)
 	}
-	if newShardSizes, err = d.readInt32Array("shard.sizes.array(v1.0)", 1<<shardN, dbFile); err != nil {
-		return newTrackr(storagePath, signature)
+	if newShardSizes, err = d.readInt16Array("shard.sizes.array", dbFile); err != nil {
+		return newTrackr(storageFilepath, signature)
 	}
-	if newDirtyFlags, err = d.readByteArray("shard.dirty.flags.array(v1.0)", ((1<<shardN)+7)>>3, 1, dbFile); err != nil {
-		return newTrackr(storagePath, signature)
+	if newDirtyFlags, err = d.readByteArray("shard.dirty.flags.array", dbFile); err != nil {
+		return newTrackr(storageFilepath, signature)
 	}
-	if newShards, err = d.readInt32Array("shard.items.array(v1.0)", 0, dbFile); err != nil {
-		return newTrackr(storagePath, signature)
+	if newShards, err = d.readInt32Array("shard.items.array", dbFile); err != nil {
+		return newTrackr(storageFilepath, signature)
 	}
 
 	// Initialize the trackr with the loaded data
-	d.ItemState = make([]State, numItems, numItems)  // State of the item (used in Query, not loaded/saved)
+	d.itemState = make([]State, numItems, numItems)  // State of the item (used in Query, not loaded/saved)
 	d.ItemIdHash = newItemIdHash                     // Item Id hash
 	d.ItemChangeHash = newItemChangeHash             // Item Change hash
 	d.ItemIdFlags = newItemIdFlags                   // Item Id flags
@@ -596,6 +592,8 @@ func loadTrackr(storagePath string, signature string) *trackr {
 	d.ItemDepsCount = newItemDepsCount               // Item, count of dependencies
 	d.ItemIdDataOffset = newItemIdDataOffset         // Item Id data offset
 	d.ItemIdDataSize = newItemIdDataSize             // Item Id data size
+	d.ItemExtraDataOffset = newItemExtraDataOffset   // Item extra data offset
+	d.ItemExtraDataSize = newItemExtraDataSize       // Item extra data size
 	d.ItemChangeDataOffset = newItemChangeDataOffset // Item Change data offset
 	d.ItemChangeDataSize = newItemChangeDataSize     // Item Change data size
 	d.N = shardN                                     // Number of bits for the hash
@@ -606,6 +604,10 @@ func loadTrackr(storagePath string, signature string) *trackr {
 	d.Shards = newShards                             // Shards, an array of item indices
 	d.Deps = newDeps                                 // Dependencies
 	d.Data = newData                                 // Data for Id and Change
+
+	if err := d.validate(); err != nil {
+		return newTrackr(storageFilepath, signature)
+	}
 
 	return d
 }
@@ -631,23 +633,15 @@ type ItemToAdd struct {
 	ChangeFlags  uint8
 }
 
-type VerifyItemFunc func(itemState State, itemChangeFlags uint8, itemChangeData []byte, itemIdFlags uint8, itemIdData []byte) State
+type VerifyItemFunc func(itemState State, itemIdFlags uint8, itemIdData []byte, itemChangeFlags uint8, itemChangeData []byte) State
+type VerifyItemExtraFunc func(itemState State, itemIdFlags uint8, itemIdData []byte, itemExtraData []byte, itemChangeFlags uint8, itemChangeData []byte) State
+
+type verifyItemIndexFunc func(itemIndex int32) State
 
 // -----------------------------------------------------------------------------------------------------------------
 // -----------------------------------------------------------------------------------------------------------------
 
 const NilIndex = int32(-1)
-
-func (d *trackr) compareDigest(a []byte, b []byte) int {
-	for i := range d.HashSize {
-		if a[i] < b[i] {
-			return -1
-		} else if a[i] > b[i] {
-			return 1
-		}
-	}
-	return 0
-}
 
 func (d *trackr) isShardUnsorted(shardIndex int32) bool {
 	return (d.DirtyFlags[shardIndex>>3] & (1 << (shardIndex & 7))) != 0 // check the dirty flag for the shard
@@ -663,10 +657,10 @@ func (d *trackr) insertItemIntoDb(hash []byte, item int32) {
 		d.Shards = append(d.Shards, d.EmptyShard...)        // initialize the shard, all of them set to -1
 	}
 
-	shardSize := d.ShardSizes[indexOfShard]
+	shardSize := int32(d.ShardSizes[indexOfShard])
 	shardOffset := d.ShardOffsets[indexOfShard]
 	d.Shards[shardOffset+shardSize] = item                   // add the new item index to the shard
-	d.ShardSizes[indexOfShard] = shardSize + 1               // increment the size of the shard
+	d.ShardSizes[indexOfShard] += 1                          // increment the size of the shard
 	d.DirtyFlags[indexOfShard>>3] |= 1 << (indexOfShard & 7) // set the dirty flag for the shard
 }
 
@@ -682,11 +676,11 @@ func (d *trackr) DoesItemExistInDb(hash []byte) int32 {
 	shardSize := d.ShardSizes[indexOfShard]
 	if shardSize > 1 && d.isShardUnsorted(indexOfShard) {
 		shardStart := shardOffset
-		shardEnd := shardStart + shardSize
+		shardEnd := shardStart + int32(shardSize)
 		slices.SortFunc(d.Shards[shardStart:shardEnd], func(i, j int32) int {
-			hashI := d.ItemIdHash[i*d.HashSize : (i+1)*d.HashSize]
-			hashJ := d.ItemIdHash[j*d.HashSize : (j+1)*d.HashSize]
-			return d.compareDigest(hashI, hashJ) // sort in ascending order
+			hashI := d.ItemIdHash[i*d.hashSize : (i+1)*d.hashSize]
+			hashJ := d.ItemIdHash[j*d.hashSize : (j+1)*d.hashSize]
+			return bytes.Compare(hashI, hashJ) // sort in ascending order
 		})
 		// Mark the shard as sorted
 		d.DirtyFlags[indexOfShard>>3] = d.DirtyFlags[indexOfShard>>3] &^ (1 << (indexOfShard & 7))
@@ -694,12 +688,12 @@ func (d *trackr) DoesItemExistInDb(hash []byte) int32 {
 
 	// Binary search for the hash in the sorted array
 	indexOfHashInShard := NilIndex
-	low, high := int32(0), shardSize-1
+	low, high := int32(0), int32(shardSize)-1
 	for low <= high {
 		mid := (low + high) / 2
 		midItemIndex := d.Shards[shardOffset+mid]
-		midItemHash := d.ItemIdHash[midItemIndex*d.HashSize : (midItemIndex+1)*d.HashSize]
-		c := d.compareDigest(midItemHash, hash)
+		midItemHash := d.ItemIdHash[midItemIndex*d.hashSize : (midItemIndex+1)*d.hashSize]
+		c := bytes.Compare(midItemHash, hash)
 		if c == 0 {
 			indexOfHashInShard = mid // found
 			break
@@ -716,7 +710,7 @@ func (d *trackr) DoesItemExistInDb(hash []byte) int32 {
 	return d.Shards[shardOffset+indexOfHashInShard] // return the index of the item in the shard
 }
 
-func (d *trackr) AddItem(item ItemToAdd, deps []ItemToAdd) bool {
+func (d *trackr) addItem(item ItemToAdd, itemExtraData []byte, deps []ItemToAdd) bool {
 	existingItemIndex := d.DoesItemExistInDb(item.IdDigest)
 	if existingItemIndex != NilIndex {
 		// This should not happen, as we are inserting a new item
@@ -726,22 +720,30 @@ func (d *trackr) AddItem(item ItemToAdd, deps []ItemToAdd) bool {
 	itemIndex := int32(len(d.ItemIdFlags))
 
 	// Insert the item into the main arrays
-	d.ItemState = append(d.ItemState, StateNone)          // default state is none
+	d.itemState = append(d.itemState, StateNone)          // default state is none
 	d.ItemIdHash = append(d.ItemIdHash, item.IdDigest...) // add the item Id hash
 	if len(item.ChangeDigest) == 20 {
 		d.ItemChangeHash = append(d.ItemChangeHash, item.ChangeDigest...)
 	} else {
 		d.ItemChangeHash = append(d.ItemChangeHash, item.IdDigest...)
 	}
-	d.ItemIdFlags = append(d.ItemIdFlags, item.IdFlags)                              // add the item Id flags
-	d.ItemChangeFlags = append(d.ItemChangeFlags, item.ChangeFlags)                  // add the item Change flags
-	d.ItemDepsStart = append(d.ItemDepsStart, int32(len(d.Deps)))                    // start of dependencies is 0
-	d.ItemDepsCount = append(d.ItemDepsCount, int32(len(deps)))                      // count of dependencies
-	d.ItemIdDataOffset = append(d.ItemIdDataOffset, int32(len(d.Data)))              // item Id data
-	d.ItemIdDataSize = append(d.ItemIdDataSize, int32(len(item.IdData)))             // item Id data
-	d.Data = append(d.Data, item.IdData...)                                          // add the Item Id data to the Data array
+	d.ItemIdFlags = append(d.ItemIdFlags, item.IdFlags)                  // add the item Id flags
+	d.ItemChangeFlags = append(d.ItemChangeFlags, item.ChangeFlags)      // add the item Change flags
+	d.ItemDepsStart = append(d.ItemDepsStart, int32(len(d.Deps)))        // start of dependencies is 0
+	d.ItemDepsCount = append(d.ItemDepsCount, int32(len(deps)))          // count of dependencies
+	d.ItemIdDataOffset = append(d.ItemIdDataOffset, int32(len(d.Data)))  // item Id data
+	d.ItemIdDataSize = append(d.ItemIdDataSize, int32(len(item.IdData))) // item Id data
+	d.Data = append(d.Data, item.IdData...)                              // add the Item Id data to the Data array
+	if len(itemExtraData) > 0 {
+		d.ItemExtraDataOffset = append(d.ItemExtraDataOffset, int32(len(d.Data)))    // item extra data
+		d.ItemExtraDataSize = append(d.ItemExtraDataSize, uint8(len(itemExtraData))) // item extra data
+		d.Data = append(d.Data, itemExtraData...)                                    // add the Item extra data to the Data array
+	} else {
+		d.ItemExtraDataOffset = append(d.ItemExtraDataOffset, 0) // item extra data
+		d.ItemExtraDataSize = append(d.ItemExtraDataSize, 0)     // item extra data
+	}
 	d.ItemChangeDataOffset = append(d.ItemChangeDataOffset, int32(len(d.Data)))      // item Id data
-	d.ItemChangeDataSize = append(d.ItemChangeDataSize, int32(len(item.ChangeData))) // item Id data
+	d.ItemChangeDataSize = append(d.ItemChangeDataSize, uint8(len(item.ChangeData))) // item Id data
 	d.Data = append(d.Data, item.ChangeData...)                                      // add the Item Change data to the Data array
 
 	// Add the item to the shard database, so that we can search it
@@ -755,7 +757,7 @@ func (d *trackr) AddItem(item ItemToAdd, deps []ItemToAdd) bool {
 		} else {
 			// Insert the dependency item into the main arrays
 			depItemIndex := int32(len(d.ItemIdFlags))            //
-			d.ItemState = append(d.ItemState, StateNone)         // default state is none
+			d.itemState = append(d.itemState, StateNone)         // default state is none
 			d.ItemIdHash = append(d.ItemIdHash, dep.IdDigest...) // add the dependency Id hash
 			if len(item.ChangeDigest) == 20 {                    //
 				d.ItemChangeHash = append(d.ItemChangeHash, dep.ChangeDigest...)
@@ -769,8 +771,10 @@ func (d *trackr) AddItem(item ItemToAdd, deps []ItemToAdd) bool {
 			d.ItemIdDataOffset = append(d.ItemIdDataOffset, int32(len(d.Data)))             // item Id data
 			d.ItemIdDataSize = append(d.ItemIdDataSize, int32(len(dep.IdData)))             // item Id data
 			d.Data = append(d.Data, dep.IdData...)                                          // add the Item Id data to the Data array
+			d.ItemExtraDataOffset = append(d.ItemExtraDataOffset, 0)                        // item extra data
+			d.ItemExtraDataSize = append(d.ItemExtraDataSize, 0)                            // item extra data
 			d.ItemChangeDataOffset = append(d.ItemChangeDataOffset, int32(len(d.Data)))     // item Id data
-			d.ItemChangeDataSize = append(d.ItemChangeDataSize, int32(len(dep.ChangeData))) // item Id data
+			d.ItemChangeDataSize = append(d.ItemChangeDataSize, uint8(len(dep.ChangeData))) // item Id data
 			d.Data = append(d.Data, dep.ChangeData...)                                      // add the Item Change data to the Data array
 
 			// Add the dependency item to the shard database, so that we can search it
@@ -783,26 +787,31 @@ func (d *trackr) AddItem(item ItemToAdd, deps []ItemToAdd) bool {
 	return true
 }
 
-func (d *trackr) QueryItem(itemHash []byte, verifyAll bool, verifyCb VerifyItemFunc) (State, error) {
+func (d *trackr) AddItem(item ItemToAdd, deps []ItemToAdd) bool {
+	return d.addItem(item, nil, deps) // no extra data
+}
+func (d *trackr) AddItemWithExtraData(item ItemToAdd, itemExtraData []byte, deps []ItemToAdd) bool {
+	return d.addItem(item, itemExtraData, deps) // no extra data
+}
 
+// ---------------------------------------------------------------------------------------------------------
+// ---------------------------------------------------------------------------------------------------------
+// QueryItem queries an item in the database and verifies its state using the provided callback function.
+
+func (d *trackr) queryItem(itemHash []byte, verifyAll bool, verifyCb verifyItemIndexFunc) (State, error) {
 	itemIndex := d.DoesItemExistInDb(itemHash)
 	if itemIndex == NilIndex {
 		return StateOutOfDate, nil // item does not exist, so it is out of date
 	}
 
 	// If the item is already marked as up to date, we can return immediately
-	itemState := d.ItemState[itemIndex]
+	itemState := d.itemState[itemIndex]
 	if itemState == StateUpToDate || itemState == StateOutOfDate {
 		return itemState, nil
 	}
 
-	itemChangeFlags := d.ItemChangeFlags[itemIndex]
-	itemChangeData := d.Data[d.ItemChangeDataOffset[itemIndex] : d.ItemChangeDataOffset[itemIndex]+d.ItemChangeDataSize[itemIndex]]
-	itemIdFlags := d.ItemIdFlags[itemIndex]
-	itemIdData := d.Data[d.ItemIdDataOffset[itemIndex] : d.ItemIdDataOffset[itemIndex]+d.ItemIdDataSize[itemIndex]]
-	itemState = verifyCb(itemState, itemChangeFlags, itemChangeData, itemIdFlags, itemIdData)
-
-	d.ItemState[itemIndex] = itemState
+	itemState = verifyCb(itemIndex)
+	d.itemState[itemIndex] = itemState
 
 	outOfDateCount := 0
 	if itemState == StateOutOfDate {
@@ -814,15 +823,8 @@ func (d *trackr) QueryItem(itemHash []byte, verifyAll bool, verifyCb VerifyItemF
 	depEnd := depStart + d.ItemDepsCount[itemIndex]
 	for depStart < depEnd {
 		depItemIndex := d.Deps[depStart]
-		depState := d.ItemState[depItemIndex]
-		depChangeFlags := d.ItemChangeFlags[depItemIndex]
-		depChangeData := d.Data[d.ItemChangeDataOffset[depItemIndex] : d.ItemChangeDataOffset[depItemIndex]+d.ItemChangeDataSize[depItemIndex]]
-		depIdFlags := d.ItemIdFlags[depItemIndex]
-		depIdData := d.Data[d.ItemIdDataOffset[depItemIndex] : d.ItemIdDataOffset[depItemIndex]+d.ItemIdDataSize[depItemIndex]]
-		depState = verifyCb(depState, depChangeFlags, depChangeData, depIdFlags, depIdData)
-
-		d.ItemState[depItemIndex] = depState
-
+		depState := verifyCb(depItemIndex)
+		d.itemState[depItemIndex] = depState
 		if depState == StateOutOfDate {
 			outOfDateCount++
 			if !verifyAll {
@@ -833,16 +835,51 @@ func (d *trackr) QueryItem(itemHash []byte, verifyAll bool, verifyCb VerifyItemF
 	}
 
 	if outOfDateCount == 0 {
-		d.ItemState[itemIndex] = StateUpToDate // mark the item as up to date
+		d.itemState[itemIndex] = StateUpToDate // mark the item as up to date
 		return StateUpToDate, nil
 	}
 
 	// Mark the main item as out-of-date when any of the dependencies where out of date
-	d.ItemState[itemIndex] = StateOutOfDate
+	d.itemState[itemIndex] = StateOutOfDate
 	return StateOutOfDate, nil
 }
 
-// CopyItem copies an item from one trackr to another.
+func (d *trackr) QueryItem(itemHash []byte, verifyAll bool, verifyCb VerifyItemFunc) (State, error) {
+	return d.queryItem(itemHash, verifyAll, func(itemIndex int32) State {
+		itemIdFlags := d.ItemIdFlags[itemIndex]
+		itemIdDataOffset := d.ItemIdDataOffset[itemIndex]
+		itemIdDataSize := d.ItemIdDataSize[itemIndex]
+		itemIdData := d.Data[itemIdDataOffset : itemIdDataOffset+itemIdDataSize]
+		itemChangeFlags := d.ItemChangeFlags[itemIndex]
+		itemChangeDataOffset := d.ItemChangeDataOffset[itemIndex]
+		itemChangeDataSize := d.ItemChangeDataSize[itemIndex]
+		itemChangeData := d.Data[itemChangeDataOffset : itemChangeDataOffset+int32(itemChangeDataSize)]
+		return verifyCb(d.itemState[itemIndex], itemIdFlags, itemIdData, itemChangeFlags, itemChangeData)
+	})
+}
+
+func (d *trackr) QueryItemExtra(itemHash []byte, verifyAll bool, verifyCb VerifyItemExtraFunc) (State, error) {
+	return d.queryItem(itemHash, verifyAll, func(itemIndex int32) State {
+		itemIdFlags := d.ItemIdFlags[itemIndex]
+		itemIdDataOffset := d.ItemIdDataOffset[itemIndex]
+		itemIdDataSize := d.ItemIdDataSize[itemIndex]
+		itemIdData := d.Data[itemIdDataOffset : itemIdDataOffset+itemIdDataSize]
+		itemExtraDataOffset := d.ItemExtraDataOffset[itemIndex]
+		itemExtraDataSize := d.ItemExtraDataSize[itemIndex]
+		itemExtraData := d.Data[itemExtraDataOffset : itemExtraDataOffset+int32(itemExtraDataSize)]
+		itemChangeFlags := d.ItemChangeFlags[itemIndex]
+		itemChangeDataOffset := d.ItemChangeDataOffset[itemIndex]
+		itemChangeDataSize := d.ItemChangeDataSize[itemIndex]
+		itemChangeData := d.Data[itemChangeDataOffset : itemChangeDataOffset+int32(itemChangeDataSize)]
+		return verifyCb(d.itemState[itemIndex], itemIdFlags, itemIdData, itemExtraData, itemChangeFlags, itemChangeData)
+	})
+}
+
+// ---------------------------------------------------------------------------------------------------------
+// ---------------------------------------------------------------------------------------------------------
+// CopyItem copies an item from one trackr to another, this is used when an item is up-to-data in the
+// source trackr.
+
 func (src *trackr) CopyItem(dst *trackr, itemHash []byte) error {
 	itemIndex := src.DoesItemExistInDb(itemHash)
 	if itemIndex == NilIndex {
@@ -850,29 +887,40 @@ func (src *trackr) CopyItem(dst *trackr, itemHash []byte) error {
 	}
 
 	// Copy all the item properties
-	itemIdHash := src.ItemIdHash[itemIndex*src.HashSize : (itemIndex+1)*src.HashSize]
-	itemChangeHash := src.ItemChangeHash[itemIndex*src.HashSize : (itemIndex+1)*src.HashSize]
+	itemIdHash := src.ItemIdHash[itemIndex*src.hashSize : (itemIndex+1)*src.hashSize]
+	itemChangeHash := src.ItemChangeHash[itemIndex*src.hashSize : (itemIndex+1)*src.hashSize]
 	itemIdFlags := src.ItemIdFlags[itemIndex]
 	itemChangeFlags := src.ItemChangeFlags[itemIndex]
 	itemDepsCount := src.ItemDepsCount[itemIndex]
 	itemIdDataOffset := src.ItemIdDataOffset[itemIndex]
 	itemIdDataSize := src.ItemIdDataSize[itemIndex]
 	itemIdData := src.Data[itemIdDataOffset : itemIdDataOffset+itemIdDataSize]
+	itemExtraDataOffset := src.ItemExtraDataOffset[itemIndex]
+	itemExtraDataSize := src.ItemExtraDataSize[itemIndex]
+	itemExtraData := src.Data[itemExtraDataOffset : itemExtraDataOffset+int32(itemExtraDataSize)]
 	itemChangeDataOffset := src.ItemChangeDataOffset[itemIndex]
 	itemChangeDataSize := src.ItemChangeDataSize[itemIndex]
-	itemChangeData := src.Data[itemChangeDataOffset : itemChangeDataOffset+itemChangeDataSize]
+	itemChangeData := src.Data[itemChangeDataOffset : itemChangeDataOffset+int32(itemChangeDataSize)]
 
 	// Add a new item in dst
-	dstItemIndex := int32(len(dst.ItemIdFlags))                                       // index of the new item in the destination trackr
-	dst.ItemIdHash = append(dst.ItemIdHash, itemIdHash...)                            // add the item Id hash
-	dst.ItemChangeHash = append(dst.ItemChangeHash, itemChangeHash...)                // add the item Change hash
-	dst.ItemIdFlags = append(dst.ItemIdFlags, itemIdFlags)                            // add the item Id flags
-	dst.ItemChangeFlags = append(dst.ItemChangeFlags, itemChangeFlags)                // add the item Change flags
-	dst.ItemDepsStart = append(dst.ItemDepsStart, int32(len(dst.Deps)))               // start of dependencies is 0
-	dst.ItemDepsCount = append(dst.ItemDepsCount, itemDepsCount)                      // count of dependencies
-	dst.ItemIdDataOffset = append(dst.ItemIdDataOffset, int32(len(dst.Data)))         // item Id data
-	dst.ItemIdDataSize = append(dst.ItemIdDataSize, itemIdDataSize)                   // item Id data
-	dst.Data = append(dst.Data, itemIdData...)                                        // add the Item Id data to the Data array
+	dstItemIndex := int32(len(dst.ItemIdFlags))                               // index of the new item in the destination trackr
+	dst.ItemIdHash = append(dst.ItemIdHash, itemIdHash...)                    // add the item Id hash
+	dst.ItemChangeHash = append(dst.ItemChangeHash, itemChangeHash...)        // add the item Change hash
+	dst.ItemIdFlags = append(dst.ItemIdFlags, itemIdFlags)                    // add the item Id flags
+	dst.ItemChangeFlags = append(dst.ItemChangeFlags, itemChangeFlags)        // add the item Change flags
+	dst.ItemDepsStart = append(dst.ItemDepsStart, int32(len(dst.Deps)))       // start of dependencies is 0
+	dst.ItemDepsCount = append(dst.ItemDepsCount, itemDepsCount)              // count of dependencies
+	dst.ItemIdDataOffset = append(dst.ItemIdDataOffset, int32(len(dst.Data))) // item Id data
+	dst.ItemIdDataSize = append(dst.ItemIdDataSize, itemIdDataSize)           // item Id data
+	dst.Data = append(dst.Data, itemIdData...)                                // add the Item Id data to the Data array
+	if len(itemExtraData) > 0 {
+		dst.ItemExtraDataOffset = append(dst.ItemExtraDataOffset, int32(len(dst.Data)))  // item extra data
+		dst.ItemExtraDataSize = append(dst.ItemExtraDataSize, uint8(len(itemExtraData))) // item extra data
+		dst.Data = append(dst.Data, itemExtraData...)                                    // add the Item extra data to the Data array
+	} else {
+		dst.ItemExtraDataOffset = append(dst.ItemExtraDataOffset, 0) // item extra data
+		dst.ItemExtraDataSize = append(dst.ItemExtraDataSize, 0)     // item extra data
+	}
 	dst.ItemChangeDataOffset = append(dst.ItemChangeDataOffset, int32(len(dst.Data))) // item Id data
 	dst.ItemChangeDataSize = append(dst.ItemChangeDataSize, itemChangeDataSize)       // item Id data
 	dst.Data = append(dst.Data, itemChangeData...)                                    // add the Item Change data to the Data array
@@ -885,42 +933,44 @@ func (src *trackr) CopyItem(dst *trackr, itemHash []byte) error {
 	for srcDepItemCursor < srcDepItemEnd {
 
 		srcDepItemIndex := src.Deps[srcDepItemCursor] // index of the dependency item in the source trackr
-		depItemIdHash := src.ItemIdHash[srcDepItemIndex*src.HashSize : (srcDepItemIndex+1)*src.HashSize]
+		depItemIdHash := src.ItemIdHash[srcDepItemIndex*src.hashSize : (srcDepItemIndex+1)*src.hashSize]
 
-        dstDepItemIndex := dst.DoesItemExistInDb(depItemIdHash)
-        if dstDepItemIndex == NilIndex {
-            depItemChangeHash := src.ItemChangeHash[srcDepItemIndex*src.HashSize : (srcDepItemIndex+1)*src.HashSize]
-            depItemIdFlags := src.ItemIdFlags[srcDepItemIndex]
-            depItemChangeFlags := src.ItemChangeFlags[srcDepItemIndex]
-            depItemIdDataOffset := src.ItemIdDataOffset[srcDepItemIndex]
-            depItemIdDataSize := src.ItemIdDataSize[srcDepItemIndex]
-            depItemIdData := src.Data[depItemIdDataOffset : depItemIdDataOffset+depItemIdDataSize]
-            depItemChangeDataOffset := src.ItemChangeDataOffset[srcDepItemIndex]
-            depItemChangeDataSize := src.ItemChangeDataSize[srcDepItemIndex]
-            depItemChangeData := src.Data[depItemChangeDataOffset : depItemChangeDataOffset+depItemChangeDataSize]
+		dstDepItemIndex := dst.DoesItemExistInDb(depItemIdHash)
+		if dstDepItemIndex == NilIndex {
+			depItemChangeHash := src.ItemChangeHash[srcDepItemIndex*src.hashSize : (srcDepItemIndex+1)*src.hashSize]
+			depItemIdFlags := src.ItemIdFlags[srcDepItemIndex]
+			depItemChangeFlags := src.ItemChangeFlags[srcDepItemIndex]
+			depItemIdDataOffset := src.ItemIdDataOffset[srcDepItemIndex]
+			depItemIdDataSize := src.ItemIdDataSize[srcDepItemIndex]
+			depItemIdData := src.Data[depItemIdDataOffset : depItemIdDataOffset+depItemIdDataSize]
+			// Dependency items do not have extra data, so we can skip it
+			depItemChangeDataOffset := src.ItemChangeDataOffset[srcDepItemIndex]
+			depItemChangeDataSize := src.ItemChangeDataSize[srcDepItemIndex]
+			depItemChangeData := src.Data[depItemChangeDataOffset : depItemChangeDataOffset+int32(depItemChangeDataSize)]
 
-            dstDepItemIndex = int32(len(dst.ItemIdFlags))                                    // index of the new dependency item in the destination trackr
-            dst.ItemIdHash = append(dst.ItemIdHash, depItemIdHash...)                         // add the dependency Id hash
-            dst.ItemChangeHash = append(dst.ItemChangeHash, depItemChangeHash...)             // add the dependency Change hash
-            dst.ItemIdFlags = append(dst.ItemIdFlags, depItemIdFlags)                         // add the dependency Id flags
-            dst.ItemChangeFlags = append(dst.ItemChangeFlags, depItemChangeFlags)             // add the dependency Change flags
-            dst.ItemDepsStart = append(dst.ItemDepsStart, 0)                                  // start of dependencies is 0
-            dst.ItemDepsCount = append(dst.ItemDepsCount, 0)                                  // count of dependencies is 0 for now
-            dst.ItemIdDataOffset = append(dst.ItemIdDataOffset, int32(len(dst.Data)))         // item Id data
-            dst.ItemIdDataSize = append(dst.ItemIdDataSize, depItemIdDataSize)                // item Id data
-            dst.Data = append(dst.Data, depItemIdData...)                                     // add the Item Id data to the Data array
-            dst.ItemChangeDataOffset = append(dst.ItemChangeDataOffset, int32(len(dst.Data))) // item Id data
-            dst.ItemChangeDataSize = append(dst.ItemChangeDataSize, depItemChangeDataSize)    // item Id data
-            dst.Data = append(dst.Data, depItemChangeData...)                                 // add the Item Change data to the Data array
+			dstDepItemIndex = int32(len(dst.ItemIdFlags))                             // index of the new dependency item in the destination trackr
+			dst.ItemIdHash = append(dst.ItemIdHash, depItemIdHash...)                 // add the dependency Id hash
+			dst.ItemChangeHash = append(dst.ItemChangeHash, depItemChangeHash...)     // add the dependency Change hash
+			dst.ItemIdFlags = append(dst.ItemIdFlags, depItemIdFlags)                 // add the dependency Id flags
+			dst.ItemChangeFlags = append(dst.ItemChangeFlags, depItemChangeFlags)     // add the dependency Change flags
+			dst.ItemDepsStart = append(dst.ItemDepsStart, 0)                          // start of dependencies is 0
+			dst.ItemDepsCount = append(dst.ItemDepsCount, 0)                          // count of dependencies is 0 for now
+			dst.ItemIdDataOffset = append(dst.ItemIdDataOffset, int32(len(dst.Data))) // item Id data
+			dst.ItemIdDataSize = append(dst.ItemIdDataSize, depItemIdDataSize)        // item Id data
+			dst.Data = append(dst.Data, depItemIdData...)                             // add the Item Id data to the Data array
+			// Dependency items do not have extra data, so we can skip it
+			dst.ItemChangeDataOffset = append(dst.ItemChangeDataOffset, int32(len(dst.Data))) // item Id data
+			dst.ItemChangeDataSize = append(dst.ItemChangeDataSize, depItemChangeDataSize)    // item Id data
+			dst.Data = append(dst.Data, depItemChangeData...)                                 // add the Item Change data to the Data array
 
-            // Insert the dependency item into the shard database
-            dst.insertItemIntoDb(depItemIdHash, dstDepItemIndex)
-        }
+			// Insert the dependency item into the shard database
+			dst.insertItemIntoDb(depItemIdHash, dstDepItemIndex)
+		}
 
-        // add the dependency item index to the destination trackr
+		// add the dependency item index to the destination trackr
 		dst.Deps = append(dst.Deps, dstDepItemIndex)
 
-        srcDepItemCursor++
+		srcDepItemCursor++
 	}
 
 	return nil

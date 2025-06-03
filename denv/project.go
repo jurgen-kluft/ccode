@@ -11,140 +11,6 @@ import (
 // -----------------------------------------------------------------------------------------------------
 // -----------------------------------------------------------------------------------------------------
 
-type ProjectSettings struct {
-	Group              string
-	IsGuiApp           bool
-	PchHeader          string
-	MultiThreadedBuild Boolean
-	CppAsObjCpp        Boolean
-	Xcode              struct {
-		BundleIdentifier string
-	}
-}
-
-func NewProjectSettings() *ProjectSettings {
-	config := &ProjectSettings{}
-	return config
-}
-
-// -----------------------------------------------------------------------------------------------------
-// -----------------------------------------------------------------------------------------------------
-
-type XcodeProjectConfig struct {
-	XcodeProj                 *FileEntry
-	PbxProj                   string
-	InfoPlistFile             string
-	Uuid                      utils.UUID
-	TargetUuid                utils.UUID
-	TargetProductUuid         utils.UUID
-	ConfigListUuid            utils.UUID
-	TargetConfigListUuid      utils.UUID
-	DependencyProxyUuid       utils.UUID
-	DependencyTargetUuid      utils.UUID
-	DependencyTargetProxyUuid utils.UUID
-}
-
-type MsDevProjectConfig struct {
-	UUID utils.UUID
-}
-
-func NewXcodeProjectConfig() *XcodeProjectConfig {
-	return &XcodeProjectConfig{
-		XcodeProj: NewFileEntry(),
-	}
-}
-
-func NewMsDevProjectConfig() *MsDevProjectConfig {
-	return &MsDevProjectConfig{}
-}
-
-// -----------------------------------------------------------------------------------------------------
-// -----------------------------------------------------------------------------------------------------
-
-type ProjectList struct {
-	Dict   map[string]int
-	Values []*Project
-	Keys   []string
-}
-
-func NewProjectList() *ProjectList {
-	return &ProjectList{
-		Dict:   map[string]int{},
-		Values: []*Project{},
-		Keys:   []string{},
-	}
-}
-
-func (p *ProjectList) Len() int {
-	return len(p.Values)
-}
-
-func (p *ProjectList) IsEmpty() bool {
-	return len(p.Values) == 0
-}
-
-func (p *ProjectList) Add(project *Project) {
-	if _, ok := p.Dict[project.Name]; !ok {
-		p.Dict[project.Name] = len(p.Values)
-		p.Values = append(p.Values, project)
-		p.Keys = append(p.Keys, project.Name)
-	}
-}
-
-func (p *ProjectList) Get(name string) (*Project, bool) {
-	if i, ok := p.Dict[name]; ok {
-		return p.Values[i], true
-	}
-	return nil, false
-}
-
-func (p *ProjectList) CollectByWildcard(name string, list *ProjectList) {
-	for _, p := range p.Values {
-		if utils.PathMatchWildcard(p.Name, name, true) {
-			list.Add(p)
-		}
-	}
-}
-
-func (p *ProjectList) TopoSort() error {
-	var edges []Edge
-
-	// Sort the projects by dependencies
-	for i, project := range p.Values {
-		if project.Dependencies.IsEmpty() {
-			edges = append(edges, Edge{Vertex(i), InvalidVertex})
-		} else {
-			for _, dep := range project.Dependencies.Values {
-				edges = append(edges, Edge{S: Vertex(i), D: Vertex(p.Dict[dep.Name])})
-			}
-		}
-	}
-
-	sorted, err := Toposort(edges)
-	if err != nil {
-		return err
-	}
-
-	var sortedProjects []*Project
-	for i := len(sorted) - 1; i >= 0; i-- {
-		sortedProjects = append(sortedProjects, p.Values[sorted[i]])
-	}
-
-	p.Dict = map[string]int{}
-	p.Values = sortedProjects
-	p.Keys = []string{}
-
-	for i, project := range sortedProjects {
-		p.Dict[project.Name] = i
-		p.Keys = append(p.Keys, project.Name)
-	}
-
-	return nil
-}
-
-// -----------------------------------------------------------------------------------------------------
-// -----------------------------------------------------------------------------------------------------
-
 type Project struct {
 	Workspace        *Workspace       // The workspace this project is part of
 	Name             string           // The name of the project
@@ -190,7 +56,7 @@ func newProject2(prj *DevProject, ws *Workspace, settings *ProjectSettings) *Pro
 		p.ConfigsLocal.Add(cfg)
 	}
 
-	p.Settings.MultiThreadedBuild = Boolean(ws.Config.MultiThreadedBuild)
+	p.Settings.MultiThreadedBuild = ws.Config.MultiThreadedBuild
 	p.Settings.Xcode.BundleIdentifier = "$(PROJECT_NAME)"
 
 	return p
@@ -483,4 +349,138 @@ func (p *Project) BuildFrameworkInformation(config *Config) (frameworks *dev.Val
 	}
 
 	return
+}
+
+// -----------------------------------------------------------------------------------------------------
+// -----------------------------------------------------------------------------------------------------
+
+type ProjectSettings struct {
+	Group              string
+	IsGuiApp           bool
+	PchHeader          string
+	MultiThreadedBuild bool
+	CppAsObjCpp        bool
+	Xcode              struct {
+		BundleIdentifier string
+	}
+}
+
+func NewProjectSettings() *ProjectSettings {
+	config := &ProjectSettings{}
+	return config
+}
+
+// -----------------------------------------------------------------------------------------------------
+// -----------------------------------------------------------------------------------------------------
+
+type XcodeProjectConfig struct {
+	XcodeProj                 *FileEntry
+	PbxProj                   string
+	InfoPlistFile             string
+	Uuid                      utils.UUID
+	TargetUuid                utils.UUID
+	TargetProductUuid         utils.UUID
+	ConfigListUuid            utils.UUID
+	TargetConfigListUuid      utils.UUID
+	DependencyProxyUuid       utils.UUID
+	DependencyTargetUuid      utils.UUID
+	DependencyTargetProxyUuid utils.UUID
+}
+
+type MsDevProjectConfig struct {
+	UUID utils.UUID
+}
+
+func NewXcodeProjectConfig() *XcodeProjectConfig {
+	return &XcodeProjectConfig{
+		XcodeProj: NewFileEntry(),
+	}
+}
+
+func NewMsDevProjectConfig() *MsDevProjectConfig {
+	return &MsDevProjectConfig{}
+}
+
+// -----------------------------------------------------------------------------------------------------
+// -----------------------------------------------------------------------------------------------------
+
+type ProjectList struct {
+	Dict   map[string]int
+	Values []*Project
+	Keys   []string
+}
+
+func NewProjectList() *ProjectList {
+	return &ProjectList{
+		Dict:   map[string]int{},
+		Values: []*Project{},
+		Keys:   []string{},
+	}
+}
+
+func (p *ProjectList) Len() int {
+	return len(p.Values)
+}
+
+func (p *ProjectList) IsEmpty() bool {
+	return len(p.Values) == 0
+}
+
+func (p *ProjectList) Add(project *Project) {
+	if _, ok := p.Dict[project.Name]; !ok {
+		p.Dict[project.Name] = len(p.Values)
+		p.Values = append(p.Values, project)
+		p.Keys = append(p.Keys, project.Name)
+	}
+}
+
+func (p *ProjectList) Get(name string) (*Project, bool) {
+	if i, ok := p.Dict[name]; ok {
+		return p.Values[i], true
+	}
+	return nil, false
+}
+
+func (p *ProjectList) CollectByWildcard(name string, list *ProjectList) {
+	for _, p := range p.Values {
+		if utils.PathMatchWildcard(p.Name, name, true) {
+			list.Add(p)
+		}
+	}
+}
+
+func (p *ProjectList) TopoSort() error {
+	var edges []Edge
+
+	// Sort the projects by dependencies
+	for i, project := range p.Values {
+		if project.Dependencies.IsEmpty() {
+			edges = append(edges, Edge{Vertex(i), InvalidVertex})
+		} else {
+			for _, dep := range project.Dependencies.Values {
+				edges = append(edges, Edge{S: Vertex(i), D: Vertex(p.Dict[dep.Name])})
+			}
+		}
+	}
+
+	sorted, err := Toposort(edges)
+	if err != nil {
+		return err
+	}
+
+	var sortedProjects []*Project
+	for i := len(sorted) - 1; i >= 0; i-- {
+		sortedProjects = append(sortedProjects, p.Values[sorted[i]])
+	}
+
+	p.Dict = map[string]int{}
+	p.Values = sortedProjects
+	p.Keys = []string{}
+
+	for i, project := range sortedProjects {
+		p.Dict[project.Name] = i
+		p.Keys = append(p.Keys, project.Name)
+	}
+
+	return nil
 }

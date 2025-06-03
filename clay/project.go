@@ -12,39 +12,18 @@ import (
 	utils "github.com/jurgen-kluft/ccode/utils"
 )
 
-// TODO:
-// - MINOR: Clay build CLI-APP for the user
-//          90%
-//          Next: emit the project and library info in the cmd.go, build
-//                the app and copy/release it in the build directory
-// - MEDIOR: Parse the boards.txt file and be able to extract compiler, linker and other info
-// - MINOR: ESP32 S3 Target (could be automatic if we are able to fully parse the boards.txt file)
-// - MAJOR: To reduce compile/link time we need Dependency Tracking (Database)
-//   - source file <-> [command-line args], [object-file + header-files], [tools?]
-
-// DONE:
-// - MINOR: Clay build CLI-APP for the user
-//          build, clean, build-info, list libraries, list boards, list flash sizes (done)
-//          flash (done)
-// - MINOR: Build Info (build_info.h and build_info.cpp as a Library)
-// - MINOR: Archiver
-// - MINOR: Linker
-// - MINOR: Image Generator
-// - MINOR: Elf Size Stats
-
 // Project represents a C/C++ project that can be built using the Clay build system.
-// It can be a library or an executable.
+// A project can be a library or an executable.
 type Project struct {
 	Toolchain    toolchain.Environment // Build environment for this project
 	IsExecutable bool                  // Is this project an executable (true) or a library (false)
-
-	Name         string
-	Config       *Config      // Build configuration
-	Defines      *ValueSet    // Compiler defines (macros) for the library
-	IncludeDirs  *IncludeMap  // Include paths for the library (system)
-	SourceFiles  []SourceFile // C/C++ Source files for the library
-	Dependencies []*Project   // Libraries that this project depends on
-	Frameworks   []string     // Frameworks to link against (for macOS)
+	Name         string                // Name of the Library or Executable
+	Config       *Config               // Build configuration
+	Defines      *ValueSet             // Compiler defines (macros) for the library
+	IncludeDirs  *IncludeMap           // Include paths for the library (system)
+	SourceFiles  []SourceFile          // C/C++ Source files for the library
+	Dependencies []*Project            // Libraries that this project depends on
+	Frameworks   []string              // Frameworks to link against (for macOS)
 }
 
 func NewExecutableProject(name string, config *Config) *Project {
