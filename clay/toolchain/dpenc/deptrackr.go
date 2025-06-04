@@ -38,6 +38,7 @@ const (
 
 type trackr struct {
 	hasher               hash.Hash
+	readonly             bool        // If true, the database is read-only, we cannot add items
 	scratchBuffer        *BinaryData // A temporary byte buffer for hashing and other operations, not saved to disk
 	storageFilepath      string      // Filepath where we store the database file
 	signature            string      // max 32 characters signature, e.g. ".d deptracker v1.0.0"
@@ -61,7 +62,7 @@ type trackr struct {
 	S                    int32       // size of a shard, this is the number of items per shard, default is 512
 	ShardOffsets         []int32     // This is an array of offsets into the Shards array, each offset corresponds to a shard, 0 means the shard doesn't exist yet
 	ShardSizes           []int16     // This is an array of sizes of each shard, 0 means the shard is empty
-	DirtyFlags           []uint8     // A bit per shard, indicates if the shard is dirty (unsorted) and needs to be sorted
+	DirtyFlags           []uint8     // A bit per shard, indicates if the shard is dirty (unsorted) and needs to be sorted (excluded from load/save)
 	Shards               []int32     // An array of shards, a shard is a region of item-indices
 	EmptyShard           []int32     // A shard initialized to a size of S and full of NillIndex
 }
@@ -73,6 +74,7 @@ func constructTrackr(storageFilepath string, signature string, numItems int, dat
 
 	d := &trackr{
 		hasher:               sha1.New(),                        // Create a new SHA1 hasher
+		readonly:             false,                             //
 		scratchBuffer:        NewBinaryData(256),                // A temporary byte buffer for hashing and other operations, not saved to disk
 		storageFilepath:      storageFilepath,                   //
 		signature:            signature,                         // copy the signature from the source
@@ -94,7 +96,7 @@ func constructTrackr(storageFilepath string, signature string, numItems int, dat
 		S:                    s,                                 //
 		ShardOffsets:         make([]int32, 1<<n),               // initial capacity of 2^N shards
 		ShardSizes:           make([]int16, 1<<n),               // initial capacity of 2^N shards
-		DirtyFlags:           make([]uint8, ((1<<n)+7)>>3),      // initial capacity of N bits for dirty flags (rounded up to the nearest byte)
+		DirtyFlags:           nil,                               // initial capacity of N bits for dirty flags (rounded up to the nearest byte)
 		Shards:               make([]int32, 0, (1<<n)*s),        // initial capacity of 2^N shards where each shard has s elements
 		EmptyShard:           make([]int32, s),                  // an empty shard, used to copy when making a new shard in Shards
 		Deps:                 make([]int32, 0, numItems),        // Array for each item to list their dependencies, this is a flat array of item indices
@@ -118,14 +120,12 @@ func constructTrackr(storageFilepath string, signature string, numItems int, dat
 	return d
 }
 
-func newTrackr(storageFilepath string, signature string) *trackr {
-	return constructTrackr(storageFilepath, signature, 1024, 1024*1024)
-}
-
 func (src *trackr) newTrackr() *trackr {
 	numItems := max(1024, len(src.ItemIdFlags)+len(src.ItemIdFlags)/8)
 	dataSize := len(src.Data) + (len(src.Data) / 2)
-	return constructTrackr(src.storageFilepath, src.signature, numItems, dataSize)
+	d := constructTrackr(src.storageFilepath, src.signature, numItems, dataSize)
+	d.readonly = false
+	return d
 }
 
 // --------------------------------------------------------------------------
@@ -238,7 +238,7 @@ func (d *trackr) readArray(signature string, f *os.File) (byteArray []byte, err 
 		}
 
 		decompressedByteArray := make([]byte, arrayOriginalSizeInBytes)
-        totalDecompressedNumBytes := 0
+		totalDecompressedNumBytes := 0
 
 		var err1 error
 		for totalDecompressedNumBytes < arrayOriginalSizeInBytes {
@@ -363,15 +363,19 @@ func (d *trackr) validate() error {
 	if len(d.ShardSizes) != shardCount {
 		return fmt.Errorf("ShardSizes size mismatch: expected %d, got %d", shardCount, len(d.ShardSizes))
 	}
-	if len(d.DirtyFlags) != ((shardCount + 7) >> 3) {
-		return fmt.Errorf("DirtyFlags size mismatch: expected %d, got %d", (shardCount+7)>>3, len(d.DirtyFlags))
-	}
+	// if len(d.DirtyFlags) != ((shardCount + 7) >> 3) {
+	// 	return fmt.Errorf("DirtyFlags size mismatch: expected %d, got %d", (shardCount+7)>>3, len(d.DirtyFlags))
+	// }
 
 	return nil
 }
 
 // --------------------------------------------------------------------------
 func (d *trackr) save() error {
+	if d.readonly {
+		return fmt.Errorf("a read-only tracker cannot be saved")
+	}
+
 	dbFile, err := os.Create(d.storageFilepath + ".point.db")
 	if err != nil {
 		return err
@@ -442,7 +446,23 @@ func (d *trackr) save() error {
 		return err
 	}
 
-	// Write shard database
+	// Here we iterate over the bytes of dirty flags and only sort a shard
+	// if a dirty flag is set for that shard.
+	for i := int32(0); i < int32(len(d.DirtyFlags)); i++ {
+		if d.DirtyFlags[i] == 0 {
+			continue
+		}
+		indexOfShard := (i << 3)
+		b := d.DirtyFlags[i]
+		for b != 0 {
+			if (b & 1) != 0 {
+				d.sortShard(indexOfShard)
+			}
+			indexOfShard++
+			b = b >> 1
+		}
+		d.DirtyFlags[i] = 0
+	}
 
 	if err := d.writeInt32Array("shard.offsets.array", d.ShardOffsets, dbFile); err != nil {
 		return err
@@ -450,9 +470,9 @@ func (d *trackr) save() error {
 	if err := d.writeInt16Array("shard.sizes.array", d.ShardSizes, dbFile); err != nil {
 		return err
 	}
-	if err := d.writeByteArray("shard.dirty.flags.array", d.DirtyFlags, dbFile); err != nil {
-		return err
-	}
+	// if err := d.writeByteArray("shard.dirty.flags.array", d.DirtyFlags, dbFile); err != nil {
+	// 	return err
+	// }
 	if err := d.writeInt32ArrayCompressed("shard.items.array", d.Shards, dbFile); err != nil {
 		return err
 	}
@@ -466,8 +486,14 @@ func (d *trackr) save() error {
 	return nil
 }
 
-func loadTrackr(storageFilepath string, signature string) *trackr {
+// newDefaultTracker creates a new (nearly empty) tracker when loading fails
+func newDefaultTracker(storageFilepath string, signature string) *trackr {
+	d := constructTrackr(storageFilepath, signature, 8, 8)
+	d.readonly = true // Set the trackr to read-only mode
+	return d
+}
 
+func loadTrackr(storageFilepath string, signature string) *trackr {
 	// If "/name.main.db" exists and "/name.point.db" then
 	// delete "/name.main.db" and rename "/name.point.db" to "/name.main.db".
 	var err error
@@ -488,19 +514,19 @@ func loadTrackr(storageFilepath string, signature string) *trackr {
 
 	// On any error, we just create a new database
 	if err != nil {
-		return newTrackr(storageFilepath, signature)
+		return newDefaultTracker(storageFilepath, signature)
 	}
 
 	// Open the database file
 	dbFile, err := os.Open(mainDbFilepath)
 	if err != nil {
 		// No database exists on disk, so we just create an empty one
-		d := newTrackr(storageFilepath, signature)
+		d := newDefaultTracker(storageFilepath, signature)
 		return d
 	}
 	defer dbFile.Close()
 
-	d := newTrackr(storageFilepath, signature)
+	d := newDefaultTracker(storageFilepath, signature)
 
 	d.hasher.Reset()
 	d.hasher.Write([]byte(signature))
@@ -510,13 +536,13 @@ func loadTrackr(storageFilepath string, signature string) *trackr {
 
 	// Read the header
 	if err := d.scratchBuffer.readFromFile(headerSize, dbFile); err != nil {
-		return newTrackr(storageFilepath, signature)
+		return newDefaultTracker(storageFilepath, signature)
 	}
 
 	// The first 10 bytes is the first 10 bytes of the SHA1 of the signature
 	readSignatureHash := d.scratchBuffer.readNBytes(10)
 	if bytes.Compare(signatureHash[:10], readSignatureHash) != 0 {
-		return newTrackr(storageFilepath, signature)
+		return newDefaultTracker(storageFilepath, signature)
 	}
 
 	numItems := d.scratchBuffer.readInt()
@@ -526,7 +552,7 @@ func loadTrackr(storageFilepath string, signature string) *trackr {
 	// The last 10 bytes are the last 10 bytes of the SHA1 of the signature
 	readSignatureHash = d.scratchBuffer.readNBytes(10)
 	if bytes.Compare(signatureHash[10:], readSignatureHash) != 0 {
-		return newTrackr(storageFilepath, signature)
+		return newDefaultTracker(storageFilepath, signature)
 	}
 
 	var newItemIdHash []byte
@@ -543,68 +569,68 @@ func loadTrackr(storageFilepath string, signature string) *trackr {
 	var newItemChangeDataSize []uint8
 	var newShardOffsets []int32
 	var newShardSizes []int16
-	var newDirtyFlags []uint8
 	var newShards []int32
 	var newDeps []int32
 	var newData []byte
 
 	if newItemIdHash, err = d.readByteArray("item.id.hash.array", dbFile); err != nil {
-		return newTrackr(storageFilepath, signature)
+		return newDefaultTracker(storageFilepath, signature)
 	}
 	if newItemChangeHash, err = d.readByteArray("item.change.hash.array", dbFile); err != nil {
-		return newTrackr(storageFilepath, signature)
+		return newDefaultTracker(storageFilepath, signature)
 	}
 	if newItemIdFlags, err = d.readByteArray("item.id.flags.array", dbFile); err != nil {
-		return newTrackr(storageFilepath, signature)
+		return newDefaultTracker(storageFilepath, signature)
 	}
 	if newItemChangeFlags, err = d.readByteArray("item.change.flags.array", dbFile); err != nil {
-		return newTrackr(storageFilepath, signature)
+		return newDefaultTracker(storageFilepath, signature)
 	}
 	if newItemDepsStart, err = d.readInt32Array("item.deps.start.array", dbFile); err != nil {
-		return newTrackr(storageFilepath, signature)
+		return newDefaultTracker(storageFilepath, signature)
 	}
 	if newItemDepsCount, err = d.readInt32Array("item.deps.count.array", dbFile); err != nil {
-		return newTrackr(storageFilepath, signature)
+		return newDefaultTracker(storageFilepath, signature)
 	}
 	if newItemIdDataOffset, err = d.readInt32Array("item.id.data.offset.array", dbFile); err != nil {
-		return newTrackr(storageFilepath, signature)
+		return newDefaultTracker(storageFilepath, signature)
 	}
 	if newItemIdDataSize, err = d.readInt32Array("item.id.data.size.array", dbFile); err != nil {
-		return newTrackr(storageFilepath, signature)
+		return newDefaultTracker(storageFilepath, signature)
 	}
 	if newItemExtraDataOffset, err = d.readInt32Array("item.extra.data.offset.array", dbFile); err != nil {
-		return newTrackr(storageFilepath, signature)
+		return newDefaultTracker(storageFilepath, signature)
 	}
 	if newItemExtraDataSize, err = d.readByteArray("item.extra.data.size.array", dbFile); err != nil {
-		return newTrackr(storageFilepath, signature)
+		return newDefaultTracker(storageFilepath, signature)
 	}
 	if newItemChangeDataOffset, err = d.readInt32Array("item.change.data.offset.array", dbFile); err != nil {
-		return newTrackr(storageFilepath, signature)
+		return newDefaultTracker(storageFilepath, signature)
 	}
 	if newItemChangeDataSize, err = d.readByteArray("item.change.data.size.array", dbFile); err != nil {
-		return newTrackr(storageFilepath, signature)
+		return newDefaultTracker(storageFilepath, signature)
 	}
 	if newDeps, err = d.readInt32Array("item.deps.array", dbFile); err != nil {
-		return newTrackr(storageFilepath, signature)
+		return newDefaultTracker(storageFilepath, signature)
 	}
 	if newData, err = d.readByteArray("item.data.array", dbFile); err != nil {
-		return newTrackr(storageFilepath, signature)
+		return newDefaultTracker(storageFilepath, signature)
 	}
 
 	if newShardOffsets, err = d.readInt32Array("shard.offsets.array", dbFile); err != nil {
-		return newTrackr(storageFilepath, signature)
+		return newDefaultTracker(storageFilepath, signature)
 	}
 	if newShardSizes, err = d.readInt16Array("shard.sizes.array", dbFile); err != nil {
-		return newTrackr(storageFilepath, signature)
+		return newDefaultTracker(storageFilepath, signature)
 	}
-	if newDirtyFlags, err = d.readByteArray("shard.dirty.flags.array", dbFile); err != nil {
-		return newTrackr(storageFilepath, signature)
-	}
+	// if newDirtyFlags, err = d.readByteArray("shard.dirty.flags.array", dbFile); err != nil {
+	// 	return newDefaultTracker(storageFilepath, signature)
+	// }
 	if newShards, err = d.readInt32Array("shard.items.array", dbFile); err != nil {
-		return newTrackr(storageFilepath, signature)
+		return newDefaultTracker(storageFilepath, signature)
 	}
 
 	// Initialize the trackr with the loaded data
+	d.readonly = true                                // Set the trackr to read-only mode after loading
 	d.itemState = make([]State, numItems, numItems)  // State of the item (used in Query, not loaded/saved)
 	d.ItemIdHash = newItemIdHash                     // Item Id hash
 	d.ItemChangeHash = newItemChangeHash             // Item Change hash
@@ -622,13 +648,13 @@ func loadTrackr(storageFilepath string, signature string) *trackr {
 	d.S = shardS                                     // Size of a shard
 	d.ShardOffsets = newShardOffsets                 // Shard offsets
 	d.ShardSizes = newShardSizes                     // Shard sizes
-	d.DirtyFlags = newDirtyFlags                     // Dirty flags for shards
+	d.DirtyFlags = nil                               // Dirty flags, a bit per shard
 	d.Shards = newShards                             // Shards, an array of item indices
 	d.Deps = newDeps                                 // Dependencies
 	d.Data = newData                                 // Data for Id and Change
 
 	if err := d.validate(); err != nil {
-		return newTrackr(storageFilepath, signature)
+		return newDefaultTracker(storageFilepath, signature)
 	}
 
 	return d
@@ -686,6 +712,32 @@ func (d *trackr) insertItemIntoDb(hash []byte, item int32) {
 	d.DirtyFlags[indexOfShard>>3] |= 1 << (indexOfShard & 7) // set the dirty flag for the shard
 }
 
+func (d *trackr) sortShard(indexOfShard int32) {
+	shardStart := d.ShardOffsets[indexOfShard]
+	if shardStart != NilIndex {
+		shardSize := int32(d.ShardSizes[indexOfShard])
+		if shardSize > 1 {
+			slices.SortFunc(d.Shards[shardStart:shardStart+shardSize], func(i, j int32) int {
+				io := i * d.hashSize
+				jo := j * d.hashSize
+				ioe := io + d.hashSize
+				for io < ioe {
+					ib := d.ItemIdHash[io]
+					jb := d.ItemIdHash[jo]
+					if ib < jb {
+						return -1
+					} else if ib > jb {
+						return 1
+					}
+					io++
+					jo++
+				}
+				return 0
+			})
+		}
+	}
+}
+
 func (d *trackr) DoesItemExistInDb(hash []byte) int32 {
 	indexOfShard := int32(hash[0])<<8 | int32(hash[1]) // use the first N bits of the hash
 	indexOfShard = indexOfShard >> (16 - d.N)          // shift to get the right index
@@ -696,14 +748,8 @@ func (d *trackr) DoesItemExistInDb(hash []byte) int32 {
 	}
 
 	shardSize := d.ShardSizes[indexOfShard]
-	if shardSize > 1 && d.isShardUnsorted(indexOfShard) {
-		shardStart := shardOffset
-		shardEnd := shardStart + int32(shardSize)
-		slices.SortFunc(d.Shards[shardStart:shardEnd], func(i, j int32) int {
-			hashI := d.ItemIdHash[i*d.hashSize : (i+1)*d.hashSize]
-			hashJ := d.ItemIdHash[j*d.hashSize : (j+1)*d.hashSize]
-			return bytes.Compare(hashI, hashJ) // sort in ascending order
-		})
+	if !d.readonly && shardSize > 1 && d.isShardUnsorted(indexOfShard) {
+		d.sortShard(indexOfShard)
 		// Mark the shard as sorted
 		d.DirtyFlags[indexOfShard>>3] = d.DirtyFlags[indexOfShard>>3] &^ (1 << (indexOfShard & 7))
 	}
