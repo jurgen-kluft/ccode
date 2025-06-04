@@ -158,10 +158,12 @@ func (p *Project) Build(buildConfig *Config, buildPath string) (outOfDate int, e
 			for _, obj := range prjObjFilepaths {
 				archivesToLink = append(archivesToLink, obj)
 			}
-			// Project dependency archives
+			// Project archive dependencies (only those matching the build config)
 			for _, dep := range p.Dependencies {
-				libAbsFilepath := dep.GetOutputFilepath(buildPath, staticArchiver.Filename(dep.Name))
-				archivesToLink = append(archivesToLink, libAbsFilepath)
+				if dep.Config.Matches(buildConfig) {
+					libAbsFilepath := dep.GetOutputFilepath(buildPath, staticArchiver.Filename(dep.Name))
+					archivesToLink = append(archivesToLink, libAbsFilepath)
+				}
 			}
 			// Link them all together into a single executable
 			if err := linker.Link(archivesToLink, executableOutputFilepath); err != nil {

@@ -161,31 +161,24 @@ func (g *Generator) GenerateWorkspace(pkg *Package, _dev DevEnum, _buildTarget d
 	ws.GenerateAbsPath = filepath.Join(ws.WorkspaceAbsPath, "target", ws.Config.Dev.ToString())
 	g.ExclusionFilter = NewExclusionFilter(ws.BuildTarget)
 
-	allProjects := make([]*DevProject, 0)
-	allProjects = append(allProjects, mainApps...)
-	allProjects = append(allProjects, mainTests...)
-	allProjects = append(allProjects, mainLibs...)
-	allProjects = append(allProjects, testLibs...)
+	projectStack := make([]*DevProject, 0)
+	projectStack = append(projectStack, mainApps...)
+	projectStack = append(projectStack, mainTests...)
+	projectStack = append(projectStack, mainLibs...)
+	projectStack = append(projectStack, testLibs...)
+	projectHistory := make(map[*DevProject]string)
 
-	for _, prj := range allProjects {
+	for len(projectStack) > 0 {
+		prj := projectStack[0]
+		projectStack = projectStack[1:]
 		project := g.getOrCreateProject(prj, ws)
-
-		// TODO We have been doing this in the past, however we are going to restrict this.
-		//      You should only be able to add a dependency that is matching your configurations
-		// project.AddConfigurations(prj.Configs)
-
 		projectDependencies := prj.CollectProjectDependencies()
 		for _, dp := range projectDependencies.Values {
 			depProject := g.getOrCreateProject(dp, ws)
 			project.Dependencies.Add(depProject)
-
-			// TODO See comment above
-			// depProject.AddConfigurations(dp.Configs)
-
-			dpDependencies := dp.CollectProjectDependencies()
-			for _, dpd := range dpDependencies.Values {
-				dpdProject := g.getOrCreateProject(dpd, ws)
-				depProject.Dependencies.Add(dpdProject)
+			if _, ok := projectHistory[dp]; !ok {
+				projectHistory[dp] = dp.Name
+				projectStack = append(projectStack, dp)
 			}
 		}
 	}

@@ -3,10 +3,7 @@ package denv
 import (
 	"os"
 	"path/filepath"
-	"slices"
 	"strings"
-
-	"github.com/jurgen-kluft/ccode/dev"
 )
 
 // Package hold a defined set of 'Projects'
@@ -28,47 +25,47 @@ func (p *Package) WorkspacePath() string {
 func (p *Package) PackagePath() string {
 	return filepath.Join(p.RootPath, p.RepoPath, p.RepoName)
 }
-
-func collectTypes(buildType dev.BuildType, projects []*DevProject, list *DevProjectList) {
-	stack := slices.Clone(projects)
-	for len(stack) > 0 {
-		prj := stack[0]
-		stack = stack[1:]
-		if !list.Has(prj.Name) {
-			if prj.BuildType&buildType != 0 {
-				list.Add(prj)
-			}
-			stack = append(stack, prj)
-		}
-		for _, dprj := range prj.Dependencies.Values {
-			if !list.Has(dprj.Name) {
-				if dprj.BuildType&buildType != 0 {
-					list.Add(dprj)
-				}
-				stack = append(stack, dprj)
-			}
-		}
-	}
-}
-
-// Libraries returns all the libraries in the package
-func (p *Package) Libraries() []*DevProject {
-	list := NewDevProjectList()
-	collectTypes(dev.BuildTypeStaticLibrary|dev.BuildTypeDynamicLibrary, p.MainApps, list)
-	collectTypes(dev.BuildTypeStaticLibrary|dev.BuildTypeDynamicLibrary, p.MainLibs, list)
-	collectTypes(dev.BuildTypeStaticLibrary|dev.BuildTypeDynamicLibrary, p.Unittests, list)
-	collectTypes(dev.BuildTypeStaticLibrary|dev.BuildTypeDynamicLibrary, p.TestLibs, list)
-	return list.Values
-
-}
-
-func (p *Package) MainProjects() []*DevProject {
-	projects := NewDevProjectList()
-	projects.AddMany(p.GetMainLib()...)
-	projects.AddMany(p.GetMainApp()...)
-	projects.AddMany(p.GetUnittest()...)
-	return projects.Values
-}
+//
+//func collectTypes(buildType dev.BuildType, projects []*DevProject, list *DevProjectList) {
+//	stack := slices.Clone(projects)
+//	for len(stack) > 0 {
+//		prj := stack[0]
+//		stack = stack[1:]
+//		if !list.Has(prj.Name) {
+//			if prj.BuildType&buildType != 0 {
+//				list.Add(prj)
+//			}
+//			stack = append(stack, prj)
+//		}
+//		for _, dprj := range prj.Dependencies.Values {
+//			if !list.Has(dprj.Name) {
+//				if dprj.BuildType&buildType != 0 {
+//					list.Add(dprj)
+//				}
+//				stack = append(stack, dprj)
+//			}
+//		}
+//	}
+//}
+//
+//// Libraries returns all the libraries in the package
+//func (p *Package) Libraries() []*DevProject {
+//	list := NewDevProjectList()
+//	collectTypes(dev.BuildTypeStaticLibrary|dev.BuildTypeDynamicLibrary, p.MainApps, list)
+//	collectTypes(dev.BuildTypeStaticLibrary|dev.BuildTypeDynamicLibrary, p.MainLibs, list)
+//	collectTypes(dev.BuildTypeStaticLibrary|dev.BuildTypeDynamicLibrary, p.Unittests, list)
+//	collectTypes(dev.BuildTypeStaticLibrary|dev.BuildTypeDynamicLibrary, p.TestLibs, list)
+//	return list.Values
+//
+//}
+//
+//func (p *Package) MainProjects() []*DevProject {
+//	projects := NewDevProjectList()
+//	projects.AddMany(p.GetMainLib()...)
+//	projects.AddMany(p.GetMainApp()...)
+//	projects.AddMany(p.GetUnittest()...)
+//	return projects.Values
+//}
 
 // NewPackage creates a new empty package
 func NewPackage(repo_path string, repo_name string) *Package {

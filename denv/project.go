@@ -227,11 +227,7 @@ func (p *Project) Resolve(devEnum DevEnum) error {
 
 	for _, g := range p.SrcFileGroups {
 		for _, f := range g.Values {
-			if f.Generated {
-				p.VirtualFolders.AddFile(f)
-			} else {
-				p.VirtualFolders.AddFile(f)
-			}
+			p.VirtualFolders.AddFile(f)
 		}
 	}
 	configsPerConfigTypeDb := map[dev.BuildConfig][]*Config{}

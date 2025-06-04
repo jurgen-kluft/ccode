@@ -69,7 +69,7 @@ func UsageDesktop() {
 	fmt.Println("  clay list-libraries")
 }
 
-func BuildDesktop(projectName string, buildConfig *Config) (err error) {
+func BuildDesktop(projectName string, buildConfig *Config) error {
 	// Note: We should be running this from the "target/{build target}" directory
 	// Create the build directory
 	buildPath := GetBuildPath(buildConfig.GetSubDir())
@@ -81,21 +81,36 @@ func BuildDesktop(projectName string, buildConfig *Config) (err error) {
 	}
 
 	var outOfDate int
+
+	// Build the libraries first
+	for _, prj := range prjs {
+		if !prj.IsExecutable && prj.Config.Matches(buildConfig) {
+			if ood, err := prj.Build(buildConfig, buildPath); err != nil {
+				return err
+			} else {
+				outOfDate += ood
+			}
+		}
+	}
+
+	// Now build the executables
 	for _, prj := range prjs {
 		if projectName == "" || projectName == prj.Name {
-			if prj.Config.Matches(buildConfig) {
-				if prj.IsExecutable {
-					AddBuildInfoAsCppLibrary(prj, buildConfig)
-				}
-				if outOfDate, err = prj.Build(buildConfig, buildPath); err != nil {
+			if prj.IsExecutable && prj.Config.Matches(buildConfig) {
+				AddBuildInfoAsCppLibrary(prj, buildConfig)
+				if ood, err := prj.Build(buildConfig, buildPath); err != nil {
 					return err
+				} else {
+					outOfDate += ood
 				}
 			}
 		}
 	}
+
 	if outOfDate == 0 {
 		fmt.Println("Nothing to build, everything is up to date...")
 	}
+
 	return nil
 }
 
