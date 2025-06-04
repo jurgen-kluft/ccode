@@ -229,7 +229,7 @@ func SetupCppTestLibProject(pkg *Package, name string) *DevProject {
 
 func SetupCppLibProjectForDesktop(pkg *Package, name string) *DevProject {
 	// Windows, Mac and Linux, build for the Host platform
-	project := SetupDefaultCppLibProject(pkg, "program_"+name, "main", dev.GetBuildTarget())
+	project := SetupDefaultCppLibProject(pkg, "library_"+name, "main", dev.GetBuildTarget())
 	project.Configs = append(project.Configs, NewDevConfig(dev.BuildTypeStaticLibrary, dev.NewDebugDevConfig()))
 	project.Configs = append(project.Configs, NewDevConfig(dev.BuildTypeStaticLibrary, dev.NewReleaseDevConfig()))
 	project.Supported = dev.BuildTargetsDesktop
@@ -395,6 +395,14 @@ func (p *DevProjectList) Add(project *DevProject) {
 		p.Dict[project.Name] = len(p.Values)
 		p.Values = append(p.Values, project)
 		p.Keys = append(p.Keys, project.Name)
+	}
+}
+
+func (p *DevProjectList) AddMany(project ...*DevProject) {
+	for _, prj := range project {
+		if prj != nil {
+			p.Add(prj)
+		}
 	}
 }
 

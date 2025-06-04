@@ -3,6 +3,7 @@ package denv
 import (
 	"os"
 	"path/filepath"
+	"slices"
 	"strings"
 
 	"github.com/jurgen-kluft/ccode/dev"
@@ -10,11 +11,14 @@ import (
 
 // Package hold a defined set of 'Projects'
 type Package struct {
-	RootPath string
-	RepoPath string
-	RepoName string
-	Packages map[string]*Package
-	Projects map[string]*DevProject
+	RootPath  string
+	RepoPath  string
+	RepoName  string
+	Packages  map[string]*Package
+	MainApps  []*DevProject
+	MainLibs  []*DevProject
+	Unittests []*DevProject
+	TestLibs  []*DevProject
 }
 
 func (p *Package) WorkspacePath() string {
@@ -25,74 +29,85 @@ func (p *Package) PackagePath() string {
 	return filepath.Join(p.RootPath, p.RepoPath, p.RepoName)
 }
 
-func (p *Package) collectTypes(buildType dev.BuildType) []*DevProject {
-	stack := make([]*DevProject, 0)
-	for _, prj := range p.Projects {
-		stack = append(stack, prj)
-	}
-	projects := make([]*DevProject, 0)
-	projectMap := make(map[string]int)
+func collectTypes(buildType dev.BuildType, projects []*DevProject, list *DevProjectList) {
+	stack := slices.Clone(projects)
 	for len(stack) > 0 {
 		prj := stack[0]
 		stack = stack[1:]
-		if _, ok := projectMap[prj.Name]; !ok {
-			projectMap[prj.Name] = len(projects)
+		if !list.Has(prj.Name) {
 			if prj.BuildType&buildType != 0 {
-				projects = append(projects, prj)
+				list.Add(prj)
 			}
 			stack = append(stack, prj)
 		}
 		for _, dprj := range prj.Dependencies.Values {
-			if _, ok := projectMap[dprj.Name]; !ok {
-				projectMap[dprj.Name] = len(projects)
+			if !list.Has(dprj.Name) {
 				if dprj.BuildType&buildType != 0 {
-					projects = append(projects, dprj)
+					list.Add(dprj)
 				}
 				stack = append(stack, dprj)
 			}
 		}
 	}
-	return projects
 }
 
 // Libraries returns all the libraries in the package
 func (p *Package) Libraries() []*DevProject {
-	return p.collectTypes(dev.BuildTypeStaticLibrary | dev.BuildTypeDynamicLibrary)
+	list := NewDevProjectList()
+	collectTypes(dev.BuildTypeStaticLibrary|dev.BuildTypeDynamicLibrary, p.MainApps, list)
+	collectTypes(dev.BuildTypeStaticLibrary|dev.BuildTypeDynamicLibrary, p.MainLibs, list)
+	collectTypes(dev.BuildTypeStaticLibrary|dev.BuildTypeDynamicLibrary, p.Unittests, list)
+	collectTypes(dev.BuildTypeStaticLibrary|dev.BuildTypeDynamicLibrary, p.TestLibs, list)
+	return list.Values
+
 }
 
 func (p *Package) MainProjects() []*DevProject {
-	projects := make([]*DevProject, 0)
-	if p.GetMainLib() != nil {
-		projects = append(projects, p.GetMainLib()...)
-	}
-	if p.GetMainApp() != nil {
-		projects = append(projects, p.GetMainApp()...)
-	}
-	if p.GetUnittest() != nil {
-		projects = append(projects, p.GetUnittest()...)
-	}
-	return projects
+	projects := NewDevProjectList()
+	projects.AddMany(p.GetMainLib()...)
+	projects.AddMany(p.GetMainApp()...)
+	projects.AddMany(p.GetUnittest()...)
+	return projects.Values
 }
 
 // NewPackage creates a new empty package
 func NewPackage(repo_path string, repo_name string) *Package {
-    repo_path = strings.ReplaceAll(repo_path, "\\", "/")
+	repo_path = strings.ReplaceAll(repo_path, "\\", "/")
 	rootPath := filepath.Join(os.Getenv("GOPATH"), "src")
-	return &Package{RootPath: rootPath, RepoPath: repo_path, RepoName: repo_name, Packages: make(map[string]*Package), Projects: make(map[string]*DevProject)}
+	return &Package{
+		RootPath:  rootPath,
+		RepoPath:  repo_path,
+		RepoName:  repo_name,
+		Packages:  make(map[string]*Package),
+		MainApps:  make([]*DevProject, 0),
+		MainLibs:  make([]*DevProject, 0),
+		Unittests: make([]*DevProject, 0),
+		TestLibs:  make([]*DevProject, 0),
+	}
 }
 
-func (p *Package) HasDependencyOn(name string) bool {
-	for _, prj := range p.Projects {
+func hasDependencyOn(name string, projects []*DevProject) bool {
+	for _, prj := range projects {
 		if prj.Package.RepoName == name {
 			return true
 		}
 
 		deps := prj.CollectProjectDependencies()
-        for _, dep := range deps.Values {
-            if dep.Package.RepoName == name {
-                return true
-            }
-        }
+		for _, dep := range deps.Values {
+			if dep.Package.RepoName == name {
+				return true
+			}
+		}
+	}
+	return false
+}
+
+func (p *Package) TestingHasDependencyOn(name string) bool {
+	if hasDependencyOn(name, p.Unittests) {
+		return true
+	}
+	if hasDependencyOn(name, p.TestLibs) {
+		return true
 	}
 	return false
 }
@@ -104,75 +119,40 @@ func (p *Package) AddPackage(pkg *Package) {
 
 // AddMainApp adds a project to this package under 'name.mainapp'
 func (p *Package) AddMainApp(prj *DevProject) {
-	p.Projects[strings.ToLower(prj.Name)+".mainapp"] = prj
+	p.MainApps = append(p.MainApps, prj)
 }
 
 // AddMainLib adds a project to this package under 'name.mainlib'
 func (p *Package) AddMainLib(prj *DevProject) {
-	p.Projects[strings.ToLower(prj.Name)+".mainlib"] = prj
+	p.MainLibs = append(p.MainLibs, prj)
 }
 
 // AddTestLib adds a project to this package under 'name.testlib'
 func (p *Package) AddTestLib(prj *DevProject) {
-	p.Projects[strings.ToLower(prj.Name)+".testlib"] = prj
+	p.TestLibs = append(p.TestLibs, prj)
 }
 
 // AddUnittest adds a project to this package under 'name.unittest'
 func (p *Package) AddUnittest(prj *DevProject) {
-	p.Projects[strings.ToLower(prj.Name)+".unittest"] = prj
-}
-
-// AddProject adds a project to this package
-func (p *Package) AddProject(name string, prj *DevProject) {
-	p.Projects[strings.ToLower(name)] = prj
-}
-
-// GetProject returns the project with the specific name, if it exists, if not nil is returned
-func (p *Package) GetProject(name string) *DevProject {
-	prj := p.Projects[name]
-	return prj
+	p.Unittests = append(p.Unittests, prj)
 }
 
 // GetMainLib returns the projects that are registered as a main library
 func (p *Package) GetMainLib() []*DevProject {
-	mainlibs := make([]*DevProject, 0)
-	for id, prj := range p.Projects {
-		if strings.HasSuffix(id, ".mainlib") {
-			mainlibs = append(mainlibs, prj)
-		}
-	}
-	return mainlibs
+	return p.MainLibs
 }
 
 // GetTestLib returns the projects that are registered as a test library
 func (p *Package) GetTestLib() []*DevProject {
-	mainlibs := make([]*DevProject, 0)
-	for id, prj := range p.Projects {
-		if strings.HasSuffix(id, ".testlib") {
-			mainlibs = append(mainlibs, prj)
-		}
-	}
-	return mainlibs
+	return p.TestLibs
 }
 
 // GetUnittest returns the projects that are registered as a unittest
 func (p *Package) GetUnittest() []*DevProject {
-	unittests := make([]*DevProject, 0)
-	for id, prj := range p.Projects {
-		if strings.HasSuffix(id, ".unittest") {
-			unittests = append(unittests, prj)
-		}
-	}
-	return unittests
+	return p.Unittests
 }
 
 // GetMainApp returns the projects that are registered as a main application
 func (p *Package) GetMainApp() []*DevProject {
-	mainapps := make([]*DevProject, 0)
-	for id, prj := range p.Projects {
-		if strings.HasSuffix(id, ".mainapp") {
-			mainapps = append(mainapps, prj)
-		}
-	}
-	return mainapps
+	return p.MainApps
 }

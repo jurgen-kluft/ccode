@@ -104,7 +104,9 @@ func GenerateClangFormat() {
 
 func GenerateFiles(pkg *denv.Package) {
 
-	// Analyze the package to see if it has dependencies on:
+	GenerateGitIgnore()
+
+	// Analyze the package to see if unittesting has dependencies on:
 	// - ccore
 	// - cbase
 	// If it only has a dependency on ccore, we should generate a TestMainCpp that is compatible with only ccore, if
@@ -113,11 +115,10 @@ func GenerateFiles(pkg *denv.Package) {
 	// But, if there is no dependency on ccore or cbase, we should generate a TestMainCpp that can work without any
 	// ccore or cbase functionality
 	//
-	has_ccore := pkg.HasDependencyOn("ccore")
-	has_cbase := pkg.HasDependencyOn("cbase")
-
-	GenerateGitIgnore()
+	has_ccore := pkg.TestingHasDependencyOn("ccore")
+	has_cbase := pkg.TestingHasDependencyOn("cbase")
 	GenerateTestMainCpp(has_ccore, has_cbase)
+
 	GenerateEmbedded()
 	GenerateClangFormat()
 }
