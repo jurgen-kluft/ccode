@@ -81,13 +81,12 @@ func NewCCoreFixrConfig(prjname string, setting fixr.FixrSetting) *FixrConfig {
 
 func IncludeFixer(pkg *denv.Package, cfg *FixrConfig) {
 
-	// Collect all projects, including dependencies
-	libraries := pkg.Libraries()
-	mainProjects := pkg.MainProjects()
+	libraries := pkg.Libraries()      // All libraries, including dependencies
+	mainProjects := pkg.Executables() // Main Unittest, App or Cli
 
 	projects := make([]*denv.DevProject, 0, len(libraries)+len(mainProjects))
-	projects = append(projects, libraries...)
-	projects = append(projects, mainProjects...) // Main Unittest, App and/or Library
+	projects = append(projects, libraries...)    // All libraries, including dependencies
+	projects = append(projects, mainProjects...) // Main Unittest, App or Cli
 
 	renamers := fixr.NewRenamers()
 	scanners := fixr.NewDirScanner()
