@@ -1,7 +1,7 @@
 # CCODE - Package Manager + Project Generator
 
 This is a project generator that uses Go and its package management for C++ packages. 
-The structure of packages are defined in Go and files can be generated for `Visual Studio` (.sln, .vcxproj and .filters), `Make`, `Xcode`, `Tundra` and also a custom C++ buildsystem called `Clay`. 
+The structure of packages are defined in Go and files can be generated for `Visual Studio` (.sln, .vcxproj and .filters), `Xcode`, `Tundra` and also a custom C++ buildsystem called `Clay`. 
 
 If you like my work and want to support me. Please consider to buy me a [coffee!](https://www.buymeacoffee.com/Jur93n)
 <img src="bmacoffee.png" width="100">
@@ -16,35 +16,35 @@ There are a couple of notable features that can be triggered when generating the
 
 Also this project is a personal project and thus is not perfect but it serves my needs, feel free to post issues/requests if you want to see additional features.
 
-This allows me to write packages (C++ libraries) and use them in another C++ package by defining a dependency on them. Using the go package management solution you can 'get' these packages and then by running `go run %name%.go` you can generate solution and project files. The goal is to support the following IDE's and/or build-systems:
+This allows me to write packages (C++ libraries) and use them in another C++ package by defining a dependency on them. Using the go package management solution you can 'get' these packages and then by running `go run %name%.go` you can generate, for example `Visual Studio` solution and project files. The goal is to support the following IDE's:
 
 * [Visual Studio](https://visualstudio.microsoft.com) (supported, Windows)
 * [Xcode](https://developer.apple.com/xcode/) (supported, Mac)
+
+And buildsystems:
+
 * [Tundra](https://github.com/deplinenoise/tundra) (supported, Mac, Linux and Windows)
-* [Make](https://www.gnu.org/software/make/manual/make.html) (supported, Mac and Linux, untested on Windows)
 * [Clay](https://github.com/jurgen-kluft/ccode/tree/master/clay) (supported on Mac, (Linux and Windows are coming soon))
+
+Make as a buildsystem is deprecated, but still supported:
+
+* [Make](https://www.gnu.org/software/make/manual/make.html) (supported on Mac and Linux)
 
 Currently the design is quite set and the goal is to keep API changes to a minimum.
 
-If you have repository/package that uses ccode, you can do the following to generate the make build files, this example uses the `cbase` repository:
+If you have repository/package that uses ccode, you can do the following to generate the tundra build files (default on Mac and Linux), this example uses the `cbase` repository:
 
-1. `go run cbase.go --dev=make`
-2. cd into `target/make`
-3. `make` (will build all configuration, e.g. debug and release)
-4. `make clean` (will clean all artifacts)
-5. `make debugtest` (will build only `debugtest` configuration)
+1. `go run cbase.go --dev=tundra`
+2. cd into `target/tundra`
+3. `tundra debug` (will build all configuration, e.g. debug and release)
+4. `tundra clean` (will clean all artifacts)
+5. `tundra debugtest` (will build only `debugtest` configuration)
 
-For Visual Studio build files (on Windows, Visual Studio is the default generator):
+For Visual Studio (on Windows, Visual Studio is the default generator):
 
 1. `go run cbase.go --dev=vs2022`
 2. cd into `target/msdev`
 3. You now should have Visual Studio solution and project files
-
-For Tundra build files (on Mac and Linux, Tundra is the default generator):
-
-1. `go run cbase.go --dev=tundra`
-2. cd into `target/tundra`
-3. run `tundra2 debug` or `tundra2 release`
 
 For Clay (on Mac):
 
