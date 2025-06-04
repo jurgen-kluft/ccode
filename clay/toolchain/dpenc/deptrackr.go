@@ -125,6 +125,7 @@ func (src *trackr) newTrackr() *trackr {
 	dataSize := len(src.Data) + (len(src.Data) / 2)
 	d := constructTrackr(src.storageFilepath, src.signature, numItems, dataSize)
 	d.readonly = false
+	d.DirtyFlags = make([]uint8, (((1 << d.N) + 7) >> 3))
 	return d
 }
 

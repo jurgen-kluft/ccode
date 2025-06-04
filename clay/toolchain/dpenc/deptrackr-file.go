@@ -33,7 +33,7 @@ type fileTracker struct {
 }
 
 func LoadFileTrackr(storageFilepath string) FileTrackr {
-	current := loadTrackr(storageFilepath, "file deptrackr, v1.0.3")
+	current := loadTrackr(storageFilepath, "file deptrackr, v1.0.4")
 	tracker := current.newTrackr()
 	return &fileTracker{
 		current:      current,
