@@ -1017,17 +1017,18 @@ func (src *trackr) CopyItem(dst *trackr, itemHash []byte) error {
 			depItemChangeDataSize := src.ItemChangeDataSize[srcDepItemIndex]
 			depItemChangeData := src.Data[depItemChangeDataOffset : depItemChangeDataOffset+int32(depItemChangeDataSize)]
 
-			dstDepItemIndex = int32(len(dst.ItemIdFlags))                             // index of the new dependency item in the destination trackr
-			dst.ItemIdHash = append(dst.ItemIdHash, depItemIdHash...)                 // add the dependency Id hash
-			dst.ItemChangeHash = append(dst.ItemChangeHash, depItemChangeHash...)     // add the dependency Change hash
-			dst.ItemIdFlags = append(dst.ItemIdFlags, depItemIdFlags)                 // add the dependency Id flags
-			dst.ItemChangeFlags = append(dst.ItemChangeFlags, depItemChangeFlags)     // add the dependency Change flags
-			dst.ItemDepsStart = append(dst.ItemDepsStart, 0)                          // start of dependencies is 0
-			dst.ItemDepsCount = append(dst.ItemDepsCount, 0)                          // count of dependencies is 0 for now
-			dst.ItemIdDataOffset = append(dst.ItemIdDataOffset, int32(len(dst.Data))) // item Id data
-			dst.ItemIdDataSize = append(dst.ItemIdDataSize, depItemIdDataSize)        // item Id data
-			dst.Data = append(dst.Data, depItemIdData...)                             // add the Item Id data to the Data array
-			// Dependency items do not have extra data, so we can skip it
+			dstDepItemIndex = int32(len(dst.ItemIdFlags))                                     // index of the new dependency item in the destination trackr
+			dst.ItemIdHash = append(dst.ItemIdHash, depItemIdHash...)                         // add the dependency Id hash
+			dst.ItemChangeHash = append(dst.ItemChangeHash, depItemChangeHash...)             // add the dependency Change hash
+			dst.ItemIdFlags = append(dst.ItemIdFlags, depItemIdFlags)                         // add the dependency Id flags
+			dst.ItemChangeFlags = append(dst.ItemChangeFlags, depItemChangeFlags)             // add the dependency Change flags
+			dst.ItemDepsStart = append(dst.ItemDepsStart, 0)                                  // start of dependencies is 0
+			dst.ItemDepsCount = append(dst.ItemDepsCount, 0)                                  // count of dependencies is 0 for now
+			dst.ItemIdDataOffset = append(dst.ItemIdDataOffset, int32(len(dst.Data)))         // item Id data
+			dst.ItemIdDataSize = append(dst.ItemIdDataSize, depItemIdDataSize)                // item Id data
+			dst.Data = append(dst.Data, depItemIdData...)                                     // add the Item Id data to the Data array
+			dst.ItemExtraDataOffset = append(dst.ItemExtraDataOffset, 0)                      // item extra data
+			dst.ItemExtraDataSize = append(dst.ItemExtraDataSize, 0)                          // item extra data
 			dst.ItemChangeDataOffset = append(dst.ItemChangeDataOffset, int32(len(dst.Data))) // item Id data
 			dst.ItemChangeDataSize = append(dst.ItemChangeDataSize, depItemChangeDataSize)    // item Id data
 			dst.Data = append(dst.Data, depItemChangeData...)                                 // add the Item Change data to the Data array

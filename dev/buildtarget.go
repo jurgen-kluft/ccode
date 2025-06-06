@@ -134,14 +134,14 @@ func SetBuildTarget(os string, arch string) BuildTarget {
 		if arch == "x86" {
 			CurrentBuildTarget.Targets[BuildTargetOsWindows] |= BuildTargetArchX86
 		} else {
-            CurrentBuildTarget.Targets[BuildTargetOsWindows] |= BuildTargetArchX64
-        }
+			CurrentBuildTarget.Targets[BuildTargetOsWindows] |= BuildTargetArchX64
+		}
 	} else if os == "darwin" {
 		if arch == "x64" {
 			CurrentBuildTarget.Targets[BuildTargetOsMac] |= BuildTargetArchX64
 		} else {
-            CurrentBuildTarget.Targets[BuildTargetOsMac] |= BuildTargetArchArm64
-        }
+			CurrentBuildTarget.Targets[BuildTargetOsMac] |= BuildTargetArchArm64
+		}
 	} else if os == "linux" {
 		if arch == "x64" {
 			CurrentBuildTarget.Targets[BuildTargetOsLinux] |= BuildTargetArchX64
@@ -307,6 +307,24 @@ func (pt BuildTarget) ArchAsString() string {
 	}
 }
 
+func (pt BuildTarget) ArchAsUcString() string {
+	switch {
+	case pt.X64():
+		return "X64"
+	case pt.X86():
+		return "X86"
+	case pt.Arm64():
+		return "ARM64"
+	case pt.Arm32():
+		return "ARM32"
+	case pt.Esp32():
+		return "ESP32"
+	case pt.Esp32s3():
+		return "ESP32S3"
+	default:
+		return "UNKNOWN"
+	}
+}
 func (pt BuildTarget) String() string {
 	var full string
 	for i := 0; i < int(BuildTargetOsCount); i++ {

@@ -120,7 +120,6 @@ func (g *ClayGenerator) generateProjectFile(out *utils.LineWriter) {
 				out.WriteILine("+", "configName := ", `"`, configName, `"`)
 				out.WriteILine("+", "projectName := ", `"`, prj.Name, `"`)
 				out.WriteILine("+", `projectConfig := clay.NewConfig("`+os+`", arch, configName)`)
-				//				out.WriteILine("+", `projectBaseDir := "`, projectBaseDir, `"`)
 				if prj.BuildType.IsExecutable() {
 					out.WriteILine("+", "project := clay.NewExecutableProject(projectName, projectConfig)")
 				} else {
@@ -144,6 +143,7 @@ func (g *ClayGenerator) generateProjectFile(out *utils.LineWriter) {
 						escapedDef := strings.Replace(def, `"`, `\"`, -1)
 						out.WriteILine("+", "project.Defines.Add(", `"`, escapedDef, `")`)
 					}
+					out.WriteILine("+", "project.Defines.AddMany(projectConfig.GetCppDefines()...)")
 					out.WriteLine()
 				}
 

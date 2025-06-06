@@ -27,6 +27,12 @@ func (kv *ValueSet) Add(value string) {
 	}
 }
 
+func (kv *ValueSet) AddMany(value ...string) {
+	for _, v := range value {
+		kv.Add(v)
+	}
+}
+
 func (kv *ValueSet) Has(value string) bool {
 	// Convert value to lowercase for case-insensitive comparison
 	lcValue := strings.ToLower(value)
