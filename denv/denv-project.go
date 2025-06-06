@@ -307,7 +307,7 @@ func SetupDefaultCppCliProject(pkg *Package, name string, buildTarget dev.BuildT
 // Example:
 //
 //	SetupDefaultCppAppProject("cmyapp", "github.com\\jurgen-kluft")
-func SetupDefaultCppAppProject(pkg *Package, name string, buildTarget dev.BuildTarget) *DevProject {
+func SetupDefaultCppAppProject(pkg *Package, name string, dirname string, buildTarget dev.BuildTarget) *DevProject {
 	project := NewProject(pkg, name)
 	project.BuildType = dev.BuildTypeApplication
 	project.Supported = dev.BuildTargetsDesktop
@@ -315,34 +315,34 @@ func SetupDefaultCppAppProject(pkg *Package, name string, buildTarget dev.BuildT
 	project.Configs = append(project.Configs, NewDevConfig(dev.BuildTypeApplication, dev.NewReleaseDevConfig()))
 	project.Dependencies = NewDevProjectList()
 
-	project.SourceDirs = append(project.SourceDirs, dev.PinPathGlob{Path: dev.PinPath{Root: pkg.WorkspacePath(), Base: pkg.RepoName, Sub: "source/app/cpp"}, Glob: "**/*.c"})
-	project.SourceDirs = append(project.SourceDirs, dev.PinPathGlob{Path: dev.PinPath{Root: pkg.WorkspacePath(), Base: pkg.RepoName, Sub: "source/app/cpp"}, Glob: "**/*.cpp"})
+	project.SourceDirs = append(project.SourceDirs, dev.PinPathGlob{Path: dev.PinPath{Root: pkg.WorkspacePath(), Base: pkg.RepoName, Sub: "source/" + dirname + "/cpp"}, Glob: "**/*.c"})
+	project.SourceDirs = append(project.SourceDirs, dev.PinPathGlob{Path: dev.PinPath{Root: pkg.WorkspacePath(), Base: pkg.RepoName, Sub: "source/" + dirname + "/cpp"}, Glob: "**/*.cpp"})
 
 	for _, cfg := range project.Configs {
 		configureProjectCompilerDefines(cfg)
-		cfg.IncludeDirs = append(cfg.IncludeDirs, dev.PinPath{Root: pkg.WorkspacePath(), Base: pkg.RepoName, Sub: "source/app/include"})
+		cfg.IncludeDirs = append(cfg.IncludeDirs, dev.PinPath{Root: pkg.WorkspacePath(), Base: pkg.RepoName, Sub: "source/" + dirname + "/include"})
 	}
 
 	return project
 }
 
-func SetupCppAppProject(pkg *Package, name string) *DevProject {
+func SetupCppAppProject(pkg *Package, name string, dirname string) *DevProject {
 	// Windows, Mac and Linux, build for the Host platform
-	project := SetupDefaultCppAppProject(pkg, "app_"+name, dev.GetBuildTarget())
+	project := SetupDefaultCppAppProject(pkg, "app_"+name, dirname, dev.GetBuildTarget())
 	project.Supported = dev.BuildTargetsAll
 	return project
 }
 
-func SetupCppAppProjectForDesktop(pkg *Package, name string) *DevProject {
+func SetupCppAppProjectForDesktop(pkg *Package, name string, dirname string) *DevProject {
 	// Windows, Mac and Linux, build for the Host platform
-	project := SetupDefaultCppAppProject(pkg, "app_"+name, dev.GetBuildTarget())
+	project := SetupDefaultCppAppProject(pkg, "app_"+name, dirname, dev.GetBuildTarget())
 	project.Supported = dev.BuildTargetsDesktop
 	return project
 }
 
-func SetupCppAppProjectForArduino(pkg *Package, name string) *DevProject {
+func SetupCppAppProjectForArduino(pkg *Package, name string, dirname string) *DevProject {
 	// Arduino project
-	project := SetupDefaultCppAppProject(pkg, "app_"+name, dev.BuildTargetArduinoEsp32)
+	project := SetupDefaultCppAppProject(pkg, "app_"+name, dirname, dev.BuildTargetArduinoEsp32)
 	project.Supported = dev.BuildTargetsArduino
 	return project
 }
