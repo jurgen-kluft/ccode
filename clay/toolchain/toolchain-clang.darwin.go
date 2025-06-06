@@ -8,11 +8,12 @@ import (
 	"strings"
 
 	"github.com/jurgen-kluft/ccode/clay/toolchain/dpenc"
+	utils "github.com/jurgen-kluft/ccode/utils"
 )
 
 type DarwinClang struct {
 	Name string
-	Vars *Vars
+	Vars *utils.Vars
 }
 
 // --------------------------------------------------------------------------------------------------
@@ -180,7 +181,7 @@ func (t *ToolchainDarwinClangStaticArchiver) Filename(name string) string {
 	return "lib" + name + ".a" // The file extension for the archive on Darwin is typically ".a"
 }
 
-func (t *ToolchainDarwinClangStaticArchiver) SetupArgs(userVars Vars) {
+func (t *ToolchainDarwinClangStaticArchiver) SetupArgs() {
 	t.args = []string{}
 	archFlags := t.toolChain.Vars.GetAll(`static.archiver.flags`)
 	t.args = append(t.args, archFlags...)
@@ -209,7 +210,7 @@ func (t *ToolchainDarwinClangStaticArchiver) Archive(inputObjectFilepaths []stri
 func (t *ToolchainDarwinClangDynamicArchiver) Filename(name string) string {
 	return "lib" + name + ".dylib" // The filename for the dynamic library on Darwin is typically "libname.dylib"
 }
-func (t *ToolchainDarwinClangDynamicArchiver) SetupArgs(userVars Vars) {
+func (t *ToolchainDarwinClangDynamicArchiver) SetupArgs() {
 	t.args = []string{}
 
 	flags := t.toolChain.Vars.GetAll(`dynamic.archiver.flags`)
@@ -357,7 +358,7 @@ func NewDarwinClang(arch string, frameworks []string) (t *DarwinClang, err error
 
 	t = &DarwinClang{
 		Name: "clang",
-		Vars: NewVars(),
+		Vars: utils.NewVars(),
 	}
 
 	vars := map[string][]string{

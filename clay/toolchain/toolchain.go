@@ -3,6 +3,7 @@ package toolchain
 import (
 	"github.com/jurgen-kluft/ccode/clay/toolchain/dpenc"
 	"github.com/jurgen-kluft/ccode/dev"
+	utils "github.com/jurgen-kluft/ccode/utils"
 )
 
 type Config struct {
@@ -31,10 +32,10 @@ type Environment interface {
 	NewDependencyTracker(dirpath string) dpenc.FileTrackr
 }
 
-func ResolveVars(v *Vars) {
+func ResolveVars(v *utils.Vars) {
 	for ki, values := range v.Values {
 		for vi, value := range values {
-			v.Values[ki][vi] = ResolveString(value, v)
+			v.Values[ki][vi] = v.ResolveString(value)
 		}
 	}
 }

@@ -18,7 +18,7 @@ import (
 )
 
 type ArduinoEsp32 struct {
-	Vars        *Vars
+	Vars        *utils.Vars
 	ProjectName string // The name of the project, used for output files
 }
 
@@ -240,7 +240,7 @@ func (t *ToolchainArduinoEsp32Archiver) Filename(name string) string {
 	return name + ".a"
 }
 
-func (a *ToolchainArduinoEsp32Archiver) SetupArgs(userVars Vars) {
+func (a *ToolchainArduinoEsp32Archiver) SetupArgs() {
 	a.archiverArgs = make([]string, 0, 64)
 }
 
@@ -767,7 +767,7 @@ func NewArduinoEsp32(espMcu string, projectName string) (*ArduinoEsp32, error) {
 
 	t := &ArduinoEsp32{
 		ProjectName: projectName,
-		Vars:        NewVars(),
+		Vars:        utils.NewVars(),
 	}
 
 	for _, kv := range vars {

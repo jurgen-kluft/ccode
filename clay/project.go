@@ -185,7 +185,7 @@ func (p *Project) Build(buildConfig *Config, buildPath string) (outOfDate int, e
 			}
 
 			// If this is a library, we don't link it, but we can create a static archive
-			staticArchiver.SetupArgs(toolchain.Vars{})
+			staticArchiver.SetupArgs()
 			if err := staticArchiver.Archive(prjObjFilepaths, archiveOutputFilepath); err != nil {
 				return outOfDate, err
 			}
