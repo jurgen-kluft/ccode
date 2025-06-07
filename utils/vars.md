@@ -18,8 +18,12 @@ Interpolation Syntax
 |`$(VAR:B)`             |    *filenames*: Only keep the base part of a filename (w/o extension)
 |`$(VAR:F)`             |    *filenames*: Only keep the filename (w/o dir)
 |`$(VAR:D)`             |    *filenames*: Only keep the directory
+|`$(VAR:d<delimiter>)`  |    Delimits all values with the string `<delimiter>`
+|`$(VAR:t<delimiter>)`  |    Trims all values with the string `<prefix>`
 |`$(VAR:p<prefix>)`     |    Prefix all values with the string `<prefix>`
 |`$(VAR:s<suffix>)`     |    Suffix all values with the string `<suffix>`
+|`$(VAR:t<delimiter>)`  |    Trims all values with the string `<delimiter>`
+|`$(VAR:T<delimiters>)` |    Trims all values with any character from `<delimiters>`
 |`$(VAR:P<prefix>)`     |    Prefix all values with `<prefix>` unless it is already there
 |`$(VAR:S<suffix>)`     |    Suffix all values with `<suffix>` unless it is already there
 |`$(VAR:j<sep>)`        |    Join all values with `<sep>` as a separator rather than space
@@ -33,9 +37,9 @@ Assume there is an environment with the following bindings:
 
 |     Key               |  Value
 | --------------------- | ------------------------------------------------------------
-|   `FOO`               |   `"String"`
+|   `FOO`               |   `{ "String" }`
 |   `BAR`               |   `{ "A", "B", "C" }`
-
+|   `BOB`               |   `{ "trtHellotrt" }`
 
 Then interpolating the following strings will give the associated result:
 
@@ -51,8 +55,11 @@ Then interpolating the following strings will give the associated result:
 |`$(BAR:l)`             |`a b c`
 |`$(BAR:p__)`           |`__A __B __C`
 |`$(BAR:p__:s__:j!)`    |`__A__!__B__!__C__`
+|`$(BAR:d__)`           |`__A__`, `__B__`, `__C__`
 |`$(BAR:p\::s!)`        |`:A! :B! :C!`
 |`$(BAR:AC)`            |`AC BC C`
+|`$(BOB:ttrt)`          |`Hello`
+|`$(BOB:Ttr)`           |`Hello`
 
 ## Nested Interpolation
 
@@ -63,3 +70,34 @@ Nested interpolation is possible, but should be used with care as it can be hard
 This works because the inner expansion will evalate `CURRENT_VARIANT` first (say, it has the value `debug`). That value is then converted to upper-case and spliced into the former which yields a new expression `$(CCOPTS_DEBUG)` which is then expanded in turn.
 
 Used with care this is a powerful way of letting users customize variables per configuration and then glue everything together with a simple template.
+
+## Resolving Interpolation
+
+type varPart int8
+const (
+    varPartText varPart = iota
+    varPartNode // this is a variable node, which can contain other nodes
+    varPartName // this is a variable name part
+    varPartOption // this is a variable option
+    varPartOptionParam // this is a parameter for an option
+)
+
+type Node struct {
+    parts []varPart
+}
+
+- Start root Node
+  - Scan the string, search for '$(', when found
+  - Any text until that point is registered as a 'text' part
+  - start a variable Node
+    - Now scan until the next ')', when encountering another '$(' then 
+    - register any text as a 'name' part
+    - start a new variable Node
+    - When encountering a ')' then close the current Node and return to the parent Node (I smell a stack here)
+    - If we encounter a ':' then any text until now is registered as a 'name' part and we create an 'option' part from the character after the ':' and when not reaching a ')' we register any text as an 'option parameter' part until a ':' or ')'. When reaching a ':' we register another option and continue parsing the option parameter until finally reaching a ')'.
+
+- Have a 'variable' counter, starting at 0, increment it when starting a new variable Node and decrement it when closing a variable Node. So we can detect if we are inside a variable Node or not.
+- Also when we are inside a 'variable' Node, we should also parse options and their parameters.
+
+Now when a variable Node is closed, we can resolve the variable by looking it up in the key-value map. The value could be pure text but it could also contain variables, so we should continue parsing the value as a new Node, which will then be resolved recursively.
+
