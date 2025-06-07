@@ -76,17 +76,35 @@ func TestInterpolate(t *testing.T) {
 /*
 ## Nested Interpolation
 
-Nested interpolation is possible, but should be used with care as it can be hard to debug and understand. Here's an example of how the generic C toolchain inserts compiler options dependening on what variant is currently active:
+Nested interpolation is possible, but should be used with care as it can be hard to
+debug and understand. Here's an example of how the generic C toolchain inserts compiler
+options dependening on what variant is currently active:
 
 `$(CCOPTS_$(CURRENT_VARIANT:u))`
 
-This works because the inner expansion will evalate `CURRENT_VARIANT` first (say, it has the value `debug`). That value is then converted to upper-case and spliced into the former which yields a new expression `$(CCOPTS_DEBUG)` which is then expanded in turn.
+This works because the inner expansion will evalate `CURRENT_VARIANT` first (say, it
+has the value `debug`). That value is then converted to upper-case and spliced into the
+former which yields a new expression `$(CCOPTS_DEBUG)` which is then expanded in turn.
 
-Used with care this is a powerful way of letting users customize variables per configuration and then glue everything together with a simple template.
+Used with care this is a powerful way of letting users customize variables per configuration
+and then glue everything together with a simple template.
 */
 
 func TestNestedInterpolation(t *testing.T) {
 
+	vars := NewVars()
+	vars.Set("CURRENT_VARIANT", "debug")
+	vars.Set("CCOPTS_DEBUG", "-g -O0")
+
 	resolver := NewVarResolver()
 	resolver.Parse("Test $(CCOPTS_$(CURRENT_VARIANT:u))")
+	result := resolver.Resolve(vars)
+
+	if len(result) != 1 {
+		t.Errorf("expected length %d, got %d", 1, len(result))
+	}
+
+	if result[0] != "Test -g -O0" {
+		t.Errorf("expected %q, got %q", "Test -g -O0", result[0])
+	}
 }
