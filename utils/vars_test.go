@@ -72,3 +72,21 @@ func TestInterpolate(t *testing.T) {
 		})
 	}
 }
+
+/*
+## Nested Interpolation
+
+Nested interpolation is possible, but should be used with care as it can be hard to debug and understand. Here's an example of how the generic C toolchain inserts compiler options dependening on what variant is currently active:
+
+`$(CCOPTS_$(CURRENT_VARIANT:u))`
+
+This works because the inner expansion will evalate `CURRENT_VARIANT` first (say, it has the value `debug`). That value is then converted to upper-case and spliced into the former which yields a new expression `$(CCOPTS_DEBUG)` which is then expanded in turn.
+
+Used with care this is a powerful way of letting users customize variables per configuration and then glue everything together with a simple template.
+*/
+
+func TestNestedInterpolation(t *testing.T) {
+
+	resolver := NewVarResolver()
+	resolver.Parse("Test $(CCOPTS_$(CURRENT_VARIANT:u))")
+}
