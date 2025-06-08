@@ -1,7 +1,7 @@
 package ccode_utils
 
 import (
-	"testing"
+    "testing"
 )
 
 /*
@@ -34,43 +34,87 @@ Then interpolating the following strings will give the associated result:
 */
 
 func TestInterpolate(t *testing.T) {
-	tests := []struct {
-		name     string
-		input    string
-		expected []string
-	}{
-		{"Simple variable", "$(FOO)", []string{"String"}},
-		{"Uppercase variable", "$(FOO:u)", []string{"STRING"}},
-		{"Lowercase variable", "$(FOO:l)", []string{"string"}},
-		{"Prefix with underscore", "$(FOO:p__)", []string{"__String"}},
-		{"Prefix and suffix with underscores", "$(FOO:p__:s__)", []string{"__String__"}},
-		{"Array variable", "$(BAR)", []string{"A", "B", "C"}},
-		{"Uppercase array variable", "$(BAR:u)", []string{"A", "B", "C"}},
-		{"Lowercase array variable", "$(BAR:l)", []string{"a", "b", "c"}},
-		{"Array with prefix", "$(BAR:p__)", []string{"__A", "__B", "__C"}},
-		{"Array with prefix and suffix", "$(BAR:p__:s__:j!)", []string{"__A__!__B__!__C__"}},
-		{"Array with custom separator", "$(BAR:p\\::s!)", []string{":A!", ":B!", ":C!"}},
-	}
+    tests := []struct {
+        name     string
+        input    string
+        expected []string
+    }{
+        {"Simple variable", "$(FOO)", []string{"String"}},
+        {"Uppercase variable", "$(FOO:u)", []string{"STRING"}},
+        {"Lowercase variable", "$(FOO:l)", []string{"string"}},
+        {"Prefix with underscore", "$(FOO:p__)", []string{"__String"}},
+        {"Prefix and suffix with underscores", "$(FOO:p__:s__)", []string{"__String__"}},
+        {"Array variable", "$(BAR)", []string{"A", "B", "C"}},
+        {"Uppercase array variable", "$(BAR:u)", []string{"A", "B", "C"}},
+        {"Lowercase array variable", "$(BAR:l)", []string{"a", "b", "c"}},
+        {"Array with prefix", "$(BAR:p__)", []string{"__A", "__B", "__C"}},
+        {"Array with prefix and suffix", "$(BAR:p__:s__:j!)", []string{"__A__!__B__!__C__"}},
+        {"Array with custom separator", "$(BAR:p\\::s!)", []string{":A!", ":B!", ":C!"}},
+    }
 
-	vars := NewVars()
-	vars.Set("FOO", "String")
-	vars.Set("BAR", "A", "B", "C")
+    vars := NewVars()
+    vars.Set("FOO", "String")
+    vars.Set("BAR", "A", "B", "C")
 
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			results := vars.ResolveInterpolation(tt.input)
+    for _, tt := range tests {
+        t.Run(tt.name, func(t *testing.T) {
+            results := vars.ResolveInterpolation(tt.input)
 
-			if len(results) != len(tt.expected) {
-				t.Errorf("expected length %q, got %q", len(tt.expected), len(results))
-			}
+            if len(results) != len(tt.expected) {
+                t.Errorf("expected length %q, got %q", len(tt.expected), len(results))
+            }
 
-			for i, result := range results {
-				if result != tt.expected[i] {
-					t.Errorf("expected %q, got %q", tt.expected[i], result)
-				}
-			}
-		})
-	}
+            for i, result := range results {
+                if result != tt.expected[i] {
+                    t.Errorf("expected %q, got %q", tt.expected[i], result)
+                }
+            }
+        })
+    }
+}
+
+func TestInterpolateNew(t *testing.T) {
+    tests := []struct {
+        name     string
+        input    string
+        expected []string
+    }{
+        {"Simple variable", "$(FOO)", []string{"String"}},
+        {"Uppercase variable", "$(FOO:u)", []string{"STRING"}},
+        {"Lowercase variable", "$(FOO:l)", []string{"string"}},
+        {"Prefix with underscore", "$(FOO:p__)", []string{"__String"}},
+        {"Prefix and suffix with underscores", "$(FOO:p__:s__)", []string{"__String__"}},
+        {"Array variable", "$(BAR)", []string{"A", "B", "C"}},
+        {"Uppercase array variable", "$(BAR:u)", []string{"A", "B", "C"}},
+        {"Lowercase array variable", "$(BAR:l)", []string{"a", "b", "c"}},
+        {"Array with prefix", "$(BAR:p__)", []string{"__A", "__B", "__C"}},
+        {"Array with prefix and suffix", "$(BAR:p__:s__:j!)", []string{"__A__!__B__!__C__"}},
+        {"Array with custom separator", "$(BAR:p\\::s!)", []string{":A!", ":B!", ":C!"}},
+        {"Nested var with multiple values", "$(FOO)$(BAR)", []string{"StringA", "StringB", "StringC"}},
+    }
+
+    vars := NewVars()
+    vars.Set("FOO", "String")
+    vars.Set("BAR", "A", "B", "C")
+
+    for _, tt := range tests {
+        t.Run(tt.name, func(t *testing.T) {
+
+            resolver := NewVarResolver()
+            resolver.Parse(tt.input)
+            results := resolver.Resolve(vars)
+
+            if len(results) != len(tt.expected) {
+                t.Errorf("expected length %q, got %q", len(tt.expected), len(results))
+            }
+
+            for i, result := range results {
+                if result != tt.expected[i] {
+                    t.Errorf("expected %q, got %q", tt.expected[i], result)
+                }
+            }
+        })
+    }
 }
 
 /*
@@ -90,21 +134,43 @@ Used with care this is a powerful way of letting users customize variables per c
 and then glue everything together with a simple template.
 */
 
-func TestNestedInterpolation(t *testing.T) {
+func TestNestedInterpolationNew(t *testing.T) {
 
-	vars := NewVars()
-	vars.Set("CURRENT_VARIANT", "debug")
-	vars.Set("CCOPTS_DEBUG", "-g -O0")
+    vars := NewVars()
+    vars.Set("CURRENT_VARIANT", "debug")
+    vars.Set("CCOPTS_DEBUG", "-g -O0")
 
-	resolver := NewVarResolver()
-	resolver.Parse("Test $(CCOPTS_$(CURRENT_VARIANT:u))")
-	result := resolver.Resolve(vars)
+    resolver := NewVarResolver()
+    resolver.Parse("Test $(CCOPTS_$(CURRENT_VARIANT:u))")
+    result := resolver.Resolve(vars)
 
-	if len(result) != 1 {
-		t.Errorf("expected length %d, got %d", 1, len(result))
-	}
+    if len(result) != 1 {
+        t.Errorf("expected length %d, got %d", 1, len(result))
+    }
 
-	if result[0] != "Test -g -O0" {
-		t.Errorf("expected %q, got %q", "Test -g -O0", result[0])
-	}
+    if result[0] != "Test -g -O0" {
+        t.Errorf("expected %q, got %q", "Test -g -O0", result[0])
+    }
+}
+
+func TestNestedInterpolationExtensiveNew(t *testing.T) {
+
+    vars := NewVars()
+    vars.Set("CURRENT_VARIANT", "debug")
+    vars.Set("CCOPTS_DEBUG", "-g -O0")
+    vars.Set("CCOPTS_RELEASE", "-O2")
+    vars.Set("CCOPTS_TEST", "-g -O0 -DTEST")
+    vars.Set("CCOPTS_PRODUCTION", "-O2 -DNDEBUG")
+    vars.Set("CCOPTS_CUSTOM", "-g -O0 -DCUSTOM")
+
+    resolver := NewVarResolver()
+
+    resolver.Parse("Test $(CCOPTS_$(CURRENT_VARIANT:u):p__:s__)")
+    result := resolver.Resolve(vars)
+    if len(result) != 1 {
+        t.Errorf("expected length %d, got %d", 1, len(result))
+    }
+    if result[0] != "Test __-g -O0__" {
+        t.Errorf("expected %q, got %q", "Test __-g -O0__", result[0])
+    }
 }

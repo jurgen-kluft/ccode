@@ -532,58 +532,76 @@ func actionJoinValues(values []string, sep string) string {
 //    "Of course $(BEST_DAMN_MOVIE_SUPER_STAR_EVER)""
 // Note: This is, of course, resolved as 'Of course Bruce Willis'
 
-func NewVarResolver() *varResolver {
-	return &varResolver{
-		text:    make([]string, 0, 16),
-		strings: make([]string, 0, 16),
-		options: make([]uint8, 0, 16),
+type VarResolver interface {
+	Parse(text string) int
+	Resolve(vars *Vars) []string
+}
+
+func NewVarResolver() VarResolver {
+	vr := &varResolver{
+		strings: make([]varText, 0, 16),
+		options: make([]varOption, 0, 16),
 		nodes:   make([]varNode, 0, 16),
+		source:  nil,
+		cursor:  0,
+		current: 0,
+		stack:   make([]int, 0, 4),
 	}
+	return vr
+}
+
+// ---------------------------------------------------------------------------------------
+type varResolver struct {
+	strings []varText   // list of strings
+	options []varOption // list of options, each option is a single character
+	nodes   []varNode   // list of nodes
+	source  []rune      // source text that we are parsing
+	cursor  int         // current cursor in the text
+	current int         // current node
+	stack   []int       // stack of nodes
 }
 
 func (vr *varResolver) Parse(text string) int {
-	ctx := &varParseContext{
-		text:    []rune(text),      // convert the text to runes for indexed access
-		cursor:  0,                 // current cursor in the text
-		current: 0,                 // current node index in the nodes slice
-		stack:   make([]int, 0, 8), // stack of nodes for nested variables
-	}
-	vr.reset()
+	vr.strings = vr.strings[:0]
+	vr.options = vr.options[:0]
+	vr.nodes = vr.nodes[:0]                   // Reset the nodes, we will parse again
 	vr.nodes = append(vr.nodes, newVarNode()) // Start with the root node
-	return vr.parse(ctx)
+	vr.source = []rune(text)
+	vr.cursor = 0
+	vr.current = 0
+	vr.stack = vr.stack[:0]
+	return vr.parse()
 }
 
 func (vr *varResolver) Resolve(vars *Vars) []string {
 	return vr.resolveNode(vars, 0)
 }
 
-// ---------------------------------------------------------------------------------------
-type varResolver struct {
-	text    []string  // pure (resolved) text
-	strings []string  // list of strings
-	options []uint8   // list of options
-	params  []string  // list of parameters for options
-	nodes   []varNode // list of nodes
+type varText struct {
+	from int16
+	to   int16 // from and to are indexes in the text slice
 }
 
-func (vr *varResolver) reset() {
-	vr.text = vr.text[:0]
-	vr.strings = vr.strings[:0]
-	vr.options = vr.options[:0]
-	vr.nodes = vr.nodes[:0] // Reset the nodes, we will parse again
+type varOption struct {
+	param    int   // start of the option in varParseContext.text
+	paramLen int16 // end of the option in varParseContext.text
+	option   uint8 // the option character, e.g. 'f', 'b', etc.
+	end      int8  // end = 1 means this is the last option
 }
 
-type varParseContext struct {
-	text    []rune
-	cursor  int   // current cursor in the text
-	current int   // current node
-	stack   []int // stack of nodes
+func newVarOption(opt uint8) varOption {
+	return varOption{
+		param:    -1, // -1 means no parameter
+		paramLen: -1, // -1 means no parameter
+		option:   opt,
+		end:      0, // 0 means this is not the last option
+	}
 }
 
-func (ctx *varParseContext) scanForVariable() int {
-	cursor := ctx.cursor
-	for cursor < len(ctx.text) {
-		if ctx.text[cursor] == '$' && (cursor+1) < len(ctx.text) && ctx.text[cursor+1] == '(' {
+func (vr *varResolver) scanForVariable() int {
+	cursor := vr.cursor
+	for cursor < len(vr.source) {
+		if vr.source[cursor] == '$' && (cursor+1) < len(vr.source) && vr.source[cursor+1] == '(' {
 			return cursor
 		}
 		cursor++
@@ -591,14 +609,14 @@ func (ctx *varParseContext) scanForVariable() int {
 	return cursor
 }
 
-func (ctx *varParseContext) scanInsideVariable() (lastChar uint8, cursor int) {
-	cursor = ctx.cursor
+func (vr *varResolver) scanInsideVariable() (lastChar uint8, cursor int) {
+	cursor = vr.cursor
 	lastChar = 0
-	for cursor < len(ctx.text) {
-		c := ctx.text[cursor]
+	for cursor < len(vr.source) {
+		c := vr.source[cursor]
 		if c == ')' || c == ':' {
 			return uint8(c), cursor // Return ')' or ':' and the position
-		} else if c == '$' && (cursor+1) < len(ctx.text) && ctx.text[cursor+1] == '(' {
+		} else if c == '$' && (cursor+1) < len(vr.source) && vr.source[cursor+1] == '(' {
 			return uint8(c), cursor // Return '$' and the position
 		}
 		cursor++
@@ -608,24 +626,24 @@ func (ctx *varParseContext) scanInsideVariable() (lastChar uint8, cursor int) {
 
 // ScanOption scans the next option in the variable, returning the option character, and the index of
 // the option parameter (if any) or -1.
-func (vr *varResolver) scanOption(ctx *varParseContext) (option uint8, param int, cursor int) {
-	cursor = ctx.cursor
-	if ctx.text[cursor] == ')' {
+func (vr *varResolver) scanOption() (option uint8, param int, cursor int) {
+	cursor = vr.cursor
+	if vr.source[cursor] == ')' {
 		return 0, -1, cursor // No option found, return 0 and -1 for the parameter
 	}
-	if ctx.text[cursor] == ':' {
+	if vr.source[cursor] == ':' {
 		cursor += 1
 	}
 
-	option = uint8(ctx.text[cursor]) // The option character
-	param = -1                       // The start of the option parameter, if any
-	cursor++                         // Move to the next character
+	option = uint8(vr.source[cursor]) // The option character
+	param = -1                        // The start of the option parameter, if any
+	cursor++                          // Move to the next character
 
 	// Scan until we find a ')' or ':' to determine the end of the option and
 	// the start-end of the parameter.
 	param = cursor
-	for cursor < len(ctx.text) {
-		c := ctx.text[cursor]
+	for cursor < len(vr.source) {
+		c := vr.source[cursor]
 		if c == ')' || c == ':' {
 			break
 		}
@@ -634,7 +652,7 @@ func (vr *varResolver) scanOption(ctx *varParseContext) (option uint8, param int
 		// The '\' character is used to tell our parser that the next character should not
 		// be interpreted as a special character, so we skip it
 		if c == '\\' {
-			if cursor < len(ctx.text) {
+			if cursor < len(vr.source) {
 				cursor++ // Skip the next character
 			}
 		}
@@ -660,7 +678,6 @@ const (
 
 type varPart struct {
 	partType  varPartType  // 0 = text, 1 = value, 2 = string, 3 = node, 4 = option, 5 = option parameter
-	partParam varPartParam // -1 = no parameter, index into varResolved.params
 	partIndex varPartIndex // index in the text, values, strings, options or nodes
 }
 
@@ -674,129 +691,137 @@ func newVarNode() varNode {
 	}
 }
 
-func (vr *varResolver) parse(ctx *varParseContext) int {
+func (vr *varResolver) parse() int {
 
-	for ctx.cursor < len(ctx.text) {
-		startVar := ctx.scanForVariable()
+	for vr.cursor < len(vr.source) {
+		startVar := vr.scanForVariable()
 
 		// Do we need to register any 'PartTypeText' for the current node
-		if startVar > ctx.cursor {
-			vr.nodes[ctx.current].parts = append(vr.nodes[ctx.current].parts, varPart{
+		if startVar > vr.cursor {
+			vr.nodes[vr.current].parts = append(vr.nodes[vr.current].parts, varPart{
 				partType:  PartTypeText,
-				partParam: varPartParam(-1), // No parameter for the text part
-				partIndex: varPartIndex(len(vr.text)),
+				partIndex: varPartIndex(len(vr.strings)),
 			})
-			vr.text = append(vr.text, string(ctx.text[ctx.cursor:startVar]))
+			vr.strings = append(vr.strings, varText{from: int16(vr.cursor), to: int16(startVar)})
 		}
 
 		startVar += 2
-		if startVar < len(ctx.text) {
-			ctx.cursor = startVar
+		if startVar < len(vr.source) {
+			vr.cursor = startVar
 
 		continue_parsing_inside_variable:
 
-			lastChar, cursor := ctx.scanInsideVariable()
+			lastChar, cursor := vr.scanInsideVariable()
 			if lastChar == '$' {
 				// We reached a nested variable
 				if startVar >= 0 {
-					// We haven't registered a PartTypeVarBegin yet, so we can merge Begin and Part into a single Begin
-					vr.nodes[ctx.current].parts = append(vr.nodes[ctx.current].parts, varPart{
+					strIndex := -1
+					if startVar < cursor {
+						strIndex = len(vr.strings)
+						vr.strings = append(vr.strings, varText{int16(startVar), int16(cursor)})
+					}
+					vr.nodes[vr.current].parts = append(vr.nodes[vr.current].parts, varPart{
 						partType:  PartTypeVarBegin,
-						partParam: varPartParam(-1), // No parameter for the variable part
-						partIndex: varPartIndex(len(vr.strings)),
+						partIndex: varPartIndex(strIndex),
 					})
-					vr.strings = append(vr.strings, string(ctx.text[startVar:cursor]))
 					startVar = -1
-				} else if cursor > ctx.cursor {
-					// We had registered a PartTypeBeginVar before so this is really a var name part
-					vr.nodes[ctx.current].parts = append(vr.nodes[ctx.current].parts, varPart{
+				} else if cursor > vr.cursor {
+					strIndex := -1
+					if vr.cursor < cursor {
+						strIndex = len(vr.strings)
+						vr.strings = append(vr.strings, varText{int16(vr.cursor), int16(cursor)})
+					}
+					vr.nodes[vr.current].parts = append(vr.nodes[vr.current].parts, varPart{
 						partType:  PartTypeVarPart,
-						partParam: varPartParam(-1), // No parameter for the variable part
-						partIndex: varPartIndex(len(vr.strings)),
+						partIndex: varPartIndex(strIndex),
 					})
-					vr.strings = append(vr.strings, string(ctx.text[ctx.cursor:cursor]))
 				}
-				ctx.cursor = cursor + 2 // Move the cursor to after the '($'
+				vr.cursor = cursor + 2 // Move the cursor to after the '($'
 
 				// Current node needs a 'nested' part to be added
-				vr.nodes[ctx.current].parts = append(vr.nodes[ctx.current].parts, varPart{
+				vr.nodes[vr.current].parts = append(vr.nodes[vr.current].parts, varPart{
 					partType:  PartTypeVarNested,
-					partParam: varPartParam(-1), // No parameter for the nested variable
 					partIndex: varPartIndex(len(vr.nodes)),
 				})
 
 				// Now we need to create a new node for this new variable
-				ctx.stack = append(ctx.stack, ctx.current) // Push current node to stack
+				vr.stack = append(vr.stack, vr.current) // Push current node to stack
 
 				// Nested node needs a PartTypeVarBegin
-				startVar = ctx.cursor
-				ctx.current = len(vr.nodes)
+				startVar = vr.cursor
+				vr.current = len(vr.nodes)
 				vr.nodes = append(vr.nodes, newVarNode())
 
 				goto continue_parsing_inside_variable
 			} else if lastChar == ':' || lastChar == ')' {
 				if startVar >= 0 {
 					// We haven't registered a PartTypeVarBegin yet
-					vr.nodes[ctx.current].parts = append(vr.nodes[ctx.current].parts, varPart{
+					vr.nodes[vr.current].parts = append(vr.nodes[vr.current].parts, varPart{
 						partType:  PartTypeVarBegin,
-						partParam: varPartParam(1), // 1 means that is also PartTypeVarEnd
 						partIndex: varPartIndex(len(vr.strings)),
 					})
-					vr.strings = append(vr.strings, string(ctx.text[startVar:cursor]))
+					vr.strings = append(vr.strings, varText{int16(startVar), int16(cursor)})
 					startVar = -1 // Reset startVar, as we have registered the variable begin
 				} else {
-					// We have to register a PartTypeVarEnd
-					stringsIndex := -1
-					if cursor > ctx.cursor {
-						stringsIndex = len(vr.strings)
-						vr.strings = append(vr.strings, string(ctx.text[ctx.cursor:cursor]))
+					// We have to register a PartTypeVarPart if we have a variable name part
+					if vr.cursor < cursor {
+						vr.nodes[vr.current].parts = append(vr.nodes[vr.current].parts, varPart{
+							partType:  PartTypeVarPart,
+							partIndex: varPartIndex(len(vr.strings)),
+						})
+						vr.strings = append(vr.strings, varText{int16(vr.cursor), int16(cursor)})
 					}
-					// We have had registered a PartTypeBeginVar before so this is really a var name end
-					vr.nodes[ctx.current].parts = append(vr.nodes[ctx.current].parts, varPart{
-						partType:  PartTypeVarEnd,
-						partParam: varPartParam(-1),
-						partIndex: varPartIndex(stringsIndex),
-					})
 				}
-				ctx.cursor = cursor
+
+				vr.cursor = cursor
 
 				// Options are applied to the values obtained by using a VariableName which
 				// acts as a key in the Vars map.
 				if lastChar == ':' {
+
+					vr.nodes[vr.current].parts = append(vr.nodes[vr.current].parts, varPart{
+						partType:  PartTypeVarEnd,
+						partIndex: varPartIndex(len(vr.options)),
+					})
+
+					lastOptionIndex := -1
 					for {
 						var option uint8
 						var param int
-						option, param, cursor = vr.scanOption(ctx)
+						option, param, cursor = vr.scanOption()
 						if option == 0 {
+							if lastOptionIndex >= 0 {
+								vr.options[lastOptionIndex].end = -1 // Mark the last option as the end
+							}
 							break
 						}
 
 						// Do we have an option parameter, if so we need to obtain the index of it
-						paramIndex := -1
+						varOption := newVarOption(option)
 						if param >= 0 && param < cursor {
-							paramIndex = len(vr.params)
-							paramStr := string(ctx.text[param:cursor])
-							paramStr = strings.ReplaceAll(paramStr, "\\", "") // Remove any escaping slashes
-							vr.params = append(vr.params, paramStr)
+							varOption.param = param
+							varOption.paramLen = int16(cursor - param) // Length of the parameter
 						}
+						varOption.end = int8(len(vr.options))
 
-						// Register the option in the current node
-						vr.nodes[ctx.current].parts = append(vr.nodes[ctx.current].parts, varPart{
-							partType:  PartTypeOption,
-							partParam: varPartParam(paramIndex),
-							partIndex: varPartIndex(len(vr.options)),
-						})
-						vr.options = append(vr.options, option)
-						ctx.cursor = cursor
+						// Register the option
+						lastOptionIndex = len(vr.options)
+						vr.options = append(vr.options, varOption)
+						vr.cursor = cursor
 					}
+				} else {
+					vr.nodes[vr.current].parts = append(vr.nodes[vr.current].parts, varPart{
+						partType:  PartTypeVarEnd,
+						partIndex: varPartIndex(-1),
+					})
 				}
 
-				ctx.cursor = cursor + 1 // Skip ')'
+				vr.cursor = cursor + 1 // Skip ')'
 
 				// Pop a node from the stack, to continue parsing inside the parent variable
-				if len(ctx.stack) > 0 {
-					ctx.current = ctx.stack[len(ctx.stack)-1]
-					ctx.stack = ctx.stack[:len(ctx.stack)-1]
+				if len(vr.stack) > 0 {
+					vr.current = vr.stack[len(vr.stack)-1]
+					vr.stack = vr.stack[:len(vr.stack)-1]
 					goto continue_parsing_inside_variable
 				}
 				// So the stack is empty, this means that we should be back to the main/root node, and
@@ -846,7 +871,8 @@ func (vr *varResolver) resolveNode(vars *Vars, node int) []string {
 		switch part.partType {
 		case PartTypeText:
 			// Append the text to all results
-			text := vr.text[part.partIndex]
+			str := vr.strings[part.partIndex]
+			text := string(vr.source[str.from:str.to])
 			for i := range results {
 				results[i] += text
 			}
@@ -854,22 +880,21 @@ func (vr *varResolver) resolveNode(vars *Vars, node int) []string {
 		case PartTypeVarPart:
 			// Append the part of the variable name to the variableName
 			for vi, vn := range variableName {
-				variableName[vi] = vn + vr.strings[part.partIndex]
+				str := vr.strings[part.partIndex]
+				variableName[vi] = vn + string(vr.source[str.from:str.to])
 			}
 			parts[pi].partType = PartTypeNone
 		case PartTypeVarBegin:
 			// Prepare a new variable name
 			variableName = variableName[:1]
 			if part.partIndex >= 0 {
-				variableName[0] = vr.strings[part.partIndex] // Start with the variable name
+				str := vr.strings[part.partIndex]
+				variableName[0] = string(vr.source[str.from:str.to])
 			} else {
 				variableName[0] = "" // Start with an empty variable name
 			}
 			parts[pi].partType = PartTypeNone // Mark as processed
-			if part.partParam < 0 {           // partParam < 0 means that this is just a begin part
-				break
-			}
-			fallthrough // partParam == 1 means that this is a begin+end pair, so we need to fall through to handle the end
+
 		case PartTypeVarEnd:
 			// We now have a complete variable name, so we use it as a key
 			// to get the values from the Vars map
@@ -878,16 +903,70 @@ func (vr *varResolver) resolveNode(vars *Vars, node int) []string {
 				if len(values) == 0 {
 					continue
 				}
+
+				// Apply options to the values
+				options := part.partIndex
+				if options >= 0 {
+					// We are going to mutate the values, so we clone them first
+					values = slices.Clone(values)
+					for o := options; o < varPartIndex(len(vr.options)); o++ {
+						varOption := vr.options[o]
+						optionParam := ""
+						if varOption.param >= 0 {
+							optionParam = string(vr.source[varOption.param : varOption.param+int(varOption.paramLen)])
+							optionParam = strings.ReplaceAll(optionParam, "\\", "")
+						}
+
+						if varOption.option == 'j' {
+							// Join the values with the given separator
+							joinedValue := actionJoinValues(values, optionParam)
+							values = []string{joinedValue} // Replace values with the joined value
+						} else {
+							for vi, value := range values {
+								switch varOption.option {
+								case 'f':
+									values[vi] = actionForwardSlashes(value)
+								case 'b':
+									values[vi] = actionBackwardSlashes(value)
+								case 'n':
+									values[vi] = actionNativeSlashes(value)
+								case 'u':
+									values[vi] = actionUpperCase(value)
+								case 'l':
+									values[vi] = actionLowerCase(value)
+								case 'B':
+									values[vi] = actionBaseName(value)
+								case 'F':
+									values[vi] = actionFileName(value)
+								case 'D':
+									values[vi] = actionDirName(value)
+								case 'p':
+									values[vi] = actionPrefix(value, optionParam)
+								case 's':
+									values[vi] = actionSuffix(value, optionParam)
+								case 'P':
+									values[vi] = actionPrefixIfNotExists(value, optionParam)
+								case 'S':
+									values[vi] = actionSuffixIfNotExists(value, optionParam)
+								default:
+									fmt.Printf("Unknown interpolation option '%c' as part of $(%s:%v%s)\n", varOption.option, vn, varOption.option, optionParam)
+									values[vi] = "?"
+								}
+							}
+						}
+						if varOption.end == -1 {
+							break
+						}
+					}
+				}
 				if len(values) == 1 {
 					// If we have only one value, we can just append it to all results
 					for ri, _ := range results {
 						results[ri] += values[0]
 					}
 				} else {
-					// If we have multiple values, we need to multiply the results
-					// by the number of values
-					// This means we need to create a new slice of results
-					// and append each value to each result
+					// If we have multiple values, we need to multiply the results by the number of values
+					// This means we need to create a new slice of results and append each value
 					newResults := make([]string, len(results)*len(values))
 					nri := 0
 					for _, result := range results {
@@ -899,6 +978,7 @@ func (vr *varResolver) resolveNode(vars *Vars, node int) []string {
 					results = newResults
 				}
 			}
+
 			parts[pi].partType = PartTypeNone // Mark as processed
 		case PartTypeVarNested:
 			// Resolve the nested variable and append it to all results
@@ -918,55 +998,6 @@ func (vr *varResolver) resolveNode(vars *Vars, node int) []string {
 					}
 				}
 				variableName = newVariableName
-			}
-			parts[pi].partType = PartTypeNone // Mark as processed
-
-		case PartTypeOption:
-			option := vr.options[part.partIndex]
-
-			optionParam := ""
-			if part.partParam >= 0 {
-				optionParam = vr.params[part.partParam]
-			}
-
-			if option == 'j' { // Join values
-				if len(results) > 1 {
-					results = []string{strings.Join(results, optionParam)} // Join with space by default
-				}
-				parts[pi].partType = PartTypeNone // Mark as processed
-				continue                          // Skip further processing for 'j' option
-			}
-
-			for ri, result := range results {
-				switch option {
-				case 'f':
-					results[ri] = actionForwardSlashes(result)
-				case 'b':
-					results[ri] = actionBackwardSlashes(result)
-				case 'n':
-					results[ri] = actionNativeSlashes(result)
-				case 'u':
-					results[ri] = actionUpperCase(result)
-				case 'l':
-					results[ri] = actionLowerCase(result)
-				case 'B':
-					results[ri] = actionBaseName(result)
-				case 'F':
-					results[ri] = actionFileName(result)
-				case 'D':
-					results[ri] = actionDirName(result)
-				case 'p':
-					results[ri] = actionPrefix(result, optionParam)
-				case 's':
-					results[ri] = actionSuffix(result, optionParam)
-				case 'P':
-					results[ri] = actionPrefixIfNotExists(result, optionParam)
-				case 'S':
-					results[ri] = actionSuffixIfNotExists(result, optionParam)
-				default:
-					fmt.Printf("Unknown interpolation option '%c' as part of $(%s:%s)\n", option, vr.strings[parts[part.partIndex].partIndex], optionParam)
-					results[ri] = "?"
-				}
 			}
 			parts[pi].partType = PartTypeNone // Mark as processed
 		}
