@@ -623,7 +623,7 @@ func NewVarResolver() VarResolver {
 	vr := &varResolver{
 		strings: make([]varText, 0, 16),
 		options: make([]varOption, 0, 16),
-		nodes:   make([]varNode, 0, 16),
+		nodes:   make([]varNode, 0, 32),
 		source:  nil,
 		cursor:  0,
 		current: 0,

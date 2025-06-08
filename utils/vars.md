@@ -70,3 +70,6 @@ This works because the inner expansion will evalate `CURRENT_VARIANT` first (say
 
 Used with care this is a powerful way of letting users customize variables per configuration and then glue everything together with a simple template.
 
+One other feature is that each key is associated with an array of values, so you can use interpolation to combine values from multiple variables. For example, since `FOO` and `BAR` are  arrays, you will generate combinations with the following:
+
+`$(FOO) $(BAR)` with `FOO = {"Hello", "Happy"}` and `BAR = {"Earth", "Mars", 'Jupiter"}` will yield `{"Hello Earth", "Hello Mars", "Hello Jupiter", "Happy Earth", "Happy Mars", "Happy Jupiter"}`.
