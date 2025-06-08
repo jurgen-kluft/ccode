@@ -70,33 +70,3 @@ This works because the inner expansion will evalate `CURRENT_VARIANT` first (say
 
 Used with care this is a powerful way of letting users customize variables per configuration and then glue everything together with a simple template.
 
-## Resolving Interpolation
-
-type varPart int8
-const (
-    varPartText varPart = iota
-    varPartNode // this is a variable node, which can contain other nodes
-    varPartName // this is a variable name part
-    varPartOption // this is a variable option
-    varPartOptionParam // this is a parameter for an option
-)
-
-type Node struct {
-    parts []varPart
-}
-
-- Start root Node
-  - Scan the string, search for '$(', when found
-  - Any text until that point is registered as a 'text' part
-  - start a variable Node
-    - Now scan until the next ')', when encountering another '$(' then 
-    - register any text as a 'name' part
-    - start a new variable Node
-    - When encountering a ')' then close the current Node and return to the parent Node (I smell a stack here)
-    - If we encounter a ':' then any text until now is registered as a 'name' part and we create an 'option' part from the character after the ':' and when not reaching a ')' we register any text as an 'option parameter' part until a ':' or ')'. When reaching a ':' we register another option and continue parsing the option parameter until finally reaching a ')'.
-
-- Have a 'variable' counter, starting at 0, increment it when starting a new variable Node and decrement it when closing a variable Node. So we can detect if we are inside a variable Node or not.
-- Also when we are inside a 'variable' Node, we should also parse options and their parameters.
-
-Now when a variable Node is closed, we can resolve the variable by looking it up in the key-value map. The value could be pure text but it could also contain variables, so we should continue parsing the value as a new Node, which will then be resolved recursively.
-
