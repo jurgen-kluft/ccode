@@ -338,8 +338,6 @@ func (v *Vars) ResolveInterpolation(text string) []string {
 
 			// Apply options if any
 			if p.bopt < p.eopt {
-				join := ""
-
 				// Ok, we are going to modify values, so clone it
 				values = slices.Clone(values)
 
@@ -349,43 +347,36 @@ func (v *Vars) ResolveInterpolation(text string) []string {
 					var param string
 					options, option, param = consumeOption(options) // consume the option and its parameter
 
-					for ii, value := range values {
-						switch option {
-						case 'f':
-							values[ii] = actionForwardSlashes(value)
-						case 'b':
-							values[ii] = actionBackwardSlashes(value)
-						case 'n':
-							values[ii] = actionNativeSlashes(value)
-						case 'u':
-							values[ii] = actionUpperCase(value)
-						case 'l':
-							values[ii] = actionLowerCase(value)
-						case 'B':
-							values[ii] = actionBaseName(value)
-						case 'F':
-							values[ii] = actionFileName(value)
-						case 'D':
-							values[ii] = actionDirName(value)
-						case 'p':
-							values[ii] = actionPrefix(value, param)
-						case 's':
-							values[ii] = actionSuffix(value, param)
-						case 'P':
-							values[ii] = actionPrefixIfNotExists(value, param)
-						case 'S':
-							values[ii] = actionSuffixIfNotExists(value, param)
-						case 'j':
-							join = param
-						default:
-							fmt.Printf("Unknown interpolation option '%v' as part of $(%s:%s)\n", option, string(runes[p.bvar:p.evar]), string(runes[p.bopt:p.eopt]))
-							value = "?"
-						}
+					switch option {
+					case 'f':
+						values = actionForwardSlashes(values, param)
+					case 'b':
+						values = actionBackwardSlashes(values, param)
+					case 'n':
+						values = actionNativeSlashes(values, param)
+					case 'u':
+						values = actionUpperCase(values, param)
+					case 'l':
+						values = actionLowerCase(values, param)
+					case 'B':
+						values = actionBaseName(values, param)
+					case 'F':
+						values = actionFileName(values, param)
+					case 'D':
+						values = actionDirName(values, param)
+					case 'p':
+						values = actionPrefix(values, param)
+					case 's':
+						values = actionSuffix(values, param)
+					case 'P':
+						values = actionPrefixIfNotExists(values, param)
+					case 'S':
+						values = actionSuffixIfNotExists(values, param)
+					case 'j':
+						values = actionJoinValues(values, param)
+					default:
+						fmt.Printf("Unknown interpolation option '%v' as part of $(%s:%s)\n", option, string(runes[p.bvar:p.evar]), string(runes[p.bopt:p.eopt]))
 					}
-				}
-
-				if len(join) > 0 {
-					values = []string{actionJoinValues(values, join)}
 				}
 			}
 
@@ -455,68 +446,159 @@ func consumeOption(runes []rune) ([]rune, rune, string) {
 	return runes[0:0], option, param
 }
 
-func actionForwardSlashes(value string) string {
-	return strings.ReplaceAll(value, "\\", "/")
+func actionForwardSlashes(values []string, param string) []string {
+	for i, value := range values {
+		values[i] = strings.ReplaceAll(value, "\\", "/")
+	}
+	return values
 }
 
-func actionBackwardSlashes(value string) string {
-	return strings.ReplaceAll(value, "/", "\\")
+func actionBackwardSlashes(values []string, param string) []string {
+	for i, value := range values {
+		values[i] = strings.ReplaceAll(value, "/", "\\")
+	}
+	return values
 }
 
-func actionNativeSlashes(value string) string {
+func actionNativeSlashes(values []string, param string) []string {
 	native := string(os.PathSeparator)
 	nonnative := "/"
 	if native == "/" {
 		nonnative = "\\"
 	}
-	return strings.ReplaceAll(value, nonnative, native)
-}
-func actionUpperCase(value string) string {
-	return strings.ToUpper(value)
-}
-func actionLowerCase(value string) string {
-	return strings.ToLower(value)
-}
-func actionBaseName(value string) string {
-	return PathFilename(value, false)
-}
-func actionFileName(value string) string {
-	return PathFilename(value, true)
-}
-func actionDirName(value string) string {
-	return PathDirname(value)
-}
-
-func actionPrefix(value string, prefix string) string {
-	if len(value) == 0 {
-		return value
+	for i, value := range values {
+		values[i] = strings.ReplaceAll(value, nonnative, native)
 	}
-	return prefix + value
+	return values
 }
-
-func actionSuffix(value string, suffix string) string {
-	if len(value) == 0 {
-		return value
+func actionUpperCase(values []string, param string) []string {
+	for i, value := range values {
+		values[i] = strings.ToUpper(value)
 	}
-	return value + suffix
+	return values
 }
-
-func actionPrefixIfNotExists(value string, prefix string) string {
-	if strings.HasPrefix(value, prefix) {
-		return value
+func actionLowerCase(values []string, param string) []string {
+	for i, value := range values {
+		values[i] = strings.ToLower(value)
 	}
-	return prefix + value
+	return values
 }
-
-func actionSuffixIfNotExists(value string, suffix string) string {
-	if strings.HasSuffix(value, suffix) {
-		return value
+func actionBaseName(values []string, param string) []string {
+	for i, value := range values {
+		values[i] = PathFilename(value, false)
 	}
-	return value + suffix
+	return values
+}
+func actionFileName(values []string, param string) []string {
+	for i, value := range values {
+		values[i] = PathFilename(value, true)
+	}
+	return values
+}
+func actionDirName(values []string, param string) []string {
+	for i, value := range values {
+		values[i] = PathDirname(value)
+	}
+	return values
 }
 
-func actionJoinValues(values []string, sep string) string {
-	return strings.Join(values, sep)
+func actionDelimitValue(values []string, param string) []string {
+	for i, value := range values {
+		values[i] = param + value + param
+	}
+	return values
+}
+
+func actionTrimValue(values []string, param string) []string {
+	for i, value := range values {
+		if strings.HasPrefix(value, param) {
+			values[i] = value[len(param):]
+		}
+		if strings.HasSuffix(value, param) {
+			values[i] = value[:len(value)-len(param)]
+		}
+	}
+	return values
+}
+
+func actionTrimValueAny(values []string, param string) []string {
+	for i, value := range values {
+		runes := []rune(value)
+		// Trim any character from the start
+		for len(runes) > 0 {
+			if strings.ContainsRune(param, runes[0]) {
+				runes = runes[1:]
+			} else {
+				break
+			}
+		}
+		// Trim any character from the end
+		for len(runes) > 0 {
+			if strings.ContainsRune(param, runes[len(runes)-1]) {
+				runes = runes[:len(runes)-1]
+			} else {
+				break // No more characters to remove
+			}
+		}
+		values[i] = string(runes)
+	}
+	return values
+}
+
+func actionPrefix(values []string, prefix string) []string {
+	for i, value := range values {
+		values[i] = prefix + value
+	}
+	return values
+}
+
+func actionSuffix(values []string, suffix string) []string {
+	for i, value := range values {
+		values[i] = value + suffix
+	}
+	return values
+}
+
+func actionPrefixIfNotExists(values []string, prefix string) []string {
+	for i, value := range values {
+		if strings.HasPrefix(value, prefix) {
+			values[i] = value
+		} else {
+			values[i] = prefix + value
+		}
+	}
+	return values
+}
+
+func actionSuffixIfNotExists(values []string, suffix string) []string {
+	for i, value := range values {
+		if strings.HasSuffix(value, suffix) {
+			values[i] = value
+		} else {
+			values[i] = value + suffix
+		}
+	}
+	return values
+}
+
+func actionJoinValues(values []string, join string) []string {
+	return []string{strings.Join(values, join)}
+}
+
+var varOptionActionMap = map[uint8]func([]string, string) []string{
+	'f': actionForwardSlashes,
+	'b': actionBackwardSlashes,
+	'n': actionNativeSlashes,
+	'u': actionUpperCase,
+	'l': actionLowerCase,
+	'B': actionBaseName,
+	'F': actionFileName,
+	'D': actionDirName,
+	'p': actionPrefix,
+	's': actionSuffix,
+	'P': actionPrefixIfNotExists,
+	'S': actionSuffixIfNotExists,
+	'j': actionJoinValues,
 }
 
 // ---------------------------------------------------------------------------------------
@@ -917,43 +999,10 @@ func (vr *varResolver) resolveNode(vars *Vars, node int) []string {
 							optionParam = strings.ReplaceAll(optionParam, "\\", "")
 						}
 
-						if varOption.option == 'j' {
-							// Join the values with the given separator
-							joinedValue := actionJoinValues(values, optionParam)
-							values = []string{joinedValue} // Replace values with the joined value
-						} else {
-							for vi, value := range values {
-								switch varOption.option {
-								case 'f':
-									values[vi] = actionForwardSlashes(value)
-								case 'b':
-									values[vi] = actionBackwardSlashes(value)
-								case 'n':
-									values[vi] = actionNativeSlashes(value)
-								case 'u':
-									values[vi] = actionUpperCase(value)
-								case 'l':
-									values[vi] = actionLowerCase(value)
-								case 'B':
-									values[vi] = actionBaseName(value)
-								case 'F':
-									values[vi] = actionFileName(value)
-								case 'D':
-									values[vi] = actionDirName(value)
-								case 'p':
-									values[vi] = actionPrefix(value, optionParam)
-								case 's':
-									values[vi] = actionSuffix(value, optionParam)
-								case 'P':
-									values[vi] = actionPrefixIfNotExists(value, optionParam)
-								case 'S':
-									values[vi] = actionSuffixIfNotExists(value, optionParam)
-								default:
-									fmt.Printf("Unknown interpolation option '%c' as part of $(%s:%v%s)\n", varOption.option, vn, varOption.option, optionParam)
-									values[vi] = "?"
-								}
-							}
+						if action, ok := varOptionActionMap[varOption.option]; ok {
+							values = action(values, optionParam)
 						}
+
 						if varOption.end == -1 {
 							break
 						}

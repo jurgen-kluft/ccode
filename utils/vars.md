@@ -18,10 +18,9 @@ Interpolation Syntax
 |`$(VAR:B)`             |    *filenames*: Only keep the base part of a filename (w/o extension)
 |`$(VAR:F)`             |    *filenames*: Only keep the filename (w/o dir)
 |`$(VAR:D)`             |    *filenames*: Only keep the directory
-|`$(VAR:d<delimiter>)`  |    Delimits all values with the string `<delimiter>`
-|`$(VAR:t<delimiter>)`  |    Trims all values with the string `<prefix>`
 |`$(VAR:p<prefix>)`     |    Prefix all values with the string `<prefix>`
 |`$(VAR:s<suffix>)`     |    Suffix all values with the string `<suffix>`
+|`$(VAR:d<delimiter>)`  |    Delimits all values with the string `<delimiter>`
 |`$(VAR:t<delimiter>)`  |    Trims all values with the string `<delimiter>`
 |`$(VAR:T<delimiters>)` |    Trims all values with any character from `<delimiters>`
 |`$(VAR:P<prefix>)`     |    Prefix all values with `<prefix>` unless it is already there
