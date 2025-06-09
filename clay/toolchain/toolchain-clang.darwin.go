@@ -1,7 +1,6 @@
 package toolchain
 
 import (
-	"fmt"
 	"log"
 	"os/exec"
 	"path/filepath"
@@ -129,16 +128,16 @@ func (cl *ToolchainDarwinClangCompiler) Compile(sourceAbsFilepath string, objRel
 	args = append(args, objRelFilepath)
 	args = append(args, sourceAbsFilepath)
 
-	fmt.Printf("Compiling (%s) %s\n", cl.config.Config.AsString(), filepath.Base(sourceAbsFilepath))
+	utils.LogInfof("Compiling (%s) %s\n", cl.config.Config.AsString(), filepath.Base(sourceAbsFilepath))
 
 	cmd := exec.Command(cl.cCompilerPath, args...)
 	out, err := cmd.CombinedOutput()
 	if err != nil {
-		log.Printf("Compile failed, output:\n%s\n", string(out))
-		return fmt.Errorf("Compile failed with %s\n", err)
+		utils.LogInfof("Compile failed, output:\n%s\n", string(out))
+		return utils.LogErrorf(err, "Compiling failed")
 	}
 	if len(out) > 0 {
-		log.Printf("Compile output:\n%s\n", string(out))
+		utils.LogInfof("Compile output:\n%s\n", string(out))
 	}
 
 	return nil
@@ -201,7 +200,7 @@ func (t *ToolchainDarwinClangStaticArchiver) Archive(inputObjectFilepaths []stri
 
 	if err != nil {
 		log.Printf("Archive failed with output:\n%s\n", string(out))
-		return fmt.Errorf("Archive failed with %s\n", err)
+		return utils.LogErrorf(err, "Archiving failed")
 	}
 
 	return nil
@@ -236,10 +235,10 @@ func (t *ToolchainDarwinClangDynamicArchiver) Archive(inputObjectFilepaths []str
 	out, err := cmd.CombinedOutput()
 
 	if err != nil {
-		return fmt.Errorf("Archive failed with %s\n", err)
+		return utils.LogErrorf(err, "Archiving failed")
 	}
 	if len(out) > 0 {
-		log.Printf("Archive output:\n%s\n", string(out))
+		utils.LogInfof("Archive output:\n%s\n", string(out))
 	}
 
 	return nil
@@ -308,11 +307,11 @@ func (l *ToolchainDarwinClangLinker) Link(inputArchiveAbsFilepaths []string, out
 	out, err := cmd.CombinedOutput()
 
 	if err != nil {
-		log.Printf("Link failed, output:\n%s\n", string(out))
-		return fmt.Errorf("Link failed with %s\n", err)
+		utils.LogInff("Link failed, output:\n%s\n", string(out))
+		return utils.LogError(err, "Linking failed")
 	}
 	if len(out) > 0 {
-		log.Printf("Link output:\n%s\n", string(out))
+		utils.LogInfof("Link output:\n%s\n", string(out))
 	}
 
 	return nil

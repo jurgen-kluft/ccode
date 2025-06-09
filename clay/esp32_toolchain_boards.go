@@ -110,10 +110,10 @@ func PrintAllFlashSizes(espSdkPath string, cpuName string, boardName string) (er
 		}
 
 		// Print the header
-		fmt.Printf("%-*s   %s\n", column1MaxLength, "----------", "-----------")
-		fmt.Printf("%-*s | %s\n", column1MaxLength, "Flash Size", "Description")
+		utils.LogPrintf("%-*s   %s\n", column1MaxLength, "----------", "-----------")
+		utils.LogPrintf("%-*s | %s\n", column1MaxLength, "Flash Size", "Description")
 		for i := 0; i < len(column1); i++ {
-			fmt.Printf("%-*s | %s\n", column1MaxLength, column1[i], column2[i])
+			utils.LogPrintf("%-*s | %s\n", column1MaxLength, column1[i], column2[i])
 		}
 	}
 	return nil
@@ -154,7 +154,7 @@ func PrintAllMatchingBoards(espSdkPath string, fuzzy string, max int) error {
 			}
 		}
 		for _, match := range closest {
-			fmt.Printf("%-*s %s\n", longestName, match, boardMap[match])
+			utils.LogPrintf("%-*s %s\n", longestName, match, boardMap[match])
 		}
 	}
 
@@ -184,7 +184,7 @@ func PrintAllMatchingBoards(espSdkPath string, fuzzy string, max int) error {
 			}
 			for _, match := range closest {
 				boardName := boardMap[match]
-				fmt.Printf("%-*s %s\n", longestName, boardName, match)
+				utils.LogPrintf("%-*s %s\n", longestName, boardName, match)
 			}
 
 		}

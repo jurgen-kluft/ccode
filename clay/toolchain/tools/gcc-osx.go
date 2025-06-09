@@ -35,10 +35,10 @@ func ApplyGccOsx(env *utils.Vars, options *utils.Vars) {
 		"FRAMEWORKPATH":   {},
 		"SHLIBPREFIX":     {"lib"},
 		"SHLIBOPTS":       {"-shared"},
-		"_OS_CCOPTS":      {"$(FRAMEWORKPATH:p-F)"},
-		"_OS_CXXOPTS":     {"$(FRAMEWORKPATH:p-F)"},
-		"SHLIBCOM":        {"$(LD)", "$(SHLIBOPTS)", "$(LIBPATH:p-L)", "$(LIBS:p-l)", "$(FRAMEWORKPATH:p-F)", "$(FRAMEWORKS:p-framework )", "-o", "$(@)", "$(<)"},
-		"PROGCOM":         {"$(LD)", "$(PROGOPTS)", "$(LIBPATH:p-L)", "$(LIBS:p-l)", "$(FRAMEWORKPATH:p-F)", "$(FRAMEWORKS:p-framework )", "-o", "$(@)", "$(<)"},
+		"_OS_CCOPTS":      {"-F$(FRAMEWORKPATH)"},
+		"_OS_CXXOPTS":     {"-F$(FRAMEWORKPATH)"},
+		"SHLIBCOM":        {"$(LD)", "$(SHLIBOPTS)", "-L$(LIBPATH)", "-l$(LIBS)", "-F$(FRAMEWORKPATH)", "-framework$(FRAMEWORKS)", "-o", "$(@)", "$(<)"},
+		"PROGCOM":         {"$(LD)", "$(PROGOPTS)", "-L$(LIBPATH)", "-l$(LIBS)", "-F$(FRAMEWORKPATH)", "-framework$(FRAMEWORKS)", "-o", "$(@)", "$(<)"},
 		"OBJCCOM":         {"$(CCCOM)"},
 	})
 }

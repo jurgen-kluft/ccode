@@ -2,8 +2,6 @@ package clay
 
 import (
 	"flag"
-	"fmt"
-	"log"
 	"os"
 	"time"
 
@@ -78,46 +76,45 @@ func ClayAppMainArduino() {
 		err = ListFlashSizes(ParseCpuAndBoardName())
 	case "version":
 		version := utils.NewVersionInfo()
-		fmt.Printf("Version: %s\n", version.Version)
+		utils.LogPrintf("Version: %s\n", version.Version)
 	default:
 		UsageAppArduino()
 	}
 
 	if err != nil {
-		log.Printf("Error: %v\n", err)
-		os.Exit(1)
+		utils.LogFatalf("Error: %v\n", err)
 	}
 }
 
 func UsageAppArduino() {
-	fmt.Println("Usage: clay [command] [options]")
-	fmt.Println("Commands:")
-	fmt.Println("  build-info -p <projectName> -build <projectConfig> -arch <arch>")
-	fmt.Println("  build -p <projectName> -build <projectConfig> -arch <arch>")
-	fmt.Println("  clean -p <projectName> -build <projectConfig> -arch <arch>")
-	fmt.Println("  flash -p <projectName> -build <projectConfig> -arch <arch>")
-	fmt.Println("  list-libraries")
-	fmt.Println("  list-boards -b <boardName> -m <matches>")
-	fmt.Println("  list-flash-sizes -c <cpuName> -b <boardName>")
-	fmt.Println("Options:")
-	fmt.Println("  projectName       Project name (if more than one) ")
-	fmt.Println("  projectConfig     Config name (debug, release, final) ")
-	fmt.Println("  boardName         Board name (e.g. esp32, esp32s3) ")
-	fmt.Println("  matches           Maximum number of boards to list")
-	fmt.Println("  cpuName           CPU name for listing flash sizes")
-	fmt.Println("  --help            Show this help message")
-	fmt.Println("  --version         Show version information")
+	utils.LogPrintln("Usage: clay [command] [options]")
+	utils.LogPrintln("Commands:")
+	utils.LogPrintln("  build-info -p <projectName> -build <projectConfig> -arch <arch>")
+	utils.LogPrintln("  build -p <projectName> -build <projectConfig> -arch <arch>")
+	utils.LogPrintln("  clean -p <projectName> -build <projectConfig> -arch <arch>")
+	utils.LogPrintln("  flash -p <projectName> -build <projectConfig> -arch <arch>")
+	utils.LogPrintln("  list-libraries")
+	utils.LogPrintln("  list-boards -b <boardName> -m <matches>")
+	utils.LogPrintln("  list-flash-sizes -c <cpuName> -b <boardName>")
+	utils.LogPrintln("Options:")
+	utils.LogPrintln("  projectName       Project name (if more than one) ")
+	utils.LogPrintln("  projectConfig     Config name (debug, release, final) ")
+	utils.LogPrintln("  boardName         Board name (e.g. esp32, esp32s3) ")
+	utils.LogPrintln("  matches           Maximum number of boards to list")
+	utils.LogPrintln("  cpuName           CPU name for listing flash sizes")
+	utils.LogPrintln("  --help            Show this help message")
+	utils.LogPrintln("  --version         Show version information")
 
-	fmt.Println("Examples:")
-	fmt.Println("  clay build-info (generates buildinfo.h and buildinfo.cpp)")
-	fmt.Println("  clay build-info -build debug -arch esp32s3")
-	fmt.Println("  clay build")
-	fmt.Println("  clay build -build debug -arch esp32s3")
-	fmt.Println("  clay clean -build debug -arch esp32s3")
-	fmt.Println("  clay flash -build debug-dev -arch esp32s3")
-	fmt.Println("  clay list-libraries")
-	fmt.Println("  clay list-boards -b esp32 -m 5")
-	fmt.Println("  clay list-flash-sizes -c esp32 -b esp32")
+	utils.LogPrintln("Examples:")
+	utils.LogPrintln("  clay build-info (generates buildinfo.h and buildinfo.cpp)")
+	utils.LogPrintln("  clay build-info -build debug -arch esp32s3")
+	utils.LogPrintln("  clay build")
+	utils.LogPrintln("  clay build -build debug -arch esp32s3")
+	utils.LogPrintln("  clay clean -build debug -arch esp32s3")
+	utils.LogPrintln("  clay flash -build debug-dev -arch esp32s3")
+	utils.LogPrintln("  clay list-libraries")
+	utils.LogPrintln("  clay list-boards -b esp32 -m 5")
+	utils.LogPrintln("  clay list-flash-sizes -c esp32 -b esp32")
 }
 
 func BuildInfo(projectName string, buildConfig *Config) error {
@@ -138,7 +135,7 @@ func BuildInfo(projectName string, buildConfig *Config) error {
 			}
 		}
 	}
-	log.Println("Ok, build info generated Ok")
+	utils.LogPrintln("Ok, build info generated Ok")
 	return nil
 }
 
@@ -153,15 +150,15 @@ func Flash(projectName string, buildConfig *Config) error {
 	for _, prj := range prjs {
 		if projectName == prj.Name || projectName == "" {
 			if prj.IsExecutable && prj.Config.Matches(buildConfig) {
-				log.Printf("Flashing project: %s, config: %s\n", prj.Name, prj.Config.ConfigString())
+				utils.LogPrintf("Flashing project: %s, config: %s\n", prj.Name, prj.Config.ConfigString())
 				startTime := time.Now()
 				{
 					if err := prj.Flash(buildConfig, buildPath); err != nil {
-						return fmt.Errorf("Build failed: %v", err)
+						return utils.LogErrorf(err, "Build failed")
 					}
 				}
-				log.Printf("Flashing done ... (duration %s)\n", time.Since(startTime).Round(time.Second))
-				log.Println()
+				utils.LogPrintf("Flashing done ... (duration %s)\n", time.Since(startTime).Round(time.Second))
+				utils.LogPrintln()
 			}
 		}
 	}

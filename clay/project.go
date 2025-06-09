@@ -1,8 +1,7 @@
 package clay
 
 import (
-	"fmt"
-	"log"
+	"os"
 	"path/filepath"
 	"runtime"
 	"time"
@@ -74,7 +73,7 @@ func (p *Project) SetToolchain(config *Config) (err error) {
 	} else if targetOS == "mac" || targetOS == "macos" || targetOS == "darwin" {
 		p.Toolchain, err = toolchain.NewDarwinClang(runtime.GOARCH, p.Frameworks)
 	} else {
-		err = fmt.Errorf("error, %s as a build target on %s is not supported", targetOS, runtime.GOOS)
+		err = utils.LogErrorf(os.ErrNotExist, "error, %s as a build target on %s is not supported", targetOS, runtime.GOOS)
 	}
 	return err
 }
@@ -116,7 +115,7 @@ func (p *Project) Build(buildConfig *Config, buildPath string) (outOfDate int, e
 
 	buildStartTime := time.Now()
 	if outOfDate > 0 {
-		log.Printf("Building project: %s, config: %s\n", p.Name, p.Config.String())
+		utils.LogInfof("Building project: %s, config: %s\n", p.Name, p.Config.String())
 		buildStartTime = time.Now()
 
 		for _, src := range p.SourceFiles {
@@ -149,7 +148,7 @@ func (p *Project) Build(buildConfig *Config, buildPath string) (outOfDate int, e
 
 		if outOfDate > 0 || !projectDepFileTrackr.QueryItem(executableOutputFilepath) {
 			if outOfDate == 0 {
-				log.Printf("Linking project: %s, config: %s\n", p.Name, p.Config.String())
+				utils.LogInfof("Linking project: %s, config: %s\n", p.Name, p.Config.String())
 				buildStartTime = time.Now()
 				outOfDate += 1
 			}
@@ -179,7 +178,7 @@ func (p *Project) Build(buildConfig *Config, buildPath string) (outOfDate int, e
 		archiveOutputFilepath := p.GetOutputFilepath(buildPath, staticArchiver.Filename(p.Name))
 		if outOfDate > 0 || !projectDepFileTrackr.QueryItem(archiveOutputFilepath) {
 			if outOfDate == 0 {
-				log.Printf("Archiving project: %s, config: %s\n", p.Name, p.Config.String())
+				utils.LogInfof("Archiving project: %s, config: %s\n", p.Name, p.Config.String())
 				buildStartTime = time.Now()
 				outOfDate += 1
 			}
@@ -201,7 +200,7 @@ func (p *Project) Build(buildConfig *Config, buildPath string) (outOfDate int, e
 	}
 
 	if outOfDate > 0 {
-		log.Printf("Building done ... (duration %s)\n", time.Since(buildStartTime).Round(time.Second))
+		utils.LogInfof("Building done ... (duration %s)\n", time.Since(buildStartTime).Round(time.Second))
 	}
 
 	return outOfDate, err

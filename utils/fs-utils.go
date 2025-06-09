@@ -33,6 +33,23 @@ func FileExists(path string) bool {
 	return true
 }
 
+func FileRead(path string) ([]byte, error) {
+	// Open the file for reading
+	file, err := os.Open(path)
+	if err != nil {
+		return nil, fmt.Errorf("failed to open file %s: %w", path, err)
+	}
+	defer file.Close()
+
+	// Read the entire file into a byte slice
+	data, err := io.ReadAll(file)
+	if err != nil {
+		return nil, fmt.Errorf("failed to read file %s: %w", path, err)
+	}
+
+	return data, nil
+}
+
 func MakeDir(path string) error {
 	// Create the directory if it doesn't exist
 	if _, err := os.Stat(path); os.IsNotExist(err) {
@@ -71,4 +88,21 @@ func CopyFiles(src, dst string) error {
 	}
 
 	return nil
+}
+
+func ListDirectory(path string) ([]string, error) {
+	// Open the directory
+	dir, err := os.Open(path)
+	if err != nil {
+		return nil, fmt.Errorf("failed to open directory %s: %w", path, err)
+	}
+	defer dir.Close()
+
+	// Read the directory entries
+	entries, err := dir.Readdirnames(-1)
+	if err != nil {
+		return nil, fmt.Errorf("failed to read directory %s: %w", path, err)
+	}
+
+	return entries, nil
 }

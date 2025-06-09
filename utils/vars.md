@@ -26,7 +26,7 @@ Interpolation Syntax
 |`$(VAR:P<prefix>)`     |    Prefix all values with `<prefix>` unless it is already there
 |`$(VAR:S<suffix>)`     |    Suffix all values with `<suffix>` unless it is already there
 |`$(VAR:j<sep>)`        |    Join all values with `<sep>` as a separator rather than space
-|`$(VAR:[<index>])`     |    Select the item at the (one-based) `index`
+|`$(VAR:i<index>)`      |    Select the item at the (one-based) `index`
 
 These interpolation options can be combined arbitrarily by tacking on several options. If an option parameter contains a colon the colon must be escaped with a backslash or it will be taken as the start of the next interpolation option.
 

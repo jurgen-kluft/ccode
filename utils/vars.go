@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"os"
 	"slices"
+	"strconv"
 	"strings"
 )
 
@@ -56,6 +57,16 @@ func (v *Vars) GetOne(key string) string {
 		}
 	}
 	return ""
+}
+
+func (v *Vars) GetOneDefault(key string, _default string) string {
+	if i, ok := v.Keys[key]; ok {
+		values := v.Values[i]
+		if len(values) > 0 {
+			return values[0]
+		}
+	}
+	return _default
 }
 
 func (v *Vars) GetAll(key string) []string {
@@ -585,7 +596,15 @@ func actionJoinValues(values []string, join string) []string {
 	return []string{strings.Join(values, join)}
 }
 
-var varOptionActionMap = map[uint8]func([]string, string) []string{
+func actionIndexValue(values []string, param string) []string {
+	index, _ := strconv.ParseInt(param, 10, 32)
+	if index < int64(len(values)) {
+		return []string{values[index]}
+	}
+	return []string{""}
+}
+
+var varOptionActionMap = map[int8]func([]string, string) []string{
 	'f': actionForwardSlashes,
 	'b': actionBackwardSlashes,
 	'n': actionNativeSlashes,
@@ -599,6 +618,7 @@ var varOptionActionMap = map[uint8]func([]string, string) []string{
 	'P': actionPrefixIfNotExists,
 	'S': actionSuffixIfNotExists,
 	'j': actionJoinValues,
+	'i': actionIndexValue,
 }
 
 // ---------------------------------------------------------------------------------------
@@ -667,11 +687,11 @@ type varText struct {
 type varOption struct {
 	param    int   // start of the option in varParseContext.text
 	paramLen int16 // end of the option in varParseContext.text
-	option   uint8 // the option character, e.g. 'f', 'b', etc.
+	option   int8  // the option character, e.g. 'f', 'b', etc.
 	end      int8  // end = 1 means this is the last option
 }
 
-func newVarOption(opt uint8) varOption {
+func newVarOption(opt int8) varOption {
 	return varOption{
 		param:    -1, // -1 means no parameter
 		paramLen: -1, // -1 means no parameter
@@ -716,8 +736,8 @@ func (vr *varResolver) parseOption() (option varOption) {
 		vr.cursor += 1
 	}
 
-	option.option = uint8(vr.source[vr.cursor]) // The option character
-	vr.cursor++                                 // Move to the next character
+	option.option = int8(vr.source[vr.cursor]) // The option character
+	vr.cursor++                                // Move to the next character
 
 	// Scan until we find a ')' or ':' to determine the end of the option and
 	// the start-end of the parameter.
@@ -756,9 +776,6 @@ const (
 	PartTypeVarNested                    // 4 = variable name or part of it
 	PartTypeVarEnd                       // 5 = variable name or part of it
 )
-
-type varPart struct {
-}
 
 type varNode struct {
 	partType  varPartType  // 0 = text, 1 = value, 2 = string, 3 = node, 4 = option, 5 = option parameter

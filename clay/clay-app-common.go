@@ -2,7 +2,6 @@ package clay
 
 import (
 	"flag"
-	"fmt"
 	"os"
 	"path/filepath"
 	"runtime"
@@ -117,7 +116,7 @@ func Build(projectName string, targetConfig *Config) (err error) {
 		}
 	}
 	if outOfDate == 0 {
-		fmt.Println("Nothing to build, everything is up to date...")
+		utils.LogPrintf("Nothing to build, everything is up to date...")
 	}
 	return err
 }
@@ -133,11 +132,11 @@ func Clean(projectName string, buildConfig *Config) error {
 				// Note: We should be running this from the "target/esp" directory
 				// Remove all folders and files from "build/"
 				if err := os.RemoveAll(buildPath + "/"); err != nil {
-					return fmt.Errorf("Failed to remove build directory: %v", err)
+					return utils.LogErrorf(err, "Failed to remove build directory")
 				}
 
 				if err := os.MkdirAll(buildPath+"/", os.ModePerm); err != nil {
-					return fmt.Errorf("Failed to create build directory: %v", err)
+					return utils.LogErrorf(err, "Failed to create build directory")
 				}
 			}
 		}
@@ -164,15 +163,15 @@ func ListLibraries() error {
 
 	for _, prj := range prjs {
 		if i, ok := nameToIndex[prj.Name]; ok {
-			fmt.Printf("Project: %s\n", prj.Name)
-			fmt.Printf("  Configs: %s\n", configs[i])
+			utils.LogPrintf("Project: %s\n", prj.Name)
+			utils.LogPrintf("  Configs: %s\n", configs[i])
 			if len(prj.Dependencies) > 0 {
-				fmt.Printf("  Libraries:\n")
+				utils.LogPrintf("  Libraries:\n")
 				for _, dep := range prj.Dependencies {
-					fmt.Printf("  - %s\n", dep.Name)
+					utils.LogPrintf("  - %s\n", dep.Name)
 				}
 			}
-			fmt.Println()
+			utils.LogPrintln()
 
 			// Remove the entry from the map to avoid duplicates
 			delete(nameToIndex, prj.Name)

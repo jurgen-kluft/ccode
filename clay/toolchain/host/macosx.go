@@ -7,7 +7,7 @@ func ApplyMacOsx(env *utils.Vars) {
 		"DOTNETRUN":       {"mono "},
 		"HOSTPROGSUFFIX":  {""},
 		"HOSTSHLIBSUFFIX": {".dylib"},
-		"_COPY_FILE":      {"cp -f $(<) $(@)"},
-		"_HARDLINK_FILE":  {"ln -f $(<) $(@)"},
+		"_COPY_FILE":      {"cp", "-f", "$(<)", "$(@)"},
+		"_HARDLINK_FILE":  {"ln", "-f", "$(<)", "$(@)"},
 	})
 }
