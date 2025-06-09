@@ -1,8 +1,8 @@
 package tctools
 
-import utils "github.com/jurgen-kluft/ccode/utils"
+import "github.com/jurgen-kluft/ccode/foundation"
 
-func ApplyMsvc(env *utils.Vars, options *utils.Vars, extra *utils.Vars) {
+func ApplyMsvc(env *foundation.Vars, options *foundation.Vars, extra *foundation.Vars) {
 
 	ApplyGenericCpp(env, options)
 	ApplyWin32Rc(env, options)

@@ -3,7 +3,7 @@ package dev
 import (
 	"path/filepath"
 
-	utils "github.com/jurgen-kluft/ccode/utils"
+	"github.com/jurgen-kluft/ccode/foundation"
 )
 
 type PinPath struct {
@@ -17,5 +17,5 @@ func (fp PinPath) String() string {
 }
 
 func (fp PinPath) RelativeTo(root string) string {
-	return utils.PathGetRelativeTo(fp.String(), root)
+	return foundation.PathGetRelativeTo(fp.String(), root)
 }

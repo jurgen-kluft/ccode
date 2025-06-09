@@ -6,7 +6,7 @@ import (
 	"slices"
 	"strings"
 
-	dev "github.com/jurgen-kluft/ccode/dev"
+	"github.com/jurgen-kluft/ccode/dev"
 )
 
 // Package hold a defined set of 'Projects'

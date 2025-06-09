@@ -4,8 +4,8 @@ import (
 	"fmt"
 	"path/filepath"
 
-	dev "github.com/jurgen-kluft/ccode/dev"
-	utils "github.com/jurgen-kluft/ccode/utils"
+	"github.com/jurgen-kluft/ccode/dev"
+	"github.com/jurgen-kluft/ccode/foundation"
 )
 
 // -----------------------------------------------------------------------------------------------------
@@ -95,19 +95,19 @@ func (p *Project) FileEntriesGenerateUUIDs() {
 	for _, g := range p.SrcFileGroups {
 		for _, i := range g.Dict {
 			f := g.Values[i]
-			f.UUID = utils.GenerateUUID()
-			f.BuildUUID = utils.GenerateUUID()
+			f.UUID = foundation.GenerateUUID()
+			f.BuildUUID = foundation.GenerateUUID()
 		}
 	}
 	for _, g := range p.ResFileGroups {
 		for _, i := range g.Dict {
 			f := g.Values[i]
-			f.UUID = utils.GenerateUUID()
-			f.BuildUUID = utils.GenerateUUID()
+			f.UUID = foundation.GenerateUUID()
+			f.BuildUUID = foundation.GenerateUUID()
 		}
 	}
 	for _, f := range p.VirtualFolders.Folders {
-		f.UUID = utils.GenerateUUID()
+		f.UUID = foundation.GenerateUUID()
 	}
 }
 
@@ -186,23 +186,23 @@ func (p *ProjectResolved) InitXCodeConfig(prj *Project) {
 
 func (p *ProjectResolved) GenerateUUIDs(dev DevEnum) {
 	if dev.IsXCode() {
-		p.GenDataXcode.Uuid = utils.GenerateUUID()
-		p.GenDataXcode.TargetUuid = utils.GenerateUUID()
-		p.GenDataXcode.TargetProductUuid = utils.GenerateUUID()
-		p.GenDataXcode.ConfigListUuid = utils.GenerateUUID()
-		p.GenDataXcode.TargetConfigListUuid = utils.GenerateUUID()
-		p.GenDataXcode.DependencyProxyUuid = utils.GenerateUUID()
-		p.GenDataXcode.DependencyTargetUuid = utils.GenerateUUID()
-		p.GenDataXcode.DependencyTargetProxyUuid = utils.GenerateUUID()
+		p.GenDataXcode.Uuid = foundation.GenerateUUID()
+		p.GenDataXcode.TargetUuid = foundation.GenerateUUID()
+		p.GenDataXcode.TargetProductUuid = foundation.GenerateUUID()
+		p.GenDataXcode.ConfigListUuid = foundation.GenerateUUID()
+		p.GenDataXcode.TargetConfigListUuid = foundation.GenerateUUID()
+		p.GenDataXcode.DependencyProxyUuid = foundation.GenerateUUID()
+		p.GenDataXcode.DependencyTargetUuid = foundation.GenerateUUID()
+		p.GenDataXcode.DependencyTargetProxyUuid = foundation.GenerateUUID()
 
 		for _, config := range p.Configs.Values {
-			config.GenDataXcode.ProjectConfigUuid = utils.GenerateUUID()
-			config.GenDataXcode.TargetUuid = utils.GenerateUUID()
-			config.GenDataXcode.TargetConfigUuid = utils.GenerateUUID()
+			config.GenDataXcode.ProjectConfigUuid = foundation.GenerateUUID()
+			config.GenDataXcode.TargetUuid = foundation.GenerateUUID()
+			config.GenDataXcode.TargetConfigUuid = foundation.GenerateUUID()
 		}
 	}
 
-	p.GenDataMsDev.UUID = utils.GenerateUUID()
+	p.GenDataMsDev.UUID = foundation.GenerateUUID()
 }
 
 func (p *Project) Resolve(devEnum DevEnum) error {
@@ -282,9 +282,9 @@ func (p *Project) Resolve(devEnum DevEnum) error {
 // -----------------------------------------------------------------------------------------------------
 
 func (p *Project) GlobFiles(path string, sub string, pattern string, isExcluded func(string) bool) {
-	path = utils.PathNormalize(path)
-	sub = utils.PathNormalize(sub)
-	pattern = utils.PathNormalize(pattern)
+	path = foundation.PathNormalize(path)
+	sub = foundation.PathNormalize(sub)
+	pattern = foundation.PathNormalize(pattern)
 	files, err := GlobFiles(filepath.Join(path, sub), pattern, isExcluded)
 	if err != nil {
 		return
@@ -309,7 +309,7 @@ func (p *Project) BuildLibraryInformation(devEnum DevEnum, config *Config, works
 
 	// Library directories
 	for _, dir := range config.LibraryPaths.Values {
-		relpath := utils.PathGetRelativeTo(dir.String(), workspaceGenerateAbsPath)
+		relpath := foundation.PathGetRelativeTo(dir.String(), workspaceGenerateAbsPath)
 		linkDirs.Add(relpath)
 	}
 
@@ -322,7 +322,7 @@ func (p *Project) BuildLibraryInformation(devEnum DevEnum, config *Config, works
 	if devEnum.IsVisualStudio() {
 		for _, dep := range p.Dependencies.Values {
 			if cfg, has := dep.Resolved.Configs.Get(config.BuildConfig); has {
-				relpath := utils.PathGetRelativeTo(cfg.Resolved.OutputLib.Path, workspaceGenerateAbsPath)
+				relpath := foundation.PathGetRelativeTo(cfg.Resolved.OutputLib.Path, workspaceGenerateAbsPath)
 				linkLibs.Add(relpath)
 			}
 		}
@@ -373,18 +373,18 @@ type XcodeProjectConfig struct {
 	XcodeProj                 *FileEntry
 	PbxProj                   string
 	InfoPlistFile             string
-	Uuid                      utils.UUID
-	TargetUuid                utils.UUID
-	TargetProductUuid         utils.UUID
-	ConfigListUuid            utils.UUID
-	TargetConfigListUuid      utils.UUID
-	DependencyProxyUuid       utils.UUID
-	DependencyTargetUuid      utils.UUID
-	DependencyTargetProxyUuid utils.UUID
+	Uuid                      foundation.UUID
+	TargetUuid                foundation.UUID
+	TargetProductUuid         foundation.UUID
+	ConfigListUuid            foundation.UUID
+	TargetConfigListUuid      foundation.UUID
+	DependencyProxyUuid       foundation.UUID
+	DependencyTargetUuid      foundation.UUID
+	DependencyTargetProxyUuid foundation.UUID
 }
 
 type MsDevProjectConfig struct {
-	UUID utils.UUID
+	UUID foundation.UUID
 }
 
 func NewXcodeProjectConfig() *XcodeProjectConfig {
@@ -439,7 +439,7 @@ func (p *ProjectList) Get(name string) (*Project, bool) {
 
 func (p *ProjectList) CollectByWildcard(name string, list *ProjectList) {
 	for _, p := range p.Values {
-		if utils.PathMatchWildcard(p.Name, name, true) {
+		if foundation.PathMatchWildcard(p.Name, name, true) {
 			list.Add(p)
 		}
 	}

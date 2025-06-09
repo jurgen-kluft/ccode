@@ -1,8 +1,8 @@
 package tctools
 
-import utils "github.com/jurgen-kluft/ccode/utils"
+import "github.com/jurgen-kluft/ccode/foundation"
 
-func ApplyWin32Rc(env *utils.Vars, options *utils.Vars) {
+func ApplyWin32Rc(env *foundation.Vars, options *foundation.Vars) {
 
 	/*
 	   module(..., package.seeall)

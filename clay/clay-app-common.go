@@ -7,7 +7,7 @@ import (
 	"runtime"
 	"strings"
 
-	utils "github.com/jurgen-kluft/ccode/utils"
+	"github.com/jurgen-kluft/ccode/foundation"
 )
 
 const (
@@ -116,7 +116,7 @@ func Build(projectName string, targetConfig *Config) (err error) {
 		}
 	}
 	if outOfDate == 0 {
-		utils.LogPrintf("Nothing to build, everything is up to date...")
+		foundation.LogPrintf("Nothing to build, everything is up to date...")
 	}
 	return err
 }
@@ -132,11 +132,11 @@ func Clean(projectName string, buildConfig *Config) error {
 				// Note: We should be running this from the "target/esp" directory
 				// Remove all folders and files from "build/"
 				if err := os.RemoveAll(buildPath + "/"); err != nil {
-					return utils.LogErrorf(err, "Failed to remove build directory")
+					return foundation.LogErrorf(err, "Failed to remove build directory")
 				}
 
 				if err := os.MkdirAll(buildPath+"/", os.ModePerm); err != nil {
-					return utils.LogErrorf(err, "Failed to create build directory")
+					return foundation.LogErrorf(err, "Failed to create build directory")
 				}
 			}
 		}
@@ -163,15 +163,15 @@ func ListLibraries() error {
 
 	for _, prj := range prjs {
 		if i, ok := nameToIndex[prj.Name]; ok {
-			utils.LogPrintf("Project: %s\n", prj.Name)
-			utils.LogPrintf("  Configs: %s\n", configs[i])
+			foundation.LogPrintf("Project: %s\n", prj.Name)
+			foundation.LogPrintf("  Configs: %s\n", configs[i])
 			if len(prj.Dependencies) > 0 {
-				utils.LogPrintf("  Libraries:\n")
+				foundation.LogPrintf("  Libraries:\n")
 				for _, dep := range prj.Dependencies {
-					utils.LogPrintf("  - %s\n", dep.Name)
+					foundation.LogPrintf("  - %s\n", dep.Name)
 				}
 			}
-			utils.LogPrintln()
+			foundation.LogPrintln()
 
 			// Remove the entry from the map to avoid duplicates
 			delete(nameToIndex, prj.Name)
@@ -188,7 +188,7 @@ func AddBuildInfoAsCppLibrary(prj *Project, cfg *Config) {
 	buildPath := prj.GetBuildPath(cfg.GetSubDir())
 	hdrFilepath := filepath.Join(prj.GetBuildPath(buildPath), name+".h")
 	srcFilepath := filepath.Join(prj.GetBuildPath(buildPath), name+".cpp")
-	if utils.FileExists(hdrFilepath) && utils.FileExists(srcFilepath) {
+	if foundation.FileExists(hdrFilepath) && foundation.FileExists(srcFilepath) {
 		library := NewLibraryProject(name, prj.Config)
 		library.IncludeDirs.Add(filepath.Dir(hdrFilepath))
 		library.AddSourceFile(srcFilepath, filepath.Base(srcFilepath))

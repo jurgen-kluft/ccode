@@ -9,6 +9,7 @@ import (
 	"github.com/jurgen-kluft/ccode/denv"
 	"github.com/jurgen-kluft/ccode/dev"
 	"github.com/jurgen-kluft/ccode/embedded"
+	"github.com/jurgen-kluft/ccode/foundation"
 )
 
 // Init will initialize ccode before anything else is run
@@ -28,6 +29,7 @@ var (
 )
 
 func Init() bool {
+	foundation.SetLogger(foundation.NewStandardLogger(foundation.LevelError))
 
 	flag.StringVar(&cdev, "dev", "", "the build system to generate for (vs2022, tundra, make, cmake, xcode, clay)")
 	flag.StringVar(&carch, "arch", "", "the architecture to target (x64, arm64, amd64, 386, esp32, esp32c3, esp32s3)")

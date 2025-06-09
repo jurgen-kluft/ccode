@@ -1,10 +1,8 @@
 package tctools
 
-import (
-	utils "github.com/jurgen-kluft/ccode/utils"
-)
+import "github.com/jurgen-kluft/ccode/foundation"
 
-func ApplyGenericCpp(env *utils.Vars, options *utils.Vars) {
+func ApplyGenericCpp(env *foundation.Vars, options *foundation.Vars) {
 
 	env.SetMany(map[string][]string{
 		"IGNORED_AUTOEXTS":   {"h", "hpp", "hh", "hxx", "inl", "natvis"},

@@ -1,8 +1,8 @@
 package tchost
 
-import utils "github.com/jurgen-kluft/ccode/utils"
+import "github.com/jurgen-kluft/ccode/foundation"
 
-func ApplyMacOsx(env *utils.Vars) {
+func ApplyMacOsx(env *foundation.Vars) {
 	env.SetMany(map[string][]string{
 		"DOTNETRUN":       {"mono "},
 		"HOSTPROGSUFFIX":  {""},

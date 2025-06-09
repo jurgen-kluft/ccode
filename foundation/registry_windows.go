@@ -1,4 +1,4 @@
-package ccode_utils
+package foundation
 
 import (
 	"golang.org/x/sys/windows/registry"

@@ -6,7 +6,7 @@ import (
 	"strings"
 
 	"github.com/jurgen-kluft/ccode/dev"
-	utils "github.com/jurgen-kluft/ccode/utils"
+	"github.com/jurgen-kluft/ccode/foundation"
 )
 
 // DevProject is a structure that holds all the information that defines a project in an IDE
@@ -420,7 +420,7 @@ func (p *DevProjectList) Get(name string) (*DevProject, bool) {
 
 func (p *DevProjectList) CollectByWildcard(name string, list *DevProjectList) {
 	for _, p := range p.Values {
-		if utils.PathMatchWildcard(p.Name, name, true) {
+		if foundation.PathMatchWildcard(p.Name, name, true) {
 			list.Add(p)
 		}
 	}

@@ -1,10 +1,8 @@
 package tctools
 
-import (
-	utils "github.com/jurgen-kluft/ccode/utils"
-)
+import "github.com/jurgen-kluft/ccode/foundation"
 
-func ApplyClangOsx(env *utils.Vars, options *utils.Vars) {
+func ApplyClangOsx(env *foundation.Vars, options *foundation.Vars) {
 	env.Set("CC", "clang")
 	env.Set("CXX", "clang++")
 	env.Set("LD", "clang")

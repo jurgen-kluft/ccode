@@ -13,11 +13,11 @@ import (
 	"strings"
 
 	"github.com/jurgen-kluft/ccode/clay/toolchain/dpenc"
-	utils "github.com/jurgen-kluft/ccode/utils"
+	"github.com/jurgen-kluft/ccode/foundation"
 )
 
 type ArduinoEsp32 struct {
-	Vars        *utils.Vars
+	Vars        *foundation.Vars
 	ProjectName string // The name of the project, used for output files
 }
 
@@ -198,17 +198,17 @@ func (cl *ToolchainArduinoEsp32Compiler) Compile(sourceAbsFilepath string, objRe
 	args = append(args, "-o")
 	args = append(args, objRelFilepath)
 
-	utils.LogInfof("Compiling (%s) %s\n", cl.config.Config.AsString(), filepath.Base(sourceAbsFilepath))
+	foundation.LogInfof("Compiling (%s) %s\n", cl.config.Config.AsString(), filepath.Base(sourceAbsFilepath))
 
 	cmd := exec.Command(compilerPath, args...)
 	out, err := cmd.CombinedOutput()
 
 	if err != nil {
-		utils.LogInfof("Compile failed, output:\n%s\n", string(out))
-		return utils.LogErrorf(err, "Compiling failed")
+		foundation.LogInfof("Compile failed, output:\n%s\n", string(out))
+		return foundation.LogErrorf(err, "Compiling failed")
 	}
 	if len(out) > 0 {
-		utils.LogInfof("Compile output:\n%s\n", string(out))
+		foundation.LogInfof("Compile output:\n%s\n", string(out))
 	}
 
 	return nil
@@ -257,16 +257,16 @@ func (a *ToolchainArduinoEsp32Archiver) Archive(inputObjectFilepaths []string, o
 		a.archiverArgs = append(a.archiverArgs, objFile)
 	}
 
-	utils.LogInfof("Archiving %s\n", outputArchiveFilepath)
+	foundation.LogInfof("Archiving %s\n", outputArchiveFilepath)
 
 	cmd := exec.Command(a.archiverPath, a.archiverArgs...)
 	out, err := cmd.CombinedOutput()
 
 	if err != nil {
-		return utils.LogErrorf(err, "Archiving failed")
+		return foundation.LogErrorf(err, "Archiving failed")
 	}
 	if len(out) > 0 {
-		utils.LogInfof("Archive output:\n%s\n", string(out))
+		foundation.LogInfof("Archive output:\n%s\n", string(out))
 	}
 
 	return nil
@@ -362,7 +362,7 @@ func (l *ToolchainArduinoEsp32Linker) Link(inputArchiveAbsFilepaths []string, ou
 		linkerArgs[0] = "-Wl,--Map=" + outputMapFilepath
 	}
 
-	utils.LogInfof("Linking '%s'...\n", outputAppRelFilepathNoExt)
+	foundation.LogInfof("Linking '%s'...\n", outputAppRelFilepathNoExt)
 	cmd := exec.Command(linker, linkerArgs...)
 	out, err := cmd.CombinedOutput()
 
@@ -371,11 +371,11 @@ func (l *ToolchainArduinoEsp32Linker) Link(inputArchiveAbsFilepaths []string, ou
 	l.linkerArgs[0] = "genmap"
 
 	if err != nil {
-		utils.LogInfof("Link failed, output:\n%s\n", string(out))
-		return utils.LogErrorf(err, "Linking failed")
+		foundation.LogInfof("Link failed, output:\n%s\n", string(out))
+		return foundation.LogErrorf(err, "Linking failed")
 	}
 	if len(out) > 0 {
-		utils.LogInfof("Link output:\n%s\n", string(out))
+		foundation.LogInfof("Link output:\n%s\n", string(out))
 	}
 
 	return nil
@@ -504,13 +504,13 @@ func (b *ToolchainArduinoEsp32Burner) Build() error {
 		args := b.genImagePartitionsToolArgs
 
 		cmd := exec.Command(img, args.List...)
-		utils.LogInfof("Creating image partitions '%s' ...\n", b.toolChain.ProjectName+".partitions.bin")
+		foundation.LogInfof("Creating image partitions '%s' ...\n", b.toolChain.ProjectName+".partitions.bin")
 		out, err := cmd.CombinedOutput()
 		if err != nil {
-			return utils.LogErrorf(err, "Creating image partitions failed")
+			return foundation.LogErrorf(err, "Creating image partitions failed")
 		}
 		if len(out) > 0 {
-			utils.LogInfof("Image partitions output:\n%s\n", string(out))
+			foundation.LogInfof("Image partitions output:\n%s\n", string(out))
 		}
 		fmt.Println()
 
@@ -525,13 +525,13 @@ func (b *ToolchainArduinoEsp32Burner) Build() error {
 		args := b.genImageBinToolArgs
 
 		cmd := exec.Command(imgPath, args.List...)
-		utils.LogInfof("Generating image '%s'\n", b.toolChain.ProjectName+".bin")
+		foundation.LogInfof("Generating image '%s'\n", b.toolChain.ProjectName+".bin")
 		out, err := cmd.CombinedOutput()
 		if err != nil {
-			return utils.LogErrorf(err, "Image generation failed")
+			return foundation.LogErrorf(err, "Image generation failed")
 		}
 		if len(out) > 0 {
-			utils.LogInfof("Image generation output:\n%s\n", string(out))
+			foundation.LogInfof("Image generation output:\n%s\n", string(out))
 		}
 		fmt.Println()
 
@@ -546,14 +546,14 @@ func (b *ToolchainArduinoEsp32Burner) Build() error {
 		args := b.genBootloaderToolArgs
 
 		cmd := exec.Command(imgPath, args.List...)
-		utils.LogInfof("Generating bootloader '%s'\n", b.toolChain.ProjectName+".bootloader.bin")
+		foundation.LogInfof("Generating bootloader '%s'\n", b.toolChain.ProjectName+".bootloader.bin")
 		out, err := cmd.CombinedOutput()
 		if err != nil {
-			utils.LogInfof("Bootloader generation failed, output:\n%s\n", string(out))
-			return utils.LogErrorf(err, "Bootloader generation failed")
+			foundation.LogInfof("Bootloader generation failed, output:\n%s\n", string(out))
+			return foundation.LogErrorf(err, "Bootloader generation failed")
 		}
 		if len(out) > 0 {
-			utils.LogInfof("Bootloader generation output:\n%s\n", string(out))
+			foundation.LogInfof("Bootloader generation output:\n%s\n", string(out))
 		}
 		fmt.Println()
 
@@ -582,8 +582,8 @@ func (b *ToolchainArduinoEsp32Burner) SetupBurn(buildPath string) error {
 	b.flashToolArgs.Add("--flash_size", "keep")
 
 	bootApp0BinFilePath := b.toolChain.Vars.GetOne("burner.bootapp0.bin.filepath")
-	if !utils.FileExists(bootApp0BinFilePath) {
-		return utils.LogErrorf(os.ErrNotExist, "Boot app0 bin file '%s' does not exist", bootApp0BinFilePath)
+	if !foundation.FileExists(bootApp0BinFilePath) {
+		return foundation.LogErrorf(os.ErrNotExist, "Boot app0 bin file '%s' does not exist", bootApp0BinFilePath)
 	}
 
 	b.flashToolArgs.Add(b.toolChain.Vars.GetOne("burner.flash.bootloader.bin.offset"))
@@ -599,51 +599,51 @@ func (b *ToolchainArduinoEsp32Burner) SetupBurn(buildPath string) error {
 }
 
 func (b *ToolchainArduinoEsp32Burner) Burn() error {
-	if !utils.FileExists(b.genBootloaderToolOutputFilepath) {
-		return utils.LogErrorf(os.ErrNotExist, "Cannot burn, bootloader bin file '%s' doesn't exist", b.genBootloaderToolOutputFilepath)
+	if !foundation.FileExists(b.genBootloaderToolOutputFilepath) {
+		return foundation.LogErrorf(os.ErrNotExist, "Cannot burn, bootloader bin file '%s' doesn't exist", b.genBootloaderToolOutputFilepath)
 	}
-	if !utils.FileExists(b.genImagePartitionsToolOutputFilepath) {
-		return utils.LogErrorf(os.ErrNotExist, "Cannot burn, partitions bin file '%s' doesn't exist", b.genImagePartitionsToolOutputFilepath)
+	if !foundation.FileExists(b.genImagePartitionsToolOutputFilepath) {
+		return foundation.LogErrorf(os.ErrNotExist, "Cannot burn, partitions bin file '%s' doesn't exist", b.genImagePartitionsToolOutputFilepath)
 	}
-	if !utils.FileExists(b.genImageBinToolOutputFilepath) {
-		return utils.LogErrorf(os.ErrNotExist, "Cannot burn, application bin file '%s' doesn't exist", b.genImageBinToolOutputFilepath)
+	if !foundation.FileExists(b.genImageBinToolOutputFilepath) {
+		return foundation.LogErrorf(os.ErrNotExist, "Cannot burn, application bin file '%s' doesn't exist", b.genImageBinToolOutputFilepath)
 	}
 
 	flashToolPath := b.flashToolPath
 	flashToolArgs := b.flashToolArgs
 
-	utils.LogInfof("Flashing '%s'...\n", b.toolChain.ProjectName+".bin")
+	foundation.LogInfof("Flashing '%s'...\n", b.toolChain.ProjectName+".bin")
 
 	flashToolCmd := exec.Command(flashToolPath, flashToolArgs.List...)
 
 	// out, err := flashToolCmd.CombinedOutput()
 	// if err != nil {
-	// 	return utils.LogErrorf("Flashing failed with %s\n", err)
+	// 	return foundation.LogErrorf("Flashing failed with %s\n", err)
 	// }
 	// if len(out) > 0 {
-	// 	utils.LogInfof("Flashing output:\n%s\n", string(out))
+	// 	foundation.LogInfof("Flashing output:\n%s\n", string(out))
 	// }
 
 	pipe, _ := flashToolCmd.StdoutPipe()
 
 	if err := flashToolCmd.Start(); err != nil {
-		return utils.LogErrorf(err, "Flashing failed")
+		return foundation.LogErrorf(err, "Flashing failed")
 	}
 
 	reader := bufio.NewReader(pipe)
 	line, err := reader.ReadString('\n')
 	for err == nil {
-		fmt.Print(line)
+		foundation.LogPrint(line)
 		line, err = reader.ReadString('\n')
 		if err == io.EOF {
 			err = nil
 			break
 		}
 	}
-	fmt.Println()
+	foundation.LogPrintln()
 
 	if err != nil {
-		return utils.LogErrorf(err, "Flashing failed")
+		return foundation.LogErrorf(err, "Flashing failed")
 	}
 
 	return nil
@@ -663,7 +663,7 @@ func NewArduinoEsp32(espMcu string, projectName string) (*ArduinoEsp32, error) {
 
 	var espSdkPath string
 	if espSdkPath = os.Getenv("ESP_SDK"); espSdkPath == "" {
-		return nil, utils.LogErrorf(os.ErrNotExist, "ESP_SDK environment variable is not set, please set it to the path of the ESP32 SDK")
+		return nil, foundation.LogErrorf(os.ErrNotExist, "ESP_SDK environment variable is not set, please set it to the path of the ESP32 SDK")
 	}
 
 	type item struct {
@@ -766,7 +766,7 @@ func NewArduinoEsp32(espMcu string, projectName string) (*ArduinoEsp32, error) {
 
 	t := &ArduinoEsp32{
 		ProjectName: projectName,
-		Vars:        utils.NewVars(),
+		Vars:        foundation.NewVars(),
 	}
 
 	for _, kv := range vars {
@@ -794,7 +794,7 @@ func NewArduinoEsp32(espMcu string, projectName string) (*ArduinoEsp32, error) {
 		t.Vars.Append("cpp.compiler.system.includes", "{esp.arduino.sdk.path}/include")
 		t.Vars.Append("linker.system.library.paths", "{esp.arduino.sdk.path}/qio_qspi")
 	} else {
-		return nil, utils.LogErrorf(os.ErrInvalid, "unsupported ESP32 MCU: %s", espMcu)
+		return nil, foundation.LogErrorf(os.ErrInvalid, "unsupported ESP32 MCU: %s", espMcu)
 	}
 
 	ResolveVars(t.Vars)

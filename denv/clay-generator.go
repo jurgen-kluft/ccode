@@ -2,15 +2,14 @@ package denv
 
 import (
 	"fmt"
-	"log"
 	"os"
 	"os/exec"
 	"path/filepath"
 	"strconv"
 	"strings"
 
-	dev "github.com/jurgen-kluft/ccode/dev"
-	utils "github.com/jurgen-kluft/ccode/utils"
+	"github.com/jurgen-kluft/ccode/dev"
+	"github.com/jurgen-kluft/ccode/foundation"
 )
 
 // -------------------------------------------------------------------------------------
@@ -38,18 +37,18 @@ func (g *ClayGenerator) Generate() error {
 	currentDir, _ := os.Getwd()
 
 	appDir := g.TargetAbsPath
-	utils.MakeDir(appDir)
+	foundation.MakeDir(appDir)
 
-	log.Printf("Generating clay project files in '%s' for target %s", utils.PathGetRelativeTo(appDir, currentDir), g.BuildTarget)
+	foundation.LogPrintf("Generating clay project files in '%s' for target %s", foundation.PathGetRelativeTo(appDir, currentDir), g.BuildTarget)
 
-	out := utils.NewLineWriter(utils.IndentModeSpaces)
+	out := foundation.NewLineWriter(foundation.IndentModeSpaces)
 	g.generateMain(out)
 	g.generateProjectFile(out)
 
 	// Write the generated file to the target path
 	projectDotGoFilepath := filepath.Join(appDir, "clay.go")
 	if err := out.WriteToFile(projectDotGoFilepath); err != nil {
-		log.Printf("Error writing file %s: %v", projectDotGoFilepath, err)
+		return foundation.LogErrorf(err, "Error writing file %s: %v", projectDotGoFilepath)
 	}
 
 	// Run 'go build -o clay clay' in the build directory to get the clay executable
@@ -61,15 +60,15 @@ func (g *ClayGenerator) Generate() error {
 		if out, err := cmd.CombinedOutput(); err != nil {
 			return fmt.Errorf("Error running go build: %v\nOutput: %s", err, out)
 		}
-		log.Printf("You can now use the clay command in the build directory")
-		log.Printf("    %s", utils.PathGetRelativeTo(g.TargetAbsPath, currentDir))
-		log.Printf("Execute 'cd %s' to change to the build directory", utils.PathGetRelativeTo(g.TargetAbsPath, currentDir))
-		log.Printf("In there, run './clay help' for more information.")
+		foundation.LogPrintlnf("You can now use the clay command in the build directory")
+		foundation.LogPrintlnf("    %s", foundation.PathGetRelativeTo(g.TargetAbsPath, currentDir))
+		foundation.LogPrintlnf("Execute 'cd %s' to change to the build directory", foundation.PathGetRelativeTo(g.TargetAbsPath, currentDir))
+		foundation.LogPrintlnf("In there, run './clay help' for more information.")
 	}
 	return nil
 }
 
-func (g *ClayGenerator) generateMain(out *utils.LineWriter) {
+func (g *ClayGenerator) generateMain(out *foundation.LineWriter) {
 	out.WriteLine("// --------------------------------------------------------------------")
 	out.WriteLine("// ---------------------- GENERATED -----------------------------------")
 	out.WriteLine("// --------------------------------------------------------------------")
@@ -89,7 +88,7 @@ func (g *ClayGenerator) generateMain(out *utils.LineWriter) {
 	out.WriteLine("}")
 }
 
-func (g *ClayGenerator) generateProjectFile(out *utils.LineWriter) {
+func (g *ClayGenerator) generateProjectFile(out *foundation.LineWriter) {
 	out.WriteLine()
 	out.WriteLine("func CreateProjects(arch string) []*clay.Project {")
 	out.WriteILine("", "projects := []*clay.Project{}")
@@ -107,7 +106,7 @@ func (g *ClayGenerator) generateProjectFile(out *utils.LineWriter) {
 		if prj.SupportedTargets.Contains(g.BuildTarget) {
 
 			// Get the version info for this project
-			depVersionInfo := utils.NewGitVersionInfo(prj.ProjectAbsPath)
+			depVersionInfo := foundation.NewGitVersionInfo(prj.ProjectAbsPath)
 			prj.Version = depVersionInfo.Commit
 
 			//			projectBaseDir := prj.ProjectAbsPath

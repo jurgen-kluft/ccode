@@ -1,6 +1,6 @@
 package tctools
 
-import utils "github.com/jurgen-kluft/ccode/utils"
+import "github.com/jurgen-kluft/ccode/foundation"
 
 // module(..., package.seeall)
 
@@ -24,7 +24,7 @@ import utils "github.com/jurgen-kluft/ccode/utils"
 //   }
 // end
 
-func ApplyGccOsx(env *utils.Vars, options *utils.Vars) {
+func ApplyGccOsx(env *foundation.Vars, options *foundation.Vars) {
 
 	ApplyGcc(env, options)
 

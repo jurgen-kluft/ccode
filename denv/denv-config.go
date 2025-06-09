@@ -1,6 +1,6 @@
 package denv
 
-import dev "github.com/jurgen-kluft/ccode/dev"
+import "github.com/jurgen-kluft/ccode/dev"
 
 type DevConfig struct {
 	BuildType   dev.BuildType // Static, Dynamic, Executable

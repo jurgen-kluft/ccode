@@ -3,7 +3,7 @@ package denv
 import (
 	"strings"
 
-	dev "github.com/jurgen-kluft/ccode/dev"
+	"github.com/jurgen-kluft/ccode/dev"
 )
 
 // ----------------------------------------------------------------------------------------------------------

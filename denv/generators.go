@@ -7,7 +7,7 @@ import (
 	"strings"
 
 	"github.com/jurgen-kluft/ccode/dev"
-	utils "github.com/jurgen-kluft/ccode/utils"
+	"github.com/jurgen-kluft/ccode/foundation"
 )
 
 // ----------------------------------------------------------------------------------------------
@@ -72,7 +72,7 @@ type ExclusionFilter struct {
 }
 
 func (f *ExclusionFilter) IsExcluded(filepath string) bool {
-	parts := utils.PathSplitRelativeFilePath(filepath, true)
+	parts := foundation.PathSplitRelativeFilePath(filepath, true)
 	for i := 0; i < len(parts)-1; i++ {
 		p := strings.ToLower(parts[i])
 		if f.Filter(p) {

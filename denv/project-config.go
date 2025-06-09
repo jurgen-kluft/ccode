@@ -5,7 +5,7 @@ import (
 	"strings"
 
 	"github.com/jurgen-kluft/ccode/dev"
-	utils "github.com/jurgen-kluft/ccode/utils"
+	"github.com/jurgen-kluft/ccode/foundation"
 )
 
 // -----------------------------------------------------------------------------------------------------
@@ -65,7 +65,7 @@ func (p *ConfigList) Has(t dev.BuildConfig) bool {
 
 func (p *ConfigList) CollectByWildcard(name string, list *ConfigList) {
 	for _, p := range p.Values {
-		if utils.PathMatchWildcard(p.String(), name, true) {
+		if foundation.PathMatchWildcard(p.String(), name, true) {
 			list.Add(p)
 		}
 	}
@@ -93,9 +93,9 @@ type Config struct {
 	VisualStudioLink      *dev.KeyValueSet
 
 	GenDataXcode struct {
-		ProjectConfigUuid utils.UUID
-		TargetUuid        utils.UUID
-		TargetConfigUuid  utils.UUID
+		ProjectConfigUuid foundation.UUID
+		TargetUuid        foundation.UUID
+		TargetConfigUuid  foundation.UUID
 	}
 
 	Resolved *ConfigResolved
@@ -122,9 +122,9 @@ func NewConfig(t dev.BuildConfig, ws *Workspace, p *Project) *Config {
 	c.VisualStudioClCompile = dev.NewKeyValueSet()
 	c.VisualStudioLink = dev.NewKeyValueSet()
 
-	c.GenDataXcode.ProjectConfigUuid = utils.GenerateUUID()
-	c.GenDataXcode.TargetUuid = utils.GenerateUUID()
-	c.GenDataXcode.TargetConfigUuid = utils.GenerateUUID()
+	c.GenDataXcode.ProjectConfigUuid = foundation.GenerateUUID()
+	c.GenDataXcode.TargetUuid = foundation.GenerateUUID()
+	c.GenDataXcode.TargetConfigUuid = foundation.GenerateUUID()
 
 	c.InitTargetSettings()
 	c.InitXcodeSettings()

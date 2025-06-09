@@ -1,4 +1,4 @@
-package ccode_utils
+package foundation
 
 type RegistryKey int
 
