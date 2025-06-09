@@ -33,6 +33,14 @@ func FileExists(path string) bool {
 	return true
 }
 
+func DirExists(path string) bool {
+	// Check if the directory exists
+	if info, err := os.Stat(path); err == nil {
+		return info.IsDir()
+	}
+	return false
+}
+
 func FileRead(path string) ([]byte, error) {
 	// Open the file for reading
 	file, err := os.Open(path)

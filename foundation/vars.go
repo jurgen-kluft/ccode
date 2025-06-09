@@ -49,6 +49,16 @@ func (v *Vars) Append(key string, value ...string) {
 	}
 }
 
+func (v *Vars) Get(key string) (string, bool) {
+	if i, ok := v.Keys[key]; ok {
+		values := v.Values[i]
+		if len(values) > 0 {
+			return values[0], true
+		}
+	}
+	return "", false
+}
+
 func (v *Vars) GetOne(key string) string {
 	if i, ok := v.Keys[key]; ok {
 		values := v.Values[i]
