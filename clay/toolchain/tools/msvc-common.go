@@ -259,139 +259,6 @@ func getSdk(sdkVersion string, vsVersion vsVersion, targetArch winSupportedArch)
 	return getPreWin10Sdk(sdkVersion, vsVersion, targetArch)
 }
 
-/*
-function apply_msvc_visual_studio(version, env, options)
-
-  -- NOTE:  don't make changes to  `env` until you've asserted
-  --        that the requested version is in fact installed,
-  --        the `vs-wild` toolset will call this function
-  --        repeatedly with a the next version but the same `env`,
-  --        if a version fails (assert/error)
-
-  if native.host_platform ~= "windows" then
-    error("the msvc toolset only works on windows hosts")
-  end
-
-  -- Load basic MSVC environment setup first.
-  -- We're going to replace the paths to some tools.
-  tundra.unitgen.load_toolset('msvc', env)
-
-  options = options or {}
-
-  local target_arch = options.TargetArch or "x86"
-  local host_arch = options.HostArch or get_host_arch()
-
-  -- SDKs are identified by SdkVersion or vs version
-  -- each VS version defines a default SDK to use.
-  local sdk_version = options.SdkVersion or version
-  sdk_version = vs_sdk_map[sdk_version] or sdk_version
-
-  -- We'll find any edition of VS (including Express) here
-  local vs_root = native.reg_query("HKLM", "SOFTWARE\\Microsoft\\VisualStudio\\SxS\\VS7", version)
-  if vs_root == nil then
-    -- This is necessary for supporting the "Visual C++ Build Tools", which includes only the Compiler & SDK (not Visual Studio)
-    local vc_root = native.reg_query("HKLM", "SOFTWARE\\Microsoft\\VisualStudio\\SxS\\VC7", version)
-    if vc_root ~= nil then
-      vs_root = string.gsub(vc_root, "\\VC\\$", "\\")
-    end
-  end
-  assert(vs_root, "Visual Studio [Version " .. version .. "] isn't installed. To use a different Visual Studio version, edit tundra.lua accordingly")
-  vs_root = string.gsub(vs_root, "\\+$", "\\")
-
-  local vc_lib
-  local vc_bin
-
-  vc_bin =  vc_bin_map[host_arch][target_arch]
-  if not vc_bin then
-    errorf("can't build target arch %s on host arch %s", target_arch, host_arch)
-  end
-  vc_bin =  vs_root .. "vc\\bin\\" .. vc_bin
-
-  vc_lib =  vs_root .. "vc\\lib\\" .. vc_lib_map[host_arch][target_arch]
-
-  --
-  -- Now fix up the SDK
-  --
-  local sdk = get_sdk(sdk_version, version, target_arch)
-
-
-  --
-  -- Tools
-  --
-  local cl_exe = '"' .. path_combine(vc_bin, "cl.exe") .. '"'
-  local lib_exe = '"' .. path_combine(vc_bin, "lib.exe") .. '"'
-  local link_exe = '"' .. path_combine(vc_bin, "link.exe") .. '"'
-  local rc_exe = '"' .. path_combine(sdk.bin, "rc.exe") .. '"' -- pickup the Resource Compiler from the SDK
-
-  env:set('CC', cl_exe)
-  env:set('CXX', cl_exe)
-  env:set('LIB', lib_exe)
-  env:set('LD', link_exe)
-  env:set('RC', rc_exe)
-
-  if sdk_version == "9.0" then
-    env:set("RCOPTS", "") -- clear the "/nologo" option (it was first added in VS2010)
-  end
-
-  if version == "12.0" or version == "14.0" then
-    -- Force MSPDBSRV.EXE
-    env:set("CCOPTS", "/FS")
-    env:set("CXXOPTS", "/FS")
-  end
-
-  -- Wire-up the external environment
-
-  env:set_external_env_var('VSINSTALLDIR', vs_root)
-  env:set_external_env_var('VCINSTALLDIR', vs_root .. "\\vc")
-  env:set_external_env_var('DevEnvDir', vs_root .. "Common7\\IDE")
-
-  local include = {}
-
-  for _, v in ipairs(sdk.include) do
-    include[#include + 1] = v
-  end
-
-  include[#include + 1] = vs_root .. "VC\\ATLMFC\\INCLUDE"
-  include[#include + 1] = vs_root .. "VC\\INCLUDE"
-
-
-  -- if MFC isn't installed with VS
-  -- the linker will throw an error when looking for libs
-  -- Lua does not have a "does directory exist function"
-  -- we could use one here
-  local lib_str = sdk.lib_str .. ";" .. vs_root .. "\\VC\\ATLMFC\\lib\\" .. vc_lib_map[host_arch][target_arch] .. ";" .. vc_lib
-
-  env:set_external_env_var("WindowsSdkDir", sdk.root)
-  env:set_external_env_var("INCLUDE", table.concat(include, ';'))
-
-
-  env:set_external_env_var("LIB", lib_str)
-  env:set_external_env_var("LIBPATH", lib_str)
-
-  -- Modify %PATH%
-
-  local path = {}
-
-  path[#path + 1] = sdk.root
-  path[#path + 1] = vs_root .. "Common7\\IDE"
-
-  if "x86" == host_arch then
-    path[#path + 1] = vs_root .. "\\VC\\Bin"
-  elseif "x64" == host_arch then
-    path[#path + 1] = vs_root .. "\\VC\\Bin\\amd64"
-  elseif "arm" == host_arch then
-    path[#path + 1] = vs_root .. "\\VC\\Bin\\arm"
-  end
-
-  path[#path + 1] = vs_root .. "\\Common7\\IDE"
-
-  path[#path + 1] = env:get_external_env_var('PATH')
-
-  env:set_external_env_var("PATH", table.concat(path, ';'))
-
-end
-*/
-
 func applyMsvcVisualStudio(version vsVersion, env *foundation.Vars, options *foundation.Vars) error {
 	hostArch := getHostArch(options)
 	if hostArch != "windows" {
@@ -424,7 +291,7 @@ func applyMsvcVisualStudio(version vsVersion, env *foundation.Vars, options *fou
 		}
 	}
 	if vsRoot == "" {
-		panic("Visual Studio [Version " + string(version) + "] isn't installed. To use a different Visual Studio version, edit tundra.lua accordingly")
+		panic("Visual Studio [Version " + string(version) + "] isn't installed. Please use a different Visual Studio version")
 	}
 	vsRoot = strings.TrimSuffix(vsRoot, "\\")
 
