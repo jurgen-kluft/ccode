@@ -73,7 +73,7 @@ func (v *Vars) Get(key string) ([]string, bool) {
 	if i, ok := v.Keys[key]; ok {
 		return v.Values[i], true
 	}
-	return nil, false
+	return []string{}, false
 }
 
 func (v *Vars) ResolveString(variable string) string {

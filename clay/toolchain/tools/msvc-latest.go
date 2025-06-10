@@ -69,7 +69,7 @@ func (p vsProduct) String() string {
 	return string(p)
 }
 
-var vs_products = []vsProduct{
+var vsProducts = []vsProduct{
 	vsProductBuildTools,
 	vsProductCommunity,
 	vsProductProfessional,
@@ -206,12 +206,11 @@ func findVcTools(vsPath string, vsVersion vsVersion, vsProduct vsProduct, target
 	if targetVcToolsVersion == "" {
 		versionFile := filepath.Join(vcInstallDir, "Auxiliary", "Build", "Microsoft.VCToolsVersion.default.txt")
 		data, err := foundation.FileRead(versionFile)
-		if err != nil {
-			return "", "", "", fmt.Errorf("failed to read VC tools version file: %v", err)
-		}
-		lines := strings.Split(string(data), "\n")
-		if len(lines) > 0 {
-			vcToolsVersion = strings.TrimSpace(lines[0])
+		if err == nil {
+			lines := strings.Split(string(data), "\n")
+			if len(lines) > 0 {
+				vcToolsVersion = strings.TrimSpace(lines[0])
+			}
 		}
 	} else {
 		vcToolsVersion = targetVcToolsVersion
@@ -228,7 +227,7 @@ func findVcTools(vsPath string, vsVersion vsVersion, vsProduct vsProduct, target
 	return "", "", "", fmt.Errorf("VC tools version '%s' not found in %s", vcToolsVersion, vsInstallDir)
 }
 
-func ApplyMsvcVersion(env *foundation.Vars, options *foundation.Vars, extra *foundation.Vars) {
+func SetupMsvcVersion(env *foundation.Vars, options *foundation.Vars, extra *foundation.Vars) (externalEnv *foundation.Vars, err error) {
 
 	// Load the msvc toolset
 	ApplyMsvc(env, options, extra)
@@ -263,7 +262,7 @@ func ApplyMsvcVersion(env *foundation.Vars, options *foundation.Vars, extra *fou
 
 	winsdkDir, winsdkVersion, err := findWindowsSDK(targetWinsdkVersion, winAppPlatform)
 	if err != nil {
-		foundation.LogFatal(err)
+		return nil, err
 	}
 
 	envPath = append(envPath, filepath.Join(winsdkDir, "bin", winsdkVersion, hostArch.String()))
@@ -295,7 +294,16 @@ func ApplyMsvcVersion(env *foundation.Vars, options *foundation.Vars, extra *fou
 
 	vsInstallDir, vcInstallDir, vcToolsVersion, err := findVcTools(vsPath, vsVersion, vsProduct, targetVcToolsVersion, searchSet)
 	if err != nil {
-		foundation.LogFatal(err)
+		for _, product := range vsProducts {
+			if product == vsProduct {
+				continue // Skip the product we already have done
+			}
+			vsInstallDir, vcInstallDir, vcToolsVersion, err = findVcTools(vsPath, vsVersion, product, targetVcToolsVersion, searchSet)
+			if err == nil {
+				vsProduct = product
+				break
+			}
+		}
 	}
 
 	if vcToolsVersion == "" {
@@ -307,7 +315,7 @@ func ApplyMsvcVersion(env *foundation.Vars, options *foundation.Vars, extra *fou
 		}
 		vsDefaultPath := strings.ReplaceAll(vs_default_paths[vs_default_version], "\\", "\\\\")
 		foundation.LogFatalf("%s not found\n\n  Cannot find %s in any of the following locations:\n    %s\n\n  Check that 'Desktop development with C++' is installed together with the product version in Visual Studio Installer\n\n  If you want to use a specific version of Visual Studio you can try setting Path, Version and Product like this:\n\n  Tools = {\n    { \"msvc-vs-latest\", Path = \"%s\", Version = \"%s\", Product = \"%s\" }\n  }\n\n  %s",
-			vcProduct, vcProduct, strings.Join(searchSet, "\n    "), vsDefaultPath, vs_default_version, vs_products[0], vcProductVersionDisclaimer)
+			vcProduct, vcProduct, strings.Join(searchSet, "\n    "), vsDefaultPath, vs_default_version, vsProducts[0], vcProductVersionDisclaimer)
 	}
 
 	// to do: extension SDKs?
@@ -356,7 +364,7 @@ func ApplyMsvcVersion(env *foundation.Vars, options *foundation.Vars, extra *fou
 		} else if targetArch == winArchx86 {
 			envPath = append(envPath, filepath.Join(vsInstallDir, "VC", "Tools", "Llvm", "bin"))
 		} else {
-			foundation.LogFatalf("msvc-clang: target architecture '%s' not supported", targetArch.String())
+			return nil, fmt.Errorf("msvc-clang: target architecture '%s' not supported", targetArch.String())
 		}
 	}
 
@@ -369,12 +377,14 @@ func ApplyMsvcVersion(env *foundation.Vars, options *foundation.Vars, extra *fou
 	env.Set("CCOPTS", "/FS")
 	env.Set("CXXOPTS", "/FS")
 
-	env.Set("VSINSTALLDIR", vsInstallDir)
-	env.Set("VCINSTALLDIR", vcInstallDir)
-	env.Set("INCLUDE", strings.Join(envInclude, ";"))
-	env.Set("LIB", strings.Join(envLib, ";"))
-	env.Set("LIBPATH", strings.Join(envLibPath, ";"))
-	env.Set("PATH", strings.Join(envPath, ";"))
+	externalEnv = foundation.NewVars()
+	externalEnv.Set("VSTOOLSVERSION", vcToolsVersion)
+	externalEnv.Set("VSINSTALLDIR", vsInstallDir)
+	externalEnv.Set("VCINSTALLDIR", vcInstallDir)
+	externalEnv.Set("INCLUDE", envInclude...)
+	externalEnv.Set("LIB", envLib...)
+	externalEnv.Set("LIBPATH", envLibPath...)
+	externalEnv.Set("PATH", envPath...)
 
 	// Since there's a bit of magic involved in finding these we log them once, at the end.
 	// This also makes it easy to lock the SDK and C++ tools version if you want to do that.
@@ -385,8 +395,5 @@ func ApplyMsvcVersion(env *foundation.Vars, options *foundation.Vars, extra *fou
 		foundation.LogInfof("  VcToolsVersion    : %s", vcToolsVersion) // verbose?
 	}
 
-	env.Set("PATH", envPath...)
-	env.Set("INCLUDE", envInclude...)
-	env.Set("LIB", envLib...)
-	env.Set("LIBPATH", envLibPath...)
+	return externalEnv, nil
 }
