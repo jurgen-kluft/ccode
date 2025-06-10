@@ -69,7 +69,7 @@ func (p *Project) SetToolchain(config *Config) (err error) {
 	if targetOS == "arduino" {
 		p.Toolchain, err = toolchain.NewArduinoEsp32(config.Target.ArchAsString(), p.Name)
 	} else if targetOS == "windows" {
-		p.Toolchain, err = toolchain.NewWindowsMsdev()
+		p.Toolchain, err = toolchain.NewWinMsdev(config.Target.ArchAsString(), "Desktop")
 	} else if targetOS == "mac" || targetOS == "macos" || targetOS == "darwin" {
 		p.Toolchain, err = toolchain.NewDarwinClang(runtime.GOARCH, p.Frameworks)
 	} else {

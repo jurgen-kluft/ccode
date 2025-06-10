@@ -112,7 +112,7 @@ var supported_app_platforms = map[string]winAppPlatform{
 }
 
 func getProduct(options *foundation.Vars) vsProduct {
-	vsProduct := options.GetOneDefault("Product", "BuildTools")
+	vsProduct := options.GetFirstOrEmpty("Product")
 	switch strings.ToLower(vsProduct) {
 	case "buildtools":
 		return vsProductBuildTools
@@ -123,13 +123,12 @@ func getProduct(options *foundation.Vars) vsProduct {
 	case "enterprise":
 		return vsProductEnterprise
 	default:
-		foundation.LogFatalf("Unsupported Visual Studio product: %s", vsProduct)
 		return vsProductBuildTools // fallback, should never reach here
 	}
 }
 
 func getVsVersion(options *foundation.Vars) vsVersion {
-	vsVersion := options.GetOneDefault("Version", "2022")
+	vsVersion := options.GetFirstOrEmpty("Version")
 	switch strings.ToLower(vsVersion) {
 	case "2017":
 		return vsVersion2017
@@ -138,7 +137,6 @@ func getVsVersion(options *foundation.Vars) vsVersion {
 	case "2022":
 		return vsVersion2022
 	default:
-		foundation.LogFatalf("Unsupported Visual Studio version: %s", vsVersion)
 		return vs_default_version // fallback, should never reach here
 	}
 }
@@ -152,7 +150,7 @@ func getArch(arch string) winSupportedArch {
 
 // getHostArch Gets the host architecture from the options, default to x64
 func getHostArch(options *foundation.Vars) winSupportedArch {
-	if hostArch, ok := options.Get("HostArch"); ok {
+	if hostArch, ok := options.GetFirst("HostArch"); ok {
 		return getArch(hostArch)
 	}
 	if runtime.GOOS == "windows" {
@@ -170,14 +168,14 @@ func getHostArch(options *foundation.Vars) winSupportedArch {
 }
 
 func getTargetArch(options *foundation.Vars) winSupportedArch {
-	if targetArch, ok := options.Get("TargetArch"); ok {
+	if targetArch, ok := options.GetFirst("TargetArch"); ok {
 		return getArch(targetArch)
 	}
 	return winArchx64 // If not specified, default to x64
 }
 
 func getAppPlatform(options *foundation.Vars) winAppPlatform {
-	winAppPlatform := options.GetOneDefault("AppPlatform", "Desktop")
+	winAppPlatform := options.GetFirstOrEmpty("AppPlatform")
 	if platform, ok := supported_app_platforms[strings.ToLower(winAppPlatform)]; ok {
 		return platform
 	}
@@ -236,15 +234,15 @@ func ApplyMsvcVersion(env *foundation.Vars, options *foundation.Vars, extra *fou
 	ApplyMsvc(env, options, extra)
 
 	// These control the environment
-	vsPath := options.GetOneDefault("Path", "")
-	vsVersion := getVsVersion(options)                                    // default is 2022
-	vsProduct := getProduct(options)                                      // default is BuildTools
-	hostArch := getHostArch(options)                                      // default is x64
-	targetArch := getTargetArch(options)                                  // default is x64
-	winAppPlatform := getAppPlatform(options)                             // default is Desktop
-	targetWinsdkVersion := options.GetOneDefault("WindowsSdkVersion", "") // Windows SDK version
-	targetVcToolsVersion := options.GetOneDefault("VcToolsVersion", "")   // Visual C++ tools version
-	atlMfc := options.GetOneDefault("AtlMfc", "false")
+	vsPath := options.GetFirstOrEmpty("Path")
+	vsVersion := getVsVersion(options)                                  // default is 2022
+	vsProduct := getProduct(options)                                    // default is BuildTools
+	hostArch := getHostArch(options)                                    // default is x64
+	targetArch := getTargetArch(options)                                // default is x64
+	winAppPlatform := getAppPlatform(options)                           // default is Desktop
+	targetWinsdkVersion := options.GetFirstOrEmpty("WindowsSdkVersion") // Windows SDK version
+	targetVcToolsVersion := options.GetFirstOrEmpty("VcToolsVersion")   // Visual C++ tools version
+	atlMfc := options.GetFirstOrEmpty("AtlMfc")
 
 	if vsDefaultPath, ok := vs_default_paths[vsVersion]; !ok {
 		foundation.LogWarnf("Visual Studio %s has not been tested and might not work out of the box", vsVersion)
@@ -252,10 +250,10 @@ func ApplyMsvcVersion(env *foundation.Vars, options *foundation.Vars, extra *fou
 		vsPath = vsDefaultPath
 	}
 
-	envPath := env.GetAll("PATH")
-	envInclude := env.GetAll("INCLUDE")
-	envLib := env.GetAll("LIB")
-	envLibPath := env.GetAll("LIBPATH")
+	envPath, _ := env.Get("PATH")
+	envInclude, _ := env.Get("INCLUDE")
+	envLib, _ := env.Get("LIB")
+	envLibPath, _ := env.Get("LIBPATH")
 
 	// ------------------
 	// Windows SDK
@@ -349,7 +347,7 @@ func ApplyMsvcVersion(env *foundation.Vars, options *foundation.Vars, extra *fou
 		envLib = append(envLib, filepath.Join(vcToolsDir, "lib", "onecore", targetArch.String()))
 	}
 
-	if extra.GetOneDefault("Clang", "false") == "true" {
+	if extra.GetFirstOrEmpty("Clang") == "true" {
 		// file:///C:/Program%20Files%20(x86)/Microsoft%20Visual%20Studio/2022/BuildTools/VC/Tools/Llvm
 		if targetArch == winArchx64 {
 			envPath = append(envPath, filepath.Join(vsInstallDir, "VC", "Tools", "Llvm", "x64", "bin"))
@@ -362,7 +360,9 @@ func ApplyMsvcVersion(env *foundation.Vars, options *foundation.Vars, extra *fou
 		}
 	}
 
-	envPath = append(envPath, env.GetAll("PATH")...)
+	if paths, ok := env.Get("PATH"); ok {
+		envPath = append(envPath, paths...)
+	}
 
 	// Force MSPDBSRV.EXE (fix for issue with cl.exe running in parallel and otherwise corrupting PDB files)
 	// These options were added to Visual C++ in Visual Studio 2013. They do not exist in older versions.

@@ -273,7 +273,7 @@ func applyMsvcVisualStudio(version vsVersion, env *foundation.Vars, options *fou
 
 	targetArch := getTargetArch(options)
 
-	sdkVersion := options.GetOne("SdkVersion")
+	sdkVersion := options.GetFirstOrEmpty("SdkVersion")
 	if sdkVersion == "" {
 		sdkVersion = string(version)
 	}

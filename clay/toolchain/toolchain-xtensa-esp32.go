@@ -38,8 +38,8 @@ func (t *ArduinoEsp32) NewCompiler(config *Config) Compiler {
 	return &ToolchainArduinoEsp32Compiler{
 		toolChain:       t,
 		config:          config,
-		cCompilerPath:   t.Vars.GetOne("c.compiler"),
-		cppCompilerPath: t.Vars.GetOne("cpp.compiler"),
+		cCompilerPath:   t.Vars.GetFirstOrEmpty("c.compiler"),
+		cppCompilerPath: t.Vars.GetFirstOrEmpty("cpp.compiler"),
 		cCompilerArgs:   make([]string, 0, 64),
 		cppCompilerArgs: make([]string, 0, 64),
 	}
@@ -53,21 +53,24 @@ func (cl *ToolchainArduinoEsp32Compiler) SetupArgs(defines []string, includes []
 		cl.cCompilerArgs = append(cl.cCompilerArgs, "-c")
 		cl.cCompilerArgs = append(cl.cCompilerArgs, "-MMD")
 
-		responseFileFlags := cl.toolChain.Vars.GetOne("c.compiler.response.flags")
-		if len(responseFileFlags) > 0 {
+		if responseFileFlags, ok := cl.toolChain.Vars.GetFirst("c.compiler.response.flags"); ok {
 			cl.cCompilerArgs = append(cl.cCompilerArgs, "@"+responseFileFlags)
 		}
 
-		switches := cl.toolChain.Vars.GetAll("c.compiler.switches")
-		cl.cCompilerArgs = append(cl.cCompilerArgs, switches...)
+		if switches, ok := cl.toolChain.Vars.Get("c.compiler.switches"); ok {
+			cl.cCompilerArgs = append(cl.cCompilerArgs, switches...)
+		}
 
-		warningSwitches := cl.toolChain.Vars.GetAll("c.compiler.warning.switches")
-		cl.cCompilerArgs = append(cl.cCompilerArgs, warningSwitches...)
+		if warningSwitches, ok := cl.toolChain.Vars.Get("c.compiler.warning.switches"); ok {
+			cl.cCompilerArgs = append(cl.cCompilerArgs, warningSwitches...)
+		}
 
 		// Compiler system defines (debug / release ?)
-		for _, d := range cl.toolChain.Vars.GetAll("c.compiler.defines") {
-			cl.cCompilerArgs = append(cl.cCompilerArgs, "-D")
-			cl.cCompilerArgs = append(cl.cCompilerArgs, d)
+		if compilerDefines, ok := cl.toolChain.Vars.Get("c.compiler.defines"); ok {
+			for _, d := range compilerDefines {
+				cl.cCompilerArgs = append(cl.cCompilerArgs, "-D")
+				cl.cCompilerArgs = append(cl.cCompilerArgs, d)
+			}
 		}
 
 		// Compiler user defines
@@ -76,14 +79,12 @@ func (cl *ToolchainArduinoEsp32Compiler) SetupArgs(defines []string, includes []
 			cl.cCompilerArgs = append(cl.cCompilerArgs, define)
 		}
 
-		responseFileDefines := cl.toolChain.Vars.GetOne("c.compiler.response.defines")
-		if len(responseFileDefines) > 0 {
+		if responseFileDefines, ok := cl.toolChain.Vars.GetFirst("c.compiler.response.defines"); ok {
 			cl.cCompilerArgs = append(cl.cCompilerArgs, "@"+responseFileDefines)
 		}
 
 		// Compiler prefix include paths
-		compilerPrefixInclude := cl.toolChain.Vars.GetOne("c.compiler.system.prefix.include")
-		if len(compilerPrefixInclude) > 0 {
+		if compilerPrefixInclude, ok := cl.toolChain.Vars.GetFirst("c.compiler.system.prefix.include"); ok {
 			cl.cCompilerArgs = append(cl.cCompilerArgs, "-iprefix")
 			// Make sure the path ends with a /
 			if !strings.HasSuffix(compilerPrefixInclude, "/") {
@@ -92,17 +93,17 @@ func (cl *ToolchainArduinoEsp32Compiler) SetupArgs(defines []string, includes []
 				cl.cCompilerArgs = append(cl.cCompilerArgs, compilerPrefixInclude)
 			}
 
-			responseFileIncludes := cl.toolChain.Vars.GetOne("c.compiler.response.includes")
-			if len(responseFileIncludes) > 0 {
+			if responseFileIncludes, ok := cl.toolChain.Vars.GetFirst("c.compiler.response.includes"); ok {
 				cl.cCompilerArgs = append(cl.cCompilerArgs, "@"+responseFileIncludes)
 			}
 		}
 
 		// Compiler system include paths
-		systemIncludes := cl.toolChain.Vars.GetAll("c.compiler.system.includes")
-		for _, include := range systemIncludes {
-			cl.cCompilerArgs = append(cl.cCompilerArgs, "-I")
-			cl.cCompilerArgs = append(cl.cCompilerArgs, include)
+		if systemIncludes, ok := cl.toolChain.Vars.Get("c.compiler.system.includes"); ok {
+			for _, include := range systemIncludes {
+				cl.cCompilerArgs = append(cl.cCompilerArgs, "-I")
+				cl.cCompilerArgs = append(cl.cCompilerArgs, include)
+			}
 		}
 
 		// User include paths
@@ -119,21 +120,24 @@ func (cl *ToolchainArduinoEsp32Compiler) SetupArgs(defines []string, includes []
 		cl.cppCompilerArgs = append(cl.cppCompilerArgs, "-c")
 		cl.cppCompilerArgs = append(cl.cppCompilerArgs, "-MMD")
 
-		cppResponseFileFlags := cl.toolChain.Vars.GetOne("cpp.compiler.response.flags")
-		if len(cppResponseFileFlags) > 0 {
+		if cppResponseFileFlags, ok := cl.toolChain.Vars.GetFirst("cpp.compiler.response.flags"); ok {
 			cl.cppCompilerArgs = append(cl.cppCompilerArgs, "@"+cppResponseFileFlags)
 		}
 
-		cppSwitches := cl.toolChain.Vars.GetAll("cpp.compiler.switches")
-		cl.cppCompilerArgs = append(cl.cppCompilerArgs, cppSwitches...)
+		if cppSwitches, ok := cl.toolChain.Vars.Get("cpp.compiler.switches"); ok {
+			cl.cppCompilerArgs = append(cl.cppCompilerArgs, cppSwitches...)
+		}
 
-		cppWarningSwitches := cl.toolChain.Vars.GetAll("cpp.compiler.warning.switches")
-		cl.cppCompilerArgs = append(cl.cppCompilerArgs, cppWarningSwitches...)
+		if cppWarningSwitches, ok := cl.toolChain.Vars.Get("cpp.compiler.warning.switches"); ok {
+			cl.cppCompilerArgs = append(cl.cppCompilerArgs, cppWarningSwitches...)
+		}
 
 		// Compiler system defines (debug / release ?)
-		for _, d := range cl.toolChain.Vars.GetAll("cpp.compiler.defines") {
-			cl.cppCompilerArgs = append(cl.cppCompilerArgs, "-D")
-			cl.cppCompilerArgs = append(cl.cppCompilerArgs, d)
+		if compilerDefines, ok := cl.toolChain.Vars.Get("cpp.compiler.defines"); ok {
+			for _, d := range compilerDefines {
+				cl.cppCompilerArgs = append(cl.cppCompilerArgs, "-D")
+				cl.cppCompilerArgs = append(cl.cppCompilerArgs, d)
+			}
 		}
 
 		// Compiler user defines
@@ -142,14 +146,12 @@ func (cl *ToolchainArduinoEsp32Compiler) SetupArgs(defines []string, includes []
 			cl.cppCompilerArgs = append(cl.cppCompilerArgs, define)
 		}
 
-		responseFileDefines := cl.toolChain.Vars.GetOne("cpp.compiler.response.defines")
-		if len(responseFileDefines) > 0 {
+		if responseFileDefines, ok := cl.toolChain.Vars.GetFirst("cpp.compiler.response.defines"); ok {
 			cl.cppCompilerArgs = append(cl.cppCompilerArgs, "@"+responseFileDefines)
 		}
 
 		// Compiler prefix include paths
-		compilerPrefixInclude := cl.toolChain.Vars.GetOne("cpp.compiler.system.prefix.include")
-		if len(compilerPrefixInclude) > 0 {
+		if compilerPrefixInclude, ok := cl.toolChain.Vars.GetFirst("cpp.compiler.system.prefix.include"); ok {
 			cl.cppCompilerArgs = append(cl.cppCompilerArgs, "-iprefix")
 			// Make sure the path ends with a /
 			if !strings.HasSuffix(compilerPrefixInclude, "/") {
@@ -158,17 +160,17 @@ func (cl *ToolchainArduinoEsp32Compiler) SetupArgs(defines []string, includes []
 				cl.cppCompilerArgs = append(cl.cppCompilerArgs, compilerPrefixInclude)
 			}
 
-			responseFileIncludes := cl.toolChain.Vars.GetOne("cpp.compiler.response.includes")
-			if len(responseFileIncludes) > 0 {
+			if responseFileIncludes, ok := cl.toolChain.Vars.GetFirst("cpp.compiler.response.includes"); ok {
 				cl.cppCompilerArgs = append(cl.cppCompilerArgs, "@"+responseFileIncludes)
 			}
 		}
 
 		// Compiler system include paths
-		systemIncludes := cl.toolChain.Vars.GetAll("cpp.compiler.system.includes")
-		for _, include := range systemIncludes {
-			cl.cppCompilerArgs = append(cl.cppCompilerArgs, "-I")
-			cl.cppCompilerArgs = append(cl.cppCompilerArgs, include)
+		if systemIncludes, ok := cl.toolChain.Vars.Get("cpp.compiler.system.includes"); ok {
+			for _, include := range systemIncludes {
+				cl.cppCompilerArgs = append(cl.cppCompilerArgs, "-I")
+				cl.cppCompilerArgs = append(cl.cppCompilerArgs, include)
+			}
 		}
 
 		// User include paths
@@ -229,7 +231,7 @@ func (t *ArduinoEsp32) NewArchiver(a ArchiverType, config *Config) Archiver {
 	return &ToolchainArduinoEsp32Archiver{
 		toolChain:    t,
 		config:       config,
-		archiverPath: t.Vars.GetOne("archiver"),
+		archiverPath: t.Vars.GetFirstOrEmpty("archiver"),
 		archiverArgs: []string{},
 	}
 }
@@ -287,7 +289,7 @@ func (t *ArduinoEsp32) NewLinker(config *Config) Linker {
 	return &ToolchainArduinoEsp32Linker{
 		toolChain:  t,
 		config:     config,
-		linkerPath: t.Vars.GetOne("linker"),
+		linkerPath: t.Vars.GetFirstOrEmpty("linker"),
 		linkerArgs: make([]string, 0, 64),
 	}
 }
@@ -305,10 +307,11 @@ func (l *ToolchainArduinoEsp32Linker) SetupArgs(generateMapFile bool, libraryPat
 		l.linkerArgs = append(l.linkerArgs, "genmap")
 	}
 
-	linkerSystemLibraryPaths := l.toolChain.Vars.GetAll("linker.system.library.paths")
-	for _, libPath := range linkerSystemLibraryPaths {
-		l.linkerArgs = append(l.linkerArgs, "-L")
-		l.linkerArgs = append(l.linkerArgs, libPath)
+	if linkerSystemLibraryPaths, ok := l.toolChain.Vars.Get("linker.system.library.paths"); ok {
+		for _, libPath := range linkerSystemLibraryPaths {
+			l.linkerArgs = append(l.linkerArgs, "-L")
+			l.linkerArgs = append(l.linkerArgs, libPath)
+		}
 	}
 
 	// User library paths
@@ -319,12 +322,12 @@ func (l *ToolchainArduinoEsp32Linker) SetupArgs(generateMapFile bool, libraryPat
 
 	l.linkerArgs = append(l.linkerArgs, "-Wl,--wrap=esp_panic_handler")
 
-	linkerResponseFile := l.toolChain.Vars.GetAll("linker.response.ldflags")
+	linkerResponseFile, _ := l.toolChain.Vars.Get("linker.response.ldflags")
 	if len(linkerResponseFile) == 1 {
 		l.linkerArgs = append(l.linkerArgs, "@"+linkerResponseFile[0])
 	}
 
-	linkerResponseFile = l.toolChain.Vars.GetAll("linker.response.ldscripts")
+	linkerResponseFile, _ = l.toolChain.Vars.Get("linker.response.ldscripts")
 	if len(linkerResponseFile) == 1 {
 		l.linkerArgs = append(l.linkerArgs, "@"+linkerResponseFile[0])
 	}
@@ -336,7 +339,7 @@ func (l *ToolchainArduinoEsp32Linker) SetupArgs(generateMapFile bool, libraryPat
 			l.linkerArgs = append(l.linkerArgs, libFile)
 		}
 
-		linkerResponseFile = l.toolChain.Vars.GetAll("linker.response.ldlibs")
+		linkerResponseFile, _ = l.toolChain.Vars.Get("linker.response.ldlibs")
 		if len(linkerResponseFile) == 1 {
 			l.linkerArgs = append(l.linkerArgs, "@"+linkerResponseFile[0])
 		}
@@ -419,19 +422,19 @@ func (t *ArduinoEsp32) NewBurner(config *Config) Burner {
 		genImageBinToolArgsHash:              nil, // Will be set later
 		genImageBinToolOutputFilepath:        "",
 		genImageBinToolInputFilepaths:        []string{},
-		genImageBinToolPath:                  t.Vars.GetOne("burner.generate-image-bin"),
+		genImageBinToolPath:                  t.Vars.GetFirstOrEmpty("burner.generate-image-bin"),
 		genImagePartitionsToolArgs:           NewArguments(64),
 		genImagePartitionsToolArgsHash:       nil, // Will be set later
 		genImagePartitionsToolOutputFilepath: "",
 		genImagePartitionsToolInputFilepaths: []string{},
-		genImagePartitionsToolPath:           t.Vars.GetOne("burner.generate-partitions-bin"),
+		genImagePartitionsToolPath:           t.Vars.GetFirstOrEmpty("burner.generate-partitions-bin"),
 		genBootloaderToolArgs:                NewArguments(64),
 		genBootloaderToolArgsHash:            nil, // Will be set later
 		genBootloaderToolOutputFilepath:      "",
 		genBootloaderToolInputFilepaths:      []string{},
-		genBootloaderToolPath:                t.Vars.GetOne("burner.generate-bootloader"),
+		genBootloaderToolPath:                t.Vars.GetFirstOrEmpty("burner.generate-bootloader"),
 		flashToolArgs:                        NewArguments(64),
-		flashToolPath:                        t.Vars.GetOne("burner.flash"),
+		flashToolPath:                        t.Vars.GetFirstOrEmpty("burner.flash"),
 	}
 }
 
@@ -451,29 +454,29 @@ func (b *ToolchainArduinoEsp32Burner) SetupBuild(buildPath string) {
 	projectBootloaderBinFilepath := filepath.Join(buildPath, b.toolChain.ProjectName+".bootloader.bin")
 
 	b.genImageBinToolArgs.Clear()
-	b.genImageBinToolArgs.Add("--chip", b.toolChain.Vars.GetOne("esp.mcu"))
+	b.genImageBinToolArgs.Add("--chip", b.toolChain.Vars.GetFirstOrEmpty("esp.mcu"))
 	b.genImageBinToolArgs.Add("elf2image")
-	b.genImageBinToolArgs.Add("--flash_mode", b.toolChain.Vars.GetOne("burner.flash.mode"))
-	b.genImageBinToolArgs.Add("--flash_freq", b.toolChain.Vars.GetOne("burner.flash.frequency"))
-	b.genImageBinToolArgs.Add("--flash_size", b.toolChain.Vars.GetOne("burner.flash.size"))
-	b.genImageBinToolArgs.Add("--elf-sha256-offset", b.toolChain.Vars.GetOne("burner.flash.elf.share.offset"))
+	b.genImageBinToolArgs.Add("--flash_mode", b.toolChain.Vars.GetFirstOrEmpty("burner.flash.mode"))
+	b.genImageBinToolArgs.Add("--flash_freq", b.toolChain.Vars.GetFirstOrEmpty("burner.flash.frequency"))
+	b.genImageBinToolArgs.Add("--flash_size", b.toolChain.Vars.GetFirstOrEmpty("burner.flash.size"))
+	b.genImageBinToolArgs.Add("--elf-sha256-offset", b.toolChain.Vars.GetFirstOrEmpty("burner.flash.elf.share.offset"))
 	b.genImageBinToolArgs.Add("-o", projectBinFilepath)
 	b.genImageBinToolArgs.Add(projectElfFilepath)
 
 	b.genImagePartitionsToolArgs.Clear()
-	b.genImagePartitionsToolArgs.Add(b.toolChain.Vars.GetOne("burner.generate-partitions-bin.script"))
+	b.genImagePartitionsToolArgs.Add(b.toolChain.Vars.GetFirstOrEmpty("burner.generate-partitions-bin.script"))
 	b.genImagePartitionsToolArgs.Add("-q")
-	b.genImagePartitionsToolArgs.Add(b.toolChain.Vars.GetOne("burner.flash.partitions.csv.filepath"))
+	b.genImagePartitionsToolArgs.Add(b.toolChain.Vars.GetFirstOrEmpty("burner.flash.partitions.csv.filepath"))
 	b.genImagePartitionsToolArgs.Add(projectPartitionsBinFilepath)
 
 	b.genBootloaderToolArgs.Clear()
-	b.genBootloaderToolArgs.Add("--chip", b.toolChain.Vars.GetOne("esp.mcu"))
+	b.genBootloaderToolArgs.Add("--chip", b.toolChain.Vars.GetFirstOrEmpty("esp.mcu"))
 	b.genBootloaderToolArgs.Add("elf2image")
-	b.genBootloaderToolArgs.Add("--flash_mode", b.toolChain.Vars.GetOne("burner.flash.mode"))
-	b.genBootloaderToolArgs.Add("--flash_freq", b.toolChain.Vars.GetOne("burner.flash.frequency"))
-	b.genBootloaderToolArgs.Add("--flash_size", b.toolChain.Vars.GetOne("burner.flash.size"))
+	b.genBootloaderToolArgs.Add("--flash_mode", b.toolChain.Vars.GetFirstOrEmpty("burner.flash.mode"))
+	b.genBootloaderToolArgs.Add("--flash_freq", b.toolChain.Vars.GetFirstOrEmpty("burner.flash.frequency"))
+	b.genBootloaderToolArgs.Add("--flash_size", b.toolChain.Vars.GetFirstOrEmpty("burner.flash.size"))
 	b.genBootloaderToolArgs.Add("-o", projectBootloaderBinFilepath)
-	sdkBootLoaderElfPath := b.toolChain.Vars.GetOne("burner.sdk.bootloader.elf.path")
+	sdkBootLoaderElfPath, _ := b.toolChain.Vars.GetFirst("burner.sdk.bootloader.elf.path")
 	b.genBootloaderToolArgs.Add(sdkBootLoaderElfPath)
 
 	// File Dependency Tracker and Information
@@ -571,9 +574,9 @@ func (b *ToolchainArduinoEsp32Burner) SetupBurn(buildPath string) error {
 
 	b.flashToolArgs.Clear()
 
-	b.flashToolArgs.Add("--chip", b.toolChain.Vars.GetOne("esp.mcu"))
-	b.flashToolArgs.Add("--port", b.toolChain.Vars.GetOne("burner.flash.port"))
-	b.flashToolArgs.Add("--baud", b.toolChain.Vars.GetOne("burner.flash.baud"))
+	b.flashToolArgs.Add("--chip", b.toolChain.Vars.GetFirstOrEmpty("esp.mcu"))
+	b.flashToolArgs.Add("--port", b.toolChain.Vars.GetFirstOrEmpty("burner.flash.port"))
+	b.flashToolArgs.Add("--baud", b.toolChain.Vars.GetFirstOrEmpty("burner.flash.baud"))
 	b.flashToolArgs.Add("--before", "default_reset")
 	b.flashToolArgs.Add("--after", "hard_reset")
 	b.flashToolArgs.Add("write_flash", "-z")
@@ -581,18 +584,18 @@ func (b *ToolchainArduinoEsp32Burner) SetupBurn(buildPath string) error {
 	b.flashToolArgs.Add("--flash_freq", "keep")
 	b.flashToolArgs.Add("--flash_size", "keep")
 
-	bootApp0BinFilePath := b.toolChain.Vars.GetOne("burner.bootapp0.bin.filepath")
+	bootApp0BinFilePath, _ := b.toolChain.Vars.GetFirst("burner.bootapp0.bin.filepath")
 	if !foundation.FileExists(bootApp0BinFilePath) {
 		return foundation.LogErrorf(os.ErrNotExist, "Boot app0 bin file '%s' does not exist", bootApp0BinFilePath)
 	}
 
-	b.flashToolArgs.Add(b.toolChain.Vars.GetOne("burner.flash.bootloader.bin.offset"))
+	b.flashToolArgs.Add(b.toolChain.Vars.GetFirstOrEmpty("burner.flash.bootloader.bin.offset"))
 	b.flashToolArgs.Add(b.genBootloaderToolOutputFilepath)
-	b.flashToolArgs.Add(b.toolChain.Vars.GetOne("burner.flash.partitions.bin.offset"))
+	b.flashToolArgs.Add(b.toolChain.Vars.GetFirstOrEmpty("burner.flash.partitions.bin.offset"))
 	b.flashToolArgs.Add(b.genImagePartitionsToolOutputFilepath)
-	b.flashToolArgs.Add(b.toolChain.Vars.GetOne("burner.flash.bootapp0.bin.offset"))
+	b.flashToolArgs.Add(b.toolChain.Vars.GetFirstOrEmpty("burner.flash.bootapp0.bin.offset"))
 	b.flashToolArgs.Add(bootApp0BinFilePath)
-	b.flashToolArgs.Add(b.toolChain.Vars.GetOne("burner.flash.application.bin.offset"))
+	b.flashToolArgs.Add(b.toolChain.Vars.GetFirstOrEmpty("burner.flash.application.bin.offset"))
 	b.flashToolArgs.Add(b.genImageBinToolOutputFilepath)
 
 	return nil

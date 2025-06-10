@@ -31,8 +31,8 @@ func (t *DarwinClang) NewCompiler(config *Config) Compiler {
 	return &ToolchainDarwinClangCompiler{
 		toolChain:       t,
 		config:          config,
-		cCompilerPath:   t.Vars.GetOne("c.compiler"),
-		cppCompilerPath: t.Vars.GetOne("cpp.compiler"),
+		cCompilerPath:   t.Vars.GetFirstOrEmpty("c.compiler"),
+		cppCompilerPath: t.Vars.GetFirstOrEmpty("cpp.compiler"),
 		cArgs:           []string{},
 		cppArgs:         []string{},
 	}
@@ -43,12 +43,15 @@ func (cl *ToolchainDarwinClangCompiler) SetupArgs(_defines []string, _includes [
 	cl.cArgs = make([]string, 0, 64)
 
 	cl.cArgs = append(cl.cArgs, `-c`)
-	archFlags := cl.toolChain.Vars.GetAll(`c.compiler.flags.arch`)
-	cl.cArgs = append(cl.cArgs, archFlags...)
-	picFlags := cl.toolChain.Vars.GetAll(`c.compiler.flags.pic`)
-	cl.cArgs = append(cl.cArgs, picFlags...)
-	stdFlags := cl.toolChain.Vars.GetAll(`c.compiler.flags.std`)
-	cl.cArgs = append(cl.cArgs, stdFlags...)
+	if archFlags, ok := cl.toolChain.Vars.Get(`c.compiler.flags.arch`); ok {
+		cl.cArgs = append(cl.cArgs, archFlags...)
+	}
+	if picFlags, ok := cl.toolChain.Vars.Get(`c.compiler.flags.pic`); ok {
+		cl.cArgs = append(cl.cArgs, picFlags...)
+	}
+	if stdFlags, ok := cl.toolChain.Vars.Get(`c.compiler.flags.std`); ok {
+		cl.cArgs = append(cl.cArgs, stdFlags...)
+	}
 
 	flagsStr := `c.compiler.flags.release`
 	definesStr := `c.compiler.defines.release`
@@ -60,14 +63,13 @@ func (cl *ToolchainDarwinClangCompiler) SetupArgs(_defines []string, _includes [
 		definesStr = `c.compiler.defines.final`
 	}
 
-	flags := cl.toolChain.Vars.GetAll(flagsStr)
-	cl.cArgs = append(cl.cArgs, flags...)
-	defines := cl.toolChain.Vars.GetAll(definesStr)
-	for _, define := range defines {
-		cl.cArgs = append(cl.cArgs, `-D`, define)
+	if flags, ok := cl.toolChain.Vars.Get(flagsStr); ok {
+		cl.cArgs = append(cl.cArgs, flags...)
 	}
-	for _, define := range _defines {
-		cl.cArgs = append(cl.cArgs, `-D`, define)
+	if defines, ok := cl.toolChain.Vars.Get(definesStr); ok {
+		for _, define := range defines {
+			cl.cArgs = append(cl.cArgs, `-D`, define)
+		}
 	}
 	for _, include := range _includes {
 		cl.cArgs = append(cl.cArgs, `-I`, include)
@@ -79,12 +81,15 @@ func (cl *ToolchainDarwinClangCompiler) SetupArgs(_defines []string, _includes [
 	cl.cppArgs = make([]string, 0, 64)
 
 	cl.cppArgs = append(cl.cppArgs, `-c`)
-	archFlags = cl.toolChain.Vars.GetAll(`cpp.compiler.flags.arch`)
-	cl.cppArgs = append(cl.cppArgs, archFlags...)
-	picFlags = cl.toolChain.Vars.GetAll(`cpp.compiler.flags.pic`)
-	cl.cppArgs = append(cl.cppArgs, picFlags...)
-	stdFlags = cl.toolChain.Vars.GetAll(`cpp.compiler.flags.std`)
-	cl.cppArgs = append(cl.cppArgs, stdFlags...)
+	if archFlags, ok := cl.toolChain.Vars.Get(`cpp.compiler.flags.arch`); ok {
+		cl.cppArgs = append(cl.cppArgs, archFlags...)
+	}
+	if picFlags, ok := cl.toolChain.Vars.Get(`cpp.compiler.flags.pic`); ok {
+		cl.cppArgs = append(cl.cppArgs, picFlags...)
+	}
+	if stdFlags, ok := cl.toolChain.Vars.Get(`cpp.compiler.flags.std`); ok {
+		cl.cppArgs = append(cl.cppArgs, stdFlags...)
+	}
 
 	flagsStr = `cpp.compiler.flags.release`
 	definesStr = `cpp.compiler.defines.release`
@@ -96,14 +101,14 @@ func (cl *ToolchainDarwinClangCompiler) SetupArgs(_defines []string, _includes [
 		definesStr = `cpp.compiler.defines.final`
 	}
 
-	flags = cl.toolChain.Vars.GetAll(flagsStr)
-	cl.cppArgs = append(cl.cppArgs, flags...)
-	defines = cl.toolChain.Vars.GetAll(definesStr)
-	for _, define := range defines {
-		cl.cppArgs = append(cl.cppArgs, `-D`, define)
+	if flags, ok := cl.toolChain.Vars.Get(flagsStr); ok {
+		cl.cppArgs = append(cl.cppArgs, flags...)
 	}
-	for _, define := range _defines {
-		cl.cppArgs = append(cl.cppArgs, `-D`, define)
+
+	if defines, ok := cl.toolChain.Vars.Get(definesStr); ok {
+		for _, define := range defines {
+			cl.cppArgs = append(cl.cppArgs, `-D`, define)
+		}
 	}
 	for _, include := range _includes {
 		cl.cppArgs = append(cl.cppArgs, `-I`, include)
@@ -162,13 +167,13 @@ func (t *DarwinClang) NewArchiver(at ArchiverType, config *Config) Archiver {
 	if at == ArchiverTypeStatic {
 		return &ToolchainDarwinClangStaticArchiver{
 			toolChain:    t,
-			archiverPath: t.Vars.GetOne("archiver.static"),
+			archiverPath: t.Vars.GetFirstOrEmpty("archiver.static"),
 			args:         []string{},
 		}
 	} else if at == ArchiverTypeDynamic {
 		return &ToolchainDarwinClangDynamicArchiver{
 			toolChain:    t,
-			archiverPath: t.Vars.GetOne("archiver.dynamic"),
+			archiverPath: t.Vars.GetFirstOrEmpty("archiver.dynamic"),
 			args:         []string{},
 		}
 	}
@@ -181,8 +186,9 @@ func (t *ToolchainDarwinClangStaticArchiver) Filename(name string) string {
 
 func (t *ToolchainDarwinClangStaticArchiver) SetupArgs() {
 	t.args = []string{}
-	archFlags := t.toolChain.Vars.GetAll(`static.archiver.flags`)
-	t.args = append(t.args, archFlags...)
+	if archFlags, ok := t.toolChain.Vars.Get(`static.archiver.flags`); ok {
+		t.args = append(t.args, archFlags...)
+	}
 }
 
 func (t *ToolchainDarwinClangStaticArchiver) Archive(inputObjectFilepaths []string, outputArchiveFilepath string) error {
@@ -208,8 +214,9 @@ func (t *ToolchainDarwinClangDynamicArchiver) Filename(name string) string {
 func (t *ToolchainDarwinClangDynamicArchiver) SetupArgs() {
 	t.args = []string{}
 
-	flags := t.toolChain.Vars.GetAll(`dynamic.archiver.flags`)
-	t.args = append(t.args, flags...)
+	if flags, ok := t.toolChain.Vars.Get(`dynamic.archiver.flags`); ok {
+		t.args = append(t.args, flags...)
+	}
 }
 
 func (t *ToolchainDarwinClangDynamicArchiver) Archive(inputObjectFilepaths []string, outputArchiveFilepath string) error {
@@ -251,7 +258,7 @@ type ToolchainDarwinClangLinker struct {
 func (l *DarwinClang) NewLinker(config *Config) Linker {
 	return &ToolchainDarwinClangLinker{
 		toolChain:  l,
-		linkerPath: l.Vars.GetOne("linker"),
+		linkerPath: l.Vars.GetFirstOrEmpty("linker"),
 	}
 }
 
@@ -263,25 +270,28 @@ func (l *ToolchainDarwinClangLinker) SetupArgs(generateMapFile bool, libraryPath
 	l.args = []string{}
 
 	// Library paths
-	libPaths := l.toolChain.Vars.GetAll("linker.lib.paths")
-	for _, libPath := range libPaths {
-		l.args = append(l.args, `-L`)
-		l.args = append(l.args, libPath)
+	if libPaths, ok := l.toolChain.Vars.Get("linker.lib.paths"); ok {
+		for _, libPath := range libPaths {
+			l.args = append(l.args, `-L`)
+			l.args = append(l.args, libPath)
+		}
 	}
 
 	// Frameworks
-	frameworks := l.toolChain.Vars.GetAll("linker.frameworks")
-	for _, framework := range frameworks {
-		l.args = append(l.args, "-framework")
-		l.args = append(l.args, framework)
+	if frameworks, ok := l.toolChain.Vars.Get("linker.frameworks"); ok {
+		for _, framework := range frameworks {
+			l.args = append(l.args, "-framework")
+			l.args = append(l.args, framework)
+		}
 	}
 }
 
 func (l *ToolchainDarwinClangLinker) Link(inputArchiveAbsFilepaths []string, outputAppRelFilepathNoExt string) error {
 	args := l.args
 
-	flags := l.toolChain.Vars.GetAll(`linker.flags`)
-	args = append(args, flags...)
+	if flags, ok := l.toolChain.Vars.Get(`linker.flags`); ok {
+		args = append(args, flags...)
+	}
 
 	args = append(args, "-o")
 	args = append(args, outputAppRelFilepathNoExt)
@@ -290,10 +300,11 @@ func (l *ToolchainDarwinClangLinker) Link(inputArchiveAbsFilepaths []string, out
 		args = append(args, inputArchiveAbsFilepath)
 	}
 
-	libFiles := l.toolChain.Vars.GetAll("linker.lib.files")
-	for _, libFile := range libFiles {
-		args = append(args, "-l")
-		args = append(args, libFile)
+	if libFiles, ok := l.toolChain.Vars.Get("linker.lib.files"); ok {
+		for _, libFile := range libFiles {
+			args = append(args, "-l")
+			args = append(args, libFile)
+		}
 	}
 
 	cmd := exec.Command(l.linkerPath, args...)

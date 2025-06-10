@@ -49,17 +49,7 @@ func (v *Vars) Append(key string, value ...string) {
 	}
 }
 
-func (v *Vars) Get(key string) (string, bool) {
-	if i, ok := v.Keys[key]; ok {
-		values := v.Values[i]
-		if len(values) > 0 {
-			return values[0], true
-		}
-	}
-	return "", false
-}
-
-func (v *Vars) GetOne(key string) string {
+func (v *Vars) GetFirstOrEmpty(key string) string {
 	if i, ok := v.Keys[key]; ok {
 		values := v.Values[i]
 		if len(values) > 0 {
@@ -69,21 +59,21 @@ func (v *Vars) GetOne(key string) string {
 	return ""
 }
 
-func (v *Vars) GetOneDefault(key string, _default string) string {
+func (v *Vars) GetFirst(key string) (string, bool) {
 	if i, ok := v.Keys[key]; ok {
 		values := v.Values[i]
 		if len(values) > 0 {
-			return values[0]
+			return values[0], true
 		}
 	}
-	return _default
+	return "", false
 }
 
-func (v *Vars) GetAll(key string) []string {
+func (v *Vars) Get(key string) ([]string, bool) {
 	if i, ok := v.Keys[key]; ok {
-		return v.Values[i]
+		return v.Values[i], true
 	}
-	return nil
+	return nil, false
 }
 
 func (v *Vars) ResolveString(variable string) string {
@@ -955,7 +945,7 @@ func (vr *varResolver) resolveNode(vars *Vars, node int) []string {
 			// We now have a complete variable name, so we use it as a key
 			// to get the values from the Vars map
 			for _, vn := range variableName {
-				values := vars.GetAll(vn)
+				values, _ := vars.Get(vn)
 				if len(values) == 0 {
 					continue
 				}

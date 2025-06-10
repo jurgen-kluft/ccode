@@ -60,7 +60,7 @@ type MsDevSetup struct {
 // --------------------------------------------------------------------------------------------------
 // Toolchain for Visual Studio on Windows
 
-func NewWinMsDev(arch string, product string) (t *WinMsdev, err error) {
+func NewWinMsdev(arch string, product string) (t *WinMsdev, err error) {
 	msdevSetup := determineMsDevSetup(arch, product)
 	if msdevSetup == nil {
 		return nil, fmt.Errorf("NewWinVs is not implemented yet")
