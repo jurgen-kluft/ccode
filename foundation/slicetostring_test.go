@@ -22,7 +22,9 @@ func TestSliceToString(t *testing.T) {
 		},
 	} {
 		t.Run(name, func(t *testing.T) {
-			actualResult := SliceToString(&test.data, &test.separator)
+			sb := NewStringBuilder()
+			sb.SliceToString(&test.data, &test.separator)
+			actualResult := sb.String()
 			if actualResult != test.expectedResult {
 				t.Errorf("expected '%s', got '%s'", test.expectedResult, actualResult)
 			}
@@ -33,7 +35,9 @@ func TestSliceToString(t *testing.T) {
 func TestSliceSameTypeToString(t *testing.T) {
 	separator := ":"
 	numericSlice := []int{100, 200, 400, 800}
-	result := SliceSameTypeToString(&numericSlice, &separator)
+	sb := NewStringBuilder()
+	SliceSameTypeToString(sb, &numericSlice, &separator)
+	result := sb.String()
 	if result != "100:200:400:800" {
 		t.Errorf("expected '100:200:400:800', got '%s'", result)
 	}

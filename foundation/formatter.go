@@ -24,43 +24,45 @@ const bytesPerArgDefault = 16
  *    - args - values that are using for formatting with template
  * Returns formatted string
  */
-func FormatAppend(str *strings.Builder, template string, args ...any) {
+func (sb *StringBuilder) Format(template string, args ...any) {
 	if args == nil {
+		sb.WriteString(template)
 		return
 	}
 
 	start := strings.Index(template, "{")
 	if start < 0 {
+		sb.WriteString(template)
 		return
 	}
 
 	templateLen := len(template)
 
 	argsLen := bytesPerArgDefault * len(args)
-	str.Grow(str.Len() + templateLen + argsLen + 1)
+	sb.Grow(templateLen + argsLen + 1)
 	j := -1 //nolint:ineffassign
 
 	nestedBrackets := false
-	str.WriteString(template[:start])
+	sb.WriteString(template[:start])
 	for i := start; i < templateLen; i++ {
 		if template[i] == '{' {
 			// possibly it is a template placeholder
 			if i == templateLen-1 {
 				// if we gave { at the end of line i.e. -> type serviceHealth struct {,
 				// without this write we got type serviceHealth struct
-				str.WriteByte('{')
+				sb.WriteByte('{')
 				break
 			}
 			// considering in 2 phases - {{ }}
 			if template[i+1] == '{' {
-				str.WriteByte('{')
+				sb.WriteByte('{')
 				continue
 			}
 			// find end of placeholder
 			// process empty pair - {}
 			if template[i+1] == '}' {
 				i++
-				str.WriteString("{}")
+				sb.WriteString("{}")
 				continue
 			}
 			// process non-empty placeholder
@@ -73,7 +75,7 @@ func FormatAppend(str *strings.Builder, template string, args ...any) {
 				if template[j] == '{' {
 					// multiple nested curly brackets ...
 					nestedBrackets = true
-					str.WriteString(template[i:j])
+					sb.WriteString(template[i:j])
 					i = j
 				}
 
@@ -86,7 +88,7 @@ func FormatAppend(str *strings.Builder, template string, args ...any) {
 			// double curly brackets processed here, convert {{N}} -> {N}
 			// so we catch here {{N}
 			if j+1 < templateLen && template[j+1] == '}' && template[i-1] == '{' {
-				str.WriteString(template[i+1 : j+1])
+				sb.WriteString(template[i+1 : j+1])
 				i = j + 1
 			} else {
 				argNumberStr := template[i+1 : j]
@@ -120,30 +122,21 @@ func FormatAppend(str *strings.Builder, template string, args ...any) {
 					}
 				}
 
-				if (err == nil || (argFormatOptions != "" && !nestedBrackets)) &&
-					len(args) > argNumber {
-					// get number from placeholder
-					strVal := getItemAsStr(&args[argNumber], &argFormatOptions)
-					str.WriteString(strVal)
+				if (err == nil || (argFormatOptions != "" && !nestedBrackets)) && len(args) > argNumber {
+					sb.appendAnyAsStr(&args[argNumber], &argFormatOptions)
 				} else {
-					str.WriteString(template[i:j])
+					sb.WriteString(template[i:j])
 					if j < templateLen-1 {
-						str.WriteByte(template[j])
+						sb.WriteByte(template[j])
 					}
 				}
 				i = j
 			}
 		} else {
 			j = i //nolint:ineffassign
-			str.WriteByte(template[i])
+			sb.WriteByte(template[i])
 		}
 	}
-}
-
-func Format(template string, args ...any) string {
-	str := &strings.Builder{}
-	FormatAppend(str, template, args...)
-	return str.String()
 }
 
 // FormatComplex
@@ -153,13 +146,8 @@ func Format(template string, args ...any) string {
  *    - args - values (dictionary: string key - any value) that are using for formatting with template
  * Returns formatted string
  */
-func FormatComplex(template string, args map[string]any) string {
-	str := &strings.Builder{}
-	FormatComplexAppend(template, args, str)
-	return str.String()
-}
 
-func FormatComplexAppend(template string, args map[string]any, str *strings.Builder) {
+func (sb *StringBuilder) FormatComplex(template string, args map[string]any) {
 	if args == nil {
 		return
 	}
@@ -171,29 +159,29 @@ func FormatComplexAppend(template string, args map[string]any, str *strings.Buil
 
 	templateLen := len(template)
 	argsLen := bytesPerArgDefault * len(args)
-	str.Grow(str.Len() + templateLen + argsLen + 1)
+	sb.Grow(templateLen + argsLen + 1)
 	j := -1 //nolint:ineffassign
 	nestedBrackets := false
-	str.WriteString(template[:start])
+	sb.WriteString(template[:start])
 	for i := start; i < templateLen; i++ {
 		if template[i] == '{' {
 			// possibly it is a template placeholder
 			if i == templateLen-1 {
 				// if we gave { at the end of line i.e. -> type serviceHealth struct {,
 				// without this write we got type serviceHealth struct
-				str.WriteByte('{')
+				sb.WriteByte('{')
 				break
 			}
 
 			if template[i+1] == '{' {
-				str.WriteByte('{')
+				sb.WriteByte('{')
 				continue
 			}
 			// find end of placeholder
 			// process empty pair - {}
 			if template[i+1] == '}' {
 				i++
-				str.WriteString("{}")
+				sb.WriteString("{}")
 				continue
 			}
 			// process non-empty placeholder
@@ -207,7 +195,7 @@ func FormatComplexAppend(template string, args map[string]any, str *strings.Buil
 				if template[j] == '{' {
 					// multiple nested curly brackets ...
 					nestedBrackets = true
-					str.WriteString(template[i:j])
+					sb.WriteString(template[i:j])
 					i = j
 				}
 				if template[j] == '}' {
@@ -218,7 +206,7 @@ func FormatComplexAppend(template string, args map[string]any, str *strings.Buil
 			// double curly brackets processed here, convert {{N}} -> {N}
 			// so we catch here {{N}
 			if j+1 < templateLen && template[j+1] == '}' {
-				str.WriteString(template[i+1 : j+1])
+				sb.WriteString(template[i+1 : j+1])
 				i = j + 1
 			} else {
 				var argFormatOptions string
@@ -236,32 +224,30 @@ func FormatComplexAppend(template string, args map[string]any, str *strings.Buil
 				}
 				if ok || (argFormatOptions != "" && !nestedBrackets) {
 					// get number from placeholder
-					strVal := ""
 					if arg != nil {
-						strVal = getItemAsStr(&arg, &argFormatOptions)
+						sb.appendAnyAsStr(&arg, &argFormatOptions)
 					} else {
-						str.WriteString(template[i:j])
+						sb.WriteString(template[i:j])
 						if j < templateLen-1 {
-							str.WriteByte(template[j])
+							sb.WriteByte(template[j])
 						}
 					}
-					str.WriteString(strVal)
 				} else {
-					str.WriteString(template[i:j])
+					sb.WriteString(template[i:j])
 					if j < templateLen-1 {
-						str.WriteByte(template[j])
+						sb.WriteByte(template[j])
 					}
 				}
 				i = j
 			}
 		} else {
 			j = i //nolint:ineffassign
-			str.WriteByte(template[i])
+			sb.WriteByte(template[i])
 		}
 	}
 }
 
-func getItemAsStr(item *any, itemFormat *string) string {
+func (sb *StringBuilder) appendAnyAsStr(item *any, itemFormat *string) {
 	base := 10
 	var floatFormat byte = 'f'
 	precision := -1
@@ -337,7 +323,8 @@ func getItemAsStr(item *any, itemFormat *string) string {
 					}
 					// 2. Divide arg / divider and multiply by 100
 					percentage := (floatVal / dividerVal) * 100
-					return strconv.FormatFloat(percentage, floatFormat, 2, 64)
+					sb.WriteFloat(percentage, floatFormat, 2, 64)
+					return
 				}
 			}
 		// l(L) is for list(slice)
@@ -354,9 +341,11 @@ func getItemAsStr(item *any, itemFormat *string) string {
 					// this is because slice in 0 item contains another slice, we should take it
 					slice, ok = slice[0].([]any)
 				}
-				return SliceToString(&slice, &separator)
+				sb.SliceToString(&slice, &separator)
+				return
 			} else {
-				return convertSliceToStrWithTypeDiscover(item, &separator)
+				sb.convertSliceToStrWithTypeDiscover(item, &separator)
+				return
 			}
 		default:
 			base = 10
@@ -397,7 +386,8 @@ func getItemAsStr(item *any, itemFormat *string) string {
 	}
 
 	if !postProcessingRequired {
-		return argStr
+		sb.WriteString(argStr)
+		return
 	}
 
 	// 1. If integer numbers add filling
@@ -407,14 +397,12 @@ func getItemAsStr(item *any, itemFormat *string) string {
 		if err == nil {
 			symbolsToAdd := symbolsStrVal - len(argStr)
 			if symbolsToAdd > 0 {
-				advArgStr := strings.Builder{}
-				advArgStr.Grow(len(argStr) + symbolsToAdd + 1)
-
+				sb.Grow(len(argStr) + symbolsToAdd + 1)
 				for i := 0; i < symbolsToAdd; i++ {
-					advArgStr.WriteByte('0')
+					sb.WriteByte('0')
 				}
-				advArgStr.WriteString(argStr)
-				return advArgStr.String()
+				sb.WriteString(argStr)
+				return
 			}
 		}
 	}
@@ -422,69 +410,38 @@ func getItemAsStr(item *any, itemFormat *string) string {
 	if floatNumberFormat && precision > 0 {
 		pointIndex := strings.Index(argStr, ".")
 		if pointIndex > 0 {
-			advArgStr := strings.Builder{}
-			advArgStr.Grow(len(argStr) + precision + 1)
-			advArgStr.WriteString(argStr)
+			sb.Grow(len(argStr) + precision + 1)
+			sb.WriteString(argStr)
 			numberOfSymbolsAfterPoint := len(argStr) - (pointIndex + 1)
 			for i := numberOfSymbolsAfterPoint; i < precision; i++ {
-				advArgStr.WriteByte(0)
+				sb.WriteByte('0')
 			}
-			return advArgStr.String()
+			return
 		}
 	}
 
-	return argStr
+	sb.WriteString(argStr)
+	return
 }
 
-func convertSliceToStrWithTypeDiscover(slice *any, separator *string) string {
-	// 1. attempt to convert to int
-	iSlice, ok := (*slice).([]int)
-	if ok {
-		return SliceSameTypeToString(&iSlice, separator)
+func (sb *StringBuilder) convertSliceToStrWithTypeDiscover(slice *any, separator *string) {
+	if iSlice, ok := (*slice).([]int); ok {
+		SliceSameTypeToString(sb, &iSlice, separator)
+	} else if sSlice, ok := (*slice).([]string); ok {
+		SliceSameTypeToString(sb, &sSlice, separator)
+	} else if f64Slice, ok := (*slice).([]float64); ok {
+		SliceSameTypeToString(sb, &f64Slice, separator)
+	} else if f32Slice, ok := (*slice).([]float32); ok {
+		SliceSameTypeToString(sb, &f32Slice, separator)
+	} else if bSlice, ok := (*slice).([]bool); ok {
+		SliceSameTypeToString(sb, &bSlice, separator)
+	} else if i64Slice, ok := (*slice).([]int64); ok {
+		SliceSameTypeToString(sb, &i64Slice, separator)
+	} else if uiSlice, ok := (*slice).([]uint); ok {
+		SliceSameTypeToString(sb, &uiSlice, separator)
+	} else if i32Slice, ok := (*slice).([]int32); ok {
+		SliceSameTypeToString(sb, &i32Slice, separator)
+	} else {
+		sb.WriteString(fmt.Sprintf("%v", *slice))
 	}
-
-	// 2. attempt to convert to string
-	sSlice, ok := (*slice).([]string)
-	if ok {
-		return SliceSameTypeToString(&sSlice, separator)
-	}
-
-	// 3. attempt to convert to float64
-	f64Slice, ok := (*slice).([]float64)
-	if ok {
-		return SliceSameTypeToString(&f64Slice, separator)
-	}
-
-	// 4. attempt to convert to float32
-	f32Slice, ok := (*slice).([]float32)
-	if ok {
-		return SliceSameTypeToString(&f32Slice, separator)
-	}
-
-	// 5. attempt to convert to bool
-	bSlice, ok := (*slice).([]bool)
-	if ok {
-		return SliceSameTypeToString(&bSlice, separator)
-	}
-
-	// 6. attempt to convert to int64
-	i64Slice, ok := (*slice).([]int64)
-	if ok {
-		return SliceSameTypeToString(&i64Slice, separator)
-	}
-
-	// 7. attempt to convert to uint
-	uiSlice, ok := (*slice).([]uint)
-	if ok {
-		return SliceSameTypeToString(&uiSlice, separator)
-	}
-
-	// 8. attempt to convert to int32
-	i32Slice, ok := (*slice).([]int32)
-	if ok {
-		return SliceSameTypeToString(&i32Slice, separator)
-	}
-
-	// default way ...
-	return fmt.Sprintf("%v", *slice)
 }

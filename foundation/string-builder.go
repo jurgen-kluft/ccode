@@ -1,6 +1,7 @@
 package foundation
 
 import (
+	"strconv"
 	"unicode/utf8"
 )
 
@@ -69,6 +70,37 @@ func (b *StringBuilder) Write(p []byte) int {
 	return len(p)
 }
 
+// Write appends the contents of p to b's buffer.
+// Write always returns len(p)
+func (b *StringBuilder) WriteByte(p byte) int {
+	if cap(b.buf)-b.cursor < 2 {
+		b.grow(2)
+	}
+
+	b.buf[b.cursor] = p
+	b.cursor++
+	return 1
+}
+
+func (b *StringBuilder) WriteByteN(p byte, n int) int {
+	if cap(b.buf)-b.cursor < n {
+		b.grow(n)
+	}
+
+	for n > 0 {
+		b.buf[b.cursor] = p
+		b.cursor++
+	}
+	return n
+}
+
+func (b *StringBuilder) WriteFloat(f float64, fmt byte, prec, bitSize int) {
+	b.tmp = b.tmp[:0] // Reset tmp slice to avoid growing it unnecessarily
+	b.tmp = strconv.AppendFloat(b.tmp, f, fmt, prec, bitSize)
+	b.Write(b.tmp)
+	b.tmp = b.tmp[:0] // Reset tmp slice to avoid growing it unnecessarily
+}
+
 // WriteRune appends the UTF-8 encoding of Unicode code point r to b's buffer.
 // It returns the length of r and a nil error.
 func (b *StringBuilder) WriteRune(r rune) int {
@@ -76,12 +108,11 @@ func (b *StringBuilder) WriteRune(r rune) int {
 	if cap(b.buf)-b.cursor < n {
 		b.grow(n)
 	}
-
 	for i := 0; i < n; i++ {
-		b.buf = append(b.buf, b.tmp[i])
+		b.buf[b.cursor] = b.tmp[i]
+		b.cursor++
 	}
-	b.cursor += n
-	return len(b.buf) - n
+	return n
 }
 
 // WriteString appends the contents of s to b's buffer.

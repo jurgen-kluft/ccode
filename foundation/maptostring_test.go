@@ -22,7 +22,7 @@ func MapToStringSortedByKey[K ~string | ~int | ~uint | ~int32 | ~int64 | ~uint32
 	// Sort keys to ensure consistent order
 	slices.Sort(keys)
 
-	mapStr := &strings.Builder{}
+	mapStr := NewStringBuilder()
 	for i, k := range keys {
 		if i > 0 {
 			mapStr.WriteString(separator)

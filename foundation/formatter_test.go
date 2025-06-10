@@ -148,8 +148,11 @@ func TestFormat(t *testing.T) {
 		},
 	} {
 		t.Run(name, func(t *testing.T) {
-			if test.expected != Format(test.template, test.args...) {
-				t.Errorf("Test %s failed: expected '%s', got '%s'", name, test.expected, Format(test.template, test.args...))
+			sb := NewStringBuilder()
+			sb.Format(test.template, test.args...)
+			result := sb.String()
+			if test.expected != result {
+				t.Errorf("Test %s failed: expected '%s', got '%s'", name, test.expected, result)
 			}
 		})
 	}
@@ -199,8 +202,11 @@ func TestFormatWithArgFormatting(t *testing.T) {
 	} {
 		// Run test here
 		t.Run(name, func(t *testing.T) {
-			if test.expected != Format(test.template, test.args...) {
-				t.Errorf("Test %s failed: expected '%s', got '%s'", name, test.expected, Format(test.template, test.args...))
+			sb := NewStringBuilder()
+			sb.Format(test.template, test.args...)
+			result := sb.String()
+			if test.expected != result {
+				t.Errorf("Test %s failed: expected '%s', got '%s'", name, test.expected, result)
 			}
 		})
 	}
@@ -255,8 +261,11 @@ func TestFormatWithArgFormattingForTypedSlice(t *testing.T) {
 	} {
 		// Run test here
 		t.Run(name, func(t *testing.T) {
-			if test.expected != Format(test.template, test.args...) {
-				t.Errorf("Test %s failed: expected '%s', got '%s'", name, test.expected, Format(test.template, test.args...))
+			sb := NewStringBuilder()
+			sb.Format(test.template, test.args...)
+			result := sb.String()
+			if test.expected != result {
+				t.Errorf("Test %s failed: expected '%s', got '%s'", name, test.expected, result)
 			}
 		})
 	}
@@ -328,9 +337,15 @@ func TestFormatComplex(t *testing.T) {
 		},
 	} {
 		t.Run(name, func(t *testing.T) {
-			if test.expected != FormatComplex(test.template, test.args) {
-				t.Errorf("Test %s failed: expected '%s', got '%s'", name, test.expected, FormatComplex(test.template, test.args))
+			sb := NewStringBuilder()
+			sb.FormatComplex(test.template, test.args)
+			result := sb.String()
+			if test.expected != result {
+				t.Errorf("Test %s failed: expected '%s', got '%s'", name, test.expected, result)
 			}
+			// if test.expected != FormatComplex(test.template, test.args) {
+			// 	t.Errorf("Test %s failed: expected '%s', got '%s'", name, test.expected, FormatComplex(test.template, test.args))
+			// }
 		})
 	}
 }
@@ -373,8 +388,11 @@ func TestFormatComplexWithArgFormatting(t *testing.T) {
 		},
 	} {
 		t.Run(name, func(t *testing.T) {
-			if test.expected != FormatComplex(test.template, test.args) {
-				t.Errorf("Test %s failed: expected '%s', got '%s'", name, test.expected, FormatComplex(test.template, test.args))
+			sb := NewStringBuilder()
+			sb.FormatComplex(test.template, test.args)
+			result := sb.String()
+			if test.expected != result {
+				t.Errorf("Test %s failed: expected '%s', got '%s'", name, test.expected, result)
 			}
 		})
 	}
