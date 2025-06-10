@@ -17,9 +17,9 @@ var vc_bin_map = map[winSupportedArch]map[winSupportedArch]string{
 
 func getVcBin(hostArch, targetArch winSupportedArch) (string, error) {
 	if hostBinMap, exists := vc_bin_map[hostArch]; !exists {
-		return "", fmt.Errorf("unknown host architecture: " + hostArch.String())
+		return "", fmt.Errorf("unknown host architecture: %s", hostArch.String())
 	} else if binPath, exists := hostBinMap[targetArch]; !exists {
-		return "", fmt.Errorf("unknown target architecture: " + targetArch.String())
+		return "", fmt.Errorf("unknown target architecture: %s", targetArch.String())
 	} else {
 		return binPath, nil
 	}
@@ -32,9 +32,9 @@ var vc_lib_map = map[winSupportedArch]map[winSupportedArch]string{
 
 func getVcLib(hostArch, targetArch winSupportedArch) (string, error) {
 	if hostLibMap, exists := vc_lib_map[hostArch]; !exists {
-		return "", fmt.Errorf("unknown host architecture: " + hostArch.String())
+		return "", fmt.Errorf("unknown host architecture: %s", hostArch.String())
 	} else if libPath, exists := hostLibMap[targetArch]; !exists {
-		return "", fmt.Errorf("unknown target architecture: " + targetArch.String())
+		return "", fmt.Errorf("unknown target architecture: %s", targetArch.String())
 	} else {
 		return libPath, nil
 	}
@@ -186,8 +186,8 @@ func getPreWin10Sdk(sdkVersion string, vsVersion vsVersion, targetArch winSuppor
 		panic("The requested version of Visual Studio isn't supported")
 	}
 
-	sdkRoot, exists := foundation.QueryRegistryForStringValue("HKLM", sdk.regKey, sdk.regValue)
-	if sdkRoot == "" || !exists {
+	sdkRoot, err := foundation.QueryRegistryForStringValue(foundation.RegistryKeyLocalMachine, sdk.regKey, sdk.regValue)
+	if sdkRoot == "" || err != nil {
 		panic("The requested version of the SDK isn't installed")
 	}
 	sdkRoot = strings.ReplaceAll(sdkRoot, "\\+$", "\\")
@@ -209,8 +209,8 @@ func getPreWin10Sdk(sdkVersion string, vsVersion vsVersion, targetArch winSuppor
 	// It appears that when targeting pre-win10 with VS2015 you should always use
 	// use 10.0.10150.0, according to Microsoft.Cpp.Common.props in MSBuild.
 	if vsVersion == "14.0" {
-		win10SdkRoot, exists := foundation.QueryRegistryForStringValue("HKLM", win10Sdk[0], win10Sdk[1])
-		if win10SdkRoot == "" || !exists {
+		win10SdkRoot, err := foundation.QueryRegistryForStringValue(foundation.RegistryKeyLocalMachine, win10Sdk[0], win10Sdk[1])
+		if win10SdkRoot == "" || err != nil {
 			panic("The windows 10 UCRT is required when building using Visual studio 2015")
 		}
 		result.includes = append(result.includes, "include", win10SdkRoot+"Include\\10.0.10150.0\\ucrt")
@@ -226,8 +226,8 @@ func getWin10Sdk(sdkVersion string, vsVersion vsVersion, targetArch winSupported
 	// This only checks if the windows 10 SDK specifically is installed. A
 	// 'dir exists' method would be needed here to check if a specific SDK
 	// target folder exists.
-	sdkRoot, exists := foundation.QueryRegistryForStringValue("HKLM", win10Sdk[0], win10Sdk[1])
-	if sdkRoot == "" || !exists {
+	sdkRoot, err := foundation.QueryRegistryForStringValue(foundation.RegistryKeyLocalMachine, win10Sdk[0], win10Sdk[1])
+	if sdkRoot == "" || err != nil {
 		panic("The requested version of the SDK isn't installed")
 	}
 
@@ -282,11 +282,11 @@ func applyMsvcVisualStudio(version vsVersion, env *foundation.Vars, options *fou
 	}
 
 	// We will find any edition of VS (including Express) here
-	vsRoot, exists := foundation.QueryRegistryForStringValue("HKLM", "SOFTWARE\\Microsoft\\VisualStudio\\SxS\\VS7", string(version))
-	if !exists || vsRoot == "" {
+	vsRoot, err := foundation.QueryRegistryForStringValue(foundation.RegistryKeyLocalMachine, "SOFTWARE\\Microsoft\\VisualStudio\\SxS\\VS7", string(version))
+	if vsRoot == "" || err != nil {
 		// This is necessary for supporting the "Visual C++ Build Tools", which includes only the Compiler & SDK (not Visual Studio)
-		vcRoot, exists := foundation.QueryRegistryForStringValue("HKLM", "SOFTWARE\\Microsoft\\VisualStudio\\SxS\\VC7", string(version))
-		if exists && vcRoot != "" {
+		vcRoot, err := foundation.QueryRegistryForStringValue(foundation.RegistryKeyLocalMachine, "SOFTWARE\\Microsoft\\VisualStudio\\SxS\\VC7", string(version))
+		if vcRoot != "" && err == nil {
 			vsRoot = strings.ReplaceAll(vcRoot, "\\VC\\$", "\\")
 		}
 	}

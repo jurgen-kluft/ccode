@@ -15,10 +15,10 @@ func findWindowsSDK(targetWinsdkVersion string, winAppPlatform winAppPlatform) (
 	//   HKCU\SOFTWARE\Wow6432Node (ignored)
 	//   HKLM\SOFTWARE             (ignored)
 	//   HKCU\SOFTWARE             (ignored)
-	winsdkKey := "SOFTWARE\\Wow6432Node\\Microsoft\\Microsoft SDKs\\Windows\\v10.0"
-	winsdkDir, ok := foundation.QueryRegistryForStringValue("HKLM", winsdkKey, "InstallationFolder")
-	if !ok {
-		return "", "", fmt.Errorf("failed to query Windows SDK installation folder")
+	winsdkKey := `SOFTWARE\Wow6432Node\Microsoft\Microsoft SDKs\Windows\\v10.0`
+	winsdkDir, err := foundation.QueryRegistryForStringValue(foundation.RegistryKeyLocalMachine, winsdkKey, "InstallationFolder")
+	if err != nil {
+		return "", "", err
 	}
 
 	winsdkVersions := []string{}

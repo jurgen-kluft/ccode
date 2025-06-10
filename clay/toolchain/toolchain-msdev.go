@@ -68,7 +68,7 @@ func NewWinMsDev(arch string, product string) (t *WinMsdev, err error) {
 
 	return &WinMsdev{
 		Name:  "WinMsdev",
-		Vars:  utils.NewVars(),
+		Vars:  foundation.NewVars(),
 		Tools: make(map[string]string),
 		Setup: msdevSetup,
 	}, nil

@@ -4,7 +4,7 @@ import (
 	"golang.org/x/sys/windows/registry"
 )
 
-func queryRegistryForStringValue(rootKey RegistryKey, keyPath string, item string) (string, bool) {
+func queryRegistryForStringValue(rootKey RegistryKey, keyPath string, item string) (string, error) {
 	var windowsRootKey registry.Key
 	if rootKey == RegistryKeyCurrentUser {
 		windowsRootKey = registry.CURRENT_USER
@@ -13,17 +13,17 @@ func queryRegistryForStringValue(rootKey RegistryKey, keyPath string, item strin
 	}
 
 	// Attempt to open the registry key with read access
-	k, err := registry.OpenKey(windowsRootKey, keyPath+"\\"+item, registry.READ)
+	k, err := registry.OpenKey(windowsRootKey, keyPath, registry.QUERY_VALUE)
 	if err != nil {
-		return "", false
+		return "", err
 	}
 	defer k.Close()
 
-	// Attempt to read the value from the registry key
-	value, _, err := k.GetStringValue("")
+	// Attempt to read the value for the item from the registry path
+	value, _, err := k.GetStringValue(item)
 	if err != nil {
 		// err == registry.ErrNotExist {
-		return "", false // Other error occurred
+		return "", err // Other error occurred
 	}
-	return value, true // Successfully retrieved the value
+	return value, nil // Successfully retrieved the value
 }
