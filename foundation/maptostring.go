@@ -42,3 +42,28 @@ func MapToString[
 
 	return mapStr.String()
 }
+
+func KeyValueToString[K ~string | ~int | ~uint | ~int32 | ~int64 | ~uint32 | ~uint64, V any](key K, value V, format string) string {
+	mapStr := &strings.Builder{}
+
+	// assuming format will be at most two times larger after formatting part,
+	// plus exact number of bytes for separators
+	mapStr.Grow(len(format) * 2)
+
+	line := FormatComplex(string(format), map[string]any{
+		KeyKey:   key,
+		KeyValue: value,
+	})
+	mapStr.WriteString(line)
+
+	return mapStr.String()
+}
+
+func KeyValueToStringAppend[K ~string | ~int | ~uint | ~int32 | ~int64 | ~uint32 | ~uint64, V any](key K, value V, format string, sb *strings.Builder) {
+	sb.Grow(sb.Len() + len(format)*2)
+	line := FormatComplex(string(format), map[string]any{
+		KeyKey:   key,
+		KeyValue: value,
+	})
+	sb.WriteString(line)
+}

@@ -1,11 +1,37 @@
 package foundation
 
 import (
+	"slices"
 	"strings"
 	"testing"
 )
 
 const _separator = ", "
+
+func MapToStringSortedByKey[K ~string | ~int | ~uint | ~int32 | ~int64 | ~uint32 | ~uint64, V any](
+	data map[K]V, format string, separator string) string {
+	if len(data) == 0 {
+		return ""
+	}
+
+	keys := make([]K, 0, len(data))
+	for k := range data {
+		keys = append(keys, k)
+	}
+
+	// Sort keys to ensure consistent order
+	slices.Sort(keys)
+
+	mapStr := &strings.Builder{}
+	for i, k := range keys {
+		if i > 0 {
+			mapStr.WriteString(separator)
+		}
+		KeyValueToStringAppend(k, data[k], format, mapStr)
+	}
+
+	return mapStr.String()
+}
 
 func TestMapToString(t *testing.T) {
 	for name, test := range map[string]struct {
@@ -13,7 +39,7 @@ func TestMapToString(t *testing.T) {
 		expectedParts []string
 	}{
 		"semicolon sep": {
-			str: MapToString(
+			str: MapToStringSortedByKey(
 				map[string]any{
 					"connectTimeout": 1000,
 					"useSsl":         true,
@@ -25,13 +51,13 @@ func TestMapToString(t *testing.T) {
 			),
 			expectedParts: []string{
 				"connectTimeout : 1000",
-				"useSsl : true",
 				"login : sa",
 				"password : sa",
+				"useSsl : true",
 			},
 		},
 		"arrow sep": {
-			str: MapToString(
+			str: MapToStringSortedByKey(
 				map[int]any{
 					1:  "value 1",
 					2:  "value 2",
@@ -41,13 +67,13 @@ func TestMapToString(t *testing.T) {
 				_separator,
 			),
 			expectedParts: []string{
+				"-5 => value -5",
 				"1 => value 1",
 				"2 => value 2",
-				"-5 => value -5",
 			},
 		},
 		"only value": {
-			str: MapToString(
+			str: MapToStringSortedByKey(
 				map[uint64]any{
 					1: "value 1",
 					2: "value 2",
