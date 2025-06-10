@@ -229,9 +229,6 @@ func findVcTools(vsPath string, vsVersion vsVersion, vsProduct vsProduct, target
 
 func SetupMsvcVersion(env *foundation.Vars, options *foundation.Vars, extra *foundation.Vars) (externalEnv *foundation.Vars, err error) {
 
-	// Load the msvc toolset
-	ApplyMsvc(env, options, extra)
-
 	// These control the environment
 	vsPath := options.GetFirstOrEmpty("Path")
 	vsVersion := getVsVersion(options)                                  // default is 2022

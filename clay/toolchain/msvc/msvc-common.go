@@ -265,12 +265,6 @@ func applyMsvcVisualStudio(version vsVersion, env *foundation.Vars, options *fou
 		panic("the msvc toolset only works on windows hosts")
 	}
 
-	extra := foundation.NewVars()
-
-	// Load basic MSVC environment setup first.
-	// We're going to replace the paths to some tools.
-	ApplyMsvc(env, options, extra)
-
 	targetArch := getTargetArch(options)
 
 	sdkVersion := options.GetFirstOrEmpty("SdkVersion")

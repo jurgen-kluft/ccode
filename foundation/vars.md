@@ -56,9 +56,10 @@ Then interpolating the following strings will give the associated result:
 |`$(BAR:p__:s__:j!)`    |`__A__!__B__!__C__`
 |`$(BAR:d__)`           |`__A__`, `__B__`, `__C__`
 |`$(BAR:p\::s!)`        |`:A! :B! :C!`
-|`$(BAR:AC)`            |`AC BC C`
+|`$(BAR:SC)`            |`AC BC C`
 |`$(BOB:ttrt)`          |`Hello`
 |`$(BOB:Ttr)`           |`Hello`
+|`$(BAR:i1)`            |`B`
 
 ## Nested Interpolation
 
