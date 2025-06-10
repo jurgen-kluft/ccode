@@ -97,3 +97,7 @@ func (b *StringBuilder) WriteString(s string) int {
 	}
 	return n
 }
+
+// TODO:
+// - implement WriteInt8, WriteInt16, WriteInt32, WriteInt64, WriteUint8, WriteUint16, WriteUint32, WriteUint64
+// - add MapToString, SliceToString, Format, FormatComplex

@@ -24,43 +24,43 @@ const bytesPerArgDefault = 16
  *    - args - values that are using for formatting with template
  * Returns formatted string
  */
-func Format(template string, args ...any) string {
+func FormatAppend(str *strings.Builder, template string, args ...any) {
 	if args == nil {
-		return template
+		return
 	}
 
 	start := strings.Index(template, "{")
 	if start < 0 {
-		return template
+		return
 	}
 
 	templateLen := len(template)
-	formattedStr := &strings.Builder{}
+
 	argsLen := bytesPerArgDefault * len(args)
-	formattedStr.Grow(templateLen + argsLen + 1)
+	str.Grow(str.Len() + templateLen + argsLen + 1)
 	j := -1 //nolint:ineffassign
 
 	nestedBrackets := false
-	formattedStr.WriteString(template[:start])
+	str.WriteString(template[:start])
 	for i := start; i < templateLen; i++ {
 		if template[i] == '{' {
 			// possibly it is a template placeholder
 			if i == templateLen-1 {
 				// if we gave { at the end of line i.e. -> type serviceHealth struct {,
 				// without this write we got type serviceHealth struct
-				formattedStr.WriteByte('{')
+				str.WriteByte('{')
 				break
 			}
 			// considering in 2 phases - {{ }}
 			if template[i+1] == '{' {
-				formattedStr.WriteByte('{')
+				str.WriteByte('{')
 				continue
 			}
 			// find end of placeholder
 			// process empty pair - {}
 			if template[i+1] == '}' {
 				i++
-				formattedStr.WriteString("{}")
+				str.WriteString("{}")
 				continue
 			}
 			// process non-empty placeholder
@@ -73,7 +73,7 @@ func Format(template string, args ...any) string {
 				if template[j] == '{' {
 					// multiple nested curly brackets ...
 					nestedBrackets = true
-					formattedStr.WriteString(template[i:j])
+					str.WriteString(template[i:j])
 					i = j
 				}
 
@@ -86,7 +86,7 @@ func Format(template string, args ...any) string {
 			// double curly brackets processed here, convert {{N}} -> {N}
 			// so we catch here {{N}
 			if j+1 < templateLen && template[j+1] == '}' && template[i-1] == '{' {
-				formattedStr.WriteString(template[i+1 : j+1])
+				str.WriteString(template[i+1 : j+1])
 				i = j + 1
 			} else {
 				argNumberStr := template[i+1 : j]
@@ -124,22 +124,26 @@ func Format(template string, args ...any) string {
 					len(args) > argNumber {
 					// get number from placeholder
 					strVal := getItemAsStr(&args[argNumber], &argFormatOptions)
-					formattedStr.WriteString(strVal)
+					str.WriteString(strVal)
 				} else {
-					formattedStr.WriteString(template[i:j])
+					str.WriteString(template[i:j])
 					if j < templateLen-1 {
-						formattedStr.WriteByte(template[j])
+						str.WriteByte(template[j])
 					}
 				}
 				i = j
 			}
 		} else {
 			j = i //nolint:ineffassign
-			formattedStr.WriteByte(template[i])
+			str.WriteByte(template[i])
 		}
 	}
+}
 
-	return formattedStr.String()
+func Format(template string, args ...any) string {
+	str := &strings.Builder{}
+	FormatAppend(str, template, args...)
+	return str.String()
 }
 
 // FormatComplex
@@ -150,41 +154,46 @@ func Format(template string, args ...any) string {
  * Returns formatted string
  */
 func FormatComplex(template string, args map[string]any) string {
+	str := &strings.Builder{}
+	FormatComplexAppend(template, args, str)
+	return str.String()
+}
+
+func FormatComplexAppend(template string, args map[string]any, str *strings.Builder) {
 	if args == nil {
-		return template
+		return
 	}
 
 	start := strings.Index(template, "{")
 	if start < 0 {
-		return template
+		return
 	}
 
 	templateLen := len(template)
-	formattedStr := &strings.Builder{}
 	argsLen := bytesPerArgDefault * len(args)
-	formattedStr.Grow(templateLen + argsLen + 1)
+	str.Grow(str.Len() + templateLen + argsLen + 1)
 	j := -1 //nolint:ineffassign
 	nestedBrackets := false
-	formattedStr.WriteString(template[:start])
+	str.WriteString(template[:start])
 	for i := start; i < templateLen; i++ {
 		if template[i] == '{' {
 			// possibly it is a template placeholder
 			if i == templateLen-1 {
 				// if we gave { at the end of line i.e. -> type serviceHealth struct {,
 				// without this write we got type serviceHealth struct
-				formattedStr.WriteByte('{')
+				str.WriteByte('{')
 				break
 			}
 
 			if template[i+1] == '{' {
-				formattedStr.WriteByte('{')
+				str.WriteByte('{')
 				continue
 			}
 			// find end of placeholder
 			// process empty pair - {}
 			if template[i+1] == '}' {
 				i++
-				formattedStr.WriteString("{}")
+				str.WriteString("{}")
 				continue
 			}
 			// process non-empty placeholder
@@ -198,7 +207,7 @@ func FormatComplex(template string, args map[string]any) string {
 				if template[j] == '{' {
 					// multiple nested curly brackets ...
 					nestedBrackets = true
-					formattedStr.WriteString(template[i:j])
+					str.WriteString(template[i:j])
 					i = j
 				}
 				if template[j] == '}' {
@@ -209,7 +218,7 @@ func FormatComplex(template string, args map[string]any) string {
 			// double curly brackets processed here, convert {{N}} -> {N}
 			// so we catch here {{N}
 			if j+1 < templateLen && template[j+1] == '}' {
-				formattedStr.WriteString(template[i+1 : j+1])
+				str.WriteString(template[i+1 : j+1])
 				i = j + 1
 			} else {
 				var argFormatOptions string
@@ -231,27 +240,25 @@ func FormatComplex(template string, args map[string]any) string {
 					if arg != nil {
 						strVal = getItemAsStr(&arg, &argFormatOptions)
 					} else {
-						formattedStr.WriteString(template[i:j])
+						str.WriteString(template[i:j])
 						if j < templateLen-1 {
-							formattedStr.WriteByte(template[j])
+							str.WriteByte(template[j])
 						}
 					}
-					formattedStr.WriteString(strVal)
+					str.WriteString(strVal)
 				} else {
-					formattedStr.WriteString(template[i:j])
+					str.WriteString(template[i:j])
 					if j < templateLen-1 {
-						formattedStr.WriteByte(template[j])
+						str.WriteByte(template[j])
 					}
 				}
 				i = j
 			}
 		} else {
 			j = i //nolint:ineffassign
-			formattedStr.WriteByte(template[i])
+			str.WriteByte(template[i])
 		}
 	}
-
-	return formattedStr.String()
 }
 
 func getItemAsStr(item *any, itemFormat *string) string {
