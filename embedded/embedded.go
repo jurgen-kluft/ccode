@@ -8,6 +8,8 @@ import (
 	"os"
 	"path/filepath"
 	"strconv"
+
+	"github.com/jurgen-kluft/ccode/foundation"
 )
 
 // constants used
@@ -530,7 +532,7 @@ func WriteEmbedded() {
 
 	root_dir, err := os.Getwd()
 	if err != nil {
-		log.Println(err)
+		foundation.LogError(err)
 	}
 
 	embedded_dir := filepath.Join(root_dir, "embedded")
@@ -553,8 +555,8 @@ func WriteEmbedded() {
 				arrayName := fileNameWithoutExtension(filename)
 				inFilename := path
 				outFilename := filepath.Join(root_dir, subdir, arrayName+".cpp")
-				log.Printf("input: %s", inFilename)
-				log.Printf("output: %s", outFilename)
+				foundation.LogPrintf("input: %s", inFilename)
+				foundation.LogPrintf("output: %s", outFilename)
 
 				var inFile *os.File
 				inFile, err = os.Open(inFilename)
@@ -583,7 +585,7 @@ func WriteEmbedded() {
 		})
 
 	if err != nil {
-		log.Println(err)
+		foundation.LogError(err)
 	}
 
 }

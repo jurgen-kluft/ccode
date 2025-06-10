@@ -1,4 +1,4 @@
-package ccode_utils
+package foundation
 
 import (
 	"bufio"
@@ -20,7 +20,7 @@ func NewGitVersionInfo(absPath string) *GitVersionInfo {
 	// Run 'git log -n 1 --pretty=fuller' and parse the output
 	// git log -n 1 --pretty='BRANCH=%d%nCOMMITNAME=%cn%nCOMMITDATE=%cd%nCOMMITHASH=%H'
 	cmd := exec.Command("git", "log", "-n", "1", "--pretty=BRANCH=%d%nCOMMITNAME=%cn%nCOMMITDATE=%cd%nCOMMITHASH=%H%")
-    cmd.Dir = absPath
+	cmd.Dir = absPath
 	raw, err := cmd.Output()
 	output := string(raw)
 
@@ -37,7 +37,7 @@ func NewGitVersionInfo(absPath string) *GitVersionInfo {
 	scanner := bufio.NewScanner(strings.NewReader(output))
 	for scanner.Scan() {
 		line := scanner.Text()
-        line = strings.TrimSpace(line)
+		line = strings.TrimSpace(line)
 		if strings.HasPrefix(line, "COMMITDATE") {
 			vi.CommitDate = strings.TrimPrefix(line, "COMMITDATE=")
 		} else if strings.HasPrefix(line, "COMMITNAME") {
@@ -46,13 +46,13 @@ func NewGitVersionInfo(absPath string) *GitVersionInfo {
 			vi.Commit = strings.TrimPrefix(line, "COMMITHASH=")
 		} else if strings.HasPrefix(line, "BRANCH") {
 			branchDescr := strings.TrimPrefix(line, "BRANCH=")
-            branchDescr = strings.TrimSpace(branchDescr)
+			branchDescr = strings.TrimSpace(branchDescr)
 			branchDescr = strings.TrimSpace(strings.Trim(branchDescr, "()"))
 			if strings.HasPrefix(branchDescr, "HEAD") {
-                branchDescr = strings.TrimPrefix(branchDescr, "HEAD -> ")
+				branchDescr = strings.TrimPrefix(branchDescr, "HEAD -> ")
 				branchFields := strings.Split(branchDescr, ",")
 				for i, field := range branchFields {
-                    field = strings.TrimSpace(field)
+					field = strings.TrimSpace(field)
 					if i == 0 {
 						vi.Branch = strings.TrimSpace(field)
 					} else if strings.HasPrefix(field, "tag:") {

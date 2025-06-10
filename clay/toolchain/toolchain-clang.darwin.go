@@ -1,19 +1,17 @@
 package toolchain
 
 import (
-	"fmt"
-	"log"
 	"os/exec"
 	"path/filepath"
 	"strings"
 
 	"github.com/jurgen-kluft/ccode/clay/toolchain/dpenc"
-	utils "github.com/jurgen-kluft/ccode/utils"
+	"github.com/jurgen-kluft/ccode/foundation"
 )
 
 type DarwinClang struct {
 	Name string
-	Vars *utils.Vars
+	Vars *foundation.Vars
 }
 
 // --------------------------------------------------------------------------------------------------
@@ -129,16 +127,16 @@ func (cl *ToolchainDarwinClangCompiler) Compile(sourceAbsFilepath string, objRel
 	args = append(args, objRelFilepath)
 	args = append(args, sourceAbsFilepath)
 
-	fmt.Printf("Compiling (%s) %s\n", cl.config.Config.AsString(), filepath.Base(sourceAbsFilepath))
+	foundation.LogInfof("Compiling (%s) %s\n", cl.config.Config.AsString(), filepath.Base(sourceAbsFilepath))
 
 	cmd := exec.Command(cl.cCompilerPath, args...)
 	out, err := cmd.CombinedOutput()
 	if err != nil {
-		log.Printf("Compile failed, output:\n%s\n", string(out))
-		return fmt.Errorf("Compile failed with %s\n", err)
+		foundation.LogInfof("Compile failed, output:\n%s\n", string(out))
+		return foundation.LogErrorf(err, "Compiling failed")
 	}
 	if len(out) > 0 {
-		log.Printf("Compile output:\n%s\n", string(out))
+		foundation.LogInfof("Compile output:\n%s\n", string(out))
 	}
 
 	return nil
@@ -194,14 +192,11 @@ func (t *ToolchainDarwinClangStaticArchiver) Archive(inputObjectFilepaths []stri
 		args = append(args, inputObjectFilepath)
 	}
 
-	// log.Printf("Archiving static library %s\n", outputArchiveFilepath)
-
 	cmd := exec.Command(t.archiverPath, args...)
 	out, err := cmd.CombinedOutput()
 
 	if err != nil {
-		log.Printf("Archive failed with output:\n%s\n", string(out))
-		return fmt.Errorf("Archive failed with %s\n", err)
+		return foundation.LogErrorf(err, "Archiving failed: ", string(out))
 	}
 
 	return nil
@@ -230,16 +225,14 @@ func (t *ToolchainDarwinClangDynamicArchiver) Archive(inputObjectFilepaths []str
 		args = append(args, inputObjectFilepath)
 	}
 
-	// log.Printf("Archiving dynamic library %s\n", outputArchiveFilepath)
-
 	cmd := exec.Command(t.archiverPath, args...)
 	out, err := cmd.CombinedOutput()
 
 	if err != nil {
-		return fmt.Errorf("Archive failed with %s\n", err)
+		return foundation.LogErrorf(err, "Archiving failed")
 	}
 	if len(out) > 0 {
-		log.Printf("Archive output:\n%s\n", string(out))
+		foundation.LogInfof("Archive output:\n%s\n", string(out))
 	}
 
 	return nil
@@ -303,16 +296,15 @@ func (l *ToolchainDarwinClangLinker) Link(inputArchiveAbsFilepaths []string, out
 		args = append(args, libFile)
 	}
 
-	// log.Printf("Linking '%s'...\n", outputAppRelFilepathNoExt)
 	cmd := exec.Command(l.linkerPath, args...)
 	out, err := cmd.CombinedOutput()
 
 	if err != nil {
-		log.Printf("Link failed, output:\n%s\n", string(out))
-		return fmt.Errorf("Link failed with %s\n", err)
+		foundation.LogInff("Link failed, output:\n%s\n", string(out))
+		return foundation.LogError(err, "Linking failed")
 	}
 	if len(out) > 0 {
-		log.Printf("Link output:\n%s\n", string(out))
+		foundation.LogInfof("Link output:\n%s\n", string(out))
 	}
 
 	return nil
@@ -358,7 +350,7 @@ func NewDarwinClang(arch string, frameworks []string) (t *DarwinClang, err error
 
 	t = &DarwinClang{
 		Name: "clang",
-		Vars: utils.NewVars(),
+		Vars: foundation.NewVars(),
 	}
 
 	vars := map[string][]string{

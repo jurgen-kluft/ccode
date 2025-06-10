@@ -1,9 +1,9 @@
-package ccode_utils
+package foundation
 
 import (
-    "os"
-    "path/filepath"
-    "strings"
+	"os"
+	"path/filepath"
+	"strings"
 )
 
 func AddFilesFrom(rootPath string, dirFunc func(string, string) bool, fileFunc func(string, string)) {
@@ -13,7 +13,7 @@ func AddFilesFrom(rootPath string, dirFunc func(string, string) bool, fileFunc f
 		}
 		if info.IsDir() {
 			relPath := path[len(rootPath):]
-            relPath = strings.TrimLeft(relPath, "/")
+			relPath = strings.TrimLeft(relPath, "/")
 			if dirFunc(rootPath, relPath) {
 				return nil // Continue walking the tree
 			}

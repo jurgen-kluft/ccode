@@ -1,30 +1,8 @@
 package tctools
 
-import utils "github.com/jurgen-kluft/ccode/utils"
+import "github.com/jurgen-kluft/ccode/foundation"
 
-// module(..., package.seeall)
-
-// function apply(env, options)
-//   -- load the generic GCC toolset first
-//   tundra.unitgen.load_toolset("gcc", env)
-
-//   env:set_many {
-//     ["NATIVE_SUFFIXES"] = { ".c", ".cpp", ".cc", ".cxx", ".m", ".mm", ".a", ".o" },
-//     ["CXXEXTS"] = { "cpp", "cxx", "cc", "mm" },
-//     ["FRAMEWORKS"] = "",
-//     ["FRAMEWORKPATH"] = {},
-//     ["SHLIBPREFIX"] = "lib",
-//     ["SHLIBOPTS"] = "-shared",
-//     ["_OS_CCOPTS"] = "$(FRAMEWORKPATH:p-F)",
-//     ["_OS_CXXOPTS"] = "$(FRAMEWORKPATH:p-F)",
-//     ["SHLIBCOM"] = "$(LD) $(SHLIBOPTS) $(LIBPATH:p-L) $(LIBS:p-l) $(FRAMEWORKPATH:p-F) $(FRAMEWORKS:p-framework ) -o $(@) $(<)",
-//     ["PROGCOM"] = "$(LD) $(PROGOPTS) $(LIBPATH:p-L) $(LIBS:p-l) $(FRAMEWORKPATH:p-F)  $(FRAMEWORKS:p-framework ) -o $(@) $(<)",
-//     ["OBJCCOM"] = "$(CCCOM)", -- objc uses same commandline
-//     ["NIBCC"] = "ibtool --output-format binary1 --compile $(@) $(<)",
-//   }
-// end
-
-func ApplyGccOsx(env *utils.Vars, options *utils.Vars) {
+func ApplyGccOsx(env *foundation.Vars, options *foundation.Vars) {
 
 	ApplyGcc(env, options)
 
@@ -35,10 +13,10 @@ func ApplyGccOsx(env *utils.Vars, options *utils.Vars) {
 		"FRAMEWORKPATH":   {},
 		"SHLIBPREFIX":     {"lib"},
 		"SHLIBOPTS":       {"-shared"},
-		"_OS_CCOPTS":      {"$(FRAMEWORKPATH:p-F)"},
-		"_OS_CXXOPTS":     {"$(FRAMEWORKPATH:p-F)"},
-		"SHLIBCOM":        {"$(LD)", "$(SHLIBOPTS)", "$(LIBPATH:p-L)", "$(LIBS:p-l)", "$(FRAMEWORKPATH:p-F)", "$(FRAMEWORKS:p-framework )", "-o", "$(@)", "$(<)"},
-		"PROGCOM":         {"$(LD)", "$(PROGOPTS)", "$(LIBPATH:p-L)", "$(LIBS:p-l)", "$(FRAMEWORKPATH:p-F)", "$(FRAMEWORKS:p-framework )", "-o", "$(@)", "$(<)"},
+		"_OS_CCOPTS":      {"-F$(FRAMEWORKPATH)"},
+		"_OS_CXXOPTS":     {"-F$(FRAMEWORKPATH)"},
+		"SHLIBCOM":        {"$(LD)", "$(SHLIBOPTS)", "-L$(LIBPATH)", "-l$(LIBS)", "-F$(FRAMEWORKPATH)", "-framework$(FRAMEWORKS)", "-o", "$(@)", "$(<)"},
+		"PROGCOM":         {"$(LD)", "$(PROGOPTS)", "-L$(LIBPATH)", "-l$(LIBS)", "-F$(FRAMEWORKPATH)", "-framework$(FRAMEWORKS)", "-o", "$(@)", "$(<)"},
 		"OBJCCOM":         {"$(CCCOM)"},
 	})
 }

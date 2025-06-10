@@ -2,12 +2,10 @@ package clay
 
 import (
 	"flag"
-	"fmt"
-	"log"
 	"os"
 	"time"
 
-	utils "github.com/jurgen-kluft/ccode/utils"
+	"github.com/jurgen-kluft/ccode/foundation"
 )
 
 // Clay App Arduino
@@ -77,47 +75,46 @@ func ClayAppMainArduino() {
 	case "list-flash-sizes":
 		err = ListFlashSizes(ParseCpuAndBoardName())
 	case "version":
-		version := utils.NewVersionInfo()
-		fmt.Printf("Version: %s\n", version.Version)
+		version := foundation.NewVersionInfo()
+		foundation.LogPrintf("Version: %s\n", version.Version)
 	default:
 		UsageAppArduino()
 	}
 
 	if err != nil {
-		log.Printf("Error: %v\n", err)
-		os.Exit(1)
+		foundation.LogFatalf("Error: %v\n", err)
 	}
 }
 
 func UsageAppArduino() {
-	fmt.Println("Usage: clay [command] [options]")
-	fmt.Println("Commands:")
-	fmt.Println("  build-info -p <projectName> -build <projectConfig> -arch <arch>")
-	fmt.Println("  build -p <projectName> -build <projectConfig> -arch <arch>")
-	fmt.Println("  clean -p <projectName> -build <projectConfig> -arch <arch>")
-	fmt.Println("  flash -p <projectName> -build <projectConfig> -arch <arch>")
-	fmt.Println("  list-libraries")
-	fmt.Println("  list-boards -b <boardName> -m <matches>")
-	fmt.Println("  list-flash-sizes -c <cpuName> -b <boardName>")
-	fmt.Println("Options:")
-	fmt.Println("  projectName       Project name (if more than one) ")
-	fmt.Println("  projectConfig     Config name (debug, release, final) ")
-	fmt.Println("  boardName         Board name (e.g. esp32, esp32s3) ")
-	fmt.Println("  matches           Maximum number of boards to list")
-	fmt.Println("  cpuName           CPU name for listing flash sizes")
-	fmt.Println("  --help            Show this help message")
-	fmt.Println("  --version         Show version information")
+	foundation.LogPrintln("Usage: clay [command] [options]")
+	foundation.LogPrintln("Commands:")
+	foundation.LogPrintln("  build-info -p <projectName> -build <projectConfig> -arch <arch>")
+	foundation.LogPrintln("  build -p <projectName> -build <projectConfig> -arch <arch>")
+	foundation.LogPrintln("  clean -p <projectName> -build <projectConfig> -arch <arch>")
+	foundation.LogPrintln("  flash -p <projectName> -build <projectConfig> -arch <arch>")
+	foundation.LogPrintln("  list-libraries")
+	foundation.LogPrintln("  list-boards -b <boardName> -m <matches>")
+	foundation.LogPrintln("  list-flash-sizes -c <cpuName> -b <boardName>")
+	foundation.LogPrintln("Options:")
+	foundation.LogPrintln("  projectName       Project name (if more than one) ")
+	foundation.LogPrintln("  projectConfig     Config name (debug, release, final) ")
+	foundation.LogPrintln("  boardName         Board name (e.g. esp32, esp32s3) ")
+	foundation.LogPrintln("  matches           Maximum number of boards to list")
+	foundation.LogPrintln("  cpuName           CPU name for listing flash sizes")
+	foundation.LogPrintln("  --help            Show this help message")
+	foundation.LogPrintln("  --version         Show version information")
 
-	fmt.Println("Examples:")
-	fmt.Println("  clay build-info (generates buildinfo.h and buildinfo.cpp)")
-	fmt.Println("  clay build-info -build debug -arch esp32s3")
-	fmt.Println("  clay build")
-	fmt.Println("  clay build -build debug -arch esp32s3")
-	fmt.Println("  clay clean -build debug -arch esp32s3")
-	fmt.Println("  clay flash -build debug-dev -arch esp32s3")
-	fmt.Println("  clay list-libraries")
-	fmt.Println("  clay list-boards -b esp32 -m 5")
-	fmt.Println("  clay list-flash-sizes -c esp32 -b esp32")
+	foundation.LogPrintln("Examples:")
+	foundation.LogPrintln("  clay build-info (generates buildinfo.h and buildinfo.cpp)")
+	foundation.LogPrintln("  clay build-info -build debug -arch esp32s3")
+	foundation.LogPrintln("  clay build")
+	foundation.LogPrintln("  clay build -build debug -arch esp32s3")
+	foundation.LogPrintln("  clay clean -build debug -arch esp32s3")
+	foundation.LogPrintln("  clay flash -build debug-dev -arch esp32s3")
+	foundation.LogPrintln("  clay list-libraries")
+	foundation.LogPrintln("  clay list-boards -b esp32 -m 5")
+	foundation.LogPrintln("  clay list-flash-sizes -c esp32 -b esp32")
 }
 
 func BuildInfo(projectName string, buildConfig *Config) error {
@@ -138,7 +135,7 @@ func BuildInfo(projectName string, buildConfig *Config) error {
 			}
 		}
 	}
-	log.Println("Ok, build info generated Ok")
+	foundation.LogPrintln("Ok, build info generated Ok")
 	return nil
 }
 
@@ -153,15 +150,15 @@ func Flash(projectName string, buildConfig *Config) error {
 	for _, prj := range prjs {
 		if projectName == prj.Name || projectName == "" {
 			if prj.IsExecutable && prj.Config.Matches(buildConfig) {
-				log.Printf("Flashing project: %s, config: %s\n", prj.Name, prj.Config.ConfigString())
+				foundation.LogPrintf("Flashing project: %s, config: %s\n", prj.Name, prj.Config.ConfigString())
 				startTime := time.Now()
 				{
 					if err := prj.Flash(buildConfig, buildPath); err != nil {
-						return fmt.Errorf("Build failed: %v", err)
+						return foundation.LogErrorf(err, "Build failed")
 					}
 				}
-				log.Printf("Flashing done ... (duration %s)\n", time.Since(startTime).Round(time.Second))
-				log.Println()
+				foundation.LogPrintf("Flashing done ... (duration %s)\n", time.Since(startTime).Round(time.Second))
+				foundation.LogPrintln()
 			}
 		}
 	}

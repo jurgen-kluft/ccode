@@ -4,7 +4,7 @@ import (
 	"path/filepath"
 	"sort"
 
-	utils "github.com/jurgen-kluft/ccode/utils"
+	"github.com/jurgen-kluft/ccode/foundation"
 )
 
 type FileType int
@@ -34,8 +34,8 @@ type FileEntry struct {
 	Parent             *VirtualDirectory // Parent directory
 	ExcludedFromBuild2 bool              // Excluded from build
 	Generated          bool              // Generated file
-	UUID               utils.UUID
-	BuildUUID          utils.UUID
+	UUID               foundation.UUID
+	BuildUUID          foundation.UUID
 }
 
 func NewFileEntry() *FileEntry {
@@ -53,7 +53,7 @@ func (fe *FileEntry) Init(path string, isGenerated bool) {
 	fe.Path = path
 	fe.ExcludedFromBuild2 = false
 
-	ext := utils.PathFileExtension(fe.Path)
+	ext := foundation.PathFileExtension(fe.Path)
 	switch ext {
 	case ".h", ".hpp", ".inl":
 		fe.Type = FileTypeCppHeader
@@ -154,7 +154,7 @@ func (d *FileEntryDict) GetRelativePath(e *FileEntry, path string) string {
 	if len(d.Path) == 0 {
 		return e.Path
 	}
-	return utils.PathGetRelativeTo(filepath.Join(d.Path, e.Path), path)
+	return foundation.PathGetRelativeTo(filepath.Join(d.Path, e.Path), path)
 }
 
 func (d *FileEntryDict) add(path string, isGenerated bool) *FileEntry {

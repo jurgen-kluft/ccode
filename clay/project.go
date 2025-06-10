@@ -1,15 +1,14 @@
 package clay
 
 import (
-	"fmt"
-	"log"
+	"os"
 	"path/filepath"
 	"runtime"
 	"time"
 
 	"github.com/jurgen-kluft/ccode/clay/toolchain"
 	"github.com/jurgen-kluft/ccode/clay/toolchain/dpenc"
-	utils "github.com/jurgen-kluft/ccode/utils"
+	"github.com/jurgen-kluft/ccode/foundation"
 )
 
 // Project represents a C/C++ project that can be built using the Clay build system.
@@ -74,7 +73,7 @@ func (p *Project) SetToolchain(config *Config) (err error) {
 	} else if targetOS == "mac" || targetOS == "macos" || targetOS == "darwin" {
 		p.Toolchain, err = toolchain.NewDarwinClang(runtime.GOARCH, p.Frameworks)
 	} else {
-		err = fmt.Errorf("error, %s as a build target on %s is not supported", targetOS, runtime.GOOS)
+		err = foundation.LogErrorf(os.ErrNotExist, "error, %s as a build target on %s is not supported", targetOS, runtime.GOOS)
 	}
 	return err
 }
@@ -116,7 +115,7 @@ func (p *Project) Build(buildConfig *Config, buildPath string) (outOfDate int, e
 
 	buildStartTime := time.Now()
 	if outOfDate > 0 {
-		log.Printf("Building project: %s, config: %s\n", p.Name, p.Config.String())
+		foundation.LogInfof("Building project: %s, config: %s\n", p.Name, p.Config.String())
 		buildStartTime = time.Now()
 
 		for _, src := range p.SourceFiles {
@@ -149,7 +148,7 @@ func (p *Project) Build(buildConfig *Config, buildPath string) (outOfDate int, e
 
 		if outOfDate > 0 || !projectDepFileTrackr.QueryItem(executableOutputFilepath) {
 			if outOfDate == 0 {
-				log.Printf("Linking project: %s, config: %s\n", p.Name, p.Config.String())
+				foundation.LogInfof("Linking project: %s, config: %s\n", p.Name, p.Config.String())
 				buildStartTime = time.Now()
 				outOfDate += 1
 			}
@@ -179,7 +178,7 @@ func (p *Project) Build(buildConfig *Config, buildPath string) (outOfDate int, e
 		archiveOutputFilepath := p.GetOutputFilepath(buildPath, staticArchiver.Filename(p.Name))
 		if outOfDate > 0 || !projectDepFileTrackr.QueryItem(archiveOutputFilepath) {
 			if outOfDate == 0 {
-				log.Printf("Archiving project: %s, config: %s\n", p.Name, p.Config.String())
+				foundation.LogInfof("Archiving project: %s, config: %s\n", p.Name, p.Config.String())
 				buildStartTime = time.Now()
 				outOfDate += 1
 			}
@@ -201,7 +200,7 @@ func (p *Project) Build(buildConfig *Config, buildPath string) (outOfDate int, e
 	}
 
 	if outOfDate > 0 {
-		log.Printf("Building done ... (duration %s)\n", time.Since(buildStartTime).Round(time.Second))
+		foundation.LogInfof("Building done ... (duration %s)\n", time.Since(buildStartTime).Round(time.Second))
 	}
 
 	return outOfDate, err
@@ -253,5 +252,5 @@ func (p *Project) AddSourceFilesFrom(srcPath string, options AddSourceFileOption
 		}
 	}
 
-	utils.AddFilesFrom(srcPath, handleDir, handleFile)
+	foundation.AddFilesFrom(srcPath, handleDir, handleFile)
 }

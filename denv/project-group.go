@@ -1,6 +1,6 @@
 package denv
 
-import utils "github.com/jurgen-kluft/ccode/utils"
+import "github.com/jurgen-kluft/ccode/foundation"
 
 type ProjectGroup struct {
 	Path     string
@@ -8,7 +8,7 @@ type ProjectGroup struct {
 	Projects []*Project
 	Parent   *ProjectGroup
 	MsDev    struct {
-		UUID utils.UUID
+		UUID foundation.UUID
 	}
 }
 
@@ -48,7 +48,7 @@ func (d *ProjectGroups) Add(p *Project) *ProjectGroup {
 }
 
 func (d *ProjectGroups) GetOrAddParent(path string) *ProjectGroup {
-	parent, _ := utils.PathUp(path)
+	parent, _ := foundation.PathUp(path)
 	if len(parent) == 0 || parent == "." {
 		return d.Root
 	}

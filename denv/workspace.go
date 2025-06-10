@@ -6,7 +6,7 @@ import (
 	"strings"
 
 	"github.com/jurgen-kluft/ccode/dev"
-	utils "github.com/jurgen-kluft/ccode/utils"
+	"github.com/jurgen-kluft/ccode/foundation"
 )
 
 // -----------------------------------------------------------------------------------------------------
@@ -273,7 +273,7 @@ func (ew *ExtraWorkspace) resolve() {
 
 	for _, name := range ew.Config.Groups {
 		for _, g := range ew.Workspace.ProjectGroups.Values {
-			if utils.PathMatchWildcard(g.Path, name, true) {
+			if foundation.PathMatchWildcard(g.Path, name, true) {
 				for _, gp := range g.Projects {
 					projectToAdd.Add(gp)
 				}
@@ -283,7 +283,7 @@ func (ew *ExtraWorkspace) resolve() {
 
 	for _, name := range ew.Config.ExcludeProjects {
 		for _, p := range ew.Workspace.ProjectList.Values {
-			if utils.PathMatchWildcard(p.Name, name, true) {
+			if foundation.PathMatchWildcard(p.Name, name, true) {
 				projectToRemove.Add(p)
 			}
 		}
@@ -291,7 +291,7 @@ func (ew *ExtraWorkspace) resolve() {
 
 	for _, name := range ew.Config.ExcludeGroups {
 		for _, g := range ew.Workspace.ProjectGroups.Values {
-			if utils.PathMatchWildcard(g.Path, name, true) {
+			if foundation.PathMatchWildcard(g.Path, name, true) {
 				for _, gp := range g.Projects {
 					projectToRemove.Add(gp)
 				}

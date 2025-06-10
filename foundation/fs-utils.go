@@ -1,4 +1,4 @@
-package ccode_utils
+package foundation
 
 import (
 	"fmt"
@@ -31,6 +31,31 @@ func FileExists(path string) bool {
 		return false
 	}
 	return true
+}
+
+func DirExists(path string) bool {
+	// Check if the directory exists
+	if info, err := os.Stat(path); err == nil {
+		return info.IsDir()
+	}
+	return false
+}
+
+func FileRead(path string) ([]byte, error) {
+	// Open the file for reading
+	file, err := os.Open(path)
+	if err != nil {
+		return nil, fmt.Errorf("failed to open file %s: %w", path, err)
+	}
+	defer file.Close()
+
+	// Read the entire file into a byte slice
+	data, err := io.ReadAll(file)
+	if err != nil {
+		return nil, fmt.Errorf("failed to read file %s: %w", path, err)
+	}
+
+	return data, nil
 }
 
 func MakeDir(path string) error {
@@ -71,4 +96,21 @@ func CopyFiles(src, dst string) error {
 	}
 
 	return nil
+}
+
+func ListDirectory(path string) ([]string, error) {
+	// Open the directory
+	dir, err := os.Open(path)
+	if err != nil {
+		return nil, fmt.Errorf("failed to open directory %s: %w", path, err)
+	}
+	defer dir.Close()
+
+	// Read the directory entries
+	entries, err := dir.Readdirnames(-1)
+	if err != nil {
+		return nil, fmt.Errorf("failed to read directory %s: %w", path, err)
+	}
+
+	return entries, nil
 }

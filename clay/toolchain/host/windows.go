@@ -1,8 +1,8 @@
 package tchost
 
-import utils "github.com/jurgen-kluft/ccode/utils"
+import "github.com/jurgen-kluft/ccode/foundation"
 
-func ApplyWindows(env *utils.Vars) {
+func ApplyWindows(env *foundation.Vars) {
 	env.SetMany(map[string][]string{
 		"DOTNETRUN":       {""},
 		"HOSTPROGSUFFIX":  {".exe"},

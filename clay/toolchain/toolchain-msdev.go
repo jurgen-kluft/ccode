@@ -4,12 +4,12 @@ import (
 	"fmt"
 
 	"github.com/jurgen-kluft/ccode/clay/toolchain/dpenc"
-	utils "github.com/jurgen-kluft/ccode/utils"
+	"github.com/jurgen-kluft/ccode/foundation"
 )
 
 type WinMsdev struct {
 	Name  string
-	Vars  *utils.Vars
+	Vars  *foundation.Vars
 	Tools map[string]string
 	Setup *MsDevSetup
 }

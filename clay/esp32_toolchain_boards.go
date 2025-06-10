@@ -4,7 +4,7 @@ import (
 	"fmt"
 	"sort"
 
-	utils "github.com/jurgen-kluft/ccode/utils"
+	"github.com/jurgen-kluft/ccode/foundation"
 )
 
 // opName: Any of the following:
@@ -110,10 +110,10 @@ func PrintAllFlashSizes(espSdkPath string, cpuName string, boardName string) (er
 		}
 
 		// Print the header
-		fmt.Printf("%-*s   %s\n", column1MaxLength, "----------", "-----------")
-		fmt.Printf("%-*s | %s\n", column1MaxLength, "Flash Size", "Description")
+		foundation.LogPrintf("%-*s   %s\n", column1MaxLength, "----------", "-----------")
+		foundation.LogPrintf("%-*s | %s\n", column1MaxLength, "Flash Size", "Description")
 		for i := 0; i < len(column1); i++ {
-			fmt.Printf("%-*s | %s\n", column1MaxLength, column1[i], column2[i])
+			foundation.LogPrintf("%-*s | %s\n", column1MaxLength, column1[i], column2[i])
 		}
 	}
 	return nil
@@ -137,7 +137,7 @@ func PrintAllMatchingBoards(espSdkPath string, fuzzy string, max int) error {
 		names = append(names, board.Name)
 	}
 
-	cm := utils.NewClosestMatch(names, []int{2})
+	cm := foundation.NewClosestMatch(names, []int{2})
 	closest := cm.ClosestN(fuzzy, max)
 	if len(closest) > 0 {
 
@@ -154,7 +154,7 @@ func PrintAllMatchingBoards(espSdkPath string, fuzzy string, max int) error {
 			}
 		}
 		for _, match := range closest {
-			fmt.Printf("%-*s %s\n", longestName, match, boardMap[match])
+			foundation.LogPrintf("%-*s %s\n", longestName, match, boardMap[match])
 		}
 	}
 
@@ -165,7 +165,7 @@ func PrintAllMatchingBoards(espSdkPath string, fuzzy string, max int) error {
 		for _, board := range toolchain.Boards {
 			descriptions = append(descriptions, board.Description)
 		}
-		cm = utils.NewClosestMatch(descriptions, []int{2})
+		cm = foundation.NewClosestMatch(descriptions, []int{2})
 		closest = cm.ClosestN(fuzzy, max-len(closest))
 		if len(closest) > 0 {
 
@@ -184,7 +184,7 @@ func PrintAllMatchingBoards(espSdkPath string, fuzzy string, max int) error {
 			}
 			for _, match := range closest {
 				boardName := boardMap[match]
-				fmt.Printf("%-*s %s\n", longestName, boardName, match)
+				foundation.LogPrintf("%-*s %s\n", longestName, boardName, match)
 			}
 
 		}

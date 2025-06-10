@@ -1,8 +1,8 @@
 package tctools
 
-import utils "github.com/jurgen-kluft/ccode/utils"
+import "github.com/jurgen-kluft/ccode/foundation"
 
-func ApplyGcc(env *utils.Vars, options *utils.Vars) {
+func ApplyGcc(env *foundation.Vars, options *foundation.Vars) {
 
 	ApplyGenericCpp(env, options)
 

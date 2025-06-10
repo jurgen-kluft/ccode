@@ -2,10 +2,11 @@ package clay
 
 import (
 	"bufio"
-	"fmt"
 	"os"
 	"runtime"
 	"strings"
+
+	"github.com/jurgen-kluft/ccode/foundation"
 )
 
 //
@@ -266,7 +267,7 @@ func ResolveString(variable string, vars *KeyValueSet) string {
 		// See if we have an invalid pair, if so just return
 		for _, p := range list {
 			if p.to == -1 {
-				fmt.Printf("Invalid variable pair in string: %s\n", variable)
+				foundation.LogWarningf("Invalid variable pair in string: %s\n", variable)
 				return variable // Return the original string if we have an invalid pair
 			}
 		}
@@ -382,10 +383,10 @@ func (t *Esp32Toolchain) ResolveVariables(board string) error {
 	globalVars.Add("runtime.os", runtime.GOOS)
 	globalVars.Add("runtime.platform.path", t.SdkPath)
 	globalVars.Add("runtime.ide.version", t.Platform.Version)
-    globalVars.Add("build.path", "build")
+	globalVars.Add("build.path", "build")
 
 	if boardIndex, boardExists := t.NameToBoard[board]; !boardExists {
-		return fmt.Errorf("Invalid board name: %s", board)
+		return foundation.LogErrorf(os.ErrInvalid, "Invalid board name: %s", board)
 	} else {
 		board := t.Boards[boardIndex]
 		for i, k := range board.Vars.Keys {
