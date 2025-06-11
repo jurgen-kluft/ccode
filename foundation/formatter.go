@@ -6,8 +6,8 @@ import (
 	"strings"
 )
 
-const argumentFormatSeparator = ":"
-const bytesPerArgDefault = 16
+const constArgumentFormatSeparator = ":"
+const constBytesPerArgDefault = 16
 
 // Format
 /* Func that makes string formatting from template
@@ -38,7 +38,7 @@ func (sb *StringBuilder) Format(template string, args ...any) {
 
 	templateLen := len(template)
 
-	argsLen := bytesPerArgDefault * len(args)
+	argsLen := constBytesPerArgDefault * len(args)
 	sb.Grow(templateLen + argsLen + 1)
 	j := -1 //nolint:ineffassign
 
@@ -50,19 +50,19 @@ func (sb *StringBuilder) Format(template string, args ...any) {
 			if i == templateLen-1 {
 				// if we gave { at the end of line i.e. -> type serviceHealth struct {,
 				// without this write we got type serviceHealth struct
-				sb.WriteByte('{')
+				sb.WriteAscii('{')
 				break
 			}
 			// considering in 2 phases - {{ }}
 			if template[i+1] == '{' {
-				sb.WriteByte('{')
+				sb.WriteAscii('{')
 				continue
 			}
 			// find end of placeholder
 			// process empty pair - {}
 			if template[i+1] == '}' {
 				i++
-				sb.WriteString("{}")
+				sb.WriteAscii('{', '}')
 				continue
 			}
 			// process non-empty placeholder
@@ -104,7 +104,7 @@ func (sb *StringBuilder) Format(template string, args ...any) {
 					// Here we are going to process argument either with additional formatting or not
 					// i.e. 0 for arg without formatting && 0:format for an argument wit formatting
 					// todo(UMV): we could format json or yaml here ...
-					formatOptionIndex := strings.Index(argNumberStr, argumentFormatSeparator)
+					formatOptionIndex := strings.Index(argNumberStr, constArgumentFormatSeparator)
 					// formatOptionIndex can't be == 0, because 0 is a position of arg number
 					if formatOptionIndex > 0 {
 						// trimmed was down later due to we could format list with space separator
@@ -127,14 +127,14 @@ func (sb *StringBuilder) Format(template string, args ...any) {
 				} else {
 					sb.WriteString(template[i:j])
 					if j < templateLen-1 {
-						sb.WriteByte(template[j])
+						sb.WriteAscii(template[j])
 					}
 				}
 				i = j
 			}
 		} else {
 			j = i //nolint:ineffassign
-			sb.WriteByte(template[i])
+			sb.WriteAscii(template[i])
 		}
 	}
 }
@@ -158,7 +158,7 @@ func (sb *StringBuilder) FormatComplex(template string, args map[string]any) {
 	}
 
 	templateLen := len(template)
-	argsLen := bytesPerArgDefault * len(args)
+	argsLen := constBytesPerArgDefault * len(args)
 	sb.Grow(templateLen + argsLen + 1)
 	j := -1 //nolint:ineffassign
 	nestedBrackets := false
@@ -169,19 +169,19 @@ func (sb *StringBuilder) FormatComplex(template string, args map[string]any) {
 			if i == templateLen-1 {
 				// if we gave { at the end of line i.e. -> type serviceHealth struct {,
 				// without this write we got type serviceHealth struct
-				sb.WriteByte('{')
+				sb.WriteAscii('{')
 				break
 			}
 
 			if template[i+1] == '{' {
-				sb.WriteByte('{')
+				sb.WriteAscii('{')
 				continue
 			}
 			// find end of placeholder
 			// process empty pair - {}
 			if template[i+1] == '}' {
 				i++
-				sb.WriteString("{}")
+				sb.WriteAscii('{', '}')
 				continue
 			}
 			// process non-empty placeholder
@@ -213,7 +213,7 @@ func (sb *StringBuilder) FormatComplex(template string, args map[string]any) {
 				argNumberStr := template[i+1 : j]
 				arg, ok := args[argNumberStr]
 				if !ok {
-					formatOptionIndex := strings.Index(argNumberStr, argumentFormatSeparator)
+					formatOptionIndex := strings.Index(argNumberStr, constArgumentFormatSeparator)
 					if formatOptionIndex >= 0 {
 						// argFormatOptions = strings.Trim(argNumberStr[formatOptionIndex+1:], " ")
 						argFormatOptions = argNumberStr[formatOptionIndex+1:]
@@ -229,30 +229,30 @@ func (sb *StringBuilder) FormatComplex(template string, args map[string]any) {
 					} else {
 						sb.WriteString(template[i:j])
 						if j < templateLen-1 {
-							sb.WriteByte(template[j])
+							sb.WriteAscii(template[j])
 						}
 					}
 				} else {
 					sb.WriteString(template[i:j])
 					if j < templateLen-1 {
-						sb.WriteByte(template[j])
+						sb.WriteAscii(template[j])
 					}
 				}
 				i = j
 			}
 		} else {
 			j = i //nolint:ineffassign
-			sb.WriteByte(template[i])
+			sb.WriteAscii(template[i])
 		}
 	}
 }
 
 func (sb *StringBuilder) appendAnyAsStr(item *any, itemFormat *string) {
 	base := 10
-	var floatFormat byte = 'f'
+	floatFormat := byte('f')
 	precision := -1
-	var preparedArgFormat string
-	var argStr string
+	preparedArgFormat := ""
+	argStr := ""
 	postProcessingRequired := false
 	intNumberFormat := false
 	floatNumberFormat := false
@@ -292,6 +292,9 @@ func (sb *StringBuilder) appendAnyAsStr(item *any, itemFormat *string) {
 		case 'e', 'E', 'f', 'F':
 			if rune(preparedArgFormat[0]) == 'e' || rune(preparedArgFormat[0]) == 'E' {
 				floatFormat = 'e'
+				floatNumberFormat = false
+			} else {
+				floatNumberFormat = floatFormat == 'f'
 			}
 			// precision was passed, take [1:end], extract precision
 			if postProcessingRequired {
@@ -302,7 +305,6 @@ func (sb *StringBuilder) appendAnyAsStr(item *any, itemFormat *string) {
 				}
 			}
 			postProcessingRequired = false
-			floatNumberFormat = floatFormat == 'f'
 
 		case 'p', 'P':
 			// percentage processes here ...
@@ -398,9 +400,7 @@ func (sb *StringBuilder) appendAnyAsStr(item *any, itemFormat *string) {
 			symbolsToAdd := symbolsStrVal - len(argStr)
 			if symbolsToAdd > 0 {
 				sb.Grow(len(argStr) + symbolsToAdd + 1)
-				for i := 0; i < symbolsToAdd; i++ {
-					sb.WriteByte('0')
-				}
+				sb.WriteAsciiN('0', symbolsToAdd)
 				sb.WriteString(argStr)
 				return
 			}
@@ -413,9 +413,7 @@ func (sb *StringBuilder) appendAnyAsStr(item *any, itemFormat *string) {
 			sb.Grow(len(argStr) + precision + 1)
 			sb.WriteString(argStr)
 			numberOfSymbolsAfterPoint := len(argStr) - (pointIndex + 1)
-			for i := numberOfSymbolsAfterPoint; i < precision; i++ {
-				sb.WriteByte('0')
-			}
+			sb.WriteAsciiN('0', precision-numberOfSymbolsAfterPoint)
 			return
 		}
 	}

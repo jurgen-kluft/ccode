@@ -3,11 +3,13 @@
 - MAJOR: Clay; parse the boards.txt file and be able to fill in all the necessary
          vars in ArduinoEsp32 toolchain
 - MINOR: Clay; Executable Stats (size, .ram, .text, .data, .bss, etc.)
+         - ESP32 Elf files
+         - PE files
 
 # DONE
 
 - MAJOR: Clay; To reduce compile/link time we need Dependency Tracking (Database)
-  - source file <-> [command-line args], [object-file + header-files]
+         - source file <-> [command-line args], [object-file + header-files]
 - MINOR: ESP32 S3 Target (could be automatic if we are able to fully parse the boards.txt file)
 - MINOR: Clay build CLI-APP for the user
 - MINOR: Clay build CLI-APP for the user

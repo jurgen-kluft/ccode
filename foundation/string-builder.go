@@ -17,7 +17,7 @@ func NewStringBuilder() *StringBuilder {
 	return &StringBuilder{
 		cursor: 0,
 		buf:    make([]byte, 8192),
-		tmp:    make([]byte, 4),
+		tmp:    make([]byte, 32),
 	}
 }
 
@@ -56,7 +56,7 @@ func (b *StringBuilder) Grow(n int) {
 }
 
 // Write appends the contents of p to b's buffer, and returns len(p)
-func (b *StringBuilder) Write(p []byte) int {
+func (b *StringBuilder) Write(p []byte) {
 	n := len(p)
 	if cap(b.buf)-b.cursor < n {
 		b.grow(n)
@@ -66,22 +66,33 @@ func (b *StringBuilder) Write(p []byte) int {
 		b.buf[b.cursor] = s
 		b.cursor++
 	}
-	return len(p)
 }
 
 // WriteByte appends byte p to b's buffer
-func (b *StringBuilder) WriteByte(p byte) int {
-	if cap(b.buf)-b.cursor < 8 {
-		b.grow(8)
+func (b *StringBuilder) WriteAscii(chars ...uint8) {
+	if cap(b.buf)-b.cursor < len(chars) {
+		b.grow(len(chars))
 	}
 
-	b.buf[b.cursor] = p
-	b.cursor++
-	return 1
+	for _, c := range chars {
+		b.buf[b.cursor] = c
+		b.cursor++
+	}
+}
+
+func (b *StringBuilder) WriteAsciiN(c uint8, n int) {
+	if cap(b.buf)-b.cursor < n {
+		b.grow(n)
+	}
+
+	for i := 0; i < n; i++ {
+		b.buf[b.cursor] = c
+		b.cursor++
+	}
 }
 
 // WriteByteN appends the byte p to b's buffer n times.
-func (b *StringBuilder) WriteByteN(p byte, n int) int {
+func (b *StringBuilder) WriteByteN(p byte, n int) {
 	if cap(b.buf)-b.cursor < n {
 		b.grow(n)
 	}
@@ -92,21 +103,18 @@ func (b *StringBuilder) WriteByteN(p byte, n int) int {
 		b.cursor++
 		i--
 	}
-	return n
 }
 
 // WriteFloat appends the string representation of f to b's buffer.
-func (b *StringBuilder) WriteFloat(f float64, fmt byte, prec, bitSize int) int {
+func (b *StringBuilder) WriteFloat(f float64, fmt byte, prec, bitSize int) {
 	b.tmp = b.tmp[:0]
 	b.tmp = strconv.AppendFloat(b.tmp, f, fmt, prec, bitSize)
 	b.Write(b.tmp)
-	n := len(b.tmp)
 	b.tmp = b.tmp[:4]
-	return n
 }
 
 // WriteRune appends the UTF-8 encoding of Unicode code point r to b's buffer.
-func (b *StringBuilder) WriteRune(r rune) int {
+func (b *StringBuilder) WriteRune(r rune) {
 	n := utf8.EncodeRune(b.tmp, r)
 	if cap(b.buf)-b.cursor < n {
 		b.grow(n)
@@ -116,12 +124,11 @@ func (b *StringBuilder) WriteRune(r rune) int {
 		b.cursor++
 	}
 	b.tmp = b.tmp[:4]
-	return n
 }
 
 // WriteString appends the contents of s to b's buffer.
 // It returns the length of s written to the buffer.
-func (b *StringBuilder) WriteString(s string) int {
+func (b *StringBuilder) WriteString(s string) {
 	n := len(s)
 	if cap(b.buf)-b.cursor < n {
 		b.grow(n)
@@ -130,9 +137,4 @@ func (b *StringBuilder) WriteString(s string) int {
 		b.buf[b.cursor] = s[i]
 		b.cursor++
 	}
-	return n
 }
-
-// TODO:
-// - implement WriteInt8, WriteInt16, WriteInt32, WriteInt64, WriteUint8, WriteUint16, WriteUint32, WriteUint64
-// - add MapToString, SliceToString, Format, FormatComplex

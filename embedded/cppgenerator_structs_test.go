@@ -107,10 +107,13 @@ func TestCppGeneratorStructs(t *testing.T) {
 		]
 	}`
 
-	generator := NewCppStructGenerator()
-	err := generator.UnmarshalJSON([]byte(jsonData))
+	generator, err := NewCppCodeGeneratorFromJSON([]byte(jsonData))
 	if err != nil {
 		t.Fatalf("Failed to unmarshal JSON: %v", err)
+	}
+
+	if len(generator.CppStruct) == 0 {
+		t.Fatal("No structs found in the generator")
 	}
 
 }
