@@ -17,7 +17,7 @@ var FeatureFlagDeclared = map[string]Flag{
 }
 
 func TestBitFlags(t *testing.T) {
-	flags := NewBitFlags(&FeatureFlagDeclared)
+	flags := NewBitFlags(0, &FeatureFlagDeclared)
 
 	if flags.Bits() != 0 {
 		t.Errorf("Expected initial value to be 0, got %d", flags.Bits())
@@ -41,7 +41,7 @@ func TestBitFlags(t *testing.T) {
 }
 
 func TestBitFlagsMarshallJson(t *testing.T) {
-	flags := NewBitFlags(&FeatureFlagDeclared)
+	flags := NewBitFlags(0, &FeatureFlagDeclared)
 
 	flags.Set(FeatureFlagMergeBoolIntoBitset)
 	jsonData, err := flags.MarshalJSON()
@@ -67,23 +67,23 @@ func TestBitFlagsMarshallJson(t *testing.T) {
 }
 
 func TestBitFlagsUnmarshallJson(t *testing.T) {
-	flags := NewBitFlags(&FeatureFlagDeclared)
-
 	jsonData := `"merge_bool_into_bitset"`
-	err := flags.UnmarshalJSON([]byte(jsonData))
+	value, err := UnmarshalBitFlagsFromJSON([]byte(jsonData), FeatureFlagDeclared)
 	if err != nil {
 		t.Errorf("Error unmarshalling from JSON: %v", err)
 	}
+	flags := NewBitFlags(value, &FeatureFlagDeclared)
 	if !flags.Only(FeatureFlagMergeBoolIntoBitset) {
 		t.Errorf("Expected value to be %d, got %d", FeatureFlagMergeBoolIntoBitset, flags.Bits())
 	}
 
 	jsonData = `"merge_bool_into_bitset|optimize_member_layout"`
-	err = flags.UnmarshalJSON([]byte(jsonData))
+	value, err = UnmarshalBitFlagsFromJSON([]byte(jsonData), FeatureFlagDeclared)
 	if err != nil {
 		t.Errorf("Error unmarshalling from JSON: %v", err)
 	}
 
+	flags = NewBitFlags(value, &FeatureFlagDeclared)
 	if !flags.Only(FeatureFlagMergeBoolIntoBitset | FeatureFlagOptimizeMemberLayout) {
 		t.Errorf("Expected value to be %d, got %d", FeatureFlagMergeBoolIntoBitset|FeatureFlagOptimizeMemberLayout, flags.Bits())
 	}
