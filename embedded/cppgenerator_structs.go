@@ -45,31 +45,31 @@ func (f *FeatureFlags) UnmarshalJSON(data []byte) error {
 	}
 }
 
-type CppStructMember struct {
+type cppStructMember struct {
 	Name        string `json:"name"`
 	Type        string `json:"type,omitempty"`
 	Initializer string `json:"initializer,omitempty"`
 }
 
-type CppStruct struct {
+type cppStruct struct {
 	Name         string            `json:"name"`
 	Type         string            `json:"type,omitempty"`
 	MemberPrefix string            `json:"prefix,omitempty"`
 	Features     *FeatureFlags     `json:"features,omitempty"`
-	Members      []CppStructMember `json:"members"`
+	Members      []cppStructMember `json:"members"`
 }
 
-func NewCppStruct() *CppStruct {
-	g := &CppStruct{}
+func NewCppStruct() *cppStruct {
+	g := &cppStruct{}
 	g.Name = ""
 	g.Type = "struct"
 	g.MemberPrefix = "m_"
 	g.Features = NewFeatureFlags()
-	g.Members = make([]CppStructMember, 0)
+	g.Members = make([]cppStructMember, 0)
 	return g
 }
 
-func (g *CppStruct) SetDefaults() {
+func (g *cppStruct) SetDefaults() {
 	if g.Type == "" {
 		g.Type = "struct"
 	}
@@ -80,17 +80,17 @@ func (g *CppStruct) SetDefaults() {
 		g.Features = NewFeatureFlags()
 	}
 	if g.Members == nil {
-		g.Members = make([]CppStructMember, 0)
+		g.Members = make([]cppStructMember, 0)
 	}
 }
 
-func (g *CppStruct) UnmarshalJSON(text []byte) error {
-	type Alias CppStruct
+func (g *cppStruct) UnmarshalJSON(text []byte) error {
+	type Alias cppStruct
 	aux := Alias{}
 	if err := json.Unmarshal(text, &aux); err != nil {
 		return err
 	}
-	*g = CppStruct(aux)
+	*g = cppStruct(aux)
 	g.SetDefaults()
 	return nil
 }

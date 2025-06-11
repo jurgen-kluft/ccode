@@ -21,10 +21,9 @@ var testMainFilename = "source/test/cpp/test_main.cpp"
 func WriteTestMainCpp(ccore bool, cbase bool, overwrite bool) {
 	// check if the file exists, if it does not, create it
 	_, err := os.Stat(testMainFilename)
-    if err  != nil {
-        return
-    }
-	if err == nil && !overwrite {
+	if err != nil {
+		return
+	} else if !overwrite {
 		return
 	}
 
@@ -37,18 +36,12 @@ func WriteTestMainCpp(ccore bool, cbase bool, overwrite bool) {
 
 	if cbase {
 		_, err = io.WriteString(f, testMainCBase)
-		if err != nil {
-			log.Fatal(err)
-		}
 	} else if ccore {
 		_, err = io.WriteString(f, testMainCCore)
-		if err != nil {
-			log.Fatal(err)
-		}
 	} else {
 		_, err = io.WriteString(f, testMain)
-		if err != nil {
-			log.Fatal(err)
-		}
+	}
+	if err != nil {
+		log.Fatal(err)
 	}
 }
