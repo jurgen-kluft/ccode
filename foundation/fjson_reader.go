@@ -1,44 +1,60 @@
 package foundation
 
+type JsonValueType int
 
-// using System.Text;
+const (
+	JsonValueTypeObject JsonValueType = iota
+	JsonValueTypeArray
+	JsonValueTypeString
+	JsonValueTypeNumber
+	JsonValueTypeBool
+	JsonValueTypeNull
+	JsonValueTypeEmpty
+	JsonValueTypeError
+	JsonValueTypeEnd
+)
 
-// namespace FJson;
+type JsonField struct {
+	Begin  int
+	Length int
+	Type   JsonValueType
+}
 
-// public class Reader
+var JsonFieldEmpty = JsonField{Begin: 0, Length: 0, Type: JsonValueTypeEmpty}
+var JsonFieldError = JsonField{Begin: 0, Length: 0, Type: JsonValueTypeError}
+
+func NewJsonField(begin, length int, valueType JsonValueType) JsonField {
+	return JsonField{Begin: begin, Length: length, Type: valueType}
+}
+
+type JsonContext struct {
+	Json           []byte
+	Index          int
+	IsEscapeString bool
+	Stack          []JsonValueType
+	StackIndex     int
+	EscapedStrings StringBuilder
+}
+
+func NewJsonContext(json string) *JsonContext {
+	return &JsonContext{
+		Json:           []byte(json),
+		Index:          0,
+		IsEscapeString: false,
+		Stack:          make([]JsonValueType, 64),
+		StackIndex:     len(make([]JsonValueType, 64)),
+		EscapedStrings: StringBuilder{},
+	}
+}
+
+type JsonReader struct {
+	Context *JsonContext
+}
+
+// public class JsonReader
 // {
-//     public enum ValueType
-//     {
-//         Object,
-//         Array,
-//         String,
-//         Number,
-//         Bool,
-//         Null,
-//         Empty,
-//         Error,
-//         End,
-//     }
-
-//     public struct Field
-//     {
-//         public int Begin { get; init; }
-//         public int Length { get; set; }
-//         public ValueType Type { get; set; }
-
-//         public static readonly Field Empty = new Field(0, 0, ValueType.Null);
-//         public static readonly Field Error = new Field(0, 0, ValueType.Error);
-
-//         public Field(int begin, int len, ValueType type)
-//         {
-//             Begin = begin;
-//             Length = len;
-//             Type = type;
-//         }
-//     }
-
 //     private Context _context;
-
+//
 //     public bool Begin(string json)
 //     {
 //         _context = new Context(json);
@@ -206,8 +222,6 @@ package foundation
 //         return true;
 //     }
 
-//     #region Parse Json
-
 //     private static ValueType DetermineValueType(ref Context context)
 //     {
 //         SkipWhiteSpace(ref context);
@@ -274,7 +288,6 @@ package foundation
 
 //         return false;
 //     }
-
 
 //     private static int ParseObjectBody(ref Context context, out Field outKey, out Field outValue)
 //     {
@@ -666,27 +679,4 @@ package foundation
 
 //         return (char)(unicode&0xFFFF);
 //     }
-
-//     private struct Context
-//     {
-//         private readonly string JsonStr;
-//         public ReadOnlySpan<char> Json => JsonStr;
-//         public int Index { get; set; }
-//         public bool IsEscapeString { get; }
-//         public ValueType[] Stack { get; }
-//         public int StackIndex { get; set; }
-//         private StringBuilder EscapedStrings {get;set;}
-
-//         public Context(string json)
-//         {
-//             JsonStr = json;
-//             Index = 0;
-//             IsEscapeString = false;
-//             Stack = new ValueType[64];
-//             StackIndex = Stack.Length;
-//             EscapedStrings = new StringBuilder();
-//         }
-//     }
-
-//     #endregion
 // }
