@@ -126,5 +126,5 @@ func GenerateFiles(pkg *denv.Package) {
 }
 
 func GenerateCppEnums(inputFile string, outputFile string) error {
-	return embedded.GenerateCppEnums(inputFile, outputFile)
+	return embedded.GenerateCppCode(inputFile, outputFile)
 }
