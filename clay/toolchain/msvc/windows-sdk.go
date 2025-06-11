@@ -1,4 +1,4 @@
-package tctools
+package msvc
 
 import (
 	"fmt"
@@ -30,7 +30,7 @@ func findWindowsSDK(targetWinsdkVersion string, winAppPlatform winAppPlatform) (
 		checkFile = "Windows.h"
 	}
 
-	dirs, err := foundation.ListDirectory(filepath.Join(winsdkDir, "Include"))
+	dirs, err := foundation.DirList(filepath.Join(winsdkDir, "Include"))
 	if err != nil {
 		return "", "", fmt.Errorf("failed to list Windows SDK include directory: %v", err)
 	}

@@ -6,8 +6,7 @@ The structure of packages are defined in Go and files can be generated for `Visu
 If you like my work and want to support me. Please consider to buy me a [coffee!](https://www.buymeacoffee.com/Jur93n)
 <img src="bmacoffee.png" width="100">
 
-Any C++ external dependency like Boost, DirectX or whatnot should be wrapped in a package (github or other git server).
-There are a couple of notable features that can be triggered when generating the project files:
+Any C++ external dependency like Boost, DirectX or whatnot should be wrapped in a package (github or other git server). There are a couple of notable features that can be triggered when generating the project files:
 
 * generating `.clang-format` and/or `.gitignore`
 * generating `source/test/cpp/test_main.cpp`
@@ -32,7 +31,7 @@ Make as a buildsystem is deprecated, but still supported:
 
 Currently the design is quite set and the goal is to keep API changes to a minimum.
 
-If you have repository/package that uses ccode, you can do the following to generate the tundra build files (default on Mac and Linux), this example uses the `cbase` repository:
+If you have a repository/package that uses ccode, you can do the following to generate the tundra build files (default on Mac and Linux), this example uses the `cbase` repository:
 
 1. `go run cbase.go --dev=tundra`
 2. cd into `target/tundra`

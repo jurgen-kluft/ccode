@@ -10,13 +10,13 @@ import (
 
 /* Example JSON
 {
-    "between": "=> Gpu Enumerations - GENERATED <=",
+    "between": "=== GPU Enumerations ===",
     "enums": [
         {
             "name": "BlendOperation",
             "type": "byte",
             "namespace": true,
-            "enums": [
+            "members": [
                 "Add",
                 "Subtract",
                 "RevSubtract",
@@ -63,6 +63,29 @@ namespace BlendOperation {
 } // namespace BlendOperation
 */
 
+type CppEnumGenerator struct {
+	IndentType IndentType `json:"indent_type,default=space"`
+	IndentSize int        `json:"indent_size,default=4"`
+	Between    string     `json:"between"`
+	CppEnum    []CppEnum  `json:"enums"`
+}
+
+type EnumGenerate string
+
+const (
+	ToString   EnumGenerate = "ToString"
+	Mask       EnumGenerate = "Mask"
+	EnumToMask EnumGenerate = "EnumToMask"
+)
+
+type CppEnum struct {
+	Name      string         `json:"name"`
+	Namespace bool           `json:"namespace,omitempty"`
+	Type      string         `json:"type,omitempty"`
+	Members   []string       `json:"members"`
+	Generate  []EnumGenerate `json:"generate"`
+}
+
 // This is the public function that will generate the C++ code
 func GenerateCppEnums(inputFile string, outputFile string) error {
 	// Read the JSON file
@@ -87,14 +110,14 @@ func GenerateCppEnums(inputFile string, outputFile string) error {
 }
 
 // C++ code generator
-func cppCodeGeneratorFromJSON(data []byte) (*CppCodeGenerator, error) {
-	r := &CppCodeGenerator{}
+func cppCodeGeneratorFromJSON(data []byte) (*CppEnumGenerator, error) {
+	r := &CppEnumGenerator{}
 	err := json.Unmarshal(data, r)
 	return r, err
 }
 
 // This will generate the C++ code to the output file
-func (r *CppCodeGenerator) generate(outputFile string) error {
+func (r *CppEnumGenerator) generate(outputFile string) error {
 
 	// We need to open the file and find the between string, and replace everything between the begin and end line
 
@@ -122,9 +145,9 @@ func (r *CppCodeGenerator) generate(outputFile string) error {
 	// Do keep track of what the indentation is for the begin line
 	// Find the second between string, that is the end line
 	betweenLine := ""
+	initialIndentation := ""
 	beginLine := -1
 	endLine := -1
-	indentation := ""
 	for i, line := range lines {
 		if len(line) == 0 {
 			continue
@@ -145,7 +168,8 @@ func (r *CppCodeGenerator) generate(outputFile string) error {
 						break
 					}
 				}
-				indentation = strings.Repeat(" ", numSpaces)
+				// Detected initial indentation
+				initialIndentation = strings.Repeat(" ", numSpaces)
 			} else {
 				if endLine == -1 {
 					endLine = i
@@ -183,7 +207,7 @@ func (r *CppCodeGenerator) generate(outputFile string) error {
 
 	// generate the enums
 	for _, e := range r.CppEnum {
-		lines := r.generateEnum(indentation, e)
+		lines := r.generateEnum(initialIndentation, e)
 		for _, line := range lines {
 			outStream.WriteString(line + "\n")
 		}
@@ -194,7 +218,6 @@ func (r *CppCodeGenerator) generate(outputFile string) error {
 	// =====================================================================
 	// =====================================================================
 
-	// Write the lines after the end line
 	for i := endLine + 1; i < len(lines); i++ {
 		outStream.WriteString(lines[i] + "\n")
 	}
@@ -204,7 +227,6 @@ func (r *CppCodeGenerator) generate(outputFile string) error {
 
 func (e CppEnum) whichCodeToGenerate(g EnumGenerate) bool {
 	for _, v := range e.Generate {
-		// Do a case insensitive compare
 		if strings.EqualFold(string(v), string(g)) {
 			return true
 		}
@@ -212,145 +234,122 @@ func (e CppEnum) whichCodeToGenerate(g EnumGenerate) bool {
 	return false
 }
 
-func (r *CppCodeGenerator) increaseIndentation(indentation string) string {
-	return r.Indentation + indentation
-}
+func (r *CppEnumGenerator) generateEnum(initialIndentation string, e CppEnum) []string {
+	indent := ""
+	if r.IndentType == IndentTypeSpace || r.IndentType == IndentTypeDefault {
+		indent = strings.Repeat(" ", r.IndentSize)
+	} else if r.IndentType == IndentTypeTab {
+		indent = "\t"
+		indent = strings.Repeat(indent, r.IndentSize)
+	}
 
-func (r *CppCodeGenerator) decreaseIndentation(indentation string) string {
-	return indentation[len(r.Indentation):]
-}
-
-func (r *CppCodeGenerator) generateEnum(indentation string, e CppEnum) []string {
-	cppCode := &CppCode{}
+	cppCode := &CppCode{
+		Lines:       []string{},
+		Indent:      indent,
+		Indentation: initialIndentation,
+	}
 
 	// Set the enum header
 	if e.Namespace {
-		cppCode.addNamespaceOpen(indentation, e)
-		indentation = r.increaseIndentation(indentation) // Set the namespace indentation
+		cppCode.addNamespaceOpen(e)
 	}
 
-	cppCode.addEnumEnum(indentation, e)
+	cppCode.addEnumEnum(e)
 
 	if e.whichCodeToGenerate(Mask) {
-		cppCode.addEnumMask(indentation, e)
+		cppCode.addEnumMask(e)
 
 		if e.whichCodeToGenerate(EnumToMask) {
-			cppCode.addEnumToMaskFunction(indentation, e)
+			cppCode.addEnumToMaskFunction(e)
 		}
 	}
 
 	if e.whichCodeToGenerate(ToString) {
-		cppCode.addEnumToString(indentation, e)
+		cppCode.addEnumToString(e)
 	}
 
 	// Set the enum footer
 	if e.Namespace {
-		indentation = r.decreaseIndentation(indentation) // Set the namespace indentation
-		cppCode.addNamespaceClose(indentation, e)
+		cppCode.addNamespaceClose(e)
 	}
 
 	return cppCode.Lines
 }
 
-type CppCode struct {
-	Lines []string
-}
+// =============================================================================
+// CppCode enum specific functions
+// =============================================================================
 
-// CppCodeGenerator contains information for generating C++ code
-type CppCodeGenerator struct {
-	Indentation string    `json:"indentation"`
-	Between     string    `json:"between"`
-	CppEnum     []CppEnum `json:"enums"`
-}
-
-type EnumGenerate string
-
-const (
-	ToString   EnumGenerate = "ToString"
-	Mask       EnumGenerate = "Mask"
-	EnumToMask EnumGenerate = "EnumToMask"
-)
-
-type CppEnum struct {
-	Name      string         `json:"name"`
-	Namespace bool           `json:"namespace,omitempty"`
-	Type      string         `json:"type,omitempty"`
-	Enums     []string       `json:"enums"`
-	Generate  []EnumGenerate `json:"generate"`
-}
-
-// ---------------------------------------------------------------------------------------------------------
-// C++ code generation functions for a CppEnum
-// ---------------------------------------------------------------------------------------------------------
-
-func (cpp *CppCode) appendTextLine(text string) {
-	cpp.Lines = append(cpp.Lines, text)
-}
-
-func (cpp *CppCode) appendTextLines(text []string) {
-	cpp.Lines = append(cpp.Lines, text...)
-}
-
-func (cpp *CppCode) addNamespaceOpen(indentation string, enum CppEnum) {
-	cpp.appendTextLine(indentation + "namespace " + enum.Name + "{")
-}
-
-func (cpp *CppCode) addEnumEnum(indentation string, enum CppEnum) {
+func (cpp *CppCode) addEnumEnum(enum CppEnum) {
 	if enum.Namespace {
-		cpp.appendTextLine(indentation + "enum Enum {")
+		cpp.appendTextLine("enum Enum {")
 	} else {
-		cpp.appendTextLine(indentation + "enum " + enum.Name + " {")
+		cpp.appendTextLine("enum " + enum.Name + " {")
 	}
-	for _, v := range enum.Enums {
-		cpp.appendTextLine(indentation + "    " + v + ",")
+	cpp.increaseIndentation()
+	for _, v := range enum.Members {
+		cpp.appendTextLine(v + ",")
 	}
-	cpp.appendTextLine(indentation + "    Count")
-	cpp.appendTextLine(indentation + "};")
+	cpp.appendTextLine("Count")
+
+	cpp.decreaseIndentation()
+	cpp.appendTextLine("};")
 }
 
-func (cpp *CppCode) addEnumToString(indentation string, enum CppEnum) {
+func (cpp *CppCode) addEnumToString(enum CppEnum) {
 	cpp.appendTextLine("")
-	cpp.appendTextLine(indentation + "static const char* s_value_" + strings.ToLower(enum.Name) + "_names[] = {")
-	for _, v := range enum.Enums {
-		cpp.appendTextLine(indentation + "    \"" + v + "\",")
+	cpp.appendTextLine("static const char* s_value_" + strings.ToLower(enum.Name) + "_names[] = {")
+	cpp.increaseIndentation()
+	for _, v := range enum.Members {
+		cpp.appendTextLine("\"" + v + "\",")
 	}
-	cpp.appendTextLine(indentation + "};")
+	cpp.decreaseIndentation()
+	cpp.appendTextLine("};")
+
 	cpp.appendTextLine("")
 	if enum.Namespace {
-		cpp.appendTextLine(indentation + "static const char* ToString(Enum e) {")
-		cpp.appendTextLine(indentation + "    return (e < Enum::Count ? s_value_names[(int)e] : \"unsupported\" );")
+		cpp.appendTextLine("static const char* ToString(Enum e) {")
+		cpp.increaseIndentation()
+		cpp.appendTextLine("return (e < Enum::Count ? s_value_names[(int)e] : \"unsupported\" );")
+		cpp.decreaseIndentation()
+		cpp.appendTextLine("}")
 	} else {
-		cpp.appendTextLine(indentation + "static const char* ToString(" + enum.Name + " e ) {")
-		cpp.appendTextLine(indentation + "    return (e < " + enum.Name + "::Count ? s_value_" + strings.ToLower(enum.Name) + "_names[(int)e] : \"unsupported\" );")
+		cpp.appendTextLine("static const char* ToString(" + enum.Name + " e ) {")
+		cpp.increaseIndentation()
+		cpp.appendTextLine("return (e < " + enum.Name + "::Count ? s_value_" + strings.ToLower(enum.Name) + "_names[(int)e] : \"unsupported\" );")
+		cpp.decreaseIndentation()
+		cpp.appendTextLine("}")
 	}
-	cpp.appendTextLine(indentation + "}")
 }
 
-func (cpp *CppCode) addEnumMask(indentation string, enum CppEnum) {
+func (cpp *CppCode) addEnumMask(enum CppEnum) {
 	cpp.appendTextLine("")
 	if enum.Namespace {
-		cpp.appendTextLine(indentation + "enum Mask {")
+		cpp.appendTextLine("enum Mask {")
 	} else {
-		cpp.appendTextLine(indentation + "enum " + enum.Name + "_mask {")
+		cpp.appendTextLine("enum " + enum.Name + "_mask {")
 	}
-	for i, v := range enum.Enums {
-		cpp.appendTextLine(indentation + "    " + v + "_mask = " + v + " << " + fmt.Sprint(i) + ",")
+	cpp.increaseIndentation()
+	for i, v := range enum.Members {
+		cpp.appendTextLine(v + "_mask = " + v + " << " + fmt.Sprint(i) + ",")
 	}
-	cpp.appendTextLine(indentation + "};")
+	cpp.decreaseIndentation()
+	cpp.appendTextLine("};")
 }
 
-func (cpp *CppCode) addEnumToMaskFunction(indentation string, enum CppEnum) {
+func (cpp *CppCode) addEnumToMaskFunction(enum CppEnum) {
 	cpp.appendTextLine("")
 	if enum.Namespace {
-		cpp.appendTextLine(indentation + "static Mask EnumToMask(Enum e) {")
-		cpp.appendTextLine(indentation + "    return (Mask)(1 << (int)e);")
+		cpp.appendTextLine("static Mask EnumToMask(Enum e) {")
+		cpp.increaseIndentation()
+		cpp.appendTextLine("return (Mask)(1 << (int)e);")
+		cpp.decreaseIndentation()
+		cpp.appendTextLine("}")
 	} else {
-		cpp.appendTextLine(indentation + "static " + enum.Name + "_mask EnumToMask(" + enum.Name + " e) {")
-		cpp.appendTextLine(indentation + "    return (" + enum.Name + "_mask)(1 << (int)e);")
+		cpp.appendTextLine("static " + enum.Name + "_mask EnumToMask(" + enum.Name + " e) {")
+		cpp.increaseIndentation()
+		cpp.appendTextLine("return (" + enum.Name + "_mask)(1 << (int)e);")
+		cpp.decreaseIndentation()
+		cpp.appendTextLine("}")
 	}
-	cpp.appendTextLine(indentation + "}")
-}
-
-func (cpp *CppCode) addNamespaceClose(indentation string, enum CppEnum) {
-	cpp.appendTextLine(indentation + "} // namespace " + enum.Name)
 }

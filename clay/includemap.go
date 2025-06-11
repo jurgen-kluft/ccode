@@ -1,7 +1,9 @@
 package clay
 
-type IncludeMap = ValueSet
+import "github.com/jurgen-kluft/ccode/foundation"
+
+type IncludeMap = foundation.ValueSet
 
 func NewIncludeMap() *IncludeMap {
-	return NewValueSet()
+	return foundation.NewValueSet()
 }

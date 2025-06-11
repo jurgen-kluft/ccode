@@ -18,7 +18,7 @@ type Project struct {
 	IsExecutable bool                  // Is this project an executable (true) or a library (false)
 	Name         string                // Name of the Library or Executable
 	Config       *Config               // Build configuration
-	Defines      *ValueSet             // Compiler defines (macros) for the library
+	Defines      *foundation.ValueSet  // Compiler defines (macros) for the library
 	IncludeDirs  *IncludeMap           // Include paths for the library (system)
 	SourceFiles  []SourceFile          // C/C++ Source files for the library
 	Dependencies []*Project            // Libraries that this project depends on
@@ -31,7 +31,7 @@ func NewExecutableProject(name string, config *Config) *Project {
 		Config:       config,
 		Toolchain:    nil, // Will be set later
 		IsExecutable: true,
-		Defines:      NewValueSet(),
+		Defines:      foundation.NewValueSet(),
 		IncludeDirs:  NewIncludeMap(),
 		SourceFiles:  []SourceFile{},
 		Dependencies: []*Project{},
@@ -44,7 +44,7 @@ func NewLibraryProject(name string, config *Config) *Project {
 		Config:       config,
 		Toolchain:    nil, // Will be set later
 		IsExecutable: false,
-		Defines:      NewValueSet(),
+		Defines:      foundation.NewValueSet(),
 		IncludeDirs:  NewIncludeMap(),
 		SourceFiles:  []SourceFile{},
 		Dependencies: []*Project{},
@@ -252,5 +252,5 @@ func (p *Project) AddSourceFilesFrom(srcPath string, options AddSourceFileOption
 		}
 	}
 
-	foundation.AddFilesFrom(srcPath, handleDir, handleFile)
+	foundation.FileEnumerate(srcPath, handleDir, handleFile)
 }

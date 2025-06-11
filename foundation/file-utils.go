@@ -4,6 +4,8 @@ import (
 	"fmt"
 	"io"
 	"os"
+	"path/filepath"
+	"strings"
 )
 
 func FileChangeExtension(filename, newExt string) string {
@@ -33,14 +35,6 @@ func FileExists(path string) bool {
 	return true
 }
 
-func DirExists(path string) bool {
-	// Check if the directory exists
-	if info, err := os.Stat(path); err == nil {
-		return info.IsDir()
-	}
-	return false
-}
-
 func FileRead(path string) ([]byte, error) {
 	// Open the file for reading
 	file, err := os.Open(path)
@@ -58,17 +52,7 @@ func FileRead(path string) ([]byte, error) {
 	return data, nil
 }
 
-func MakeDir(path string) error {
-	// Create the directory if it doesn't exist
-	if _, err := os.Stat(path); os.IsNotExist(err) {
-		if err := os.MkdirAll(path, 0755); err != nil {
-			return fmt.Errorf("failed to create directory %s: %w", path, err)
-		}
-	}
-	return nil
-}
-
-func CopyFiles(src, dst string) error {
+func FileCopy(src, dst string) error {
 
 	// Assume the files are binary files
 	srcFile, err := os.Open(src)
@@ -98,19 +82,21 @@ func CopyFiles(src, dst string) error {
 	return nil
 }
 
-func ListDirectory(path string) ([]string, error) {
-	// Open the directory
-	dir, err := os.Open(path)
-	if err != nil {
-		return nil, fmt.Errorf("failed to open directory %s: %w", path, err)
-	}
-	defer dir.Close()
-
-	// Read the directory entries
-	entries, err := dir.Readdirnames(-1)
-	if err != nil {
-		return nil, fmt.Errorf("failed to read directory %s: %w", path, err)
-	}
-
-	return entries, nil
+func FileEnumerate(rootPath string, dirFunc func(string, string) bool, fileFunc func(string, string)) {
+	filepath.Walk(rootPath, func(path string, info os.FileInfo, err error) error {
+		if err != nil {
+			return err
+		}
+		if info.IsDir() {
+			relPath := path[len(rootPath):]
+			relPath = strings.TrimLeft(relPath, "/")
+			if dirFunc(rootPath, relPath) {
+				return nil // Continue walking the tree
+			}
+			return filepath.SkipDir
+		}
+		relPath := path[len(rootPath)+1:]
+		fileFunc(rootPath, relPath)
+		return nil
+	})
 }

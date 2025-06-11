@@ -1,4 +1,4 @@
-package clay
+package foundation
 
 import "strings"
 
@@ -56,4 +56,37 @@ func (kv *ValueSet) Get(value string) string {
 		return kv.Values[index]
 	}
 	return ""
+}
+
+func (d *ValueSet) Merge(other *ValueSet) {
+	for _, value := range other.Values {
+		d.Add(value)
+	}
+}
+
+func (d *ValueSet) Copy() *ValueSet {
+	c := NewValueSet()
+	c.Merge(d)
+	return c
+}
+
+// Enumerate will call the enumerator function for each key-value pair in the dictionary.
+//
+//	'last' will be 0 for all but the last key-value pair, and 1 for the last key-value pair.
+func (d *ValueSet) Enumerate(enumerator func(i int, key string, value string, last int)) {
+	for i, key := range d.Values {
+		if i == len(d.Values)-1 {
+			enumerator(i, key, d.Values[i], 1)
+		} else {
+			enumerator(i, key, d.Values[i], 0)
+		}
+	}
+}
+
+func (d *ValueSet) Concatenated(prefix string, suffix string, valueModifier func(string) string) string {
+	concat := ""
+	for _, value := range d.Values {
+		concat += prefix + valueModifier(value) + suffix
+	}
+	return concat
 }

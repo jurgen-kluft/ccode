@@ -78,7 +78,7 @@ type Esp32Board struct {
 	Name        string            // The name of the board
 	Description string            // The description of the board
 	FlashSizes  map[string]string // The list of flash sizes
-	Vars        *KeyValueSet
+	Vars        *foundation.KeyValueSet
 }
 
 func NewBoard(name string, description string) *Esp32Board {
@@ -86,7 +86,7 @@ func NewBoard(name string, description string) *Esp32Board {
 		Name:        name,
 		Description: description,
 		FlashSizes:  make(map[string]string),
-		Vars:        NewKeyValueSet(),
+		Vars:        foundation.NewKeyValueSet(),
 	}
 }
 
@@ -125,47 +125,47 @@ func NewEsp32Tool(name string) *Esp32Tool {
 }
 
 type Esp32Platform struct {
-	Name                    string                // The name of the platform
-	Version                 string                // The version of the platform
-	Vars                    *KeyValueSet          // A map of variables, e.g. 'runtime.os' or 'build.path'
-	CCompilerCmd            string                // C compiler command ('recipe.c.o.pattern')
-	CCompilerCmdLine        string                //
-	CCompilerArgs           []string              // The arguments for the C compiler
-	CppCompilerCmd          string                // C++ compiler command ('recipe.cpp.o.pattern')
-	CppCompilerCmdLine      string                // C++ compiler command ('recipe.cpp.o.pattern')
-	CppCompilerArgs         []string              // The arguments for the C++ compiler
-	AssemblerCmd            string                // S Assembler command ('recipe.S.o.pattern')
-	AssemblerCmdLine        string                // S Assembler command ('recipe.S.o.pattern')
-	AssemblerArgs           []string              // The arguments for the assembler
-	ArchiverCmd             string                // Archiver command ('recipe.ar.pattern')
-	ArchiverCmdLine         string                // Archiver command ('recipe.ar.pattern')
-	ArchiverArgs            []string              // The arguments for the archiver
-	LinkerCmd               string                // Linker command ('recipe.c.combine.pattern')
-	LinkerCmdLine           string                // Linker command ('recipe.c.combine.pattern')
-	LinkerArgs              []string              // The arguments for the linker
-	CreatePartitionsCmd     string                // CreatePartitions command ('recipe.objcopy.partitions.bin.pattern')
-	CreatePartitionsCmdLine string                // CreatePartitions command ('recipe.objcopy.partitions.bin.pattern')
-	CreatePartitionsArgs    []string              // The arguments for the create partitions command
-	CreateBinCmd            string                // CreateBin command ('recipe.objcopy.bin.pattern')
-	CreateBinCmdLine        string                // CreateBin command ('recipe.objcopy.bin.pattern')
-	CreateBinArgs           []string              // The arguments for the create bin command
-	CreatBootloaderCmd      string                // CreateBootloader command ('recipe.hooks.prebuild.4.pattern')
-	CreatBootloaderCmdLine  string                // CreateBootloader command ('recipe.hooks.prebuild.4.pattern')
-	CreatBootloaderArgs     []string              // The arguments for the create bootloader command
-	CreateMergedBinCmd      string                // CreateMergedBin command ('recipe.hooks.objcopy.postobjcopy.3.pattern')
-	CreateMergedBinCmdLine  string                // CreateMergedBin command ('recipe.hooks.objcopy.postobjcopy.3.pattern')
-	CreateMergedBinArgs     []string              // The arguments for the create merged bin command
-	ComputeSizeCmd          string                // ComputeSize command ('recipe.size.pattern')
-	ComputeSizeCmdLine      string                // ComputeSize command ('recipe.size.pattern')
-	ComputeSizeArgs         []string              // The arguments for the compute size command
-	Tools                   map[string]*Esp32Tool // The list of tools (only 'tools.esptool_py' and 'esp_ota' for now)
+	Name                    string                  // The name of the platform
+	Version                 string                  // The version of the platform
+	Vars                    *foundation.KeyValueSet // A map of variables, e.g. 'runtime.os' or 'build.path'
+	CCompilerCmd            string                  // C compiler command ('recipe.c.o.pattern')
+	CCompilerCmdLine        string                  //
+	CCompilerArgs           []string                // The arguments for the C compiler
+	CppCompilerCmd          string                  // C++ compiler command ('recipe.cpp.o.pattern')
+	CppCompilerCmdLine      string                  // C++ compiler command ('recipe.cpp.o.pattern')
+	CppCompilerArgs         []string                // The arguments for the C++ compiler
+	AssemblerCmd            string                  // S Assembler command ('recipe.S.o.pattern')
+	AssemblerCmdLine        string                  // S Assembler command ('recipe.S.o.pattern')
+	AssemblerArgs           []string                // The arguments for the assembler
+	ArchiverCmd             string                  // Archiver command ('recipe.ar.pattern')
+	ArchiverCmdLine         string                  // Archiver command ('recipe.ar.pattern')
+	ArchiverArgs            []string                // The arguments for the archiver
+	LinkerCmd               string                  // Linker command ('recipe.c.combine.pattern')
+	LinkerCmdLine           string                  // Linker command ('recipe.c.combine.pattern')
+	LinkerArgs              []string                // The arguments for the linker
+	CreatePartitionsCmd     string                  // CreatePartitions command ('recipe.objcopy.partitions.bin.pattern')
+	CreatePartitionsCmdLine string                  // CreatePartitions command ('recipe.objcopy.partitions.bin.pattern')
+	CreatePartitionsArgs    []string                // The arguments for the create partitions command
+	CreateBinCmd            string                  // CreateBin command ('recipe.objcopy.bin.pattern')
+	CreateBinCmdLine        string                  // CreateBin command ('recipe.objcopy.bin.pattern')
+	CreateBinArgs           []string                // The arguments for the create bin command
+	CreatBootloaderCmd      string                  // CreateBootloader command ('recipe.hooks.prebuild.4.pattern')
+	CreatBootloaderCmdLine  string                  // CreateBootloader command ('recipe.hooks.prebuild.4.pattern')
+	CreatBootloaderArgs     []string                // The arguments for the create bootloader command
+	CreateMergedBinCmd      string                  // CreateMergedBin command ('recipe.hooks.objcopy.postobjcopy.3.pattern')
+	CreateMergedBinCmdLine  string                  // CreateMergedBin command ('recipe.hooks.objcopy.postobjcopy.3.pattern')
+	CreateMergedBinArgs     []string                // The arguments for the create merged bin command
+	ComputeSizeCmd          string                  // ComputeSize command ('recipe.size.pattern')
+	ComputeSizeCmdLine      string                  // ComputeSize command ('recipe.size.pattern')
+	ComputeSizeArgs         []string                // The arguments for the compute size command
+	Tools                   map[string]*Esp32Tool   // The list of tools (only 'tools.esptool_py' and 'esp_ota' for now)
 }
 
 func NewPlatform() *Esp32Platform {
 	return &Esp32Platform{
 		Name:                    "",
 		Version:                 "",
-		Vars:                    NewKeyValueSet(),
+		Vars:                    foundation.NewKeyValueSet(),
 		CCompilerCmd:            "",
 		CCompilerCmdLine:        "",
 		CCompilerArgs:           make([]string, 0),
@@ -236,7 +236,7 @@ func ParseEsp32Toolchain(espSdkPath string) (*Esp32Toolchain, error) {
 	return toolchain, nil
 }
 
-func ResolveString(variable string, vars *KeyValueSet) string {
+func ResolveString(variable string, vars *foundation.KeyValueSet) string {
 	type pair struct {
 		from int
 		to   int
@@ -327,7 +327,7 @@ func RemoveEmptyEntries(list []string) []string {
 	return list
 }
 
-func ResolveStringList(variableList []string, vars *KeyValueSet) []string {
+func ResolveStringList(variableList []string, vars *foundation.KeyValueSet) []string {
 	for i, variable := range variableList {
 		variableList[i] = ResolveString(variable, vars)
 	}
@@ -379,7 +379,7 @@ func SplitCmdLineIntoArgs(cmdline string, removeEmptyEntries bool) []string {
 
 func (t *Esp32Toolchain) ResolveVariables(board string) error {
 
-	globalVars := NewKeyValueSet()
+	globalVars := foundation.NewKeyValueSet()
 	globalVars.Add("runtime.os", runtime.GOOS)
 	globalVars.Add("runtime.platform.path", t.SdkPath)
 	globalVars.Add("runtime.ide.version", t.Platform.Version)
@@ -400,7 +400,7 @@ func (t *Esp32Toolchain) ResolveVariables(board string) error {
 		t.Platform.Vars.Values[i] = v
 	}
 
-	globalVars.Merge(t.Platform.Vars, false)
+	globalVars.Join(t.Platform.Vars)
 
 	for i, _ := range globalVars.Keys {
 		v := globalVars.Values[i]

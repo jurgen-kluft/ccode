@@ -79,18 +79,18 @@ type Config struct {
 	BuildConfig       dev.BuildConfig
 	Workspace         *Workspace
 	Project           *Project
-	CppDefines        *dev.KeyValueSet
-	CppFlags          *dev.KeyValueSet
+	CppDefines        *foundation.KeyValueSet
+	CppFlags          *foundation.KeyValueSet
 	IncludeDirs       *PinPathSet
 	LibraryPaths      *PinPathSet
-	LibraryFiles      *dev.ValueSet
-	LibraryFrameworks *dev.ValueSet // MacOS specific
-	LinkFlags         *dev.KeyValueSet
-	DisableWarning    *dev.KeyValueSet
+	LibraryFiles      *foundation.ValueSet
+	LibraryFrameworks *foundation.ValueSet // MacOS specific
+	LinkFlags         *foundation.KeyValueSet
+	DisableWarning    *foundation.KeyValueSet
 
-	XcodeSettings         *dev.KeyValueSet
-	VisualStudioClCompile *dev.KeyValueSet
-	VisualStudioLink      *dev.KeyValueSet
+	XcodeSettings         *foundation.KeyValueSet
+	VisualStudioClCompile *foundation.KeyValueSet
+	VisualStudioLink      *foundation.KeyValueSet
 
 	GenDataXcode struct {
 		ProjectConfigUuid foundation.UUID
@@ -107,20 +107,20 @@ func NewConfig(t dev.BuildConfig, ws *Workspace, p *Project) *Config {
 	c.Workspace = ws
 	c.Project = p
 
-	c.CppDefines = dev.NewKeyValueSet() // e.g. "DEBUG" "PROFILE"
-	c.CppFlags = dev.NewKeyValueSet()   // e.g. "-g"
-	c.IncludeDirs = NewPinnedPathSet()  // e.g. "source/main/include", "source/test/include"
+	c.CppDefines = foundation.NewKeyValueSet() // e.g. "DEBUG" "PROFILE"
+	c.CppFlags = foundation.NewKeyValueSet()   // e.g. "-g"
+	c.IncludeDirs = NewPinnedPathSet()         // e.g. "source/main/include", "source/test/include"
 
-	c.LibraryFrameworks = dev.NewValueSet() // e.g. "Foundation", "Cocoa"
-	c.LibraryPaths = NewPinnedPathSet()     // e.g. "source/main/lib", "source/test/lib"
-	c.LibraryFiles = dev.NewValueSet()      // e.g. "libfoo.a", "libbar.a"
+	c.LibraryFrameworks = foundation.NewValueSet() // e.g. "Foundation", "Cocoa"
+	c.LibraryPaths = NewPinnedPathSet()            // e.g. "source/main/lib", "source/test/lib"
+	c.LibraryFiles = foundation.NewValueSet()      // e.g. "libfoo.a", "libbar.a"
 
-	c.LinkFlags = dev.NewKeyValueSet()      // e.g. "-lstdc++"
-	c.DisableWarning = dev.NewKeyValueSet() // e.g. "unused-variable"
+	c.LinkFlags = foundation.NewKeyValueSet()      // e.g. "-lstdc++"
+	c.DisableWarning = foundation.NewKeyValueSet() // e.g. "unused-variable"
 
-	c.XcodeSettings = dev.NewKeyValueSet()
-	c.VisualStudioClCompile = dev.NewKeyValueSet()
-	c.VisualStudioLink = dev.NewKeyValueSet()
+	c.XcodeSettings = foundation.NewKeyValueSet()
+	c.VisualStudioClCompile = foundation.NewKeyValueSet()
+	c.VisualStudioLink = foundation.NewKeyValueSet()
 
 	c.GenDataXcode.ProjectConfigUuid = foundation.GenerateUUID()
 	c.GenDataXcode.TargetUuid = foundation.GenerateUUID()
@@ -269,14 +269,14 @@ func (c *Config) InitXcodeSettings() {
 	settings["GCC_WARN_UNUSED_FUNCTION"] = "YES"
 	settings["GCC_WARN_UNUSED_VARIABLE"] = "YES"
 
-	c.XcodeSettings = dev.NewKeyValueSet()
+	c.XcodeSettings = foundation.NewKeyValueSet()
 	for k, v := range settings {
 		c.XcodeSettings.AddOrSet(k, v)
 	}
 }
 
 func (c *Config) InitVisualStudioSettings() {
-	c.VisualStudioClCompile = dev.NewKeyValueSet()
+	c.VisualStudioClCompile = foundation.NewKeyValueSet()
 	c.VisualStudioClCompile.AddOrSet("MinimalRebuild", "false")
 	c.VisualStudioClCompile.AddOrSet("ExceptionHandling", "false")
 	c.VisualStudioClCompile.AddOrSet("CompileAs", "CompileAsCpp")

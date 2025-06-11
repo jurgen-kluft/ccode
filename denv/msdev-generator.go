@@ -4,7 +4,6 @@ import (
 	"path"
 	"path/filepath"
 
-	"github.com/jurgen-kluft/ccode/dev"
 	"github.com/jurgen-kluft/ccode/foundation"
 )
 
@@ -429,7 +428,7 @@ func (g *MsDevGenerator) genProjectConfig(wr *foundation.XmlWriter, proj *Projec
 	}
 }
 
-func (g *MsDevGenerator) genConfigOptionFromKeyValueDict(wr *foundation.XmlWriter, proj *Project, name string, kv *dev.KeyValueSet, treatAsPath bool) {
+func (g *MsDevGenerator) genConfigOptionFromKeyValueDict(wr *foundation.XmlWriter, proj *Project, name string, kv *foundation.KeyValueSet, treatAsPath bool) {
 	option := kv.Concatenated("", ";", func(k string, v string) string {
 		if treatAsPath {
 			path := foundation.PathGetRelativeTo(v, proj.Workspace.GenerateAbsPath)
@@ -441,7 +440,7 @@ func (g *MsDevGenerator) genConfigOptionFromKeyValueDict(wr *foundation.XmlWrite
 	wr.TagWithBody(name, option)
 }
 
-func (g *MsDevGenerator) genConfigOptionFromValueSet(wr *foundation.XmlWriter, proj *Project, name string, value *dev.ValueSet, treatAsPath bool) {
+func (g *MsDevGenerator) genConfigOptionFromValueSet(wr *foundation.XmlWriter, proj *Project, name string, value *foundation.ValueSet, treatAsPath bool) {
 	option := value.Concatenated("", ";", func(v string) string {
 		if treatAsPath {
 			path := foundation.PathGetRelativeTo(v, proj.Workspace.GenerateAbsPath)

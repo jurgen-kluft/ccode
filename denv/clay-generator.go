@@ -37,7 +37,7 @@ func (g *ClayGenerator) Generate() error {
 	currentDir, _ := os.Getwd()
 
 	appDir := g.TargetAbsPath
-	foundation.MakeDir(appDir)
+	foundation.DirMake(appDir)
 
 	foundation.LogPrintf("Generating clay project files in '%s' for target %s", foundation.PathGetRelativeTo(appDir, currentDir), g.BuildTarget)
 

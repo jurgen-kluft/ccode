@@ -1,4 +1,4 @@
-package tctools
+package msvc
 
 import (
 	"fmt"
