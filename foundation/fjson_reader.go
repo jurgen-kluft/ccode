@@ -5,21 +5,21 @@ import (
 	"strings"
 )
 
-type JsonValueType int8
+type jsonValueType int8
 
 const (
-	JsonValueTypeError  JsonValueType = -1
-	JsonValueTypeEmpty  JsonValueType = 0
-	JsonValueTypeObject JsonValueType = 1
-	JsonValueTypeArray  JsonValueType = 2
-	JsonValueTypeString JsonValueType = 3
-	JsonValueTypeNumber JsonValueType = 4
-	JsonValueTypeBool   JsonValueType = 5
-	JsonValueTypeNull   JsonValueType = 6
-	JsonValueTypeEnd    JsonValueType = 7
+	JsonValueTypeError  jsonValueType = -1
+	JsonValueTypeEmpty  jsonValueType = 0
+	JsonValueTypeObject jsonValueType = 1
+	JsonValueTypeArray  jsonValueType = 2
+	JsonValueTypeString jsonValueType = 3
+	JsonValueTypeNumber jsonValueType = 4
+	JsonValueTypeBool   jsonValueType = 5
+	JsonValueTypeNull   jsonValueType = 6
+	JsonValueTypeEnd    jsonValueType = 7
 )
 
-// Note: Should map 1:1 to JsonValueType
+// Note: Should map 1:1 to jsonValueType
 type jsonResult int8
 
 const (
@@ -34,53 +34,53 @@ const (
 	JsonResultEnd    jsonResult = 7
 )
 
-type JsonField struct {
+type jsonField struct {
 	Begin  int
 	Length int
-	Type   JsonValueType
+	Type   jsonValueType
 }
 
-func (f JsonField) IsEmpty() bool {
+func (f jsonField) IsEmpty() bool {
 	return f.Type == JsonValueTypeEmpty || f.Length == 0
 }
 
-var JsonFieldEmpty = JsonField{Begin: 0, Length: 0, Type: JsonValueTypeEmpty}
-var JsonFieldError = JsonField{Begin: 0, Length: 0, Type: JsonValueTypeError}
+var JsonFieldEmpty = jsonField{Begin: 0, Length: 0, Type: JsonValueTypeEmpty}
+var JsonFieldError = jsonField{Begin: 0, Length: 0, Type: JsonValueTypeError}
 
-func newJsonField(begin, length int, valueType JsonValueType) JsonField {
-	return JsonField{Begin: begin, Length: length, Type: valueType}
+func newJsonField(begin, length int, valueType jsonValueType) jsonField {
+	return jsonField{Begin: begin, Length: length, Type: valueType}
 }
 
-type JsonContext struct {
+type jsonContext struct {
 	Json           string
 	Cursor         int
 	IsEscapeString bool
-	Stack          []JsonValueType
+	Stack          []jsonValueType
 	StackIndex     int16
 	EscapedStrings *StringBuilder
 }
 
-const JsonStackSize = int16(256)
+const jsonStackSize = int16(256)
 
-func newJsonContext() *JsonContext {
-	return &JsonContext{
+func newJsonContext() *jsonContext {
+	return &jsonContext{
 		Json:           "",
 		Cursor:         0,
 		IsEscapeString: false,
-		Stack:          make([]JsonValueType, JsonStackSize),
-		StackIndex:     JsonStackSize,
+		Stack:          make([]jsonValueType, jsonStackSize),
+		StackIndex:     jsonStackSize,
 		EscapedStrings: NewStringBuilder(),
 	}
 }
 
-func (c *JsonContext) isValidField(f JsonField) bool {
+func (c *jsonContext) isValidField(f jsonField) bool {
 	return f.Begin >= 0 && f.Length > 0 && (f.Begin+f.Length > len(c.Json))
 }
 
 type JsonReader struct {
-	Context *JsonContext
-	Key     JsonField
-	Value   JsonField
+	Context *jsonContext
+	Key     jsonField
+	Value   jsonField
 }
 
 func NewJsonReader() *JsonReader {
@@ -92,11 +92,11 @@ func (r *JsonReader) Begin(json string) bool {
 	return r.Context.ParseBegin()
 }
 
-func (r *JsonReader) FieldStr(f JsonField) string {
+func (r *JsonReader) FieldStr(f jsonField) string {
 	return r.Context.Json[f.Begin : f.Begin+f.Length]
 }
 
-func (r *JsonReader) ParseBool(field JsonField) bool {
+func (r *JsonReader) ParseBool(field jsonField) bool {
 	if !r.Context.isValidField(field) {
 		return false
 	}
@@ -107,7 +107,7 @@ func (r *JsonReader) ParseBool(field JsonField) bool {
 	return value
 }
 
-func (r *JsonReader) ParseFloat(field JsonField) float64 {
+func (r *JsonReader) ParseFloat(field jsonField) float64 {
 	if !r.Context.isValidField(field) {
 		return 0.0
 	}
@@ -121,7 +121,7 @@ func (r *JsonReader) ParseFloat(field JsonField) float64 {
 	return result
 }
 
-func (r *JsonReader) ParseInt(field JsonField) int {
+func (r *JsonReader) ParseInt(field jsonField) int {
 	if !r.Context.isValidField(field) {
 		return 0
 	}
@@ -136,7 +136,7 @@ func (r *JsonReader) ParseInt(field JsonField) int {
 	return int(intValue)
 }
 
-func (r *JsonReader) ParseLong(field JsonField) int64 {
+func (r *JsonReader) ParseLong(field jsonField) int64 {
 	if !r.Context.isValidField(field) {
 		return 0
 	}
@@ -151,7 +151,7 @@ func (r *JsonReader) ParseLong(field JsonField) int64 {
 	return longValue
 }
 
-func (r *JsonReader) ParseString(field JsonField) string {
+func (r *JsonReader) ParseString(field jsonField) string {
 	if r.Context.IsEscapeString {
 		return r.Context.getEscapedString(field)
 	} else {
@@ -162,7 +162,7 @@ func (r *JsonReader) ParseString(field JsonField) string {
 	}
 }
 
-func (r *JsonReader) IsFieldName(f JsonField, name string) bool {
+func (r *JsonReader) IsFieldName(f jsonField, name string) bool {
 	if !r.Context.isValidField(f) {
 		return false
 	}
@@ -185,7 +185,7 @@ func (r *JsonReader) ReadUntilArrayEnd() bool {
 }
 
 func (r *JsonReader) Read() (ok bool) {
-	if r.Context.StackIndex == JsonStackSize {
+	if r.Context.StackIndex == jsonStackSize {
 		return false
 	}
 
@@ -199,8 +199,8 @@ func (r *JsonReader) Read() (ok bool) {
 		ok = result >= 0
 		switch result {
 		case JsonResultEmpty:
-			r.Key = JsonField{Begin: 0, Length: 0, Type: JsonValueTypeObject}
-			r.Value = JsonField{Begin: 0, Length: 0, Type: JsonValueTypeEnd}
+			r.Key = jsonField{Begin: 0, Length: 0, Type: JsonValueTypeObject}
+			r.Value = jsonField{Begin: 0, Length: 0, Type: JsonValueTypeEnd}
 			r.Context.StackIndex++
 		case JsonResultError:
 			r.Context.StackIndex = 0
@@ -209,13 +209,13 @@ func (r *JsonReader) Read() (ok bool) {
 			r.Value = value
 		}
 	case JsonValueTypeArray:
-		r.Key = JsonField{Begin: 0, Length: 0, Type: JsonValueTypeArray}
+		r.Key = jsonField{Begin: 0, Length: 0, Type: JsonValueTypeArray}
 		value, result := r.Context.parseArrayBody()
 		ok = result >= 0
 		switch result {
 		case JsonResultEmpty:
 			// parsing array is done
-			r.Value = JsonField{Begin: 0, Length: 0, Type: JsonValueTypeEnd}
+			r.Value = jsonField{Begin: 0, Length: 0, Type: JsonValueTypeEnd}
 			r.Context.StackIndex++
 		case JsonResultError:
 			r.Context.StackIndex = 0
@@ -233,7 +233,7 @@ func (r *JsonReader) Read() (ok bool) {
 	return ok
 }
 
-func (c *JsonContext) determineValueType() JsonValueType {
+func (c *jsonContext) determineValueType() jsonValueType {
 	c.skipWhiteSpace()
 	json := c.Json
 	if c.Cursor >= len(json) {
@@ -258,7 +258,7 @@ func (c *JsonContext) determineValueType() JsonValueType {
 	}
 }
 
-func (context *JsonContext) ParseBegin() bool {
+func (context *jsonContext) ParseBegin() bool {
 	context.skipWhiteSpace()
 	if context.Cursor >= len(context.Json) {
 		return false
@@ -288,7 +288,7 @@ func (context *JsonContext) ParseBegin() bool {
 	}
 }
 
-func (c *JsonContext) parseObjectBody() (outKey JsonField, outValue JsonField, result jsonResult) {
+func (c *jsonContext) parseObjectBody() (outKey jsonField, outValue jsonField, result jsonResult) {
 	json := c.Json
 	if !c.skipWhiteSpace() {
 		return JsonFieldError, JsonFieldError, JsonResultError
@@ -364,7 +364,7 @@ func (c *JsonContext) parseObjectBody() (outKey JsonField, outValue JsonField, r
 	return
 }
 
-func (c *JsonContext) parseArrayBody() (outValue JsonField, result jsonResult) {
+func (c *jsonContext) parseArrayBody() (outValue jsonField, result jsonResult) {
 	json := c.Json
 	c.skipWhiteSpace()
 	if c.Cursor >= len(json) {
@@ -419,12 +419,12 @@ func (c *JsonContext) parseArrayBody() (outValue JsonField, result jsonResult) {
 	return
 }
 
-func (c *JsonContext) parseString() JsonField {
+func (c *jsonContext) parseString() jsonField {
 	return c.getString()
 }
 
-func (c *JsonContext) parseNumber() JsonField {
-	span := JsonField{Begin: c.Cursor, Length: 0, Type: JsonValueTypeNumber}
+func (c *jsonContext) parseNumber() jsonField {
+	span := jsonField{Begin: c.Cursor, Length: 0, Type: JsonValueTypeNumber}
 	json := c.Json
 
 	for c.Cursor < len(json) {
@@ -444,8 +444,8 @@ func (c *JsonContext) parseNumber() JsonField {
 
 }
 
-func (c *JsonContext) parseBoolean() JsonField {
-	span := JsonField{Begin: c.Cursor, Length: 0, Type: JsonValueTypeBool}
+func (c *jsonContext) parseBoolean() jsonField {
+	span := jsonField{Begin: c.Cursor, Length: 0, Type: JsonValueTypeBool}
 
 	// Scan characters and see if they match any of the following
 	// 1, t, T, true, True, TRUE
@@ -496,8 +496,8 @@ func (c *JsonContext) parseBoolean() JsonField {
 	return span
 }
 
-func (c *JsonContext) parseNull() JsonField {
-	span := JsonField{Begin: c.Cursor, Length: 0, Type: JsonValueTypeNull}
+func (c *jsonContext) parseNull() jsonField {
+	span := jsonField{Begin: c.Cursor, Length: 0, Type: JsonValueTypeNull}
 
 	if !c.skipWhiteSpace() {
 		return JsonFieldError
@@ -529,7 +529,7 @@ func (c *JsonContext) parseNull() JsonField {
 	return span
 }
 
-func (c *JsonContext) scanUntilDelimiter() (int, bool) {
+func (c *jsonContext) scanUntilDelimiter() (int, bool) {
 	json := c.Json
 	cursor := c.Cursor
 	for cursor < len(json) {
@@ -544,7 +544,7 @@ func (c *JsonContext) scanUntilDelimiter() (int, bool) {
 	return c.Cursor, false
 }
 
-func (c *JsonContext) skipWhiteSpace() bool {
+func (c *jsonContext) skipWhiteSpace() bool {
 	json := c.Json
 	for c.Cursor < len(json) {
 		switch json[c.Cursor] {
@@ -558,7 +558,7 @@ func (c *JsonContext) skipWhiteSpace() bool {
 	return false
 }
 
-func (c *JsonContext) skipWhiteSpaceUntil(until byte) int {
+func (c *jsonContext) skipWhiteSpaceUntil(until byte) int {
 	json := c.Json
 	for c.Cursor < len(json) {
 		switch json[c.Cursor] {
@@ -575,7 +575,7 @@ func (c *JsonContext) skipWhiteSpaceUntil(until byte) int {
 	return -1
 }
 
-func (c *JsonContext) getString() JsonField {
+func (c *jsonContext) getString() jsonField {
 	start := c.Cursor + 1 // skip '"'
 	json := c.Json
 
@@ -583,7 +583,7 @@ func (c *JsonContext) getString() JsonField {
 		switch json[c.Cursor] {
 		case '"':
 			c.Cursor++ // move past the closing quote
-			return JsonField{Begin: start, Length: c.Cursor - start - 1, Type: JsonValueTypeString}
+			return jsonField{Begin: start, Length: c.Cursor - start - 1, Type: JsonValueTypeString}
 		case '\\':
 			c.Cursor++ // skip escaped character
 			if c.Cursor >= len(json) {
@@ -597,7 +597,7 @@ func (c *JsonContext) getString() JsonField {
 	return JsonFieldError // error if we reach here without finding a closing quote
 }
 
-func (context *JsonContext) getEscapedString(f JsonField) string {
+func (context *jsonContext) getEscapedString(f jsonField) string {
 	context.EscapedStrings.Reset()
 
 	json := context.Json[f.Begin : f.Begin+f.Length]
@@ -648,7 +648,7 @@ func (context *JsonContext) getEscapedString(f JsonField) string {
 	return context.EscapedStrings.String()
 }
 
-func (context *JsonContext) getUnicodeCodePoint(index int) (rune, int) {
+func (context *jsonContext) getUnicodeCodePoint(index int) (rune, int) {
 	var unicode int32 = 0
 
 	for i := 0; i < 4; i++ {
