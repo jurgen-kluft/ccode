@@ -30,13 +30,9 @@ func (e *JsonEncoder) Begin() {
 	e.stackIndex = len(e.stack)
 	e.stack = append(e.stack, 0)
 	e.json.Reset()
-	e.writeIndentedLine("{")
-	e.indent(1)
 }
 
 func (e *JsonEncoder) End() string {
-	e.indent(-1)
-	e.writeIndentedLine("}")
 	return e.json.String()
 }
 

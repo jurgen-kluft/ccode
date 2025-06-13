@@ -154,11 +154,11 @@ func (d *JsonDecoder) DecodeBool() bool {
 }
 
 func (d *JsonDecoder) DecodeInt32() int32 {
-	return int32(d.ParseInt(d.Value))
+	return int32(d.ParseInt32(d.Value))
 }
 
 func (d *JsonDecoder) DecodeInt64() int64 {
-	return d.ParseLong(d.Value)
+	return d.ParseInt64(d.Value)
 }
 
 func (d *JsonDecoder) DecodeFloat32() float32 {
@@ -220,22 +220,22 @@ func (r *JsonDecoder) ParseFloat64(field jsonField) (result float64) {
 	if r.Context.isValidField(field) {
 		json := r.Context.Json
 		valueStr := json[field.Begin : field.Begin+int(field.Length)]
-		result, r.Error = strconv.ParseFloat(valueStr, 32)
+		result, r.Error = strconv.ParseFloat(valueStr, 64)
 	} else {
 		r.Error = fmt.Errorf("invalid '%s'", field.String())
 	}
 	return result
 }
 
-func (r *JsonDecoder) ParseInt(field jsonField) (result int) {
-	result = int(r.ParseLong(field))
+func (r *JsonDecoder) ParseInt32(field jsonField) (result int) {
+	result = int(r.ParseInt64(field))
 	return
 }
 
-func (r *JsonDecoder) ParseLong(field jsonField) (result int64) {
+func (r *JsonDecoder) ParseInt64(field jsonField) (result int64) {
 	if r.Context.isValidField(field) {
 		valueStr := r.Context.Json[field.Begin : field.Begin+int(field.Length)]
-		result, r.Error = strconv.ParseInt(valueStr, 10, 32)
+		result, r.Error = strconv.ParseInt(valueStr, 10, 64)
 	} else {
 		r.Error = fmt.Errorf("invalid '%s'", field.String())
 	}
