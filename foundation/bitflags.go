@@ -29,7 +29,6 @@ But, you can use the variadic ones if you want and are okay with a little slice 
 package foundation
 
 import (
-	"encoding/json"
 	"fmt"
 	"strings"
 )
@@ -70,7 +69,8 @@ type BitFlags interface {
 	Clear(flags ...Flag)
 	ClearAll()
 	String() string
-	MarshalJSON() ([]byte, error)
+	EncodeJSON(encoder *JsonEncoder) error
+	DecodeJSON(decoder *JsonDecoder) error
 }
 
 type BitFlagsInstance struct {
@@ -171,11 +171,12 @@ func (b *BitFlagsInstance) Only(flags ...Flag) bool {
 	return (b.Value & all) == all
 }
 
-// MarshalJSON returns a string representation of the active flags in JSON format.
+// EncodeJSON returns a string representation of the active flags in JSON format.
 // e.g. `{"flags": "FlagA|FlagB"}` if FlagA and FlagB are set.
-func (f *BitFlagsInstance) MarshalJSON() ([]byte, error) {
+func (f *BitFlagsInstance) EncodeJSON(encoder *JsonEncoder) error {
 	if f.Flags == nil {
-		return []byte(fmt.Sprintf("%d", f.Value)), nil
+		encoder.WriteString(fmt.Sprintf("%d", f.Value))
+		return nil
 	}
 
 	result := ""
@@ -191,33 +192,29 @@ func (f *BitFlagsInstance) MarshalJSON() ([]byte, error) {
 			result += name
 		}
 	}
-	return []byte(fmt.Sprintf("\"%s\"", result)), nil
+	encoder.WriteString(result)
+	return nil
 }
 
-func UnmarshalBitFlagsFromJSON(data []byte, flags map[string]Flag) (value Flag, err error) {
-    var flagsStr string
-    if err := json.Unmarshal(data, &flagsStr); err != nil {
-        return 0, fmt.Errorf("error unmarshalling flags: %v", err)
-    }
+func (f *BitFlagsInstance) DecodeJSON(decoder *JsonDecoder) (err error) {
+	flagsStr := decoder.DecodeString()
+	f.Value = 0 // Reset the value
+	if f.Flags == nil {
+		// If no flags are declared, just parse the integer value
+		if _, err := fmt.Sscanf(flagsStr, "%d", &f.Value); err != nil {
+			return fmt.Errorf("error parsing flags as integer: %v", err)
+		}
+		return nil
+	}
 
-    value = 0 // Reset the value
+	// Parse the string representation of flags
+	flagStrs := strings.Split(flagsStr, "|")
+	for _, flagName := range flagStrs {
+		flagName = strings.TrimSpace(flagName)
+		if flag, exists := (*f.Flags)[flagName]; exists {
+			f.Value |= flag
+		}
+	}
 
-    if flags == nil {
-        // If no flags are declared, just parse the integer value
-        if _, err := fmt.Sscanf(flagsStr, "%d", &value); err != nil {
-            return 0, fmt.Errorf("error parsing flags as integer: %v", err)
-        }
-        return value, nil
-    }
-
-    // Parse the string representation of flags
-    flagStrs := strings.Split(flagsStr, "|")
-    for _, flagName := range flagStrs {
-        flagName = strings.TrimSpace(flagName)
-        if flag, exists := flags[flagName]; exists {
-            value |= flag
-        }
-    }
-
-    return value, nil
+	return nil
 }

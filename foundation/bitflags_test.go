@@ -43,47 +43,63 @@ func TestBitFlags(t *testing.T) {
 func TestBitFlagsMarshallJson(t *testing.T) {
 	flags := NewBitFlags(0, &FeatureFlagDeclared)
 
+	encoder := NewJsonEncoder("    ")
+	encoder.Begin()
 	flags.Set(FeatureFlagMergeBoolIntoBitset)
-	jsonData, err := flags.MarshalJSON()
+	err := flags.EncodeJSON(encoder)
 	if err != nil {
 		t.Errorf("Error marshalling to JSON: %v", err)
 	}
+	resultingJson := encoder.End()
 	expectedJson := `"merge_bool_into_bitset"`
-	if string(jsonData) != expectedJson {
-		t.Errorf("Expected JSON to be %s, got %s", expectedJson, string(jsonData))
+	if resultingJson != expectedJson {
+		t.Errorf("Expected JSON to be %s, got %s", expectedJson, resultingJson)
 	}
 
+	encoder.Begin()
 	flags.Set(FeatureFlagOptimizeMemberLayout)
-	jsonData, err = flags.MarshalJSON()
+	err = flags.EncodeJSON(encoder)
 	if err != nil {
 		t.Errorf("Error marshalling to JSON: %v", err)
 	}
+	resultingJson = encoder.End()
 
 	expectedJson1 := `"merge_bool_into_bitset|optimize_member_layout"`
 	expectedJson2 := `"optimize_member_layout|merge_bool_into_bitset"`
-	if string(jsonData) != expectedJson1 && string(jsonData) != expectedJson2 {
-		t.Errorf("Expected JSON to be %s or %s, got %s", expectedJson1, expectedJson2, string(jsonData))
+	if resultingJson != expectedJson1 && resultingJson != expectedJson2 {
+		t.Errorf("Expected JSON to be %s or %s, got %s", expectedJson1, expectedJson2, resultingJson)
 	}
 }
 
 func TestBitFlagsUnmarshallJson(t *testing.T) {
-	jsonData := `"merge_bool_into_bitset"`
-	value, err := UnmarshalBitFlagsFromJSON([]byte(jsonData), FeatureFlagDeclared)
-	if err != nil {
-		t.Errorf("Error unmarshalling from JSON: %v", err)
+	flags := NewBitFlags(0, &FeatureFlagDeclared)
+
+	decoder := NewJsonDecoder()
+
+	jsonData := `{ "flags": "merge_bool_into_bitset" }`
+	if !decoder.Begin(jsonData) {
+		t.Errorf("Failed to start JSON decoder on: %s", jsonData)
 	}
-	flags := NewBitFlags(value, &FeatureFlagDeclared)
+
+	fields := map[string]JsonDecode{
+		"flags": func(decoder *JsonDecoder) {
+			flags.DecodeJSON(decoder)
+		},
+	}
+
+	if err := decoder.Decode(fields); err != nil {
+		t.Errorf("Failed to decode JSON: %v", decoder.Error)
+	}
+
 	if !flags.Only(FeatureFlagMergeBoolIntoBitset) {
 		t.Errorf("Expected value to be %d, got %d", FeatureFlagMergeBoolIntoBitset, flags.Bits())
 	}
 
-	jsonData = `"merge_bool_into_bitset|optimize_member_layout"`
-	value, err = UnmarshalBitFlagsFromJSON([]byte(jsonData), FeatureFlagDeclared)
-	if err != nil {
+	jsonData = `{ "flags": "merge_bool_into_bitset|optimize_member_layout" }`
+	decoder.Begin(jsonData)
+	if err := decoder.Decode(fields); err != nil {
 		t.Errorf("Error unmarshalling from JSON: %v", err)
 	}
-
-	flags = NewBitFlags(value, &FeatureFlagDeclared)
 	if !flags.Only(FeatureFlagMergeBoolIntoBitset | FeatureFlagOptimizeMemberLayout) {
 		t.Errorf("Expected value to be %d, got %d", FeatureFlagMergeBoolIntoBitset|FeatureFlagOptimizeMemberLayout, flags.Bits())
 	}

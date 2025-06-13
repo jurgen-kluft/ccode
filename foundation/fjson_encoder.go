@@ -74,9 +74,15 @@ func (e *JsonEncoder) EndArray() {
 	e.writeIndented("]")
 }
 
+// WriteString writes a string value to the JSON output, for '"key": "value"' it requires the key already to be written.
+func (e *JsonEncoder) WriteString(value string) {
+	e.writeQuotedString("\"", escapeString(value))
+}
+
 func (e *JsonEncoder) WriteFieldString(key, value string) {
 	e.incrementField()
-	e.writeIndented("\"", key, "\": \"", escapeString(value), "\"")
+	e.writeIndented("\"", key, "\": ")
+	e.writeQuotedString("\"", escapeString(value))
 }
 
 func (e *JsonEncoder) WriteArrayElement(value any) {
