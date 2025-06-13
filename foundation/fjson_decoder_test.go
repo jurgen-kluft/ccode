@@ -12,9 +12,6 @@ type JsonTestObject struct {
 	NestedObject *JsonTestObject
 }
 
-// This is a declarative layout that instructs the json decoder how to
-// decode the JSON into the JsonTestObject struct.
-
 func DecodeTestObject(decoder *JsonDecoder, object *JsonTestObject) *JsonTestObject {
 	fields := map[string]JsonDecode{
 		"BoolField":    func(decoder *JsonDecoder) { object.BoolField = decoder.DecodeBool() },
@@ -27,16 +24,6 @@ func DecodeTestObject(decoder *JsonDecoder, object *JsonTestObject) *JsonTestObj
 	}
 	decoder.Decode(fields)
 	return object
-}
-
-func DecodeTestObjectFromJson(json string) (*JsonTestObject, error) {
-	decoder := NewJsonDecoder(json)
-	object := &JsonTestObject{}
-	DecodeTestObject(decoder, object)
-	if decoder.Err != nil {
-		return nil, decoder.Err
-	}
-	return object, nil
 }
 
 func TestDecoding(t *testing.T) {
@@ -57,15 +44,17 @@ func TestDecoding(t *testing.T) {
 		}
 	}`
 
-	object, err := DecodeTestObjectFromJson(json)
-	if err != nil {
-		panic(err)
-	}
+	decoder := NewJsonDecoder()
+	if decoder.Begin(json) {
+		object := DecodeTestObject(decoder, &JsonTestObject{})
 
-	if !object.BoolField {
-		t.Errorf("Expected BoolField to be true, got false")
-	}
-	if object.IntField != 42 {
-		t.Errorf("Expected IntField to be 42, got %d", object.IntField)
+		if !object.BoolField {
+			t.Errorf("Expected BoolField to be true, got false")
+		}
+		if object.IntField != 42 {
+			t.Errorf("Expected IntField to be 42, got %d", object.IntField)
+		}
+	} else {
+		t.Error("Failed to begin decoding JSON")
 	}
 }

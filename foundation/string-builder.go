@@ -105,6 +105,13 @@ func (b *StringBuilder) WriteByteN(p byte, n int) {
 	}
 }
 
+func (b *StringBuilder) WriteInt(value int64, base int) {
+	b.tmp = b.tmp[:0]
+	b.tmp = strconv.AppendInt(b.tmp, value, base)
+	b.Write(b.tmp)
+	b.tmp = b.tmp[:4]
+}
+
 // WriteFloat appends the string representation of f to b's buffer.
 func (b *StringBuilder) WriteFloat(f float64, fmt byte, prec, bitSize int) {
 	b.tmp = b.tmp[:0]
@@ -137,4 +144,20 @@ func (b *StringBuilder) WriteString(s string) {
 		b.buf[b.cursor] = s[i]
 		b.cursor++
 	}
+}
+
+// WriteLn appends the contents of s to b's buffer and also writes a newline character.
+// It returns the length of s written to the buffer.
+func (b *StringBuilder) WriteLn(s string) {
+	n := len(s) // +1 for newline character
+	if cap(b.buf)-b.cursor < (n + 1) {
+		b.grow(n)
+	}
+	for i := range n {
+		b.buf[b.cursor] = s[i]
+		b.cursor++
+	}
+
+	b.buf[b.cursor] = '\n'
+	b.cursor++
 }
