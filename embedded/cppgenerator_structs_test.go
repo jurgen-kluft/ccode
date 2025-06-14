@@ -1,6 +1,10 @@
 package embedded
 
-import "testing"
+import (
+	"testing"
+
+	"github.com/jurgen-kluft/ccode/foundation"
+)
 
 /*
 Example configuration for generating C++ structs:
@@ -80,9 +84,9 @@ Example C++ structs generated from the above JSON:
 func TestCppGeneratorStructs(t *testing.T) {
 	jsonData := `{
 		"between": "== Generated Structs ==",
-		"indent_type": "space",
-		"indent_size": 4,
-		"member_prefix": "m_",
+		"indentType": "space",
+		"indentSize": 4,
+		"memberPrefix": "m_",
 		"features": "bools_as_bitset|initialize_members",
 		"structs": [
 			{
@@ -103,17 +107,57 @@ func TestCppGeneratorStructs(t *testing.T) {
 					{"name": "min_depth", "type": "float", "initializer": "0.0f"},
 					{"name": "max_depth", "type": "float", "initializer": "0.0f"}
 				]
-			}
+			},
+			{
+				"name": "LotsOfBools",
+				"members": [
+					{
+						"name": "nice",
+						"type": "bool",
+						"init": "false"
+					},
+					{
+						"name": "cool",
+						"type": "bool",
+						"init": "true"
+					},
+					{
+						"name": "depth_clamp",
+						"type": "bool",
+						"init": "true"
+					},
+					{
+						"name": "stencil_test",
+						"type": "bool",
+						"init": "false"
+					},
+					{
+						"name": "depth_test",
+						"type": "bool",
+						"init": "true"
+					}
+				]
+			}			
 		]
 	}`
 
-	generator, err := newCppCodeGeneratorFromJSON([]byte(jsonData))
-	if err != nil {
+	decoder := foundation.NewJsonDecoder()
+	if !decoder.Begin(jsonData) {
+		t.Fatal("Failed to begin decoding JSON")
+	}
+
+	r := newCppCodeGenerator()
+	if err := r.decodeJSON(decoder); err != nil {
 		t.Fatalf("Failed to unmarshal JSON: %v", err)
 	}
 
-	if len(generator.cppStruct) == 0 {
+	if len(r.cppStruct) == 0 {
 		t.Fatal("No structs found in the generator")
+	}
+
+	linesOfCode := r.generateCppCode("")
+	if len(linesOfCode) == 0 {
+		t.Fatal("No C++ code generated")
 	}
 
 }

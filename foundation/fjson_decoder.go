@@ -138,7 +138,7 @@ type JsonDecode func(decoder *JsonDecoder)
 func (d *JsonDecoder) Decode(fields map[string]JsonDecode) error {
 	for !d.ReadUntilObjectEnd() {
 		fname := d.DecodeField()
-		if fdecode, ok := fields[fname]; ok {
+		if fdecode, ok := fields[strings.ToLower(fname)]; ok {
 			fdecode(d)
 		}
 	}
@@ -148,27 +148,21 @@ func (d *JsonDecoder) Decode(fields map[string]JsonDecode) error {
 func (d *JsonDecoder) DecodeField() string {
 	return d.FieldStr(d.Key)
 }
-
 func (d *JsonDecoder) DecodeBool() bool {
 	return d.ParseBool(d.Value)
 }
-
 func (d *JsonDecoder) DecodeInt32() int32 {
 	return int32(d.ParseInt32(d.Value))
 }
-
 func (d *JsonDecoder) DecodeInt64() int64 {
 	return d.ParseInt64(d.Value)
 }
-
 func (d *JsonDecoder) DecodeFloat32() float32 {
 	return d.ParseFloat32(d.Value)
 }
-
 func (d *JsonDecoder) DecodeFloat64() float64 {
 	return d.ParseFloat64(d.Value)
 }
-
 func (d *JsonDecoder) DecodeString() string {
 	return d.ParseString(d.Value)
 }

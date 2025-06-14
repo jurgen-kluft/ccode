@@ -1,11 +1,11 @@
 {
     "between": "== Generated Structs ==",
-    "indent_type": "space",
-    "indent_size": 4,
-    "generate_type": "struct",
-    "member_prefix": "m_",
-    "member_initialize": "default",
-    "boolean": "bitset",
+    "indentType": "space",
+    "indentSize": 4,
+    "memberPrefix": "m_",
+    "features": "bools_as_bitset|initialize_members",
+    "bitsetType": "u8",
+    "bitsetSize": 8,
     "structs": [
         {
             "name": "Rect2DInt",
@@ -43,8 +43,7 @@
                 },
                 {
                     "name": "max_depth",
-                    "type": "float",
-                    "init": "0.0f"
+                    "type": "float"
                 }
             ]
         },
@@ -64,7 +63,38 @@
                 {
                     "name": "viewport",
                     "type": "Viewport*",
+                    "bits": 64,
                     "init": "nullptr"
+                }
+            ]
+        },
+        {
+            "name": "LotsOfBools",
+            "members": [
+                {
+                    "name": "nice",
+                    "type": "bool",
+                    "init": "false"
+                },
+                {
+                    "name": "cool",
+                    "type": "bool",
+                    "init": "true"
+                },
+                {
+                    "name": "depth_clamp",
+                    "type": "bool",
+                    "init": "true"
+                },
+                {
+                    "name": "stencil_test",
+                    "type": "bool",
+                    "init": "false"
+                },
+                {
+                    "name": "depth_test",
+                    "type": "bool",
+                    "init": "true"
                 }
             ]
         }

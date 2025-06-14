@@ -4,6 +4,14 @@ import (
 	"strings"
 )
 
+// Note: The JSON encoder and decoder exist to support non-public fields in structs as well
+//       as a more easy way to default initialize structs since you have full control over
+//       the creation of said structs and their members.
+//
+//       The JSON encoder is very implicit and I do not think you can easily improve the
+//       performance and/or efficiency.
+//
+
 type JsonEncoder struct {
 	indentation string // precomputed indentation string
 	indentCount int

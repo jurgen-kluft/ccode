@@ -208,12 +208,19 @@ func (f *BitFlagsInstance) DecodeJSON(decoder *JsonDecoder) (err error) {
 	}
 
 	// Parse the string representation of flags
-	flagStrs := strings.Split(flagsStr, "|")
-	for _, flagName := range flagStrs {
-		flagName = strings.TrimSpace(flagName)
+	for len(flagsStr) > 0 {
+        if flagsStr[0] == '|' {
+            flagsStr = flagsStr[1:]
+        }
+		index := strings.IndexByte(flagsStr, '|')
+		if index == -1 {
+			index = len(flagsStr)
+		}
+		flagName := strings.TrimSpace(flagsStr[:index])
 		if flag, exists := (*f.Flags)[flagName]; exists {
 			f.Value |= flag
 		}
+		flagsStr = flagsStr[index:]
 	}
 
 	return nil

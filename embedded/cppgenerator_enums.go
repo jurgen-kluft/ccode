@@ -60,12 +60,12 @@ namespace BlendOperation {
 } // namespace BlendOperation
 */
 
-type EnumGenerate string
+type enumGenerate string
 
 const (
-	ToString   EnumGenerate = "ToString"
-	Mask       EnumGenerate = "Mask"
-	EnumToMask EnumGenerate = "EnumToMask"
+	enumGenerateToString   enumGenerate = "ToString"
+	enumGenerateMask       enumGenerate = "Mask"
+	enumGenerateEnumToMask enumGenerate = "EnumToMask"
 )
 
 type cppEnum struct {
@@ -73,10 +73,20 @@ type cppEnum struct {
 	namespace bool
 	enumType  string
 	members   []string
-	generate  []EnumGenerate
+	generate  []enumGenerate
 }
 
-func (e cppEnum) whichCodeToGenerate(g EnumGenerate) bool {
+func newCppEnum() cppEnum {
+	return cppEnum{
+		name:      "",
+		namespace: false,
+		enumType:  "int",
+		members:   []string{},
+		generate:  []enumGenerate{},
+	}
+}
+
+func (e cppEnum) whichCodeToGenerate(g enumGenerate) bool {
 	for _, v := range e.generate {
 		if strings.EqualFold(string(v), string(g)) {
 			return true
@@ -86,40 +96,26 @@ func (e cppEnum) whichCodeToGenerate(g EnumGenerate) bool {
 }
 
 func (r *cppCodeGenerator) generateEnum(initialIndentation string, e cppEnum) []string {
-	indent := ""
-	if r.indentType == indentTypeSpace || r.indentType == indentTypeDefault {
-		indent = strings.Repeat(" ", r.indentSize)
-	} else if r.indentType == indentTypeTab {
-		indent = "\t"
-		indent = strings.Repeat(indent, r.indentSize)
-	}
+	cppCode := newCppCode(initialIndentation, r.indentType, r.indentSize)
 
-	cppCode := &cppCode{
-		lines:       []string{},
-		indent:      indent,
-		indentation: initialIndentation,
-	}
-
-	// Set the enum header
 	if e.namespace {
 		cppCode.addNamespaceOpen(e.name)
 	}
 
 	cppCode.addEnumEnum(e)
 
-	if e.whichCodeToGenerate(Mask) {
+	if e.whichCodeToGenerate(enumGenerateMask) {
 		cppCode.addEnumMask(e)
 
-		if e.whichCodeToGenerate(EnumToMask) {
+		if e.whichCodeToGenerate(enumGenerateEnumToMask) {
 			cppCode.addEnumToMaskFunction(e)
 		}
 	}
 
-	if e.whichCodeToGenerate(ToString) {
+	if e.whichCodeToGenerate(enumGenerateToString) {
 		cppCode.addEnumToString(e)
 	}
 
-	// Set the enum footer
 	if e.namespace {
 		cppCode.addNamespaceClose(e.name)
 	}
