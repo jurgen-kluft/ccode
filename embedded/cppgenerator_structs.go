@@ -132,8 +132,8 @@ func newCppStruct() cppStruct {
 	}
 }
 
-func (r *cppCodeGenerator) generateStruct(initialIndentation string, cs *cppStruct) []string {
-	cppCode := newCppCode(initialIndentation, r.indentType, r.indentSize)
+func (r *cppCodeGenerator) generateStruct(cs *cppStruct) []string {
+	cppCode := newCppCode(r.indentType, r.indentSize)
 
 	// Generate the class or struct declarations
 	if cs.features.Has(featureFlagGenerateClass) {

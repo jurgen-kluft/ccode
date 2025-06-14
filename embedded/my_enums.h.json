@@ -1,7 +1,7 @@
 {
     "between": "=> Generated <=",
-    "indent_type": "space",
-    "indent_size": 4,
+    "indentType": "space",
+    "indentSize": 4,
     "enums": [
         {
             "name": "BlendOperation",

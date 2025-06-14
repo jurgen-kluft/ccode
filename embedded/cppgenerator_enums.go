@@ -95,8 +95,8 @@ func (e cppEnum) whichCodeToGenerate(g enumGenerate) bool {
 	return false
 }
 
-func (r *cppCodeGenerator) generateEnum(initialIndentation string, e cppEnum) []string {
-	cppCode := newCppCode(initialIndentation, r.indentType, r.indentSize)
+func (r *cppCodeGenerator) generateEnum(e cppEnum) []string {
+	cppCode := newCppCode(r.indentType, r.indentSize)
 
 	if e.namespace {
 		cppCode.addNamespaceOpen(e.name)

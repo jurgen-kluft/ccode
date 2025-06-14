@@ -27,10 +27,21 @@ func GenerateCppCode(inputFile string, outputFile string) error {
 		return fmt.Errorf("error parsing JSON: %v", err)
 	}
 
-	// insert the generated code into the output file
-	err = r.insertGeneratedCode(outputFile)
+	inputFileLines, err := r.readFileLines(outputFile)
 	if err != nil {
+		return fmt.Errorf("error reading input file '%s': %v", outputFile, err)
+	}
+
+	// generate the C++ code
+	generatedCode := r.generateCppCode()
+
+	// insert the generated code into the input file
+	if outputFileLines, err := r.insertGeneratedCode(inputFileLines, generatedCode); err != nil {
 		return fmt.Errorf("error inserting generated C++ code into file '%s' with error %v", outputFile, err)
+	} else {
+		if err := r.writeFileLines(outputFile, outputFileLines); err != nil {
+			return fmt.Errorf("error writing output file '%s': %v", outputFile, err)
+		}
 	}
 
 	return nil
@@ -51,10 +62,10 @@ type cppCode struct {
 	indentSize int
 }
 
-func newCppCode(initialIndentation string, indentType indentType, indentSize int) *cppCode {
+func newCppCode(indentType indentType, indentSize int) *cppCode {
 	cpp := &cppCode{
 		lines:      make([]string, 0, 1024),
-		indent:     initialIndentation,
+		indent:     "",
 		indentType: indentType,
 		indentSize: indentSize,
 	}
@@ -229,75 +240,88 @@ func (r *cppCodeGenerator) decodeJSON(decoder *foundation.JsonDecoder) error {
 	return decoder.Decode(fields)
 }
 
-func (r *cppCodeGenerator) generateCppCode(initialIndentation string) []string {
+func (r *cppCodeGenerator) generateCppCode() []string {
 	generatedCode := make([]string, 0, 1024)
 	for _, e := range r.cppEnum {
-		lines := r.generateEnum(initialIndentation, e)
+		lines := r.generateEnum(e)
 		generatedCode = append(generatedCode, lines...)
 	}
 
 	for _, s := range r.cppStruct {
-		lines := r.generateStruct(initialIndentation, &s)
+		lines := r.generateStruct(&s)
 		generatedCode = append(generatedCode, lines...)
 	}
 
 	return generatedCode
 }
 
-// This will generate the C++ code to the output file
-func (r *cppCodeGenerator) insertGeneratedCode(outputFile string) error {
-
-	// We need to open the file and find the between string, and replace everything between the begin and end line
-
-	// Open the file
-	// Read the full file into memory as and array of lines
-	// Find the first between string, that is the begin line
-	// Find the second between string, that is the end line
-	// Replace everything between the begin and end line with the generated code
-	// Write the file back to disk
-
-	inStream, err := os.Open(outputFile)
+func (r *cppCodeGenerator) readFileLines(filepath string) ([]string, error) {
+	inStream, err := os.Open(filepath)
 	if err != nil {
-		return err
+		return []string{}, err
 	}
 	defer inStream.Close()
 
 	// Read the full file into memory as and array of lines
-	lines := []string{}
+	lines := make([]string, 0, 8192)
 	scanner := bufio.NewScanner(inStream)
 	for scanner.Scan() {
 		lines = append(lines, scanner.Text())
 	}
 
+	return lines, scanner.Err()
+}
+
+func (r *cppCodeGenerator) writeFileLines(filepath string, lines []string) error {
+	outStream, err := os.Create(filepath)
+	if err != nil {
+		return err
+	}
+	defer outStream.Close()
+
+	// Turn this into a buffered writer
+	writer := bufio.NewWriter(outStream)
+
+	// Write the lines to the file
+	for _, line := range lines {
+		if _, err := writer.WriteString(line + "\n"); err != nil {
+			return fmt.Errorf("error writing to file %s: %v", filepath, err)
+		}
+	}
+
+	if err := writer.Flush(); err != nil { // Ensure all data is written to the file
+		return fmt.Errorf("error flushing file %s: %v", filepath, err)
+	}
+
+	if err := outStream.Sync(); err != nil {
+		return fmt.Errorf("error syncing file %s: %v", filepath, err)
+	}
+
+	return nil
+}
+
+// This will generate the C++ code to the output file
+func (r *cppCodeGenerator) insertGeneratedCode(inputFileLines []string, generatedCode []string) (outputFileLines []string, err error) {
+
 	// Find the first between string, that is the begin line
 	// Do keep track of what the indent is for the begin line
 	// Find the second between string, that is the end line
 	betweenLine := ""
-	initialIndentation := ""
+	initialIndentation := 0
 	beginLine := -1
 	endLine := -1
-	for i, line := range lines {
+	for i, line := range inputFileLines {
 		if len(line) == 0 {
 			continue
 		}
 
 		// Look for the between string using 'contains'
-		if strings.Contains(line, r.between) {
+		pos := strings.Index(line, r.between)
+		if pos >= 0 {
 			if beginLine == -1 {
 				betweenLine = line
 				beginLine = i
-				numSpaces := 0
-				for _, c := range line {
-					if c == ' ' {
-						numSpaces++
-					} else if c == '\t' {
-						numSpaces += 4
-					} else {
-						break
-					}
-				}
-				// Detected initial indent
-				initialIndentation = strings.Repeat(" ", numSpaces)
+				initialIndentation = pos
 			} else {
 				if endLine == -1 {
 					endLine = i
@@ -308,45 +332,40 @@ func (r *cppCodeGenerator) insertGeneratedCode(outputFile string) error {
 	}
 
 	if beginLine >= endLine {
-		return fmt.Errorf("could not find the between string in the file")
+		err = fmt.Errorf("could not find the first and second 'between' line")
+		return
 	}
 
-	// Replace everything between the begin and end line with the generated code
-	// Write the file back to disk
+	// Extract the initial indentation from the first between line
+	initialIndentationStr := betweenLine[:initialIndentation]
 
-	// Open the file for writing
-	outStream, err := os.Create(outputFile)
-	if err != nil {
-		return err
-	}
-	defer outStream.Close()
-
-	// Write the lines up to the begin line with the correct indent
-	for i := 0; i < beginLine; i++ {
-		outStream.WriteString(lines[i] + "\n")
-	}
+	// Reserve enough space for the output file lines
+	outputFileLines = make([]string, 0, len(inputFileLines)+len(generatedCode)+4)
 
 	// =====================================================================
-	// Write the generated code
-	// Do write it using the correct indent
+	// Write the lines from the input file before the first between line
 	// =====================================================================
-	outStream.WriteString(betweenLine + "\n")
-	generatedCode := r.generateCppCode(initialIndentation)
+	inputFileHeaderLines := inputFileLines[:beginLine]
+	outputFileLines = append(outputFileLines, inputFileHeaderLines...)
+
+	// =====================================================================
+	// Insert the generated code
+	// =====================================================================
+	outputFileLines = append(outputFileLines, betweenLine)
 	for _, line := range generatedCode {
 		if len(line) > 0 {
-			// Write the line with the initial indent
-			outStream.WriteString(initialIndentation + line + "\n")
+			outputFileLines = append(outputFileLines, initialIndentationStr+line)
 		} else {
-			outStream.WriteString("\n")
+			outputFileLines = append(outputFileLines, "")
 		}
 	}
-	outStream.WriteString(betweenLine + "\n")
+	outputFileLines = append(outputFileLines, betweenLine)
 
 	// =====================================================================
+	// Write the lines of the input file after the second between line
 	// =====================================================================
-	for i := endLine + 1; i < len(lines); i++ {
-		outStream.WriteString(lines[i] + "\n")
-	}
+	inputFileFooterLines := inputFileLines[endLine+1:]
+	outputFileLines = append(outputFileLines, inputFileFooterLines...)
 
-	return nil
+	return
 }

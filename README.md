@@ -90,7 +90,7 @@ func main() {
         // 'between' (take a peek inside the `embedded/my_enums.h.json` file)
         ccode.GenerateCppEnums("embedded/my_enums.h.json", "main/include/cbase/my_enums.h")
 
-        // Or if you are up to it, even generating structs is (wip) possible
+        // Or if you are up to it, even generating structs is possible
         ccode.GenerateCppStructs("embedded/my_structs.h.json", "main/include/cbase/my_structs.h")
     }
 }
