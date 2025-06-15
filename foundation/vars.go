@@ -1,23 +1,61 @@
 package foundation
 
 import (
-	"fmt"
 	"os"
 	"slices"
 	"strconv"
 	"strings"
 )
 
+// You can configure the variable pattern, e.g.:
+// $(VARIABLE:option1:option2:...)
+// {VARIABLE:option1:option2:...}
+
 type Vars struct {
 	Values [][]string
 	Keys   map[string]int
+	Leader byte // Leader byte, e.g. '$' or 0 for no varOpen
+	Open   byte // Bracket byte, e.g. '(' or '{' for the start of the variable
+	Close  byte // Bracket byte, e.g. '(' or '{' for the start of the variable
 }
 
 func NewVars() *Vars {
 	return &Vars{
 		Values: make([][]string, 0, 4),
 		Keys:   make(map[string]int, 4),
+		Leader: '$', // Default varOpen byte
+		Open:   '(', // Default opening bracket
+		Close:  ')', // Default closing bracket
 	}
+}
+
+type VarsFormat int8
+
+const (
+	VarsFormatDollarParenthesis VarsFormat = iota
+	VarsFormatCurlyBraces
+)
+
+func NewVarsCustom(format VarsFormat) *Vars {
+	vars := &Vars{
+		Values: make([][]string, 0, 4),
+		Keys:   make(map[string]int, 4),
+		Leader: 0, // Default varOpen byte
+		Open:   0, // Default opening bracket
+		Close:  0, // Default closing bracket
+	}
+
+	if format == VarsFormatDollarParenthesis {
+		vars.Leader = '$'
+		vars.Open = '('
+		vars.Close = ')'
+	} else if format == VarsFormatCurlyBraces {
+		vars.Leader = 0
+		vars.Open = '{'
+		vars.Close = '}'
+	}
+
+	return vars
 }
 
 func (v *Vars) Set(key string, value ...string) {
@@ -74,387 +112,6 @@ func (v *Vars) Get(key string) ([]string, bool) {
 		return v.Values[i], true
 	}
 	return []string{}, false
-}
-
-func (v *Vars) ResolveString(variable string) string {
-	type pair struct {
-		from int
-		to   int
-	}
-
-	for true {
-		// find [from:to] pairs of variables
-		stack := make([]int16, 0, 4)
-		list := make([]pair, 0)
-		for i, c := range variable {
-			if c == '{' {
-				current := int16(len(list))
-				stack = append(stack, current)
-				list = append(list, pair{from: i, to: -1})
-			} else if c == '}' {
-				if len(list) > 0 {
-					current := stack[len(stack)-1]
-					list[current].to = i
-					stack = stack[:len(stack)-1]
-				}
-			}
-		}
-
-		if len(list) == 0 {
-			return variable
-		}
-
-		// See if we have an invalid pair, if so just return
-		for _, p := range list {
-			if p.to == -1 {
-				fmt.Printf("Invalid variable pair in string: %s\n", variable)
-				return variable // Return the original string if we have an invalid pair
-			}
-		}
-
-		// resolve the variables, last to first, and assume all pairs are valid and closed
-		replaced := 0
-		for i := len(list) - 1; i >= 0; i-- {
-			p := list[i]
-			variableName := variable[p.from+1 : p.to]
-			// Check if the variable exists in the vars map
-			if vi, ok := v.Keys[variableName]; ok {
-				// Replace the variable with its value (len(values) should be 1)
-				values := v.Values[vi]
-				value := values[0]
-				variable = variable[:p.from] + value + variable[p.to+1:]
-				replaced += 1
-				// It this was a nested variable (has overlap with previous pair(s)),
-				// we need to adjust the 'to' of the next pairs
-				for j := i - 1; j >= 0; j-- {
-					if list[j].to > p.from {
-						list[j].to += len(value) - (p.to - p.from + 1)
-					}
-				}
-			} else {
-				// If the variable does not exist, we skip it.
-				// This variable could have been a nested one, so we need to skip also
-				// the overlapping pairs
-				for j := i - 1; j >= 0; j-- {
-					if list[j].to > p.from {
-						i-- // Skip this pair
-					} else {
-						break // No more overlapping pairs
-					}
-				}
-			}
-		}
-
-		if replaced == 0 {
-			return variable
-		}
-
-	}
-
-	return variable
-}
-
-// ResolveInterpolation resolves the variable interpolation in the given text
-// Note: See `vars.md` for the syntax of the variable interpolation.
-func (v *Vars) ResolveInterpolation(text string) []string {
-	type pair struct {
-		bvar  int  // start of variable
-		evar  int  // end of variable
-		bopt  int  // start of option (-1 for no option)
-		eopt  int  // end of option
-		depth int8 // (nested variables) depth of the variable
-		child int  // (nested variables) child index
-		prev  int  // (nested variables) sibling previous
-		next  int  // (nested variables) sibling next
-	}
-
-	finalResult := make([]string, 0, 16) // result of the interpolation
-
-	// TODO These array's could be part of the Vars struct, so as to not allocate them each time
-	stack := make([]int, 0, 8)
-	list := make([]pair, 0, 8)
-
-	toProcessIndex := 0
-	toProcess := []string{text}
-	for toProcessIndex < len(toProcess) {
-
-		runes := []rune(toProcess[toProcessIndex])
-
-		maxdepth := int8(0) // maximum depth encountered
-		stack := stack[:0]  // reset the stack
-		list = list[:0]     // reset the list of pairs
-
-		previous := -1
-		current := -1 // current index in the list of the pair we are working on
-		child := -1   // child index, used for nested variables
-		for i := 0; i < len(runes); i++ {
-			c := runes[i]
-			if c == '$' && (i+1) < len(runes) && runes[i+1] == '(' {
-
-			jump_label_parse_var:
-				current = len(list)                        // start anew
-				maxdepth = max(maxdepth, int8(len(stack))) // update the maximum depth
-				list = append(list, pair{                  // add a new pair with the start of the variable
-					bvar:  i + 2,
-					evar:  i + 2,
-					bopt:  i + 2,
-					eopt:  i + 2,
-					depth: int8(len(stack)),
-					child: child,
-					prev:  previous,
-					next:  -1,
-				})
-				if previous >= 0 {
-					list[previous].next = current // set the next index for the previous variable
-				}
-
-				i += 2 // skip the '$('
-
-				for i < len(runes) {
-					c := runes[i]
-					if c == ':' || c == ')' {
-						if c == ':' {
-							list[current].evar = i // end of variable
-							i++                    // skip ':'
-							list[current].bopt = i // do initialize the start
-							list[current].eopt = i // and end of the option
-							for i < len(runes) {   // advance until we find ')'
-								c = runes[i]
-								if c == ')' {
-									list[current].eopt = i
-									break
-								}
-								i++
-							}
-						} else {
-							list[current].evar = i
-							list[current].bopt = i // no options, but we still set the start and
-							list[current].eopt = i // end of the option to the end of the variable
-						}
-
-						if len(stack) > 0 {
-							// We have nested vars on the stack, pop it and continue
-							current = stack[len(stack)-1]
-							stack = stack[:len(stack)-1]
-							child = -1                    // reset child index for the new variable
-							previous = list[current].prev // take the previous from current for the next variable
-						} else {
-							// We just closed a variable, if we had a previous variable, we need to link it to the current one
-							if previous >= 0 {
-								list[previous].next = current
-							}
-							// no more nested vars, so we can setup the parameters for the new variable
-							child = -1
-							previous = current
-							current = -1
-							break
-						}
-
-					} else if c == '$' && (i+1) < len(runes) && runes[i+1] == '(' {
-						stack = append(stack, current) // push current index to stack
-						child = len(list)              // set the child index for the new variable
-						previous = -1                  // previous index is reset for the new variable
-						child = -1                     // reset child index for the new variable
-						goto jump_label_parse_var      // start a new variable
-					}
-					i++
-				}
-			}
-		}
-
-		if len(list) == 0 {
-			// This string has no variables, so just add it to the final result
-			finalResult = append(finalResult, toProcess[toProcessIndex])
-			toProcessIndex++
-			continue
-		}
-
-		// Now we have a list of pairs, each pair is a variable with options, depth and list of siblings
-		// Here we resolve the variables, starting from the deepest ones
-		resolved := make([][]string, len(list)) // resolved values for each pair
-		for d := maxdepth; d >= 0; d-- {
-			for i, p := range list {
-				if p.depth == d {
-
-					// We could have the following text:
-					// $(BEST_DAMN_$(SUBVAR)_SUPER_$(TRAILVAR)_EVER)
-					// Then $(SUBVAR) is resolved as MOVIE
-					// Then we have:
-					//     $(BEST_DAMN_MOVIE_SUPER_$(TRAILVAR)_EVER)
-					//    $(TRAILVAR) is resolved as STAR
-					// Then we have:
-					//    $(BEST_DAMN_MOVIE_SUPER_STAR_EVER)
-					// Note: This is, of course, resolved as 'Bruce Willis'
-
-					variableName := string(runes[p.bvar:p.evar])
-					if vi, ok := v.Keys[variableName]; ok {
-						resolved[i] = v.Values[vi] // use the values from the variable
-					} else {
-						resolved[i] = []string{string(runes[p.bvar-2 : p.eopt+1])} // variable not found, just put back the var
-					}
-
-					// Concatenate all children, and since they are at a lower depth they should already be resolved
-					child := p.child
-					if child >= 0 {
-						bvar := p.bvar
-						for child >= 0 {
-							c := list[child]
-							// Prefix resolved with any text that the variable might have
-							text := string(runes[bvar:(c.bvar - 2)])
-							if len(text) > 0 {
-								for ri, rv := range resolved[i] {
-									resolved[i][ri] = text + rv
-								}
-							}
-
-							values := make([]string, 0, len(resolved[i])*len(resolved[child]))
-							for _, r := range resolved[i] {
-								for _, c := range resolved[child] {
-									values = append(values, r+c)
-								}
-							}
-
-							bvar = c.eopt + 1 // update the text start
-							child = list[child].next
-						}
-
-						if bvar < p.evar {
-							// There is some text before the end of the variable, append it to the resolved values
-							text := string(runes[bvar:p.evar]) // everything after the variable
-							for ri, rv := range resolved[i] {
-								resolved[i][ri] = rv + text
-							}
-						}
-					}
-				}
-			}
-		}
-
-		// The variable also contains normal text interleaved with variables, here we
-		// replace each variable with its value.
-		results := []string{""}
-
-		rc := 0 // cursor in the runes
-		for li, p := range list {
-			// There can be some text before this variable, so here we
-			// consume that text and append it to the results
-			if rc < (p.bvar - 2) {
-				text := string(runes[rc:(p.bvar - 2)])
-				for j, _ := range results {
-					results[j] += text
-				}
-			}
-
-			values := resolved[li]
-
-			// Apply options if any
-			if p.bopt < p.eopt {
-				// Ok, we are going to modify values, so clone it
-				values = slices.Clone(values)
-
-				options := runes[p.bopt:p.eopt]
-				for len(options) > 0 {
-					var option rune
-					var param string
-					options, option, param = consumeOption(options) // consume the option and its parameter
-
-					switch option {
-					case 'f':
-						values = actionForwardSlashes(values, param)
-					case 'b':
-						values = actionBackwardSlashes(values, param)
-					case 'n':
-						values = actionNativeSlashes(values, param)
-					case 'u':
-						values = actionUpperCase(values, param)
-					case 'l':
-						values = actionLowerCase(values, param)
-					case 'B':
-						values = actionBaseName(values, param)
-					case 'F':
-						values = actionFileName(values, param)
-					case 'D':
-						values = actionDirName(values, param)
-					case 'p':
-						values = actionPrefix(values, param)
-					case 's':
-						values = actionSuffix(values, param)
-					case 'P':
-						values = actionPrefixIfNotExists(values, param)
-					case 'S':
-						values = actionSuffixIfNotExists(values, param)
-					case 'j':
-						values = actionJoinValues(values, param)
-					default:
-						fmt.Printf("Unknown interpolation option '%v' as part of $(%s:%s)\n", option, string(runes[p.bvar:p.evar]), string(runes[p.bopt:p.eopt]))
-					}
-				}
-			}
-
-			toProcess = append(toProcess, values...)
-
-			// Two cases:
-			// - one, this variable resulted in one value, so we can just continue with processing
-			// - two, this variable resulted in multiple values, so we need to multiply the amount of results
-
-			if len(values) > 1 {
-				newResults := make([]string, 0, len(results)*len(values))
-				for _, result := range results {
-					for range values {
-						newResults = append(newResults, result)
-					}
-				}
-				results = newResults
-			}
-
-			// If this is the last variable, we need to append the rest of the text
-			if li == len(list)-1 && (p.eopt+1) < len(runes) {
-				// There is some text after the variable, append it to the results
-				text := string(runes[p.eopt+1:]) // everything after the variable
-				for j := range results {
-					results[j] += text
-				}
-			}
-		}
-
-		toProcessIndex++
-	}
-
-	return finalResult
-}
-
-// consumeOption consumes the option from runes and returns the option rune and option parameter
-func consumeOption(runes []rune) ([]rune, rune, string) {
-	if len(runes) == 0 {
-		return runes, 0, ""
-	}
-
-	option := runes[0] // the first rune is the option
-	cursor := 1
-
-	w := 0
-	for cursor < len(runes) {
-		c := runes[cursor]
-		if c == '\\' {
-			cursor++ // Skip ('\' + next character)
-			if cursor < len(runes) {
-				c = runes[cursor]
-			} else {
-				break
-			}
-		} else if c == ':' {
-			break
-		}
-		runes[w] = c
-		w++
-		cursor++
-	}
-	param := string(runes[:w])
-	cursor = min(cursor, len(runes)) // Ensure we don't go out of bounds
-	if (cursor + 1) < len(runes) {
-		return runes[cursor+1:], option, param
-	}
-	return runes[0:0], option, param
 }
 
 func actionForwardSlashes(values []string, param string) []string {
@@ -635,47 +292,56 @@ var varOptionActionMap = map[int8]func([]string, string) []string{
 // Note: This is, of course, resolved as 'Of course Bruce Willis'
 
 type VarResolver interface {
-	Parse(text string) int
-	Resolve(vars *Vars) []string
+	Resolve(text string, vars *Vars) []string
 }
 
 func NewVarResolver() VarResolver {
 	vr := &varResolver{
-		strings: make([]varText, 0, 16),
-		options: make([]varOption, 0, 16),
-		nodes:   make([]varNode, 0, 32),
-		source:  nil,
-		cursor:  0,
-		current: 0,
-		stack:   make([]int, 0, 4),
+		strings:  make([]varText, 0, 16),
+		options:  make([]varOption, 0, 16),
+		nodes:    make([]varNode, 0, 32),
+		source:   nil,
+		cursor:   0,
+		current:  0,
+		stack:    make([]int, 0, 4),
+		varOpen:  uint16('$')<<8 | uint16('('), // Default varOpen+open
+		varClose: ')',                          // Default closing
 	}
 	return vr
 }
 
 // ---------------------------------------------------------------------------------------
 type varResolver struct {
-	strings []varText   // list of strings
-	options []varOption // list of options, each option is a single character
-	nodes   []varNode   // list of nodes
-	source  []rune      // source text that we are parsing
-	cursor  int         // current cursor in the text
-	current int         // current node
-	stack   []int       // stack of nodes
+	strings     []varText   // list of strings
+	options     []varOption // list of options, each option is a single character
+	nodes       []varNode   // list of nodes
+	source      []byte      // source text that we are parsing
+	cursor      int         // current cursor in the text
+	current     int         // current node
+	stack       []int       // stack of nodes
+	varOpenMask uint16      // The read mask
+	varOpen     uint16      // The varOpen(open) set, e.g. '$(' or '{'
+	varClose    uint8       // The closing bracket, e.g. ')' or '}'
 }
 
-func (vr *varResolver) Parse(text string) int {
+func (vr *varResolver) Resolve(text string, vars *Vars) []string {
 	vr.strings = vr.strings[:0]
 	vr.options = vr.options[:0]
 	vr.nodes = vr.nodes[:1]                        // Reset the nodes, we will parse again
 	vr.nodes[0] = newVarNode(PartTypeNone, -1, -1) // Reset the root node
-	vr.source = []rune(text)
+	vr.source = []byte(text)
 	vr.cursor = 0
 	vr.current = 0
 	vr.stack = vr.stack[:0]
-	return vr.parse()
-}
-
-func (vr *varResolver) Resolve(vars *Vars) []string {
+	if vars.Leader == 0 {
+		vr.varOpenMask = 0x00FF
+		vr.varOpen = uint16(vars.Open) // '(' or '{'
+	} else {
+		vr.varOpenMask = 0xFFFF
+		vr.varOpen = uint16(vars.Leader)<<8 | uint16(vars.Open) // e.g. '$(' or '${'
+	}
+	vr.varClose = uint8(vars.Close) // e.g. ')' or '}'
+	vr.parse()
 	return vr.resolveNode(vars, 0)
 }
 
@@ -702,34 +368,39 @@ func newVarOption(opt int8) varOption {
 
 func (vr *varResolver) scanForVariable() int {
 	cursor := vr.cursor
+	c := uint16(0)
 	for cursor < len(vr.source) {
-		if vr.source[cursor] == '$' && (cursor+1) < len(vr.source) && vr.source[cursor+1] == '(' {
-			return cursor
+		c = ((c << 8) | uint16(vr.source[cursor])) & vr.varOpenMask
+		if vr.varOpen == c {
+			return cursor - int((vr.varOpenMask>>8)&1) // Return the position of the variable start
 		}
 		cursor++
 	}
 	return cursor
 }
 
-func (vr *varResolver) scanInsideVariable() (lastChar uint8, cursor int) {
+func (vr *varResolver) scanInsideVariable() (lastChar uint16, cursor int) {
 	cursor = vr.cursor
 	lastChar = 0
 	for cursor < len(vr.source) {
-		c := vr.source[cursor]
-		if c == ')' || c == ':' {
-			return uint8(c), cursor // Return ')' or ':' and the position
-		} else if c == '$' && (cursor+1) < len(vr.source) && vr.source[cursor+1] == '(' {
-			return uint8(c), cursor // Return '$' and the position
+		read := vr.source[cursor]
+		if read == ':' || read == vr.varClose {
+			return uint16(read), cursor // Return ':' or ')' and the position
+		}
+		lastChar = ((lastChar << 8) | uint16(read)) & vr.varOpenMask
+		if lastChar == vr.varOpen {
+			cursor -= int((vr.varOpenMask >> 8) & 1)
+			return
 		}
 		cursor++
 	}
-	return lastChar, cursor // No variable found, return 0 and the current cursor
+	return 0, cursor // No variable found, return 0 and the current cursor
 }
 
 // ScanOption scans the next option in the variable, returning the option character, and the index of
 // the option parameter (if any) or -1.
 func (vr *varResolver) parseOption() (option varOption) {
-	if vr.source[vr.cursor] == ')' {
+	if vr.source[vr.cursor] == vr.varClose {
 		return varOption{-1, -1, 0, -1} // No option found, return 0 and -1 for the parameter
 	}
 	if vr.source[vr.cursor] == ':' {
@@ -744,9 +415,9 @@ func (vr *varResolver) parseOption() (option varOption) {
 	option.param = vr.cursor
 	for vr.cursor < len(vr.source) {
 		c := vr.source[vr.cursor]
-		if c == ')' || c == ':' {
+		if c == vr.varClose || c == ':' {
 			option.paramLen = int16(vr.cursor - option.param) // Length of the parameter
-			if c == ')' {
+			if c == vr.varClose {
 				option.end = -1
 			}
 			break
@@ -819,12 +490,12 @@ func (vr *varResolver) parse() int {
 			vr.addPart(vr.current, PartTypeText, varPartIndex(len(vr.strings)))
 			vr.strings = append(vr.strings, varText{from: int16(vr.cursor), to: int16(startVar)})
 		}
-		startVar += 2
+		startVar = startVar + 1 + int((vr.varOpenMask>>8)&1)
 
 		vr.cursor = startVar
 		for vr.cursor < len(vr.source) {
 			lastChar, cursor := vr.scanInsideVariable()
-			if lastChar == '$' {
+			if lastChar == vr.varOpen {
 				// We reached a nested variable
 				if startVar >= 0 {
 					strIndex := -1
@@ -842,7 +513,7 @@ func (vr *varResolver) parse() int {
 					}
 					vr.addPart(vr.current, PartTypeVarPart, varPartIndex(strIndex))
 				}
-				vr.cursor = cursor + 2 // Move the cursor to after the '($'
+				vr.cursor = cursor + 1 + int((vr.varOpenMask>>8)&1)
 
 				// Create the new node here, since the below addPart will create a new node!
 				nested := len(vr.nodes)
@@ -855,7 +526,7 @@ func (vr *varResolver) parse() int {
 				// Setup parsing this new nested variable
 				startVar = vr.cursor
 				vr.current = nested
-			} else if lastChar == ':' || lastChar == ')' {
+			} else if lastChar == ':' || lastChar == uint16(vr.varClose) {
 				if startVar >= 0 {
 					// We haven't registered a PartTypeVarBegin yet
 					vr.addPart(vr.current, PartTypeVarBegin, varPartIndex(len(vr.strings)))
@@ -884,7 +555,7 @@ func (vr *varResolver) parse() int {
 					vr.addPart(vr.current, PartTypeVarEnd, varPartIndex(-1)) // No options, just end the variable
 				}
 
-				vr.cursor++ // Skip ')'
+				vr.cursor++ // Skip vr.varClose
 
 				// Pop a node from the stack, to continue parsing inside the parent variable
 				if len(vr.stack) == 0 {
