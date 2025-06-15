@@ -5,9 +5,7 @@ type Arguments struct {
 }
 
 func NewArguments(init int) *Arguments {
-	if init <= 3 {
-		init = 4
-	}
+	init = max(init, 16)
 	return &Arguments{Args: make([]string, 0, init)}
 }
 

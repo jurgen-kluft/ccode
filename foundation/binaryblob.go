@@ -27,7 +27,7 @@ func (d *BinaryBlob) Data() []byte {
 	return d.data[:d.cursor]
 }
 
-func (d *BinaryBlob) Reset() {
+func (d *BinaryBlob) ResetCursor() {
 	d.cursor = 0
 }
 

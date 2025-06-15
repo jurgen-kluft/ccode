@@ -190,7 +190,7 @@ func (d *trackr) writeArray(signature string, byteArray []byte, compress bool, f
 
 	signatureHash := d.getHashOfSignature(signature)
 
-	d.scratchBuffer.Reset()
+	d.scratchBuffer.ResetCursor()
 	d.scratchBuffer.WriteBytes(signatureHash[:8])        // First 8 bytes of the signature hash
 	d.scratchBuffer.WriteInt(arrayOriginalSizeInBytes)   // Original size of the array
 	d.scratchBuffer.WriteInt(arrayCompressedSizeInBytes) // Compressed size of the array
@@ -393,7 +393,7 @@ func (d *trackr) save() error {
 	d.hasher.Reset()
 	d.hasher.Write([]byte(d.signature))
 	signatureHash := d.hasher.Sum(nil)
-	d.scratchBuffer.Reset()
+	d.scratchBuffer.ResetCursor()
 	d.scratchBuffer.WriteBytes(signatureHash[:10]) // First 10 bytes of the signature hash
 	d.scratchBuffer.WriteInt(numItems)             // Number of items
 	d.scratchBuffer.WriteInt32(d.N)                // Number of bits for the hash
@@ -544,8 +544,9 @@ func loadTrackr(storageFilepath string, signature string) *trackr {
 	if header, err := foundation.FileRead(dbFile, headerSize); err != nil {
 		return newDefaultTracker(storageFilepath, signature)
 	} else {
-		d.scratchBuffer.Reset()
+		d.scratchBuffer.ResetCursor()
 		d.scratchBuffer.WriteBytes(header)
+		d.scratchBuffer.ResetCursor()
 	}
 
 	// The first 10 bytes is the first 10 bytes of the SHA1 of the signature
