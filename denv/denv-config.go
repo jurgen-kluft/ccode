@@ -8,10 +8,10 @@ import (
 type DevConfig struct {
 	BuildType   dev.BuildType // Static, Dynamic, Executable
 	BuildConfig dev.BuildConfig
-	IncludeDirs []dev.PinPath
+	IncludeDirs []dev.PinnedPath
 	Defines     *foundation.ValueSet
 	LinkFlags   *foundation.ValueSet
-	Libs        []dev.PinFilepath // Libraries to link against
+	Libs        []dev.PinnedFilepath // Libraries to link against
 }
 
 func NewDevConfig(buildType dev.BuildType, buildConfig dev.BuildConfig) *DevConfig {
@@ -21,10 +21,10 @@ func NewDevConfig(buildType dev.BuildType, buildConfig dev.BuildConfig) *DevConf
 		// Config:  "Debug",  // Debug, Release, Final
 		// Build:   "Dev",    // Development(dev), Unittest(test), Profile(prof), Production(prod)
 		BuildConfig: buildConfig,
-		IncludeDirs: []dev.PinPath{},
+		IncludeDirs: []dev.PinnedPath{},
 		Defines:     foundation.NewValueSet(),
 		LinkFlags:   foundation.NewValueSet(),
-		Libs:        []dev.PinFilepath{},
+		Libs:        []dev.PinnedFilepath{},
 	}
 
 	return config

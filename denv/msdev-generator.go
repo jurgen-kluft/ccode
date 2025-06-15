@@ -452,7 +452,7 @@ func (g *MsDevGenerator) genConfigOptionFromValueSet(wr *foundation.XmlWriter, p
 	wr.TagWithBody(name, option)
 }
 
-func (g *MsDevGenerator) genConfigOptionWithModifier(wr *foundation.XmlWriter, name string, value *PinPathSet, modifier func(string, string, string) string) {
+func (g *MsDevGenerator) genConfigOptionWithModifier(wr *foundation.XmlWriter, name string, value *PinnedPathSet, modifier func(string, string, string) string) {
 	option := value.Concatenated("", ";", modifier)
 	option += "%(" + name + ")"
 	wr.TagWithBody(name, option)

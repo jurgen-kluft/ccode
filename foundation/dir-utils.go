@@ -3,6 +3,7 @@ package foundation
 import (
 	"fmt"
 	"os"
+	"path/filepath"
 )
 
 func DirExists(path string) bool {
@@ -38,4 +39,21 @@ func DirList(path string) ([]string, error) {
 	}
 
 	return entries, nil
+}
+
+func FindDirMatching(path string, findMatch func(dir string) bool) (string, error) {
+	entries, err := os.ReadDir(path)
+	if err != nil {
+		return "", err
+	}
+
+	for _, entry := range entries {
+		if !entry.IsDir() {
+			continue
+		}
+		if findMatch(entry.Name()) {
+			return filepath.Join(path, entry.Name()), nil
+		}
+	}
+	return "", nil
 }

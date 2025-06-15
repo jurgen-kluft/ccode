@@ -227,8 +227,8 @@ func (g *Generator) getOrCreateProject(devProj *DevProject, ws *Workspace) *Proj
 		exclusionFilter := func(_filepath string) bool { return g.ExclusionFilter.IsExcluded(_filepath) }
 
 		// Glob source files
-		for _, srcPinPath := range devProj.SourceDirs {
-			newProject.GlobFiles(filepath.Join(srcPinPath.Path.Root, srcPinPath.Path.Base), srcPinPath.Path.Sub, srcPinPath.Glob, exclusionFilter)
+		for _, srcPinnedPath := range devProj.SourceDirs {
+			newProject.GlobFiles(filepath.Join(srcPinnedPath.Path.Root, srcPinnedPath.Path.Base), srcPinnedPath.Path.Sub, srcPinnedPath.Glob, exclusionFilter)
 		}
 
 		return newProject

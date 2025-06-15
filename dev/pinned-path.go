@@ -6,16 +6,16 @@ import (
 	"github.com/jurgen-kluft/ccode/foundation"
 )
 
-type PinPath struct {
+type PinnedPath struct {
 	Root string // Root directory
 	Base string // Base directory
 	Sub  string // Sub directory
 }
 
-func (fp PinPath) String() string {
+func (fp PinnedPath) String() string {
 	return filepath.Join(fp.Root, fp.Base, fp.Sub)
 }
 
-func (fp PinPath) RelativeTo(root string) string {
+func (fp PinnedPath) RelativeTo(root string) string {
 	return foundation.PathGetRelativeTo(fp.String(), root)
 }

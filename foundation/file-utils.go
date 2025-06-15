@@ -8,6 +8,28 @@ import (
 	"strings"
 )
 
+func FileExists(path string) bool {
+	fi, err := os.Stat(path)
+	return err == nil && !fi.IsDir()
+}
+
+func FindFileMatching(path string, findMatch func(file string) bool) (string, error) {
+	entries, err := os.ReadDir(path)
+	if err != nil {
+		return "", err
+	}
+
+	for _, entry := range entries {
+		if entry.IsDir() {
+			continue
+		}
+		if findMatch(entry.Name()) {
+			return filepath.Join(path, entry.Name()), nil
+		}
+	}
+	return "", nil
+}
+
 func FileChangeExtension(filename, newExt string) string {
 	// Find the last dot in the filename
 	lastDot := -1
@@ -25,14 +47,6 @@ func FileChangeExtension(filename, newExt string) string {
 
 	// Replace the old extension with the new one
 	return filename[:lastDot] + newExt
-}
-
-func FileExists(path string) bool {
-	// Check if the file exists
-	if _, err := os.Stat(path); os.IsNotExist(err) {
-		return false
-	}
-	return true
 }
 
 func FileOpenWriteClose(path string, data []byte) error {
@@ -130,8 +144,9 @@ func FileCopy(src, dst string) error {
 	return nil
 }
 
-func FileEnumerate(rootPath string, dirFunc func(string, string) bool, fileFunc func(string, string)) {
-	filepath.Walk(rootPath, func(path string, info os.FileInfo, err error) error {
+func FileEnumerate(rootPath string, dirFunc func(string, string) bool, fileFunc func(string, string)) error {
+	rootPath = filepath.Clean(rootPath)
+	err := filepath.Walk(rootPath, func(path string, info os.FileInfo, err error) error {
 		if err != nil {
 			return err
 		}
@@ -147,4 +162,6 @@ func FileEnumerate(rootPath string, dirFunc func(string, string) bool, fileFunc 
 		fileFunc(rootPath, relPath)
 		return nil
 	})
+
+	return err
 }

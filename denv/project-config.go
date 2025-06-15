@@ -81,8 +81,8 @@ type Config struct {
 	Project           *Project
 	CppDefines        *foundation.KeyValueSet
 	CppFlags          *foundation.KeyValueSet
-	IncludeDirs       *PinPathSet
-	LibraryPaths      *PinPathSet
+	IncludeDirs       *PinnedPathSet
+	LibraryPaths      *PinnedPathSet
 	LibraryFiles      *foundation.ValueSet
 	LibraryFrameworks *foundation.ValueSet // MacOS specific
 	LinkFlags         *foundation.KeyValueSet
@@ -138,11 +138,11 @@ func (c *Config) String() string {
 }
 
 // AddIncludeDir adds an include to the list of include directories
-func (c *Config) AddIncludeDir(includeDir dev.PinPath) {
+func (c *Config) AddIncludeDir(includeDir dev.PinnedPath) {
 	c.IncludeDirs.AddOrSet(includeDir)
 }
 
-func (c *Config) AddLibrary(projectDirectory string, lib dev.PinFilepath) {
+func (c *Config) AddLibrary(projectDirectory string, lib dev.PinnedFilepath) {
 	c.LibraryPaths.AddOrSet(lib.Path)
 
 	libfile := lib.Filename
