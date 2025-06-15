@@ -131,7 +131,7 @@ func (v *Vars) Cull() {
 func (v *Vars) Resolve() {
 	resolver := NewVarResolver()
 	for ki, values := range v.Values {
-		newValues := make([]string, len(values))
+		newValues := make([]string, 0, len(values))
 		for _, value := range values {
 			resolvedValues := resolver.Resolve(value, v)
 			newValues = append(newValues, resolvedValues...)

@@ -7,15 +7,15 @@ import (
 	"strings"
 )
 
-// convert_comments.go converts C-style block comments to C++-style line
+//
+// Note: Not used yet
+//
+// fix_comments.go converts C-style block comments to C++-style line
 // comments. A block comment is converted if all of the following are true:
 //
 //   - There are no characters between the '*/' and the end of the line.
-//
 //   - Either one of the following are true:
-//
 //   - The comment fits on one line.
-//
 //   - Each line the comment spans begins with N spaces, followed by '/*' for
 //     the initial line or ' *' for subsequent lines, where N is the same for
 //     each line.
@@ -40,8 +40,7 @@ func isContinuation(s string, column int) bool {
 	return s[column:column+2] == " *"
 }
 
-// indexFrom behaves like strings.Index but only reports matches starting at
-// |idx|.
+// indexFrom behaves like strings.Index but only reports matches starting at |idx|.
 func indexFrom(s, sep string, idx int) int {
 	ret := strings.Index(s[idx:], sep)
 	if ret < 0 {
@@ -72,7 +71,8 @@ func writeLine(out *bytes.Buffer, line string) {
 	out.WriteString(line)
 	out.WriteByte('\n')
 }
-func convertComments(path string, in []byte) []byte {
+
+func ConvertComments(path string, in []byte, maxColumn int) []byte {
 	lines := strings.Split(string(in), "\n")
 	// Account for the trailing newline.
 	if len(lines) > 0 && len(lines[len(lines)-1]) == 0 {
@@ -215,8 +215,8 @@ func convertComments(path string, in []byte) []byte {
 					continue
 				}
 				newLine := fmt.Sprintf("%s%s//%s", line[:group.column], adjust, strings.TrimRight(line[group.column+2:], " "))
-				if len(newLine) > 80 {
-					fmt.Fprintf(os.Stderr, "%s:%d: Line is now longer than 80 characters\n", path, lineNo+i+1)
+				if len(newLine) > maxColumn {
+					fmt.Fprintf(os.Stderr, "%s:%d: Line is now longer than %d characters\n", path, lineNo+i+1, maxColumn)
 				}
 				writeLine(&out, newLine)
 			}
@@ -225,15 +225,3 @@ func convertComments(path string, in []byte) []byte {
 	}
 	return out.Bytes()
 }
-
-// func main() {
-// 	for _, arg := range os.Args[1:] {
-// 		in, err := os.ReadFile(arg)
-// 		if err != nil {
-// 			panic(err)
-// 		}
-// 		if err := os.WriteFile(arg, convertComments(arg, in), 0666); err != nil {
-// 			panic(err)
-// 		}
-// 	}
-// }

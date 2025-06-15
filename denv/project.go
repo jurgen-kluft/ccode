@@ -290,18 +290,19 @@ func (p *Project) GlobFiles(path string, sub string, pattern string, isExcluded 
 		return true // We want to include all directories
 	}
 
+	dirpath := filepath.Join(path, sub)
 	filepaths := []string{}
 	fileFunc := func(rootPath, relPath string) {
-		if !isExcluded(path) {
-			if match := foundation.GlobMatching(path, pattern); match {
-				filepaths = append(filepaths, path)
+		if !isExcluded(relPath) {
+			if match := foundation.GlobMatching(relPath, pattern); match {
+				filepaths = append(filepaths, relPath)
 			}
 		}
 	}
 
-	err := foundation.FileEnumerate(filepath.Join(path, sub), dirFunc, fileFunc)
+	err := foundation.FileEnumerate(dirpath, dirFunc, fileFunc)
 	if err != nil {
-		foundation.LogErrorf(err, "failed to enumerate files in %q: %v", filepath.Join(path, sub))
+		foundation.LogErrorf(err, "failed to enumerate files in %q: %v", dirpath)
 		return
 	}
 

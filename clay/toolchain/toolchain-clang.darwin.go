@@ -125,22 +125,25 @@ func (cl *ToolchainDarwinClangCompiler) SetupArgs(_defines []string, _includes [
 }
 
 func (cl *ToolchainDarwinClangCompiler) Compile(sourceAbsFilepath string, objRelFilepath string) error {
-
-	var args []string
+    var compilerPath string
+	var compilerArgs []string
 	if strings.HasSuffix(sourceAbsFilepath, ".c") {
-		args = cl.cArgs
+        compilerPath = cl.cCompilerPath
+		compilerArgs = cl.cArgs
 	} else {
-		args = cl.cppArgs
+        compilerPath = cl.cppCompilerPath
+        compilerArgs = cl.cppArgs
 	}
 
 	// The source file and the output object file
-	args = append(args, "-o")
-	args = append(args, objRelFilepath)
-	args = append(args, sourceAbsFilepath)
+	compilerArgs = append(compilerArgs, "-o")
+	compilerArgs = append(compilerArgs, objRelFilepath)
+	compilerArgs = append(compilerArgs, sourceAbsFilepath)
 
 	foundation.LogInfof("Compiling (%s) %s\n", cl.config.Config.AsString(), filepath.Base(sourceAbsFilepath))
 
-	cmd := exec.Command(cl.cCompilerPath, args...)
+    var cmd *exec.Cmd
+    cmd = exec.Command(compilerPath, compilerArgs...)
 	out, err := cmd.CombinedOutput()
 	if err != nil {
 		foundation.LogInfof("Compile failed, output:\n%s\n", string(out))
@@ -367,7 +370,7 @@ func NewDarwinClang(arch string, frameworks []string) (t *DarwinClang, err error
 
 	t = &DarwinClang{
 		Name: "clang",
-		Vars: foundation.NewVars(),
+		Vars: foundation.NewVarsCustom(foundation.VarsFormatCurlyBraces),
 	}
 
 	vars := map[string][]string{
@@ -398,7 +401,7 @@ func NewDarwinClang(arch string, frameworks []string) (t *DarwinClang, err error
 
 		// specific flags for archiver
 		`static.archiver.flags`:  {`-rs`},
-		`dynamic.archiver.flags`: {``},
+		`dynamic.archiver.flags`: {},
 
 		`linker.flags`:      {},
 		"linker.lib.paths":  {},
