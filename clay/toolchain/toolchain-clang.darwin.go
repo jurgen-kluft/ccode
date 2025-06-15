@@ -71,6 +71,9 @@ func (cl *ToolchainDarwinClangCompiler) SetupArgs(_defines []string, _includes [
 			cl.cArgs = append(cl.cArgs, `-D`, define)
 		}
 	}
+	for _, define := range _defines {
+		cl.cArgs = append(cl.cArgs, `-D`, define)
+	}
 	for _, include := range _includes {
 		cl.cArgs = append(cl.cArgs, `-I`, include)
 	}
@@ -109,6 +112,9 @@ func (cl *ToolchainDarwinClangCompiler) SetupArgs(_defines []string, _includes [
 		for _, define := range defines {
 			cl.cppArgs = append(cl.cppArgs, `-D`, define)
 		}
+	}
+	for _, define := range _defines {
+		cl.cppArgs = append(cl.cppArgs, `-D`, define)
 	}
 	for _, include := range _includes {
 		cl.cppArgs = append(cl.cppArgs, `-I`, include)
