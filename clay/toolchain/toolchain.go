@@ -3,7 +3,6 @@ package toolchain
 import (
 	"github.com/jurgen-kluft/ccode/clay/toolchain/dpenc"
 	"github.com/jurgen-kluft/ccode/dev"
-	"github.com/jurgen-kluft/ccode/foundation"
 )
 
 type Config struct {
@@ -32,31 +31,21 @@ type Environment interface {
 	NewDependencyTracker(dirpath string) dpenc.FileTrackr
 }
 
-func ResolveVars(v *foundation.Vars) {
-	for ki, values := range v.Values {
-		for vi, value := range values {
-			v.Values[ki][vi] = v.ResolveString(value)
-		}
-	}
-}
-
+// --------------------------------------------------
 // Example:
-//
-//	   BuildTargetConfig = "clang-arm64-debug-test"
-//		  Config = "*-*-debug-*"
-//	   Result = true
+//   - BuildTargetConfig = "clang-arm64-debug-test"
+//   - Config = "*-*-debug-*"
+//   - Result = true
 //
 // Example:
-//
-//	BuildTargetConfig = "clang-arm64-debug-test"
-//	Config = "*-*-*-test"
-//	Result = true
+//   - BuildTargetConfig = "clang-arm64-debug-test"
+//   - Config = "*-*-*-test"
+//   - Result = true
 //
 // Example:
-//
-//	BuildTargetConfig = "clang-arm64-debug-test"
-//	Config = "*-*-debug-test"
-//	Result = true
+//   - BuildTargetConfig = "clang-arm64-debug-test"
+//   - Config = "*-*-debug-test"
+//   - Result = true
 func ConfigMatches(lhsConfig string, rhsConfig string) bool {
 	if lhsConfig == "*-*-*-*" || rhsConfig == "*-*-*-*" {
 		return true

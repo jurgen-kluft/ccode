@@ -422,6 +422,6 @@ func NewDarwinClang(arch string, frameworks []string) (t *DarwinClang, err error
 
 	// We can target x86_64 and aarch64 on macOS
 
-	ResolveVars(t.Vars)
+	t.Vars.Resolve()
 	return t, nil
 }

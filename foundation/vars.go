@@ -114,6 +114,18 @@ func (v *Vars) Get(key string) ([]string, bool) {
 	return []string{}, false
 }
 
+func (v *Vars) Resolve() {
+	resolver := NewVarResolver()
+	for ki, values := range v.Values {
+		newValues := make([]string, len(values))
+		for _, value := range values {
+			resolvedValues := resolver.Resolve(value, v)
+			newValues = append(newValues, resolvedValues...)
+		}
+		v.Values[ki] = newValues
+	}
+}
+
 func actionForwardSlashes(values []string, param string) []string {
 	for i, value := range values {
 		values[i] = strings.ReplaceAll(value, "\\", "/")

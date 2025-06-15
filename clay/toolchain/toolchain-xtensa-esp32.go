@@ -800,6 +800,6 @@ func NewArduinoEsp32(espMcu string, projectName string) (*ArduinoEsp32, error) {
 		return nil, foundation.LogErrorf(os.ErrInvalid, "unsupported ESP32 MCU: %s", espMcu)
 	}
 
-	ResolveVars(t.Vars)
+	t.Vars.Resolve()
 	return t, nil
 }
