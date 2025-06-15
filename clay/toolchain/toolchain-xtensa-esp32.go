@@ -769,7 +769,7 @@ func NewArduinoEsp32(espMcu string, projectName string) (*ArduinoEsp32, error) {
 
 	t := &ArduinoEsp32{
 		ProjectName: projectName,
-		Vars:        foundation.NewVars(),
+		Vars:        foundation.NewVarsCustom(foundation.VarsFormatCurlyBraces),
 	}
 
 	for _, kv := range vars {
