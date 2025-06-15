@@ -1,31 +1,3 @@
-/*
-# Provides a simple `Flag` (uint32) type that can store 32 true-false values.
-
-Provides variadic forms of functions that end in "V", but these are not as efficient as their normal counterparts.
-
-In other words, `func (b *Flag) Clear(flag Flag)` is preferrable to `func (b *Flag) ClearV(flags ...Flag)`.
-
-But, you can use the variadic ones if you want and are okay with a little slice allocation overhead (which isn't much because these are uint32 anyways).
-
-# Example:
-
-	import (
-		"github.com/chasecarlson1/go-bitflags/flag"
-	)
-
-	const (
-		FlagA flag.Flag = 1 << iota // 0001
-		FlagB 			   // 0010
-		FlagC 			   // 0100
-	)
-
-	var f flag.Flag = 0
-	f.Set(FlagB)
-	fmt.Print(f.String()) // prints binary "0010"
-	f.ClearAll() // flag == 0 (no flags set on the "f" Flag variable)
-	f.ToggleV(FlagC, FlagA) // variadic forms of functions end in "V". These have performance overhead though but allow for multiple arguments.
-	f.IsSet(FlagA) // now returns true because of the line above
-*/
 package foundation
 
 import (
@@ -38,10 +10,6 @@ import (
 
 # Example:
 
-	import (
-		"github.com/chasecarlson1/go-bitflags/flag"
-	)
-
 	const (
 		FlagA flag.Flag = 1 << iota // 0001
 		FlagB 			   // 0010
@@ -50,10 +18,10 @@ import (
 
 	var f flag.Flag = 0
 	f.Set(FlagB)
-	fmt.Print(f.String()) // prints binary "0010"
-	f.ClearAll() // flag == 0 (no flags set on the "f" Flag variable)
-	f.ToggleV(FlagC, FlagA) // variadic forms of functions end in "V". These have performance overhead though but allow for multiple arguments.
-	f.IsSet(FlagA) // now returns true because of the line above
+	fmt.Print(f.String())   // prints binary "0010"
+	f.ClearAll()            // flag == 0 (no flags set on the "f" Flag variable)
+	f.Toggle(FlagC, FlagA)  // you can pass multiple flags to Toggle
+	f.IsSet(FlagA)          // now returns true because of the line above
 */
 
 type Flag uint32
@@ -197,10 +165,11 @@ func (f *BitFlagsInstance) EncodeJSON(encoder *JsonEncoder) error {
 }
 
 func (f *BitFlagsInstance) DecodeJSON(decoder *JsonDecoder) (err error) {
+	f.Value = 0
+
 	flagsStr := decoder.DecodeString()
-	f.Value = 0 // Reset the value
 	if f.Flags == nil {
-		// If no flags are declared, just parse the integer value
+		// If no flags are declared, just parse it as an integer value
 		if _, err := fmt.Sscanf(flagsStr, "%d", &f.Value); err != nil {
 			return fmt.Errorf("error parsing flags as integer: %v", err)
 		}
@@ -209,9 +178,9 @@ func (f *BitFlagsInstance) DecodeJSON(decoder *JsonDecoder) (err error) {
 
 	// Parse the string representation of flags
 	for len(flagsStr) > 0 {
-        if flagsStr[0] == '|' {
-            flagsStr = flagsStr[1:]
-        }
+		if flagsStr[0] == '|' {
+			flagsStr = flagsStr[1:]
+		}
 		index := strings.IndexByte(flagsStr, '|')
 		if index == -1 {
 			index = len(flagsStr)
