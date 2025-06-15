@@ -1,30 +1,26 @@
 package toolchain
 
 type Arguments struct {
-	List []string
-	Fix  int
+	Args []string
 }
 
 func NewArguments(init int) *Arguments {
 	if init <= 3 {
 		init = 4
 	}
-	return &Arguments{List: make([]string, 0, init)}
+	return &Arguments{Args: make([]string, 0, init)}
 }
 
 func (a *Arguments) Clear() {
-	a.List = a.List[:0]
-	a.Fix = 0
+	a.Args = a.Args[:0]
 }
 
 func (a *Arguments) Add(arg ...string) {
-	a.List = append(a.List, arg...)
+	a.Args = append(a.Args, arg...)
 }
 
-func (a *Arguments) Lock() {
-	a.Fix = len(a.List)
-}
-
-func (a *Arguments) Reset() {
-	a.List = a.List[:a.Fix]
+func (a *Arguments) AddWithPrefix(prefix string, args ...string) {
+	for _, arg := range args {
+		a.Args = append(a.Args, prefix+arg)
+	}
 }

@@ -23,8 +23,8 @@ type ToolchainDarwinClangCompiler struct {
 	config          *Config
 	cCompilerPath   string
 	cppCompilerPath string
-	cArgs           []string
-	cppArgs         []string
+	cArgs           *Arguments
+	cppArgs         *Arguments
 }
 
 func (t *DarwinClang) NewCompiler(config *Config) Compiler {
@@ -33,24 +33,24 @@ func (t *DarwinClang) NewCompiler(config *Config) Compiler {
 		config:          config,
 		cCompilerPath:   t.Vars.GetFirstOrEmpty("c.compiler"),
 		cppCompilerPath: t.Vars.GetFirstOrEmpty("cpp.compiler"),
-		cArgs:           []string{},
-		cppArgs:         []string{},
+		cArgs:           NewArguments(512),
+		cppArgs:         NewArguments(512),
 	}
 }
 
 func (cl *ToolchainDarwinClangCompiler) SetupArgs(_defines []string, _includes []string) {
 	// Implement the logic to setup arguments for the compiler here
-	cl.cArgs = make([]string, 0, 64)
+	cl.cArgs.Clear()
 
-	cl.cArgs = append(cl.cArgs, `-c`)
+	cl.cArgs.Add(`-c`)
 	if archFlags, ok := cl.toolChain.Vars.Get(`c.compiler.flags.arch`); ok {
-		cl.cArgs = append(cl.cArgs, archFlags...)
+		cl.cArgs.Add(archFlags...)
 	}
 	if picFlags, ok := cl.toolChain.Vars.Get(`c.compiler.flags.pic`); ok {
-		cl.cArgs = append(cl.cArgs, picFlags...)
+		cl.cArgs.Add(picFlags...)
 	}
 	if stdFlags, ok := cl.toolChain.Vars.Get(`c.compiler.flags.std`); ok {
-		cl.cArgs = append(cl.cArgs, stdFlags...)
+		cl.cArgs.Add(stdFlags...)
 	}
 
 	flagsStr := `c.compiler.flags.release`
@@ -64,34 +64,30 @@ func (cl *ToolchainDarwinClangCompiler) SetupArgs(_defines []string, _includes [
 	}
 
 	if flags, ok := cl.toolChain.Vars.Get(flagsStr); ok {
-		cl.cArgs = append(cl.cArgs, flags...)
+		cl.cArgs.Add(flags...)
 	}
 	if defines, ok := cl.toolChain.Vars.Get(definesStr); ok {
 		for _, define := range defines {
-			cl.cArgs = append(cl.cArgs, `-D`, define)
+			cl.cArgs.Add(`-D`, define)
 		}
 	}
-	for _, define := range _defines {
-		cl.cArgs = append(cl.cArgs, `-D`, define)
-	}
-	for _, include := range _includes {
-		cl.cArgs = append(cl.cArgs, `-I`, include)
-	}
+	cl.cArgs.AddWithPrefix(`-D`, _defines...)
+	cl.cArgs.AddWithPrefix(`-I`, _includes...)
 
-	cl.cArgs = append(cl.cArgs, `-MMD`) // Generate dependency file
+	cl.cArgs.Add(`-MMD`) // Generate dependency file
 
 	// C++ compiler arguments
-	cl.cppArgs = make([]string, 0, 64)
+	cl.cppArgs.Clear()
 
-	cl.cppArgs = append(cl.cppArgs, `-c`)
+	cl.cppArgs.Add(`-c`)
 	if archFlags, ok := cl.toolChain.Vars.Get(`cpp.compiler.flags.arch`); ok {
-		cl.cppArgs = append(cl.cppArgs, archFlags...)
+		cl.cppArgs.Add(archFlags...)
 	}
 	if picFlags, ok := cl.toolChain.Vars.Get(`cpp.compiler.flags.pic`); ok {
-		cl.cppArgs = append(cl.cppArgs, picFlags...)
+		cl.cppArgs.Add(picFlags...)
 	}
 	if stdFlags, ok := cl.toolChain.Vars.Get(`cpp.compiler.flags.std`); ok {
-		cl.cppArgs = append(cl.cppArgs, stdFlags...)
+		cl.cppArgs.Add(stdFlags...)
 	}
 
 	flagsStr = `cpp.compiler.flags.release`
@@ -105,34 +101,28 @@ func (cl *ToolchainDarwinClangCompiler) SetupArgs(_defines []string, _includes [
 	}
 
 	if flags, ok := cl.toolChain.Vars.Get(flagsStr); ok {
-		cl.cppArgs = append(cl.cppArgs, flags...)
+		cl.cppArgs.Add(flags...)
 	}
 
 	if defines, ok := cl.toolChain.Vars.Get(definesStr); ok {
-		for _, define := range defines {
-			cl.cppArgs = append(cl.cppArgs, `-D`, define)
-		}
+		cl.cppArgs.AddWithPrefix(`-D`, defines...)
 	}
-	for _, define := range _defines {
-		cl.cppArgs = append(cl.cppArgs, `-D`, define)
-	}
-	for _, include := range _includes {
-		cl.cppArgs = append(cl.cppArgs, `-I`, include)
-	}
+	cl.cppArgs.AddWithPrefix(`-D`, _defines...)
+	cl.cppArgs.AddWithPrefix(`-I`, _includes...)
 
-	cl.cppArgs = append(cl.cppArgs, `-MMD`) // Generate dependency file
+	cl.cppArgs.Add(`-MMD`) // Generate dependency file
 
 }
 
 func (cl *ToolchainDarwinClangCompiler) Compile(sourceAbsFilepath string, objRelFilepath string) error {
-    var compilerPath string
+	var compilerPath string
 	var compilerArgs []string
 	if strings.HasSuffix(sourceAbsFilepath, ".c") {
-        compilerPath = cl.cCompilerPath
-		compilerArgs = cl.cArgs
+		compilerPath = cl.cCompilerPath
+		compilerArgs = cl.cArgs.Args
 	} else {
-        compilerPath = cl.cppCompilerPath
-        compilerArgs = cl.cppArgs
+		compilerPath = cl.cppCompilerPath
+		compilerArgs = cl.cppArgs.Args
 	}
 
 	// The source file and the output object file
@@ -142,8 +132,8 @@ func (cl *ToolchainDarwinClangCompiler) Compile(sourceAbsFilepath string, objRel
 
 	foundation.LogInfof("Compiling (%s) %s\n", cl.config.Config.AsString(), filepath.Base(sourceAbsFilepath))
 
-    var cmd *exec.Cmd
-    cmd = exec.Command(compilerPath, compilerArgs...)
+	var cmd *exec.Cmd
+	cmd = exec.Command(compilerPath, compilerArgs...)
 	out, err := cmd.CombinedOutput()
 	if err != nil {
 		foundation.LogInfof("Compile failed, output:\n%s\n", string(out))

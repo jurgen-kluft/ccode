@@ -30,8 +30,8 @@ type ToolchainArduinoEsp32Compiler struct {
 	config          *Config // Configuration for the compiler, e.g., debug or release
 	cCompilerPath   string
 	cppCompilerPath string
-	cCompilerArgs   []string
-	cppCompilerArgs []string
+	cCompilerArgs   *Arguments
+	cppCompilerArgs *Arguments
 }
 
 func (t *ArduinoEsp32) NewCompiler(config *Config) Compiler {
@@ -40,144 +40,120 @@ func (t *ArduinoEsp32) NewCompiler(config *Config) Compiler {
 		config:          config,
 		cCompilerPath:   t.Vars.GetFirstOrEmpty("c.compiler"),
 		cppCompilerPath: t.Vars.GetFirstOrEmpty("cpp.compiler"),
-		cCompilerArgs:   make([]string, 0, 64),
-		cppCompilerArgs: make([]string, 0, 64),
+		cCompilerArgs:   NewArguments(64),
+		cppCompilerArgs: NewArguments(64),
 	}
 }
 
 func (cl *ToolchainArduinoEsp32Compiler) SetupArgs(defines []string, includes []string) {
 	// C Compiler Arguments
 	{
-		cl.cCompilerArgs = cl.cCompilerArgs[:0] // Reset the arguments
+		cl.cCompilerArgs.Clear()
 
-		cl.cCompilerArgs = append(cl.cCompilerArgs, "-c")
-		cl.cCompilerArgs = append(cl.cCompilerArgs, "-MMD")
+		cl.cCompilerArgs.Add("-c")
+		cl.cCompilerArgs.Add("-MMD")
 
 		if responseFileFlags, ok := cl.toolChain.Vars.GetFirst("c.compiler.response.flags"); ok {
-			cl.cCompilerArgs = append(cl.cCompilerArgs, "@"+responseFileFlags)
+			cl.cCompilerArgs.Add("@" + responseFileFlags)
 		}
 
 		if switches, ok := cl.toolChain.Vars.Get("c.compiler.switches"); ok {
-			cl.cCompilerArgs = append(cl.cCompilerArgs, switches...)
+			cl.cCompilerArgs.Add(switches...)
 		}
 
 		if warningSwitches, ok := cl.toolChain.Vars.Get("c.compiler.warning.switches"); ok {
-			cl.cCompilerArgs = append(cl.cCompilerArgs, warningSwitches...)
+			cl.cCompilerArgs.Add(warningSwitches...)
 		}
 
 		// Compiler system defines (debug / release ?)
 		if compilerDefines, ok := cl.toolChain.Vars.Get("c.compiler.defines"); ok {
-			for _, d := range compilerDefines {
-				cl.cCompilerArgs = append(cl.cCompilerArgs, "-D")
-				cl.cCompilerArgs = append(cl.cCompilerArgs, d)
-			}
+			cl.cCompilerArgs.AddWithPrefix("-D", compilerDefines...)
 		}
 
 		// Compiler user defines
-		for _, define := range defines {
-			cl.cCompilerArgs = append(cl.cCompilerArgs, "-D")
-			cl.cCompilerArgs = append(cl.cCompilerArgs, define)
-		}
+		cl.cCompilerArgs.AddWithPrefix("-D", defines...)
 
 		if responseFileDefines, ok := cl.toolChain.Vars.GetFirst("c.compiler.response.defines"); ok {
-			cl.cCompilerArgs = append(cl.cCompilerArgs, "@"+responseFileDefines)
+			cl.cCompilerArgs.Add("@" + responseFileDefines)
 		}
 
 		// Compiler prefix include paths
 		if compilerPrefixInclude, ok := cl.toolChain.Vars.GetFirst("c.compiler.system.prefix.include"); ok {
-			cl.cCompilerArgs = append(cl.cCompilerArgs, "-iprefix")
+			cl.cCompilerArgs.Add("-iprefix")
 			// Make sure the path ends with a /
 			if !strings.HasSuffix(compilerPrefixInclude, "/") {
-				cl.cCompilerArgs = append(cl.cCompilerArgs, compilerPrefixInclude+"/")
+				cl.cCompilerArgs.Add(compilerPrefixInclude + "/")
 			} else {
-				cl.cCompilerArgs = append(cl.cCompilerArgs, compilerPrefixInclude)
+				cl.cCompilerArgs.Add(compilerPrefixInclude)
 			}
 
 			if responseFileIncludes, ok := cl.toolChain.Vars.GetFirst("c.compiler.response.includes"); ok {
-				cl.cCompilerArgs = append(cl.cCompilerArgs, "@"+responseFileIncludes)
+				cl.cCompilerArgs.Add("@" + responseFileIncludes)
 			}
 		}
 
 		// Compiler system include paths
 		if systemIncludes, ok := cl.toolChain.Vars.Get("c.compiler.system.includes"); ok {
-			for _, include := range systemIncludes {
-				cl.cCompilerArgs = append(cl.cCompilerArgs, "-I")
-				cl.cCompilerArgs = append(cl.cCompilerArgs, include)
-			}
+			cl.cCompilerArgs.AddWithPrefix("-I", systemIncludes...)
 		}
 
 		// User include paths
-		for _, include := range includes {
-			cl.cCompilerArgs = append(cl.cCompilerArgs, "-I")
-			cl.cCompilerArgs = append(cl.cCompilerArgs, include)
-		}
+		cl.cCompilerArgs.AddWithPrefix("-I", includes...)
 	}
 
 	// C++ Compiler Arguments
 	{
-		cl.cppCompilerArgs = cl.cppCompilerArgs[:0] // Reset the arguments
+		cl.cppCompilerArgs.Clear()
 
-		cl.cppCompilerArgs = append(cl.cppCompilerArgs, "-c")
-		cl.cppCompilerArgs = append(cl.cppCompilerArgs, "-MMD")
+		cl.cppCompilerArgs.Add("-c")
+		cl.cppCompilerArgs.Add("-MMD")
 
 		if cppResponseFileFlags, ok := cl.toolChain.Vars.GetFirst("cpp.compiler.response.flags"); ok {
-			cl.cppCompilerArgs = append(cl.cppCompilerArgs, "@"+cppResponseFileFlags)
+			cl.cppCompilerArgs.Add("@" + cppResponseFileFlags)
 		}
 
 		if cppSwitches, ok := cl.toolChain.Vars.Get("cpp.compiler.switches"); ok {
-			cl.cppCompilerArgs = append(cl.cppCompilerArgs, cppSwitches...)
+			cl.cppCompilerArgs.Add(cppSwitches...)
 		}
 
 		if cppWarningSwitches, ok := cl.toolChain.Vars.Get("cpp.compiler.warning.switches"); ok {
-			cl.cppCompilerArgs = append(cl.cppCompilerArgs, cppWarningSwitches...)
+			cl.cppCompilerArgs.Add(cppWarningSwitches...)
 		}
 
 		// Compiler system defines (debug / release ?)
 		if compilerDefines, ok := cl.toolChain.Vars.Get("cpp.compiler.defines"); ok {
-			for _, d := range compilerDefines {
-				cl.cppCompilerArgs = append(cl.cppCompilerArgs, "-D")
-				cl.cppCompilerArgs = append(cl.cppCompilerArgs, d)
-			}
+			cl.cppCompilerArgs.AddWithPrefix("-D", compilerDefines...)
 		}
 
 		// Compiler user defines
-		for _, define := range defines {
-			cl.cppCompilerArgs = append(cl.cppCompilerArgs, "-D")
-			cl.cppCompilerArgs = append(cl.cppCompilerArgs, define)
-		}
+		cl.cppCompilerArgs.AddWithPrefix("-D", defines...)
 
 		if responseFileDefines, ok := cl.toolChain.Vars.GetFirst("cpp.compiler.response.defines"); ok {
-			cl.cppCompilerArgs = append(cl.cppCompilerArgs, "@"+responseFileDefines)
+			cl.cppCompilerArgs.Add("@" + responseFileDefines)
 		}
 
 		// Compiler prefix include paths
 		if compilerPrefixInclude, ok := cl.toolChain.Vars.GetFirst("cpp.compiler.system.prefix.include"); ok {
-			cl.cppCompilerArgs = append(cl.cppCompilerArgs, "-iprefix")
+			cl.cppCompilerArgs.Add("-iprefix")
 			// Make sure the path ends with a /
 			if !strings.HasSuffix(compilerPrefixInclude, "/") {
-				cl.cppCompilerArgs = append(cl.cppCompilerArgs, compilerPrefixInclude+"/")
+				cl.cppCompilerArgs.Add(compilerPrefixInclude + "/")
 			} else {
-				cl.cppCompilerArgs = append(cl.cppCompilerArgs, compilerPrefixInclude)
+				cl.cppCompilerArgs.Add(compilerPrefixInclude)
 			}
 
 			if responseFileIncludes, ok := cl.toolChain.Vars.GetFirst("cpp.compiler.response.includes"); ok {
-				cl.cppCompilerArgs = append(cl.cppCompilerArgs, "@"+responseFileIncludes)
+				cl.cppCompilerArgs.Add("@" + responseFileIncludes)
 			}
 		}
 
 		// Compiler system include paths
 		if systemIncludes, ok := cl.toolChain.Vars.Get("cpp.compiler.system.includes"); ok {
-			for _, include := range systemIncludes {
-				cl.cppCompilerArgs = append(cl.cppCompilerArgs, "-I")
-				cl.cppCompilerArgs = append(cl.cppCompilerArgs, include)
-			}
+			cl.cppCompilerArgs.AddWithPrefix("-I", systemIncludes...)
 		}
 
 		// User include paths
-		for _, include := range includes {
-			cl.cppCompilerArgs = append(cl.cppCompilerArgs, "-I")
-			cl.cppCompilerArgs = append(cl.cppCompilerArgs, include)
-		}
+		cl.cppCompilerArgs.AddWithPrefix("-I", includes...)
 	}
 }
 
@@ -186,10 +162,10 @@ func (cl *ToolchainArduinoEsp32Compiler) Compile(sourceAbsFilepath string, objRe
 	var args []string
 	if strings.HasSuffix(sourceAbsFilepath, ".c") {
 		compilerPath = cl.cCompilerPath
-		args = cl.cCompilerArgs
+		args = cl.cCompilerArgs.Args
 	} else {
 		compilerPath = cl.cppCompilerPath
-		args = cl.cppCompilerArgs
+		args = cl.cppCompilerArgs.Args
 	}
 
 	// The source file and the output object file
@@ -224,7 +200,7 @@ type ToolchainArduinoEsp32Archiver struct {
 	toolChain    *ArduinoEsp32
 	config       *Config
 	archiverPath string
-	archiverArgs []string
+	archiverArgs *Arguments
 }
 
 func (t *ArduinoEsp32) NewArchiver(a ArchiverType, config *Config) Archiver {
@@ -232,7 +208,7 @@ func (t *ArduinoEsp32) NewArchiver(a ArchiverType, config *Config) Archiver {
 		toolChain:    t,
 		config:       config,
 		archiverPath: t.Vars.GetFirstOrEmpty("archiver"),
-		archiverArgs: []string{},
+		archiverArgs: NewArguments(16),
 	}
 }
 
@@ -242,26 +218,23 @@ func (t *ToolchainArduinoEsp32Archiver) Filename(name string) string {
 }
 
 func (a *ToolchainArduinoEsp32Archiver) SetupArgs() {
-	a.archiverArgs = make([]string, 0, 64)
+
 }
 
 func (a *ToolchainArduinoEsp32Archiver) Archive(inputObjectFilepaths []string, outputArchiveFilepath string) error {
 
-	a.archiverArgs = a.archiverArgs[:0] // Reset the arguments
-	a.archiverArgs = append(a.archiverArgs, "cr")
+	a.archiverArgs.Clear() // Reset the arguments
+	a.archiverArgs.Add("cr")
 
 	// {output-archive-filepath}
-	a.archiverArgs = append(a.archiverArgs, outputArchiveFilepath)
+	a.archiverArgs.Add(outputArchiveFilepath)
 
 	// {input-object-filepaths}
-	a.archiverArgs = a.archiverArgs[0:2]
-	for _, objFile := range inputObjectFilepaths {
-		a.archiverArgs = append(a.archiverArgs, objFile)
-	}
+	a.archiverArgs.Add(inputObjectFilepaths...)
 
 	foundation.LogInfof("Archiving %s\n", outputArchiveFilepath)
 
-	cmd := exec.Command(a.archiverPath, a.archiverArgs...)
+	cmd := exec.Command(a.archiverPath, a.archiverArgs.Args...)
 	out, err := cmd.CombinedOutput()
 
 	if err != nil {
@@ -282,7 +255,7 @@ type ToolchainArduinoEsp32Linker struct {
 	toolChain  *ArduinoEsp32
 	config     *Config
 	linkerPath string
-	linkerArgs []string
+	linkerArgs *Arguments
 }
 
 func (t *ArduinoEsp32) NewLinker(config *Config) Linker {
@@ -290,7 +263,7 @@ func (t *ArduinoEsp32) NewLinker(config *Config) Linker {
 		toolChain:  t,
 		config:     config,
 		linkerPath: t.Vars.GetFirstOrEmpty("linker"),
-		linkerArgs: make([]string, 0, 64),
+		linkerArgs: NewArguments(512),
 	}
 }
 
@@ -301,77 +274,68 @@ func (l *ToolchainArduinoEsp32Linker) Filename(name string) string {
 
 func (l *ToolchainArduinoEsp32Linker) SetupArgs(generateMapFile bool, libraryPaths []string, libraryFiles []string) {
 
-	l.linkerArgs = l.linkerArgs[:0] // Reset the arguments
+	l.linkerArgs.Clear()
 
 	if generateMapFile {
-		l.linkerArgs = append(l.linkerArgs, "genmap")
+		l.linkerArgs.Add("genmap")
 	}
 
 	if linkerSystemLibraryPaths, ok := l.toolChain.Vars.Get("linker.system.library.paths"); ok {
-		for _, libPath := range linkerSystemLibraryPaths {
-			l.linkerArgs = append(l.linkerArgs, "-L")
-			l.linkerArgs = append(l.linkerArgs, libPath)
-		}
+		l.linkerArgs.AddWithPrefix("-L", linkerSystemLibraryPaths...)
 	}
 
 	// User library paths
-	for _, libPath := range libraryPaths {
-		l.linkerArgs = append(l.linkerArgs, "-L")
-		l.linkerArgs = append(l.linkerArgs, libPath)
+	l.linkerArgs.AddWithPrefix("-L", libraryPaths...)
+
+	l.linkerArgs.Add("-Wl,--wrap=esp_panic_handler")
+
+	linkerResponseFile, _ := l.toolChain.Vars.GetFirst("linker.response.ldflags")
+	if len(linkerResponseFile) > 0 {
+		l.linkerArgs.Add("@" + linkerResponseFile)
 	}
 
-	l.linkerArgs = append(l.linkerArgs, "-Wl,--wrap=esp_panic_handler")
-
-	linkerResponseFile, _ := l.toolChain.Vars.Get("linker.response.ldflags")
-	if len(linkerResponseFile) == 1 {
-		l.linkerArgs = append(l.linkerArgs, "@"+linkerResponseFile[0])
+	linkerResponseFile, _ = l.toolChain.Vars.GetFirst("linker.response.ldscripts")
+	if len(linkerResponseFile) > 0 {
+		l.linkerArgs.Add("@" + linkerResponseFile)
 	}
 
-	linkerResponseFile, _ = l.toolChain.Vars.Get("linker.response.ldscripts")
-	if len(linkerResponseFile) == 1 {
-		l.linkerArgs = append(l.linkerArgs, "@"+linkerResponseFile[0])
-	}
-
-	l.linkerArgs = append(l.linkerArgs, "-Wl,--start-group")
+	l.linkerArgs.Add("-Wl,--start-group")
 	{
 		// User library files
-		for _, libFile := range libraryFiles {
-			l.linkerArgs = append(l.linkerArgs, libFile)
-		}
+		l.linkerArgs.Add(libraryFiles...)
 
-		linkerResponseFile, _ = l.toolChain.Vars.Get("linker.response.ldlibs")
-		if len(linkerResponseFile) == 1 {
-			l.linkerArgs = append(l.linkerArgs, "@"+linkerResponseFile[0])
+		linkerResponseFile, _ = l.toolChain.Vars.GetFirst("linker.response.ldlibs")
+		if len(linkerResponseFile) > 0 {
+			l.linkerArgs.Add("@" + linkerResponseFile)
 		}
 	}
 }
 
 func (l *ToolchainArduinoEsp32Linker) Link(inputArchiveAbsFilepaths []string, outputAppRelFilepathNoExt string) error {
 	linker := l.linkerPath
-	linkerArgs := l.linkerArgs
 
-	for _, libFile := range inputArchiveAbsFilepaths {
-		linkerArgs = append(linkerArgs, libFile)
-	}
-	linkerArgs = append(linkerArgs, "-Wl,--end-group")
-	linkerArgs = append(linkerArgs, "-Wl,-EL")
+	linkerArgs := *l.linkerArgs
 
-	linkerArgs = append(linkerArgs, "-o")
-	linkerArgs = append(linkerArgs, outputAppRelFilepathNoExt)
+	linkerArgs.Add(inputArchiveAbsFilepaths...)
+	linkerArgs.Add("-Wl,--end-group")
+	linkerArgs.Add("-Wl,-EL")
+
+	linkerArgs.Add("-o")
+	linkerArgs.Add(outputAppRelFilepathNoExt)
 
 	// Do we need to fill in the arg to generate map file?
-	if linkerArgs[0] == "genmap" {
+	if linkerArgs.Args[0] == "genmap" {
 		outputMapFilepath := outputAppRelFilepathNoExt + ".map"
-		linkerArgs[0] = "-Wl,--Map=" + outputMapFilepath
+		linkerArgs.Args[0] = "-Wl,--Map=" + outputMapFilepath
 	}
 
 	foundation.LogInfof("Linking '%s'...\n", outputAppRelFilepathNoExt)
-	cmd := exec.Command(linker, linkerArgs...)
+	cmd := exec.Command(linker, linkerArgs.Args...)
 	out, err := cmd.CombinedOutput()
 
 	// Reset the map generation command in the arguments so that it
 	// will be updated correctly on the next Link() call.
-	l.linkerArgs[0] = "genmap"
+	l.linkerArgs.Args[0] = "genmap"
 
 	if err != nil {
 		foundation.LogInfof("Link failed, output:\n%s\n", string(out))
@@ -484,15 +448,15 @@ func (b *ToolchainArduinoEsp32Burner) SetupBuild(buildPath string) {
 
 	b.genImageBinToolOutputFilepath = projectBinFilepath
 	b.genImageBinToolInputFilepaths = []string{projectElfFilepath}
-	b.genImageBinToolArgsHash = b.hashArguments(b.genImageBinToolArgs.List)
+	b.genImageBinToolArgsHash = b.hashArguments(b.genImageBinToolArgs.Args)
 
 	b.genImagePartitionsToolOutputFilepath = projectPartitionsBinFilepath
 	b.genImagePartitionsToolInputFilepaths = []string{}
-	b.genImagePartitionsToolArgsHash = b.hashArguments(b.genImagePartitionsToolArgs.List)
+	b.genImagePartitionsToolArgsHash = b.hashArguments(b.genImagePartitionsToolArgs.Args)
 
 	b.genBootloaderToolOutputFilepath = projectBootloaderBinFilepath
 	b.genBootloaderToolInputFilepaths = []string{}
-	b.genBootloaderToolArgsHash = b.hashArguments(b.genBootloaderToolArgs.List)
+	b.genBootloaderToolArgsHash = b.hashArguments(b.genBootloaderToolArgs.Args)
 }
 
 func (b *ToolchainArduinoEsp32Burner) Build() error {
@@ -504,9 +468,9 @@ func (b *ToolchainArduinoEsp32Burner) Build() error {
 	// Generate the image partitions bin file
 	if !b.dependencyTracker.QueryItemWithExtraData(b.genImagePartitionsToolOutputFilepath, b.genImagePartitionsToolArgsHash) {
 		img, _ := exec.LookPath(b.genImagePartitionsToolPath)
-		args := b.genImagePartitionsToolArgs
+		args := b.genImagePartitionsToolArgs.Args
 
-		cmd := exec.Command(img, args.List...)
+		cmd := exec.Command(img, args...)
 		foundation.LogInfof("Creating image partitions '%s' ...\n", b.toolChain.ProjectName+".partitions.bin")
 		out, err := cmd.CombinedOutput()
 		if err != nil {
@@ -525,9 +489,9 @@ func (b *ToolchainArduinoEsp32Burner) Build() error {
 	// Generate the image bin file
 	if !b.dependencyTracker.QueryItemWithExtraData(b.genImageBinToolOutputFilepath, b.genImageBinToolArgsHash) {
 		imgPath := b.genImageBinToolPath
-		args := b.genImageBinToolArgs
+		args := b.genImageBinToolArgs.Args
 
-		cmd := exec.Command(imgPath, args.List...)
+		cmd := exec.Command(imgPath, args...)
 		foundation.LogInfof("Generating image '%s'\n", b.toolChain.ProjectName+".bin")
 		out, err := cmd.CombinedOutput()
 		if err != nil {
@@ -546,9 +510,9 @@ func (b *ToolchainArduinoEsp32Burner) Build() error {
 	// Generate the bootloader image
 	if !b.dependencyTracker.QueryItemWithExtraData(b.genBootloaderToolOutputFilepath, b.genBootloaderToolArgsHash) {
 		imgPath := b.genBootloaderToolPath
-		args := b.genBootloaderToolArgs
+		args := b.genBootloaderToolArgs.Args
 
-		cmd := exec.Command(imgPath, args.List...)
+		cmd := exec.Command(imgPath, args...)
 		foundation.LogInfof("Generating bootloader '%s'\n", b.toolChain.ProjectName+".bootloader.bin")
 		out, err := cmd.CombinedOutput()
 		if err != nil {
@@ -573,7 +537,6 @@ func (b *ToolchainArduinoEsp32Burner) Build() error {
 func (b *ToolchainArduinoEsp32Burner) SetupBurn(buildPath string) error {
 
 	b.flashToolArgs.Clear()
-
 	b.flashToolArgs.Add("--chip", b.toolChain.Vars.GetFirstOrEmpty("esp.mcu"))
 	b.flashToolArgs.Add("--port", b.toolChain.Vars.GetFirstOrEmpty("burner.flash.port"))
 	b.flashToolArgs.Add("--baud", b.toolChain.Vars.GetFirstOrEmpty("burner.flash.baud"))
@@ -613,11 +576,11 @@ func (b *ToolchainArduinoEsp32Burner) Burn() error {
 	}
 
 	flashToolPath := b.flashToolPath
-	flashToolArgs := b.flashToolArgs
+	flashToolArgs := b.flashToolArgs.Args
 
 	foundation.LogInfof("Flashing '%s'...\n", b.toolChain.ProjectName+".bin")
 
-	flashToolCmd := exec.Command(flashToolPath, flashToolArgs.List...)
+	flashToolCmd := exec.Command(flashToolPath, flashToolArgs...)
 
 	// out, err := flashToolCmd.CombinedOutput()
 	// if err != nil {
