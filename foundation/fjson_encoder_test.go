@@ -16,13 +16,13 @@ type JsonTestObject2 struct {
 
 func decodeTestObject2(decoder *JsonDecoder, object *JsonTestObject2) *JsonTestObject2 {
 	fields := map[string]JsonDecode{
-		"BoolField":    func(decoder *JsonDecoder) { object.BoolField = decoder.DecodeBool() },
-		"IntField":     func(decoder *JsonDecoder) { object.IntField = int(decoder.DecodeInt32()) },
-		"StringField":  func(decoder *JsonDecoder) { object.StringField = decoder.DecodeString() },
-		"FloatField":   func(decoder *JsonDecoder) { object.FloatField = decoder.DecodeFloat64() },
-		"ArrayField":   func(decoder *JsonDecoder) { object.ArrayField = decoder.DecodeStringArray() },
-		"MapField":     func(decoder *JsonDecoder) { object.MapField = decoder.DecodeStringMapString() },
-		"NestedObject": func(decoder *JsonDecoder) { object.NestedObject = decodeTestObject2(decoder, &JsonTestObject2{}) },
+		"boolfield":    func(decoder *JsonDecoder) { object.BoolField = decoder.DecodeBool() },
+		"intfield":     func(decoder *JsonDecoder) { object.IntField = int(decoder.DecodeInt32()) },
+		"stringfield":  func(decoder *JsonDecoder) { object.StringField = decoder.DecodeString() },
+		"floatfield":   func(decoder *JsonDecoder) { object.FloatField = decoder.DecodeFloat64() },
+		"arrayfield":   func(decoder *JsonDecoder) { object.ArrayField = decoder.DecodeStringArray() },
+		"mapfield":     func(decoder *JsonDecoder) { object.MapField = decoder.DecodeStringMapString() },
+		"nestedobject": func(decoder *JsonDecoder) { object.NestedObject = decodeTestObject2(decoder, &JsonTestObject2{}) },
 	}
 	decoder.Decode(fields)
 	return object
