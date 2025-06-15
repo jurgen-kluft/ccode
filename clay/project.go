@@ -7,9 +7,11 @@ import (
 	"time"
 
 	"github.com/jurgen-kluft/ccode/clay/toolchain"
-	"github.com/jurgen-kluft/ccode/clay/toolchain/dpenc"
+	"github.com/jurgen-kluft/ccode/clay/toolchain/deptrackr"
 	"github.com/jurgen-kluft/ccode/foundation"
 )
+
+type IncludeMap = foundation.ValueSet
 
 // Project represents a C/C++ project that can be built using the Clay build system.
 // A project can be a library or an executable.
@@ -32,7 +34,7 @@ func NewExecutableProject(name string, config *Config) *Project {
 		Toolchain:    nil, // Will be set later
 		IsExecutable: true,
 		Defines:      foundation.NewValueSet(),
-		IncludeDirs:  NewIncludeMap(),
+		IncludeDirs:  foundation.NewValueSet(),
 		SourceFiles:  []SourceFile{},
 		Dependencies: []*Project{},
 	}
@@ -45,7 +47,7 @@ func NewLibraryProject(name string, config *Config) *Project {
 		Toolchain:    nil, // Will be set later
 		IsExecutable: false,
 		Defines:      foundation.NewValueSet(),
-		IncludeDirs:  NewIncludeMap(),
+		IncludeDirs:  foundation.NewValueSet(),
 		SourceFiles:  []SourceFile{},
 		Dependencies: []*Project{},
 	}
@@ -121,12 +123,12 @@ func (p *Project) Build(buildConfig *Config, buildPath string) (outOfDate int, e
 		for _, src := range p.SourceFiles {
 			srcObjRelPath := filepath.Join(projectBuildPath, src.SrcRelPath+".o")
 			if !projectDepFileTrackr.QueryItem(srcObjRelPath) {
-				MakeDir(filepath.Dir(srcObjRelPath))
+				foundation.DirMake(filepath.Dir(srcObjRelPath))
 				if err := compiler.Compile(src.SrcAbsPath, srcObjRelPath); err != nil {
 					return outOfDate, err
 				}
 				srcDepRelPath := filepath.Join(projectBuildPath, src.SrcRelPath+".d")
-				if mainItem, depItems, err := dpenc.ParseDotDependencyFile(srcDepRelPath); err == nil {
+				if mainItem, depItems, err := deptrackr.ParseDotDependencyFile(srcDepRelPath); err == nil {
 					projectDepFileTrackr.AddItem(mainItem, depItems)
 				} else {
 					return outOfDate, err

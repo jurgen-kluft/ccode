@@ -5,7 +5,7 @@ import (
 	"path/filepath"
 	"strings"
 
-	"github.com/jurgen-kluft/ccode/clay/toolchain/dpenc"
+	"github.com/jurgen-kluft/ccode/clay/toolchain/deptrackr"
 	"github.com/jurgen-kluft/ccode/foundation"
 )
 
@@ -338,8 +338,8 @@ func (t *DarwinClang) NewBurner(config *Config) Burner {
 // --------------------------------------------------------------------------------------------------
 // --------------------------------------------------------------------------------------------------
 // Dependency Tracker
-func (t *DarwinClang) NewDependencyTracker(dirpath string) dpenc.FileTrackr {
-	return dpenc.LoadFileTrackr(filepath.Join(dirpath, "deptrackr"))
+func (t *DarwinClang) NewDependencyTracker(dirpath string) deptrackr.FileTrackr {
+	return deptrackr.LoadFileTrackr(filepath.Join(dirpath, "deptrackr"))
 }
 
 // --------------------------------------------------------------------------------------------------
@@ -420,8 +420,9 @@ func NewDarwinClang(arch string, frameworks []string) (t *DarwinClang, err error
 		t.Vars.Set("linker.frameworks", frameworks...)
 	}
 
-	// We can target x86_64 and aarch64 on macOS
+	// TODO target x86_64 or aarch64 on macOS
 
+	t.Vars.Cull()
 	t.Vars.Resolve()
 	return t, nil
 }

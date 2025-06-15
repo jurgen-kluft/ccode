@@ -114,6 +114,20 @@ func (v *Vars) Get(key string) ([]string, bool) {
 	return []string{}, false
 }
 
+// Cull removes variables that have no values or nil
+func (v *Vars) Cull() {
+	newValues := make([][]string, 0, len(v.Values))
+	newKeys := make(map[string]int, len(v.Keys))
+	for key, i := range v.Keys {
+		if len(v.Values[i]) > 0 {
+			newKeys[key] = len(newValues)
+			newValues = append(newValues, v.Values[i])
+		}
+	}
+	v.Values = newValues
+	v.Keys = newKeys
+}
+
 func (v *Vars) Resolve() {
 	resolver := NewVarResolver()
 	for ki, values := range v.Values {

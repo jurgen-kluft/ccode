@@ -1,4 +1,4 @@
-package dpenc
+package deptrackr
 
 import (
 	"crypto/sha1"

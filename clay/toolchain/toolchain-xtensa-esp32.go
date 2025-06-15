@@ -12,7 +12,7 @@ import (
 	"runtime"
 	"strings"
 
-	"github.com/jurgen-kluft/ccode/clay/toolchain/dpenc"
+	"github.com/jurgen-kluft/ccode/clay/toolchain/deptrackr"
 	"github.com/jurgen-kluft/ccode/foundation"
 )
 
@@ -390,9 +390,9 @@ func (l *ToolchainArduinoEsp32Linker) Link(inputArchiveAbsFilepaths []string, ou
 
 type ToolchainArduinoEsp32Burner struct {
 	toolChain                            *ArduinoEsp32
-	config                               *Config          // Configuration for the burner, e.g., debug or release
-	dependencyTracker                    dpenc.FileTrackr // Dependency tracker for the burner
-	hasher                               hash.Hash        // Hasher for generating digests of arguments
+	config                               *Config              // Configuration for the burner, e.g., debug or release
+	dependencyTracker                    deptrackr.FileTrackr // Dependency tracker for the burner
+	hasher                               hash.Hash            // Hasher for generating digests of arguments
 	genImageBinToolArgs                  *Arguments
 	genImageBinToolArgsHash              []byte   // Hash of the arguments for the image bin tool
 	genImageBinToolOutputFilepath        string   // The output file for the image bin
@@ -480,7 +480,7 @@ func (b *ToolchainArduinoEsp32Burner) SetupBuild(buildPath string) {
 	b.genBootloaderToolArgs.Add(sdkBootLoaderElfPath)
 
 	// File Dependency Tracker and Information
-	b.dependencyTracker = dpenc.LoadFileTrackr(filepath.Join(buildPath, "deptrackr.burn"))
+	b.dependencyTracker = deptrackr.LoadFileTrackr(filepath.Join(buildPath, "deptrackr.burn"))
 
 	b.genImageBinToolOutputFilepath = projectBinFilepath
 	b.genImageBinToolInputFilepaths = []string{projectElfFilepath}
@@ -655,8 +655,8 @@ func (b *ToolchainArduinoEsp32Burner) Burn() error {
 // --------------------------------------------------------------------------------------------------
 // --------------------------------------------------------------------------------------------------
 // Dependency Tracker
-func (t *ArduinoEsp32) NewDependencyTracker(dirpath string) dpenc.FileTrackr {
-	return dpenc.LoadFileTrackr(filepath.Join(dirpath, "deptrackr"))
+func (t *ArduinoEsp32) NewDependencyTracker(dirpath string) deptrackr.FileTrackr {
+	return deptrackr.LoadFileTrackr(filepath.Join(dirpath, "deptrackr"))
 }
 
 // --------------------------------------------------------------------------------------------------

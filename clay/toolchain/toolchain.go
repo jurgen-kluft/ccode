@@ -1,7 +1,7 @@
 package toolchain
 
 import (
-	"github.com/jurgen-kluft/ccode/clay/toolchain/dpenc"
+	"github.com/jurgen-kluft/ccode/clay/toolchain/deptrackr"
 	"github.com/jurgen-kluft/ccode/dev"
 )
 
@@ -28,7 +28,7 @@ type Environment interface {
 	NewLinker(config *Config) Linker
 	//NewInformer(config *Config) Informer  // List information about the executable
 	NewBurner(config *Config) Burner
-	NewDependencyTracker(dirpath string) dpenc.FileTrackr
+	NewDependencyTracker(dirpath string) deptrackr.FileTrackr
 }
 
 // --------------------------------------------------

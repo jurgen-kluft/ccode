@@ -3,7 +3,7 @@ package toolchain
 import (
 	"fmt"
 
-	"github.com/jurgen-kluft/ccode/clay/toolchain/dpenc"
+	"github.com/jurgen-kluft/ccode/clay/toolchain/deptrackr"
 	"github.com/jurgen-kluft/ccode/foundation"
 )
 
@@ -35,7 +35,7 @@ func (t *WinMsdev) NewBurner(config *Config) Burner {
 	return &EmptyBurner{}
 }
 
-func (t *WinMsdev) NewDependencyTracker(dirpath string) dpenc.FileTrackr {
+func (t *WinMsdev) NewDependencyTracker(dirpath string) deptrackr.FileTrackr {
 	return nil
 }
 

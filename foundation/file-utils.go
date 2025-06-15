@@ -35,7 +35,30 @@ func FileExists(path string) bool {
 	return true
 }
 
-func FileRead(path string) ([]byte, error) {
+func FileOpenWriteClose(path string, data []byte) error {
+	// Create or truncate the file for writing
+	file, err := os.Create(path)
+	if err != nil {
+		return fmt.Errorf("failed to create file %s: %w", path, err)
+	}
+	defer file.Close()
+
+	return FileWrite(file, data)
+}
+
+func FileWrite(f *os.File, data []byte) error {
+	// Write the data to the file
+	if _, err := f.Write(data); err != nil {
+		return fmt.Errorf("failed to write to file: %w", err)
+	}
+	// Sync the file to ensure all data is written
+	if err := f.Sync(); err != nil {
+		return fmt.Errorf("failed to sync file: %w", err)
+	}
+	return nil
+}
+
+func FileOpenReadClose(path string) ([]byte, error) {
 	// Open the file for reading
 	file, err := os.Open(path)
 	if err != nil {
@@ -50,6 +73,31 @@ func FileRead(path string) ([]byte, error) {
 	}
 
 	return data, nil
+}
+
+func FileRead(f *os.File, size int) (data []byte, err error) {
+	// Create a byte slice to hold the data
+	if size > 0 {
+		data = make([]byte, size)
+		// Read the specified number of bytes from the file
+		if n, err := f.Read(data); err != nil {
+			if err == io.EOF {
+				return data[:n], nil // Return the bytes read if EOF
+			}
+			return nil, fmt.Errorf("failed to read from file: %w", err)
+		} else {
+			if n < size {
+				return data[:n], nil // Return the bytes read if less than requested
+			}
+		}
+	} else {
+		// If size is 0, read the entire file
+		data, err = io.ReadAll(f)
+		if err != nil {
+			return nil, fmt.Errorf("failed to read from file: %w", err)
+		}
+	}
+	return data, nil // Return the entire file content
 }
 
 func FileCopy(src, dst string) error {

@@ -205,7 +205,7 @@ func findVcTools(vsPath string, vsVersion vsVersion, vsProduct vsProduct, target
 	var vcToolsVersion string
 	if targetVcToolsVersion == "" {
 		versionFile := filepath.Join(vcInstallDir, "Auxiliary", "Build", "Microsoft.VCToolsVersion.default.txt")
-		data, err := foundation.FileRead(versionFile)
+		data, err := foundation.FileOpenReadClose(versionFile)
 		if err == nil {
 			lines := strings.Split(string(data), "\n")
 			if len(lines) > 0 {

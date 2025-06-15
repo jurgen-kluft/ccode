@@ -11,9 +11,9 @@ Built using Golang, Clay is a build system designed to be simple, fast, and effi
   - macOS (darwin)
   - windows
 - Compilers:
-  - Clang (darwin and linux)
+  - GCC/Clang (darwin and linux)
   - MSVC (windows)
-- Custom Dependency Tracker
+- Dependency Tracker
 - Targets
   - darwin
     * darwin
