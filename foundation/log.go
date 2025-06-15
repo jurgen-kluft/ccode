@@ -26,7 +26,7 @@ type Logger interface {
 	LogFatalf(format string, args ...any)
 }
 
-var logger Logger = NewNillLogger()
+var logger Logger = NewStandardLogger(LevelInfo)
 
 func SetLogger(l Logger) {
 	logger = l
@@ -42,7 +42,7 @@ func LogPrintf(format string, args ...any) {
 
 func LogPrintlnf(format string, args ...any) {
 	logger.LogPrintf(format, args...)
-	logger.LogPrintln()
+	logger.LogPrintln("")
 }
 
 func LogPrintln(message ...string) {

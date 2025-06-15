@@ -39,7 +39,7 @@ func (g *ClayGenerator) Generate() error {
 	appDir := g.TargetAbsPath
 	foundation.DirMake(appDir)
 
-	foundation.LogPrintf("Generating clay project files in '%s' for target %s", foundation.PathGetRelativeTo(appDir, currentDir), g.BuildTarget)
+	foundation.LogPrintlnf("Generating clay project files in '%s' for target %s", foundation.PathGetRelativeTo(appDir, currentDir), g.BuildTarget)
 
 	out := foundation.NewLineWriter(foundation.IndentModeSpaces)
 	g.generateMain(out)

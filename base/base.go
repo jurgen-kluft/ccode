@@ -2,7 +2,6 @@ package ccode
 
 import (
 	"flag"
-	"fmt"
 	"runtime"
 	"strings"
 
@@ -58,19 +57,19 @@ func Init() bool {
 		}
 	}
 
-	fmt.Println("ccode, a tool to generate C/C++ workspace and project files")
+	foundation.LogPrintln("ccode, a tool to generate C/C++ workspace and project files")
 
 	if denv.NewDevEnum(cdev) == denv.DevInvalid {
-		fmt.Println()
-		fmt.Println("Error, wrong parameter for '-dev', '", cdev, "' is not recognized")
-		fmt.Println()
-		fmt.Println("Examples:")
-		fmt.Println("    -> Usage: go run cbase.go -dev=vs2022/vs2019/vs2015")
-		fmt.Println("    -> Usage: go run cbase.go -dev=tundra")
-		fmt.Println("    -> Usage: go run cbase.go -dev=make")
-		fmt.Println("    -> Usage: go run cbase.go -dev=xcode")
-		fmt.Println("    -> Usage: go run cbase.go -dev=clay")
-		fmt.Println("    -> Usage: go run cbase.go -arch=esp32 / esp32s3")
+		foundation.LogPrintln()
+		foundation.LogPrintln("Error, wrong parameter for '-dev', '", cdev, "' is not recognized")
+		foundation.LogPrintln()
+		foundation.LogPrintln("Examples:")
+		foundation.LogPrintln("    -> Usage: go run cbase.go -dev=vs2022/vs2019/vs2015")
+		foundation.LogPrintln("    -> Usage: go run cbase.go -dev=tundra")
+		foundation.LogPrintln("    -> Usage: go run cbase.go -dev=make")
+		foundation.LogPrintln("    -> Usage: go run cbase.go -dev=xcode")
+		foundation.LogPrintln("    -> Usage: go run cbase.go -dev=clay")
+		foundation.LogPrintln("    -> Usage: go run cbase.go -arch=esp32 / esp32s3")
 		return false
 	}
 
