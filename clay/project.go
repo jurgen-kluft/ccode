@@ -13,6 +13,16 @@ import (
 
 type IncludeMap = foundation.ValueSet
 
+func NewIncludeMap(size int) *IncludeMap {
+	return foundation.NewValueSet2(size)
+}
+
+type DefineMap = foundation.ValueSet
+
+func NewDefineMap(size int) *DefineMap {
+	return foundation.NewValueSet2(size)
+}
+
 // Project represents a C/C++ project that can be built using the Clay build system.
 // A project can be a library or an executable.
 type Project struct {
@@ -20,7 +30,7 @@ type Project struct {
 	IsExecutable bool                  // Is this project an executable (true) or a library (false)
 	Name         string                // Name of the Library or Executable
 	Config       *Config               // Build configuration
-	Defines      *foundation.ValueSet  // Compiler defines (macros) for the library
+	Defines      *DefineMap            // Compiler defines (macros) for the library
 	IncludeDirs  *IncludeMap           // Include paths for the library (system)
 	SourceFiles  []SourceFile          // C/C++ Source files for the library
 	Dependencies []*Project            // Libraries that this project depends on
@@ -33,10 +43,10 @@ func NewExecutableProject(name string, config *Config) *Project {
 		Config:       config,
 		Toolchain:    nil, // Will be set later
 		IsExecutable: true,
-		Defines:      foundation.NewValueSet(),
-		IncludeDirs:  foundation.NewValueSet(),
-		SourceFiles:  []SourceFile{},
-		Dependencies: []*Project{},
+		Defines:      nil,
+		IncludeDirs:  nil,
+		SourceFiles:  nil,
+		Dependencies: nil,
 	}
 }
 
@@ -46,10 +56,10 @@ func NewLibraryProject(name string, config *Config) *Project {
 		Config:       config,
 		Toolchain:    nil, // Will be set later
 		IsExecutable: false,
-		Defines:      foundation.NewValueSet(),
-		IncludeDirs:  foundation.NewValueSet(),
-		SourceFiles:  []SourceFile{},
-		Dependencies: []*Project{},
+		Defines:      nil,
+		IncludeDirs:  nil,
+		SourceFiles:  nil,
+		Dependencies: nil,
 	}
 }
 

@@ -14,6 +14,13 @@ func NewValueSet() *ValueSet {
 	}
 }
 
+func NewValueSet2(size int) *ValueSet {
+	return &ValueSet{
+		Values: make([]string, 0, size),
+		KeyMap: make(map[string]int, size),
+	}
+}
+
 func (kv *ValueSet) Add(value string) {
 	// Convert key to lowercase for case-insensitive comparison
 	lcValue := strings.ToLower(value)

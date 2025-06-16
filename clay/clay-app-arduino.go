@@ -123,7 +123,7 @@ func BuildInfo(projectName string, buildConfig *Config) error {
 		EspSdkPath = env
 	}
 
-	prjs := ClayAppCreateProjectsFunc(buildConfig.Target.ArchAsString())
+	prjs := ClayAppCreateProjectsFunc()
 	for _, prj := range prjs {
 		if projectName == "" || projectName == prj.Name {
 			if prj.Config.Matches(buildConfig) {
@@ -141,7 +141,7 @@ func BuildInfo(projectName string, buildConfig *Config) error {
 
 func Flash(projectName string, buildConfig *Config) error {
 
-	prjs := ClayAppCreateProjectsFunc(buildConfig.Target.ArchAsString())
+	prjs := ClayAppCreateProjectsFunc()
 	for _, prj := range prjs {
 		prj.SetToolchain(buildConfig)
 	}

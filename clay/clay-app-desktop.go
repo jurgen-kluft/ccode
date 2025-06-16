@@ -73,7 +73,7 @@ func BuildDesktop(projectName string, buildConfig *Config) error {
 	buildPath := GetBuildPath(buildConfig.GetSubDir())
 	os.MkdirAll(buildPath+"/", os.ModePerm)
 
-	prjs := ClayAppCreateProjectsFunc(buildConfig.Target.ArchAsString())
+	prjs := ClayAppCreateProjectsFunc()
 	for _, prj := range prjs {
 		prj.SetToolchain(buildConfig)
 	}
@@ -120,7 +120,7 @@ func BuildInfoDesktop(projectName string, buildConfig *Config) error {
 	EspSdkPath := "/Users/obnosis5/sdk/arduino/esp32"
 	buildPath := GetBuildPath(buildConfig.GetSubDir())
 
-	prjs := ClayAppCreateProjectsFunc(buildConfig.Target.ArchAsString())
+	prjs := ClayAppCreateProjectsFunc()
 	for _, prj := range prjs {
 		if projectName == "" || projectName == prj.Name {
 			if prj.Config.Matches(buildConfig) {

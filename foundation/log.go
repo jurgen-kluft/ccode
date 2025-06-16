@@ -46,7 +46,11 @@ func LogPrintlnf(format string, args ...any) {
 }
 
 func LogPrintln(message ...string) {
-	logger.LogPrintln(message...)
+	if len(message) == 0 {
+		logger.LogPrintln("")
+	} else {
+		logger.LogPrintln(message...)
+	}
 }
 
 func LogInf(message string) {

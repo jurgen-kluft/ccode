@@ -89,19 +89,46 @@ func (g *ClayGenerator) generateMain(out *foundation.LineWriter) {
 }
 
 func (g *ClayGenerator) generateProjectFile(out *foundation.LineWriter) {
-	out.WriteLine()
-	out.WriteLine("func CreateProjects(arch string) []*clay.Project {")
-	out.WriteILine("", "projects := []*clay.Project{}")
-
-	// Here we create a clay.Project per ccode_gen.Project+Config:
-	// clay.Project = ucore + debug
-	// clay.Project = ucore + release
-	// clay.Project = ublinky + debug
-	// clay.Project = ublinky + release
 
 	os := g.BuildTarget.OSAsString()
+	arch := g.BuildTarget.ArchAsString()
 
-	projectToIndex := map[string]int{}
+	count := 0
+	for _, prj := range g.Workspace.ProjectList.Values {
+		if prj.SupportedTargets.Contains(g.BuildTarget) {
+			count += len(prj.Resolved.Configs.Values)
+		}
+	}
+
+	projectIndexToId := make([]string, count)
+	projectToIndex := make(map[string]int, count)
+
+	index := 0
+	for _, prj := range g.Workspace.ProjectList.Values {
+		if prj.SupportedTargets.Contains(g.BuildTarget) {
+			for _, prjCfg := range prj.Resolved.Configs.Values {
+				configName := prjCfg.BuildConfig.AsString()
+				projectId := strings.ReplaceAll(prj.Name+"_"+configName, "-", "_")
+				projectIndexToId[index] = projectId
+				projectToIndex[projectId] = index
+				index++
+			}
+		}
+	}
+
+	out.WriteLine()
+	out.WriteLine("// Setup Project Identifiers")
+	out.WriteLine("const (")
+	for i, projectId := range projectIndexToId {
+		out.WriteILine("", projectId, "_id int = ", strconv.Itoa(i))
+	}
+	out.WriteLine(")")
+
+	out.WriteLine()
+	out.WriteLine("func CreateProjects() []*clay.Project {")
+	out.WriteILine("", "projects := make([]*clay.Project, ", strconv.Itoa(count), ")")
+
+	index = 0
 	for _, prj := range g.Workspace.ProjectList.Values {
 		if prj.SupportedTargets.Contains(g.BuildTarget) {
 
@@ -115,10 +142,9 @@ func (g *ClayGenerator) generateProjectFile(out *foundation.LineWriter) {
 				configName := prjCfg.BuildConfig.AsString()
 
 				out.WriteILine("", "{")
-				out.WriteILine("+", "// Project Index = "+strconv.Itoa(len(projectToIndex)))
 				out.WriteILine("+", "configName := ", `"`, configName, `"`)
 				out.WriteILine("+", "projectName := ", `"`, prj.Name, `"`)
-				out.WriteILine("+", `projectConfig := clay.NewConfig("`+os+`", arch, configName)`)
+				out.WriteILine("+", `projectConfig := clay.NewConfig("`+os+`", "`, arch, `", configName)`)
 				if prj.BuildType.IsExecutable() {
 					out.WriteILine("+", "project := clay.NewExecutableProject(projectName, projectConfig)")
 				} else {
@@ -126,28 +152,43 @@ func (g *ClayGenerator) generateProjectFile(out *foundation.LineWriter) {
 				}
 				out.WriteLine()
 
-				if len(prjCfg.IncludeDirs.Values) > 0 {
+				numIncludes := len(prjCfg.IncludeDirs.Values)
+				if numIncludes > 0 {
 					out.WriteILine("+", "// Project Include directories")
+					out.WriteILine("+", "project.IncludeDirs = clay.NewIncludeMap(", strconv.Itoa(numIncludes), ")")
 					for _, inc := range prjCfg.IncludeDirs.Values {
 						includePath := filepath.Join(inc.Root, inc.Base, inc.Sub)
 						includePath = strings.Replace(includePath, "\\", "/", -1)
 						out.WriteILine("+", "project.IncludeDirs.Add(", `"`, includePath, `")`)
 					}
-					out.WriteLine()
+				} else {
+					out.WriteILine("+", "project.IncludeDirs = clay.NewIncludeMap(0)")
 				}
+				out.WriteLine()
 
-				if len(prjCfg.CppDefines.Values) > 0 {
-					out.WriteILine("+", "// Project Define macros")
-					for _, def := range prjCfg.CppDefines.Values {
-						escapedDef := strings.Replace(def, `"`, `\"`, -1)
-						out.WriteILine("+", "project.Defines.Add(", `"`, escapedDef, `")`)
+				numDefines := len(prjCfg.CppDefines.Values)
+				out.WriteILine("+", "// Project Define macros")
+				out.WriteILine("+", "configDefines := projectConfig.GetCppDefines()")
+				out.WriteILine("+", "project.Defines = clay.NewDefineMap(", strconv.Itoa(numDefines), " + len(configDefines))")
+				for _, def := range prjCfg.CppDefines.Values {
+					escapedDef := strings.Replace(def, `"`, `\"`, -1)
+					out.WriteILine("+", "project.Defines.Add(", `"`, escapedDef, `")`)
+				}
+				out.WriteILine("+", "project.Defines.AddMany(configDefines...)")
+				out.WriteLine()
+
+				numSrcFiles := 0
+				for _, group := range prj.SrcFileGroups {
+					for _, src := range group.Values {
+						if src.Is_SourceFile() {
+							numSrcFiles++
+						}
 					}
-					out.WriteILine("+", "project.Defines.AddMany(projectConfig.GetCppDefines()...)")
-					out.WriteLine()
 				}
 
-				{
+				if numSrcFiles > 0 {
 					out.WriteILine("+", "// Project Source files")
+					out.WriteILine("+", "project.SourceFiles = make([]clay.SourceFile, 0, ", strconv.Itoa(numSrcFiles), ")")
 					for _, group := range prj.SrcFileGroups {
 						for _, src := range group.Values {
 							if src.Is_SourceFile() {
@@ -161,9 +202,10 @@ func (g *ClayGenerator) generateProjectFile(out *foundation.LineWriter) {
 					out.WriteLine()
 				}
 
-				projectToIndex[prj.Name+"-"+configName] = len(projectToIndex)
-				out.WriteILine("+", "projects = append(projects, project)")
+				out.WriteILine("+", "projects[", projectIndexToId[index], "_id] = project")
 				out.WriteILine("", "}")
+
+				index++
 			}
 		}
 	}
@@ -172,18 +214,18 @@ func (g *ClayGenerator) generateProjectFile(out *foundation.LineWriter) {
 	for _, prj := range g.Workspace.ProjectList.Values {
 		if prj.SupportedTargets.Contains(g.BuildTarget) {
 			for _, prjCfg := range prj.Resolved.Configs.Values {
-				configName := prjCfg.BuildConfig.AsString()
-
-				projectIndex, _ := projectToIndex[prj.Name+"-"+configName]
-
 				if prj.Dependencies.Len() > 0 {
-					out.WriteILine("", "{")
-					out.WriteILine("+", "project := projects[", strconv.Itoa(projectIndex), "]")
+					configName := prjCfg.BuildConfig.AsString()
+					projectId := strings.ReplaceAll(prj.Name+"_"+configName, "-", "_")
 
+					out.WriteILine("", "{")
+					out.WriteILine("+", "project := projects[", projectId, "_id]")
+					out.WriteILine("+", `project.Dependencies = []*clay.Project{`)
 					for _, depProject := range prj.Dependencies.Values {
-						depIndex, _ := projectToIndex[depProject.Name+"-"+configName]
-						out.WriteILine("+", "project.Dependencies = append(project.Dependencies, projects[", strconv.Itoa(depIndex), "])")
+						depProjectId := strings.ReplaceAll(depProject.Name+"_"+configName, "-", "_")
+						out.WriteILine("++", "projects[", depProjectId, "_id],")
 					}
+					out.WriteILine("+", "}")
 					out.WriteILine("", "}")
 				}
 			}

@@ -4,10 +4,13 @@
 package main
 
 import (
+	"runtime"
+
 	"github.com/jurgen-kluft/ccode/clay"
 )
 
-func CreateProjects(arch string) []*clay.Project {
+func CreateProjects() []*clay.Project {
+	arch := runtime.GOARCH
 	projectName := "test_project"
 	projectConfig := clay.NewConfig("macos", arch, "debug-dev")
 	project := clay.NewExecutableProject(projectName, projectConfig)

@@ -14,7 +14,7 @@ const (
 	BuildInfoFilenameWithoutExt = "buildinfo"
 )
 
-var ClayAppCreateProjectsFunc func(arch string) []*Project
+var ClayAppCreateProjectsFunc func() []*Project
 
 func GetBuildPath(subdir string) string {
 	buildPath := filepath.Join("build", subdir)
@@ -97,7 +97,7 @@ func Build(projectName string, targetConfig *Config) (err error) {
 	buildPath := GetBuildPath(targetConfig.GetSubDir())
 	os.MkdirAll(buildPath+"/", os.ModePerm)
 
-	prjs := ClayAppCreateProjectsFunc(targetConfig.Target.ArchAsString())
+	prjs := ClayAppCreateProjectsFunc()
 	for _, prj := range prjs {
 		prj.SetToolchain(targetConfig)
 	}
@@ -116,13 +116,13 @@ func Build(projectName string, targetConfig *Config) (err error) {
 		}
 	}
 	if outOfDate == 0 {
-		foundation.LogPrintf("Nothing to build, everything is up to date...")
+		foundation.LogPrintln("Nothing to build, everything is up to date")
 	}
 	return err
 }
 
 func Clean(projectName string, buildConfig *Config) error {
-	prjs := ClayAppCreateProjectsFunc(buildConfig.Target.ArchAsString())
+	prjs := ClayAppCreateProjectsFunc()
 	for _, prj := range prjs {
 		if projectName == "" || projectName == prj.Name {
 			if prj.Config.Matches(buildConfig) {
@@ -132,11 +132,11 @@ func Clean(projectName string, buildConfig *Config) error {
 				// Note: We should be running this from the "target/esp" directory
 				// Remove all folders and files from "build/"
 				if err := os.RemoveAll(buildPath + "/"); err != nil {
-					return foundation.LogErrorf(err, "Failed to remove build directory")
+					return foundation.LogError(err, "Failed to remove build directory")
 				}
 
 				if err := os.MkdirAll(buildPath+"/", os.ModePerm); err != nil {
-					return foundation.LogErrorf(err, "Failed to create build directory")
+					return foundation.LogError(err, "Failed to create build directory")
 				}
 			}
 		}
@@ -146,8 +146,7 @@ func Clean(projectName string, buildConfig *Config) error {
 }
 
 func ListLibraries() error {
-	arch := ""
-	prjs := ClayAppCreateProjectsFunc(arch)
+	prjs := ClayAppCreateProjectsFunc()
 
 	configs := make([]string, 0, 16)
 	nameToIndex := make(map[string]int)
@@ -166,7 +165,7 @@ func ListLibraries() error {
 			foundation.LogPrintf("Project: %s\n", prj.Name)
 			foundation.LogPrintf("  Configs: %s\n", configs[i])
 			if len(prj.Dependencies) > 0 {
-				foundation.LogPrintf("  Libraries:\n")
+				foundation.LogPrint("  Libraries:\n")
 				for _, dep := range prj.Dependencies {
 					foundation.LogPrintf("  - %s\n", dep.Name)
 				}
@@ -190,6 +189,12 @@ func AddBuildInfoAsCppLibrary(prj *Project, cfg *Config) {
 	srcFilepath := filepath.Join(prj.GetBuildPath(buildPath), name+".cpp")
 	if foundation.FileExists(hdrFilepath) && foundation.FileExists(srcFilepath) {
 		library := NewLibraryProject(name, prj.Config)
+
+		library.Defines = NewDefineMap(1)
+		library.IncludeDirs = NewIncludeMap(1)
+		library.SourceFiles = make([]SourceFile, 0, 1)
+		library.Dependencies = make([]*Project, 0, 1)
+
 		library.IncludeDirs.Add(filepath.Dir(hdrFilepath))
 		library.AddSourceFile(srcFilepath, filepath.Base(srcFilepath))
 		prj.AddLibrary(library)
