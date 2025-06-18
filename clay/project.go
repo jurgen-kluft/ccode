@@ -130,21 +130,37 @@ func (p *Project) Build(buildConfig *Config, buildPath string) (outOfDate int, e
 		foundation.LogInfof("Building project: %s, config: %s\n", p.Name, p.Config.String())
 		buildStartTime = time.Now()
 
+		// Prepare the source files that require compilation
+		absSrcFilepaths := make([]string, 0, len(p.SourceFiles))
+		objRelFilepaths := make([]string, 0, len(p.SourceFiles))
+		objRelFilepathsUpToDate := make([]string, 0, len(p.SourceFiles))
+
+		// Build up the lists of source and object files that are out-of-date
 		for _, src := range p.SourceFiles {
 			srcObjRelPath := filepath.Join(projectBuildPath, src.SrcRelPath+".o")
 			if !projectDepFileTrackr.QueryItem(srcObjRelPath) {
 				foundation.DirMake(filepath.Dir(srcObjRelPath))
-				if err := compiler.Compile(src.SrcAbsPath, srcObjRelPath); err != nil {
-					return outOfDate, err
-				}
-				srcDepRelPath := filepath.Join(projectBuildPath, src.SrcRelPath+".d")
-				if mainItem, depItems, err := deptrackr.ParseDotDependencyFile(srcDepRelPath); err == nil {
-					projectDepFileTrackr.AddItem(mainItem, depItems)
-				} else {
-					return outOfDate, err
-				}
+				absSrcFilepaths = append(absSrcFilepaths, src.SrcAbsPath)
+				objRelFilepaths = append(objRelFilepaths, srcObjRelPath)
 			} else {
+				objRelFilepathsUpToDate = append(objRelFilepathsUpToDate, srcObjRelPath)
 				projectDepFileTrackr.CopyItem(srcObjRelPath)
+			}
+		}
+
+		// Give the compiler the array of (input) source files and object files (output)
+		if err := compiler.Compile(absSrcFilepaths, objRelFilepaths); err != nil {
+			return outOfDate, err
+		}
+
+		// Update the dependency tracker
+		for _, obj := range objRelFilepathsUpToDate {
+			projectDepFileTrackr.CopyItem(obj)
+		}
+		for _, src := range absSrcFilepaths {
+			srcDepFilepath := src + ".d"
+			if mainItem, depItems, err := deptrackr.ParseDotDependencyFile(srcDepFilepath); err == nil {
+				projectDepFileTrackr.AddItem(mainItem, depItems)
 			}
 		}
 	}

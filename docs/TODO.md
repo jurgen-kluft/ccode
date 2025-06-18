@@ -1,10 +1,17 @@
 # TODO
  
-- MAJOR: Clay; parse the boards.txt file and be able to fill in all the necessary
-         vars in ArduinoEsp32 toolchain
-- MINOR: Clay; Executable Stats (size, .ram, .text, .data, .bss, etc.)
-         - ESP32 Elf files
-         - PE files
+- MEDIOR: Clay; add MsDev toolchain for supporting Windows.
+- MAJOR:  Clay; parse the boards.txt file and be able to fill in all the necessary
+          vars in ArduinoEsp32 toolchain
+- MINOR:  Clay; Executable Stats (size, .ram, .text, .data, .bss, etc.)
+          - ESP32 Elf files
+          - PE files
+
+Future:
+
+- MAJOR: Code coverage analysis
+- 
+
 
 # DONE
 

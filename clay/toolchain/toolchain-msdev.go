@@ -22,48 +22,39 @@ type WinMsdev struct {
 func (ms *WinMsdev) NewCompiler(config *Config) Compiler {
 	// PathToTools\CL.exe
 	// /c
-	// /I..\..\..\ccore\source\main\include
-	// /Zi                                                            Generates complete debugging information.
+	// /I{compiler.includes}
+
 	// /nologo                                                        Suppresses display of sign-on banner.
+	// /diagnostics:column                                            Diagnostics format: prints column information.
+
 	// /W3                                                            Set output warning level.
 	// /WX                                                            Treat warnings as errors.
-	// /diagnostics:column                                            Diagnostics format: prints column information.
-	// /sdl                                                           Enable more security features and warnings.
 	// /MP                                                            Builds multiple source files concurrently.
+
+	// DEBUG
+	// /Zi                                                            Generates complete debugging information.
 	// /Od                                                            Disables optimization.
 	// /Oy-                                                           Omits frame pointer
-	// /D TARGET_DEBUG
-	// /D _DEBUG
-	// /D TARGET_TEST
-	// /D TARGET_PC
-	// /D _UNICODE
-	// /D UNICODE
-	// /D CCORE_GEN_CPU_X86_64
-	// /D CCORE_GEN_OS_WINDOWS
-	// /D CCORE_GEN_COMPILER_VC
-	// /D CCORE_GEN_GENERATOR_VS2022
-	// /D CCORE_GEN_CONFIG_DEBUGTEST
-	// /D "CCORE_GEN_PLATFORM_NAME=\"WINDOWS\""
-	// /D CCORE_GEN_PROJECT_CCORE
-	// /D CCORE_GEN_TYPE_CPP_LIB
-	// /D _UNICODE
-	// /D UNICODE
-	// /Gm-                                                           Deprecated; disables minimal rebuild.
-	// /EHsc                                                          Enable standard C++ exception handling.
-	// /MTd                                                           Use the multithreaded debug version of the C runtime library.
+
+	// /D{compiler.defines}
+
+	// /sdl                                                           Enable more security features and warnings.
 	// /GS                                                            Enable security checks to detect buffer overflows.
+
+	// TEST
+	// /EHsc                                                          Enable standard C++ exception handling.
+
+	// /MTd                                                           Use the multithreaded debug version of the C runtime library.
 	// /fp:precise                                                    Floating-point model: precise.
 	// /Zc:wchar_t                                                    Treats wchar_t as a built-in type.
-	// /Zc:forScope                                                   Enables C++ scoping rules for for-loop variables.
-	// /Zc:inline                                                     Enables C++ inline function semantics.
 	// /std:c++17                                                     Specifies the C++ language standard to use (C++17).
+
 	// /Fo"obj\ccore\DebugTest_x86_64_v143\\"                         Output directory for object files.
 	// /Fd"lib\ccore\DebugTest_x86_64_v143\ccore.pdb"                 Output filepath for program database (PDB)
-	// /external:W3                                                   External compiler warnings: set to level 3.
-	// /Gd                                                            Use the default calling convention (Cdecl).
+
 	// /TP                                                            Treats all source files as C++ files.
 	// /FC                                                            Full path of source files in diagnostics.
-	// /errorReport:prompt                                            Deprecated; prompts for error report.
+
 	// ..\..\..\ccore\source\main\cpp\c_allocator.cpp
 	// ..\..\..\ccore\source\main\cpp\c_binary_search.cpp
 	// ..\..\..\ccore\source\main\cpp\c_binmap1.cpp
@@ -78,10 +69,50 @@ func (ms *WinMsdev) NewCompiler(config *Config) Compiler {
 }
 
 func (ms *WinMsdev) NewArchiver(a ArchiverType, config *Config) Archiver {
+
+	// Lib.exe /OUT:"lib\cbase\DebugTest_x86_64_v143\cbase.lib"
+	// /NOLOGO
+	// /MACHINE:X64
+	// obj\cbase\DebugTest_x86_64_v143\c_allocator.obj
+	// obj\cbase\DebugTest_x86_64_v143\c_allocator_system_win32.obj
+
 	return nil
 }
 
 func (ms *WinMsdev) NewLinker(config *Config) Linker {
+	// link.exe
+	// /ERRORREPORT:PROMPT
+	// /OUT:"bin\cbase_test\DebugTest_x86_64_v143\cbase_test.exe"
+	// /NOLOGO
+	// lib\cunittest\DebugTest_x86_64_v143\cunittest.lib
+	// lib\ccore\DebugTest_x86_64_v143\ccore.lib
+	// lib\cbase\DebugTest_x86_64_v143\cbase.lib
+	// kernel32.lib
+	// user32.lib
+	// gdi32.lib
+	// winspool.lib
+	// comdlg32.lib
+	// advapi32.lib
+	// shell32.lib
+	// ole32.lib
+	// oleaut32.lib
+	// uuid.lib
+	// odbc32.lib
+	// odbccp32.lib
+	// /MANIFEST
+	// /MANIFESTUAC:"level='asInvoker' uiAccess='false'"
+	// /manifest:embed
+	// /DEBUG
+	// /PDB:"bin\cbase_test\DebugTest_x86_64_v143\cbase_test.pdb"
+	// /SUBSYSTEM:CONSOLE
+	// /TLBID:1
+	// /DYNAMICBASE
+	// /NXCOMPAT
+	// /IMPLIB:"bin\cbase_test\DebugTest_x86_64_v143\cbase_test.lib"
+	// /MACHINE:X64
+	// obj\cbase_test\DebugTest_x86_64_v143\test_allocator.obj
+	// obj\cbase_test\DebugTest_x86_64_v143\test_binary_search.obj
+	// ...
 	return nil
 }
 

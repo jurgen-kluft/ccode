@@ -157,36 +157,41 @@ func (cl *ToolchainArduinoEsp32Compiler) SetupArgs(defines []string, includes []
 	}
 }
 
-func (cl *ToolchainArduinoEsp32Compiler) Compile(sourceAbsFilepath string, objRelFilepath string) error {
-	var compilerPath string
-	var args []string
-	if strings.HasSuffix(sourceAbsFilepath, ".c") {
-		compilerPath = cl.cCompilerPath
-		args = cl.cCompilerArgs.Args
-	} else {
-		compilerPath = cl.cppCompilerPath
-		args = cl.cppCompilerArgs.Args
-	}
+func (cl *ToolchainArduinoEsp32Compiler) Compile(sourceAbsFilepaths []string, objRelFilepaths []string) error {
 
-	// The source file and the output object file
-	// sourceAbsFilepath
-	// -o
-	// sourceRelFilepath + ".o"
-	args = append(args, sourceAbsFilepath)
-	args = append(args, "-o")
-	args = append(args, objRelFilepath)
+	for i, sourceAbsFilepath := range sourceAbsFilepaths {
+		objRelFilepath := objRelFilepaths[i]
 
-	foundation.LogInfof("Compiling (%s) %s\n", cl.config.Config.AsString(), filepath.Base(sourceAbsFilepath))
+		var compilerPath string
+		var args []string
+		if strings.HasSuffix(sourceAbsFilepath, ".c") {
+			compilerPath = cl.cCompilerPath
+			args = cl.cCompilerArgs.Args
+		} else {
+			compilerPath = cl.cppCompilerPath
+			args = cl.cppCompilerArgs.Args
+		}
 
-	cmd := exec.Command(compilerPath, args...)
-	out, err := cmd.CombinedOutput()
+		// The source file and the output object file
+		// sourceAbsFilepath
+		// -o
+		// sourceRelFilepath + ".o"
+		args = append(args, sourceAbsFilepath)
+		args = append(args, "-o")
+		args = append(args, objRelFilepath)
 
-	if err != nil {
-		foundation.LogInfof("Compile failed, output:\n%s\n", string(out))
-		return foundation.LogErrorf(err, "Compiling failed")
-	}
-	if len(out) > 0 {
-		foundation.LogInfof("Compile output:\n%s\n", string(out))
+		foundation.LogInfof("Compiling (%s) %s\n", cl.config.Config.AsString(), filepath.Base(sourceAbsFilepath))
+
+		cmd := exec.Command(compilerPath, args...)
+		out, err := cmd.CombinedOutput()
+
+		if err != nil {
+			foundation.LogInfof("Compile failed, output:\n%s\n", string(out))
+			return foundation.LogErrorf(err, "Compiling failed")
+		}
+		if len(out) > 0 {
+			foundation.LogInfof("Compile output:\n%s\n", string(out))
+		}
 	}
 
 	return nil

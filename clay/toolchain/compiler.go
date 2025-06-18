@@ -3,7 +3,7 @@ package toolchain
 // Compiler is an interface that defines the methods required for compiling source files
 type Compiler interface {
 	SetupArgs(defines []string, includes []string)
-	Compile(sourceAbsFilepath string, objRelFilepath string) error
+	Compile(sourceAbsFilepath []string, objRelFilepath []string) error
 }
 
 // Note: Compiler dependency management.

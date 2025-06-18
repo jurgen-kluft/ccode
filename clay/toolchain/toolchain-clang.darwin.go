@@ -114,33 +114,38 @@ func (cl *ToolchainDarwinClangCompiler) SetupArgs(_defines []string, _includes [
 
 }
 
-func (cl *ToolchainDarwinClangCompiler) Compile(sourceAbsFilepath string, objRelFilepath string) error {
-	var compilerPath string
-	var compilerArgs []string
-	if strings.HasSuffix(sourceAbsFilepath, ".c") {
-		compilerPath = cl.cCompilerPath
-		compilerArgs = cl.cArgs.Args
-	} else {
-		compilerPath = cl.cppCompilerPath
-		compilerArgs = cl.cppArgs.Args
-	}
+func (cl *ToolchainDarwinClangCompiler) Compile(sourceAbsFilepaths []string, objRelFilepaths []string) error {
 
-	// The source file and the output object file
-	compilerArgs = append(compilerArgs, "-o")
-	compilerArgs = append(compilerArgs, objRelFilepath)
-	compilerArgs = append(compilerArgs, sourceAbsFilepath)
+	for i, sourceAbsFilepath := range sourceAbsFilepaths {
+		objRelFilepath := objRelFilepaths[i]
 
-	foundation.LogInfof("Compiling (%s) %s\n", cl.config.Config.AsString(), filepath.Base(sourceAbsFilepath))
+		var compilerPath string
+		var compilerArgs []string
+		if strings.HasSuffix(sourceAbsFilepath, ".c") {
+			compilerPath = cl.cCompilerPath
+			compilerArgs = cl.cArgs.Args
+		} else {
+			compilerPath = cl.cppCompilerPath
+			compilerArgs = cl.cppArgs.Args
+		}
 
-	var cmd *exec.Cmd
-	cmd = exec.Command(compilerPath, compilerArgs...)
-	out, err := cmd.CombinedOutput()
-	if err != nil {
-		foundation.LogInfof("Compile failed, output:\n%s\n", string(out))
-		return foundation.LogErrorf(err, "Compiling failed")
-	}
-	if len(out) > 0 {
-		foundation.LogInfof("Compile output:\n%s\n", string(out))
+		// The source file and the output object file
+		compilerArgs = append(compilerArgs, "-o")
+		compilerArgs = append(compilerArgs, objRelFilepath)
+		compilerArgs = append(compilerArgs, sourceAbsFilepath)
+
+		foundation.LogInfof("Compiling (%s) %s\n", cl.config.Config.AsString(), filepath.Base(sourceAbsFilepath))
+
+		var cmd *exec.Cmd
+		cmd = exec.Command(compilerPath, compilerArgs...)
+		out, err := cmd.CombinedOutput()
+		if err != nil {
+			foundation.LogInfof("Compile failed, output:\n%s\n", string(out))
+			return foundation.LogErrorf(err, "Compiling failed")
+		}
+		if len(out) > 0 {
+			foundation.LogInfof("Compile output:\n%s\n", string(out))
+		}
 	}
 
 	return nil

@@ -42,13 +42,13 @@ var MsDevOptions = map[string][]string{
 	"compile.all.as.c":               {"/TC"},                 // Treat all source files as C.
 	"compile.all.as.cpp":             {"/TP"},                 // Treat all source files
 	"warnings.disable.all":           {"/w"},                  // Disable all warnings.
-	"warnings.enable.level.0":        {"/W0"},                 // Set output warning level to 0 (no warnings).
-	"warnings.enable.level.1":        {"/W1"},                 // Set output warning level to 1 (basic warnings).
-	"warnings.enable.level.2":        {"/W2"},                 // Set output warning level to 2 (moderate warnings).
-	"warnings.enable.level.3":        {"/W3"},                 // Set output warning level to 3 (high warnings).
-	"warnings.enable.level.4":        {"/W4"},                 // Set output warning level to 4 (very high warnings).
 	"warnings.enable.all":            {"/Wall"},               // Enable all warnings, including those disabled by default.
 	"warnings.are.errors":            {"/WX"},                 // Treat all warnings as errors.
+	"warnings.output.level.0":        {"/W0"},                 // Set output warning level to 0 (no warnings).
+	"warnings.output.level.1":        {"/W1"},                 // Set output warning level to 1 (basic warnings).
+	"warnings.output.level.2":        {"/W2"},                 // Set output warning level to 2 (moderate warnings).
+	"warnings.output.level.3":        {"/W3"},                 // Set output warning level to 3 (high warnings).
+	"warnings.output.level.4":        {"/W4"},                 // Set output warning level to 4 (very high warnings).
 	"c++14":                          {"/std:c++14"},          // Specify the C++ standard version (c++14, c++17, c++20, c++latest).
 	"c++17":                          {"/std:c++17"},          // Specify the C++ standard version (c++14, c++17, c++20, c++latest).
 	"c++20":                          {"/std:c++20"},          // Specify the C++ standard version (c++14, c++17, c++20, c++latest).
