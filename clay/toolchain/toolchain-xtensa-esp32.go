@@ -289,7 +289,7 @@ func (l *ToolchainArduinoEsp32Linker) SetupArgs(libraryPaths []string, libraryFi
 
 	l.linkerArgs.Clear()
 
-	if genMapfile, ok := l.toolChain.Vars.GetFirst("linker.system.library.paths"); ok && genMapfile == "true" {
+	if genMapfile, ok := l.toolChain.Vars.GetFirst("linker.generate.mapfile"); ok && genMapfile == "true" {
 		l.linkerArgs.Add("genmap")
 	}
 
@@ -337,7 +337,8 @@ func (l *ToolchainArduinoEsp32Linker) Link(inputArchiveAbsFilepaths []string, ou
 	linkerArgs.Add(outputAppRelFilepathNoExt)
 
 	// Do we need to fill in the arg to generate map file?
-	if linkerArgs.Args[0] == "genmap" {
+	generateMapfile := linkerArgs.Args[0] == "genmap"
+	if generateMapfile {
 		outputMapFilepath := outputAppRelFilepathNoExt + ".map"
 		linkerArgs.Args[0] = "-Wl,--Map=" + outputMapFilepath
 	}
@@ -348,7 +349,9 @@ func (l *ToolchainArduinoEsp32Linker) Link(inputArchiveAbsFilepaths []string, ou
 
 	// Reset the map generation command in the arguments so that it
 	// will be updated correctly on the next Link() call.
-	l.linkerArgs.Args[0] = "genmap"
+	if generateMapfile {
+		l.linkerArgs.Args[0] = "genmap"
+	}
 
 	if err != nil {
 		foundation.LogInfof("Link failed, output:\n%s\n", string(out))
@@ -708,6 +711,7 @@ func NewArduinoEsp32(espMcu string, projectName string) (*ArduinoEsp32, error) {
 			`{esp.sdk.path}/variants/{esp.mcu}`,
 		}},
 
+		{key: "linker.generate.mapfile", value: []string{`true`}},
 		{key: "linker.response.ldflags", value: []string{`{esp.arduino.sdk.path}/flags/ld_flags`}},
 		{key: "linker.response.ldscripts", value: []string{`{esp.arduino.sdk.path}/flags/ld_scripts`}},
 		{key: "linker.response.ldlibs", value: []string{`{esp.arduino.sdk.path}/flags/ld_libs`}},
