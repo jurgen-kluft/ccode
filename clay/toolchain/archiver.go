@@ -13,8 +13,10 @@ const (
 // creating an archive (.a, .lib) file.
 type Archiver interface {
 
-	// Returns the filename for the archive (e.g., "libname.a" or "name.lib")
-	Filename(name string) string
+	// Returns the filepath for the archive
+	// e.g. "path/to/library/name.ext", your should provide the filepath without extension:
+	//      "path/to/library/name", and it will return "path/to/library/libname.a" or "path/to/library/name.lib"
+	LibFilepath(filepath string) string
 
 	// SetupArgs prepares the arguments for the archiver based on user-defined variables.
 	// It should be called before using the Archive method.

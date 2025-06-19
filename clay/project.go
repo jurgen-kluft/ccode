@@ -118,7 +118,7 @@ func (p *Project) Build(buildConfig *Config, buildPath string) (outOfDate int, e
 
 	prjObjFilepaths := []string{}
 	for _, src := range p.SourceFiles {
-		srcObjRelPath := filepath.Join(projectBuildPath, src.SrcRelPath+".o")
+		srcObjRelPath := filepath.Join(projectBuildPath, compiler.ObjFilepath(src.SrcRelPath))
 		prjObjFilepaths = append(prjObjFilepaths, srcObjRelPath)
 		if !projectDepFileTrackr.QueryItem(srcObjRelPath) {
 			outOfDate += 1
@@ -134,21 +134,19 @@ func (p *Project) Build(buildConfig *Config, buildPath string) (outOfDate int, e
 		absSrcFilepaths := make([]string, 0, len(p.SourceFiles))
 		objRelFilepaths := make([]string, 0, len(p.SourceFiles))
 		objRelFilepathsUpToDate := make([]string, 0, len(p.SourceFiles))
-
 		// Build up the lists of source and object files that are out-of-date
 		for _, src := range p.SourceFiles {
-			srcObjRelPath := filepath.Join(projectBuildPath, src.SrcRelPath+".o")
+			srcObjRelPath := filepath.Join(projectBuildPath, compiler.ObjFilepath(src.SrcRelPath))
 			if !projectDepFileTrackr.QueryItem(srcObjRelPath) {
 				foundation.DirMake(filepath.Dir(srcObjRelPath))
 				absSrcFilepaths = append(absSrcFilepaths, src.SrcAbsPath)
 				objRelFilepaths = append(objRelFilepaths, srcObjRelPath)
 			} else {
 				objRelFilepathsUpToDate = append(objRelFilepathsUpToDate, srcObjRelPath)
-				projectDepFileTrackr.CopyItem(srcObjRelPath)
 			}
 		}
 
-		// Give the compiler the array of (input) source files and object files (output)
+		// Give the compiler the array of out-of-date source files (input) and their object files (output)
 		if err := compiler.Compile(absSrcFilepaths, objRelFilepaths); err != nil {
 			return outOfDate, err
 		}
@@ -157,22 +155,20 @@ func (p *Project) Build(buildConfig *Config, buildPath string) (outOfDate int, e
 		for _, obj := range objRelFilepathsUpToDate {
 			projectDepFileTrackr.CopyItem(obj)
 		}
-		for _, src := range absSrcFilepaths {
-			srcDepFilepath := src + ".d"
-			if mainItem, depItems, err := deptrackr.ParseDotDependencyFile(srcDepFilepath); err == nil {
+		for _, objFilepath := range objRelFilepaths {
+			depFilepath := compiler.DepFilepath(objFilepath)
+			if mainItem, depItems, err := deptrackr.ParseDotDependencyFile(depFilepath); err == nil {
 				projectDepFileTrackr.AddItem(mainItem, depItems)
 			}
 		}
 	}
 
 	if p.IsExecutable {
-		generateMapFile := true
-
 		linker := p.Toolchain.NewLinker(CopyConfig(buildConfig))
-		linker.SetupArgs(generateMapFile, []string{}, []string{})
+		linker.SetupArgs([]string{}, []string{})
 
 		archivesToLink := []string{}
-		executableOutputFilepath := p.GetOutputFilepath(buildPath, linker.Filename(p.Name))
+		executableOutputFilepath := p.GetOutputFilepath(buildPath, linker.LinkedFilepath(p.Name))
 
 		if outOfDate > 0 || !projectDepFileTrackr.QueryItem(executableOutputFilepath) {
 			if outOfDate == 0 {
@@ -188,7 +184,7 @@ func (p *Project) Build(buildConfig *Config, buildPath string) (outOfDate int, e
 			// Project archive dependencies (only those matching the build config)
 			for _, dep := range p.Dependencies {
 				if dep.Config.Matches(buildConfig) {
-					libAbsFilepath := dep.GetOutputFilepath(buildPath, staticArchiver.Filename(dep.Name))
+					libAbsFilepath := dep.GetOutputFilepath(buildPath, staticArchiver.LibFilepath(dep.Name))
 					archivesToLink = append(archivesToLink, libAbsFilepath)
 				}
 			}
@@ -203,7 +199,7 @@ func (p *Project) Build(buildConfig *Config, buildPath string) (outOfDate int, e
 		}
 		_, err = projectDepFileTrackr.Save()
 	} else {
-		archiveOutputFilepath := p.GetOutputFilepath(buildPath, staticArchiver.Filename(p.Name))
+		archiveOutputFilepath := p.GetOutputFilepath(buildPath, staticArchiver.LibFilepath(p.Name))
 		if outOfDate > 0 || !projectDepFileTrackr.QueryItem(archiveOutputFilepath) {
 			if outOfDate == 0 {
 				foundation.LogInfof("Archiving project: %s, config: %s\n", p.Name, p.Config.String())

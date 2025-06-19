@@ -2,26 +2,22 @@ package toolchain
 
 // Compiler is an interface that defines the methods required for compiling source files
 type Compiler interface {
+	// Returns the object filepath for the compiler to output
+	// e.g. path/to/source/file.c and it will return -> path/to/source/file.c.o or path/to/source/file.c.obj
+	// depending on the platform.
+	ObjFilepath(srcRelFilepath string) string
+
+	// Returns the filepath for the dependency output
+	// e.g. path/to/object/file.obj and it will return -> path/to/object/file.obj.d or path/to/object/file.obj.json
+	// depending on the platform.
+	DepFilepath(objRelFilepath string) string
+
+	// SetupArgs prepares the arguments for the compiler
+	// It should be called before using the Compile method.
 	SetupArgs(defines []string, includes []string)
+
+	// Compile takes a list of input source file paths and output object file paths
+	// The source file paths may be absolute or relative to the build directory, however
+	// the object file paths should be relative to the build directory.
 	Compile(sourceAbsFilepath []string, objRelFilepath []string) error
 }
-
-// Note: Compiler dependency management.
-// A compiler compiles a source file + header files into an object file.
-// The compiler before compiling the source file, should query the depTrackr
-// to check if the source file + header files are up to date.
-// After compiling, the compiler should add the object file, source file + header
-// files as an item with dependencies to the depTrackr.
-
-// // Before we compile, verify the state of the object file.
-// if cl.toolChain.depTrackr.QueryItem(objFilepath) {
-// 	// object file is up-to-date
-// 	cl.toolChain.depTrackr.CopyItem(objFilepath)
-// 	return objFilepath, nil
-// }
-// ....
-// ... compile the source file
-// ....
-// // Source file has been compiled, add the .d file to the dependency tracker
-// dotdFilepath := sourceRelFilepath + ".d"
-// cl.toolChain.depTrackr.AddItem(dotdFilepath, []deptrackr.StringItem{})

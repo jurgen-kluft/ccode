@@ -45,6 +45,14 @@ func (t *ArduinoEsp32) NewCompiler(config *Config) Compiler {
 	}
 }
 
+func (cl *ToolchainArduinoEsp32Compiler) ObjFilepath(srcRelFilepath string) string {
+	return srcRelFilepath + ".o"
+}
+
+func (cl *ToolchainArduinoEsp32Compiler) DepFilepath(objRelFilepath string) string {
+	return objRelFilepath + ".d"
+}
+
 func (cl *ToolchainArduinoEsp32Compiler) SetupArgs(defines []string, includes []string) {
 	// C Compiler Arguments
 	{
@@ -217,9 +225,9 @@ func (t *ArduinoEsp32) NewArchiver(a ArchiverType, config *Config) Archiver {
 	}
 }
 
-func (t *ToolchainArduinoEsp32Archiver) Filename(name string) string {
+func (t *ToolchainArduinoEsp32Archiver) LibFilepath(filepath string) string {
 	// The file extension for the archive on ESP32 is typically ".a"
-	return name + ".a"
+	return filepath + ".a"
 }
 
 func (a *ToolchainArduinoEsp32Archiver) SetupArgs() {
@@ -273,15 +281,15 @@ func (t *ArduinoEsp32) NewLinker(config *Config) Linker {
 }
 
 // FileExt returns the file extension for the linker output, which is ".elf" for ESP32.
-func (l *ToolchainArduinoEsp32Linker) Filename(name string) string {
-	return name + ".elf"
+func (l *ToolchainArduinoEsp32Linker) LinkedFilepath(filepath string) string {
+	return filepath + ".elf"
 }
 
-func (l *ToolchainArduinoEsp32Linker) SetupArgs(generateMapFile bool, libraryPaths []string, libraryFiles []string) {
+func (l *ToolchainArduinoEsp32Linker) SetupArgs(libraryPaths []string, libraryFiles []string) {
 
 	l.linkerArgs.Clear()
 
-	if generateMapFile {
+	if genMapfile, ok := l.toolChain.Vars.GetFirst("linker.system.library.paths"); ok && genMapfile == "true" {
 		l.linkerArgs.Add("genmap")
 	}
 

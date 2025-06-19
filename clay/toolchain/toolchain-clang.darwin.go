@@ -38,6 +38,14 @@ func (t *DarwinClang) NewCompiler(config *Config) Compiler {
 	}
 }
 
+func (cl *ToolchainDarwinClangCompiler) ObjFilepath(srcRelFilepath string) string {
+	return srcRelFilepath + ".o"
+}
+
+func (cl *ToolchainDarwinClangCompiler) DepFilepath(objRelFilepath string) string {
+	return objRelFilepath + ".d"
+}
+
 func (cl *ToolchainDarwinClangCompiler) SetupArgs(_defines []string, _includes []string) {
 	// Implement the logic to setup arguments for the compiler here
 	cl.cArgs.Clear()
@@ -184,8 +192,10 @@ func (t *DarwinClang) NewArchiver(at ArchiverType, config *Config) Archiver {
 	return nil
 }
 
-func (t *ToolchainDarwinClangStaticArchiver) Filename(name string) string {
-	return "lib" + name + ".a" // The file extension for the archive on Darwin is typically ".a"
+func (t *ToolchainDarwinClangStaticArchiver) LibFilepath(_filepath string) string {
+	filename := foundation.PathFilename(_filepath, true)
+	dirpath := foundation.PathDirname(_filepath)
+	return filepath.Join(dirpath, "lib"+filename+".a") // The file extension for the archive on Darwin is typically ".a"
 }
 
 func (t *ToolchainDarwinClangStaticArchiver) SetupArgs() {
@@ -212,9 +222,12 @@ func (t *ToolchainDarwinClangStaticArchiver) Archive(inputObjectFilepaths []stri
 	return nil
 }
 
-func (t *ToolchainDarwinClangDynamicArchiver) Filename(name string) string {
-	return "lib" + name + ".dylib" // The filename for the dynamic library on Darwin is typically "libname.dylib"
+func (t *ToolchainDarwinClangDynamicArchiver) LibFilepath(_filepath string) string {
+	filename := foundation.PathFilename(_filepath, true)
+	dirpath := foundation.PathDirname(_filepath)
+	return filepath.Join(dirpath, "lib"+filename+".dylib")
 }
+
 func (t *ToolchainDarwinClangDynamicArchiver) SetupArgs() {
 	t.args = []string{}
 
@@ -266,11 +279,11 @@ func (l *DarwinClang) NewLinker(config *Config) Linker {
 	}
 }
 
-func (l *ToolchainDarwinClangLinker) Filename(name string) string {
-	return name // The filename for the output binary on Darwin is typically just the name without extension
+func (l *ToolchainDarwinClangLinker) LinkedFilepath(filepath string) string {
+	return filepath
 }
 
-func (l *ToolchainDarwinClangLinker) SetupArgs(generateMapFile bool, libraryPaths []string, libraryFiles []string) {
+func (l *ToolchainDarwinClangLinker) SetupArgs(libraryPaths []string, libraryFiles []string) {
 	l.args = []string{}
 
 	// Library paths

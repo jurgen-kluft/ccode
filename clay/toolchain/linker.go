@@ -3,14 +3,16 @@ package toolchain
 // Linker is an interface that defines the methods required for linking
 // object and archive files into an executable.
 type Linker interface {
-	Filename(name string) string // Returns the filename for the linker output (e.g., "name.elf", "name.bin")
-	SetupArgs(generateMapFile bool, libraryPaths []string, libraryFiles []string)
+
+	// Returns the final linked filename for the given filepath. Please
+	// provide the path and name of the file without an extension.
+	// e.g. "path/to/exe/name" will return "path/to/exe/name.exe" on Windows
+	// and "path/to/exe/name" on Unix-like systems.
+	LinkedFilepath(filepath string) string
+
+	// SetupArgs prepares the linker arguments based on the provided options.
+	SetupArgs(libraryPaths []string, libraryFiles []string)
+
+	// Link takes a list of input object file paths and an output file path
 	Link(inputArchiveAbsFilepaths []string, outputAppRelFilepathNoExt string) error
 }
-
-// Note: Linker dependency management.
-// An executable is a collection of archive files that together form an executable.
-// The linker before linking the list of archive files, should query the depTrackr
-// to check if the archive files are up to date.
-// After linking, the linker should add the executable file + the archive files as
-// an item with dependencies to the depTrackr.
