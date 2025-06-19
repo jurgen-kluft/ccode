@@ -116,35 +116,30 @@ func (p *Project) Build(buildConfig *Config, buildPath string) (outOfDate int, e
 	projectBuildPath := p.GetBuildPath(buildPath)
 	projectDepFileTrackr := p.Toolchain.NewDependencyTracker(projectBuildPath)
 
-	prjObjFilepaths := []string{}
+	srcFilesOutOfDate := make([]SourceFile, 0, len(p.SourceFiles))
+	srcFilesUpToDate := make([]SourceFile, 0, len(p.SourceFiles))
 	for _, src := range p.SourceFiles {
 		srcObjRelPath := filepath.Join(projectBuildPath, compiler.ObjFilepath(src.SrcRelPath))
-		prjObjFilepaths = append(prjObjFilepaths, srcObjRelPath)
 		if !projectDepFileTrackr.QueryItem(srcObjRelPath) {
-			outOfDate += 1
+			foundation.DirMake(filepath.Dir(srcObjRelPath))
+			srcFilesOutOfDate = append(srcFilesOutOfDate, src)
+		} else {
+			srcFilesUpToDate = append(srcFilesUpToDate, src)
 		}
 	}
 
+	absSrcFilepaths := make([]string, len(srcFilesOutOfDate))
+	objRelFilepaths := make([]string, len(srcFilesOutOfDate))
+	for i, src := range srcFilesOutOfDate {
+		absSrcFilepaths[i] = src.SrcAbsPath
+		objRelFilepaths[i] = filepath.Join(projectBuildPath, compiler.ObjFilepath(src.SrcRelPath))
+	}
+
 	buildStartTime := time.Now()
+	outOfDate = len(srcFilesOutOfDate)
 	if outOfDate > 0 {
 		foundation.LogInfof("Building project: %s, config: %s\n", p.Name, p.Config.String())
 		buildStartTime = time.Now()
-
-		// Prepare the source files that require compilation
-		absSrcFilepaths := make([]string, 0, len(p.SourceFiles))
-		objRelFilepaths := make([]string, 0, len(p.SourceFiles))
-		objRelFilepathsUpToDate := make([]string, 0, len(p.SourceFiles))
-		// Build up the lists of source and object files that are out-of-date
-		for _, src := range p.SourceFiles {
-			srcObjRelPath := filepath.Join(projectBuildPath, compiler.ObjFilepath(src.SrcRelPath))
-			if !projectDepFileTrackr.QueryItem(srcObjRelPath) {
-				foundation.DirMake(filepath.Dir(srcObjRelPath))
-				absSrcFilepaths = append(absSrcFilepaths, src.SrcAbsPath)
-				objRelFilepaths = append(objRelFilepaths, srcObjRelPath)
-			} else {
-				objRelFilepathsUpToDate = append(objRelFilepathsUpToDate, srcObjRelPath)
-			}
-		}
 
 		// Give the compiler the array of out-of-date source files (input) and their object files (output)
 		if err := compiler.Compile(absSrcFilepaths, objRelFilepaths); err != nil {
@@ -152,11 +147,12 @@ func (p *Project) Build(buildConfig *Config, buildPath string) (outOfDate int, e
 		}
 
 		// Update the dependency tracker
-		for _, obj := range objRelFilepathsUpToDate {
-			projectDepFileTrackr.CopyItem(obj)
+		for _, src := range srcFilesUpToDate {
+			objRelFilepath := filepath.Join(projectBuildPath, compiler.ObjFilepath(src.SrcRelPath))
+			projectDepFileTrackr.CopyItem(objRelFilepath)
 		}
-		for _, objFilepath := range objRelFilepaths {
-			depFilepath := compiler.DepFilepath(objFilepath)
+		for _, src := range srcFilesOutOfDate {
+			depFilepath := filepath.Join(projectBuildPath, compiler.DepFilepath(src.SrcRelPath))
 			if mainItem, depItems, err := deptrackr.ParseDotDependencyFile(depFilepath); err == nil {
 				projectDepFileTrackr.AddItem(mainItem, depItems)
 			}
@@ -167,7 +163,6 @@ func (p *Project) Build(buildConfig *Config, buildPath string) (outOfDate int, e
 		linker := p.Toolchain.NewLinker(CopyConfig(buildConfig))
 		linker.SetupArgs([]string{}, []string{})
 
-		archivesToLink := []string{}
 		executableOutputFilepath := p.GetOutputFilepath(buildPath, linker.LinkedFilepath(p.Name))
 
 		if outOfDate > 0 || !projectDepFileTrackr.QueryItem(executableOutputFilepath) {
@@ -178,8 +173,10 @@ func (p *Project) Build(buildConfig *Config, buildPath string) (outOfDate int, e
 			}
 
 			// Project object files
-			for _, obj := range prjObjFilepaths {
-				archivesToLink = append(archivesToLink, obj)
+            archivesToLink := make([]string, 0, len(p.SourceFiles) + len(p.Dependencies))
+            for _, src := range p.SourceFiles {
+                srcObjRelPath := filepath.Join(projectBuildPath, compiler.ObjFilepath(src.SrcRelPath))
+				archivesToLink = append(archivesToLink, srcObjRelPath)
 			}
 			// Project archive dependencies (only those matching the build config)
 			for _, dep := range p.Dependencies {
@@ -209,10 +206,17 @@ func (p *Project) Build(buildConfig *Config, buildPath string) (outOfDate int, e
 
 			// If this is a library, we don't link it, but we can create a static archive
 			staticArchiver.SetupArgs()
-			if err := staticArchiver.Archive(prjObjFilepaths, archiveOutputFilepath); err != nil {
+
+            objFilesToArchive := make([]string, 0, len(p.SourceFiles))
+            for _, src := range p.SourceFiles {
+                srcObjRelPath := filepath.Join(projectBuildPath, compiler.ObjFilepath(src.SrcRelPath))
+                objFilesToArchive = append(objFilesToArchive, srcObjRelPath)
+            }
+			if err := staticArchiver.Archive(objFilesToArchive, archiveOutputFilepath); err != nil {
 				return outOfDate, err
 			}
-			projectDepFileTrackr.AddItem(archiveOutputFilepath, prjObjFilepaths)
+
+			projectDepFileTrackr.AddItem(archiveOutputFilepath, objFilesToArchive)
 			_, err = projectDepFileTrackr.Save()
 			if err != nil {
 				return outOfDate, err

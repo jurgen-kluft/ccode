@@ -259,10 +259,27 @@ func getSdk(sdkVersion string, vsVersion vsVersion, targetArch winSupportedArch)
 	return getPreWin10Sdk(sdkVersion, vsVersion, targetArch)
 }
 
-func applyMsvcVisualStudio(version vsVersion, env *foundation.Vars, options *foundation.Vars) error {
+type MsDevSetup struct {
+	ClBin         string
+	LibBin        string
+	LdBin         string
+	RcBin         string
+	RcOptions     []string
+	CcOptions     []string
+	CxxOptions    []string
+	VsInstallDir  string
+	VcInstallDir  string
+	DevEnvDir     string
+	WindowsSdkDir string
+	IncludePaths  []string
+	Libs          []string
+	LibPath       []string
+}
+
+func InitMsvcVisualStudio(version vsVersion, options *foundation.Vars) (*MsDevSetup, error) {
 	hostArch := getHostArch(options)
 	if hostArch != "windows" {
-		panic("the msvc toolset only works on windows hosts")
+		return nil, fmt.Errorf("the msvc toolset only works on windows hosts, but got %s", hostArch)
 	}
 
 	targetArch := getTargetArch(options)
@@ -285,21 +302,20 @@ func applyMsvcVisualStudio(version vsVersion, env *foundation.Vars, options *fou
 		}
 	}
 	if vsRoot == "" {
-		panic("Visual Studio [Version " + string(version) + "] isn't installed. Please use a different Visual Studio version")
+		return nil, fmt.Errorf("Visual Studio [Version %s] isn't installed. Please use a different Visual Studio version", string(version))
 	}
 	vsRoot = strings.TrimSuffix(vsRoot, "\\")
 
 	vcBin, err := getVcBin(hostArch, targetArch)
 	if err != nil {
-		return err
+		return nil, err
 	}
+	vcBin = vsRoot + "\\vc\\bin\\" + vcBin
 
 	vcLib, err := getVcLib(hostArch, targetArch)
 	if err != nil {
-		return err
+		return nil, err
 	}
-
-	vcBin = vsRoot + "\\vc\\bin\\" + vcBin
 	vcLib = vsRoot + "\\vc\\lib\\" + vcLib
 
 	//
@@ -307,35 +323,32 @@ func applyMsvcVisualStudio(version vsVersion, env *foundation.Vars, options *fou
 	//
 	sdkRoot, sdkDirs := getSdk(sdkVersion, version, targetArch)
 
+	env := &MsDevSetup{}
+	env.WindowsSdkDir = sdkRoot
+
 	//
 	// Tools
 	//
-	clExe := "\"" + filepath.Join(vcBin, "cl.exe") + "\""
-	libExe := "\"" + filepath.Join(vcBin, "lib.exe") + "\""
-	linkExe := "\"" + filepath.Join(vcBin, "link.exe") + "\""
-	rcExe := "\"" + filepath.Join(sdkDirs.bin, "rc.exe") + "\"" // pickup the Resource Compiler from the SDK
-
-	env.Set("CC", clExe)
-	env.Set("CXX", clExe)
-	env.Set("LIB", libExe)
-	env.Set("LD", linkExe)
-	env.Set("RC", rcExe)
+	env.ClBin = filepath.Join(vcBin, "cl.exe")
+	env.LibBin = filepath.Join(vcBin, "lib.exe")
+	env.LdBin = filepath.Join(vcBin, "link.exe")
+	env.RcBin = filepath.Join(sdkDirs.bin, "rc.exe")
 
 	if sdkVersion == "9.0" {
-		env.Set("RCOPTS", "") // clear the "/nologo" option (it was first added in VS2010)
+		// clear the "/nologo" option (it was first added in VS2010)
+		env.RcOptions = []string{}
 	}
 
 	if version == "12.0" || version == "14.0" {
 		// Force MSPDBSRV.EXE
-		env.Set("CCOPTS", "/FS")
-		env.Set("CXXOPTS", "/FS")
+		env.CcOptions = []string{"/FS"}
+		env.CxxOptions = []string{"/FS"}
 	}
 
 	// Wire-up the external environment
-
-	env.Set("VSINSTALLDIR", vsRoot)
-	env.Set("VCINSTALLDIR", vsRoot+"\\vc")
-	env.Set("DevEnvDir", vsRoot+"\\Common7\\IDE")
+	env.VsInstallDir = vsRoot
+	env.VcInstallDir = vsRoot + "\\VC"
+	env.DevEnvDir = vsRoot + "\\Common7\\IDE"
 
 	include := make([]string, 0, len(sdkDirs.includes)+2)
 
@@ -349,7 +362,7 @@ func applyMsvcVisualStudio(version vsVersion, env *foundation.Vars, options *fou
 	// the linker will throw an error when looking for libs
 	mfcLibPath := vsRoot + "\\VC\\ATLMFC\\lib\\" + vcLib
 	if !foundation.DirExists(mfcLibPath) {
-		return fmt.Errorf("MFC libraries not found in %s", mfcLibPath)
+		return nil, fmt.Errorf("MFC libraries not found in %s", mfcLibPath)
 	}
 
 	libPaths := make([]string, 0, len(sdkDirs.libs)+2)
@@ -359,11 +372,10 @@ func applyMsvcVisualStudio(version vsVersion, env *foundation.Vars, options *fou
 	libPaths = append(libPaths, mfcLibPath)
 	libPaths = append(libPaths, vcLib)
 
-	env.Set("WindowsSdkDir", sdkRoot)
-	env.Set("INCLUDE", include...)
+	env.IncludePaths = include
 
-	env.Set("LIB", libPaths...)
-	env.Set("LIBPATH", libPaths...)
+	env.Libs = libPaths
+	env.LibPath = libPaths
 
 	// Extend PATH with the necessary directories
 	path := make([]string, 0, 5)
@@ -377,9 +389,8 @@ func applyMsvcVisualStudio(version vsVersion, env *foundation.Vars, options *fou
 	} else if hostArch == winArchArm {
 		path = append(path, vsRoot+"\\VC\\Bin\\arm")
 	}
-	path = append(path, vsRoot+"\\Common7\\IDE")
 
-	env.Append("PATH", path...)
+	// env.Append("PATH", path...)
 
-	return nil
+	return env, nil
 }

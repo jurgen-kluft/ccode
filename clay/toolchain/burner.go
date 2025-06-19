@@ -16,8 +16,7 @@ type Burner interface {
 // Empty Burner
 
 type EmptyBurner struct {
-	// For some toolchains, the burner is empty as the toolchain does not handle
-	// burning to a USB device.
+	// For some toolchains, the burner is empty, e.g. Darwin, Windows and Linux
 }
 
 func (cl *EmptyBurner) SetupBuild(buildPath string) {
@@ -25,7 +24,8 @@ func (cl *EmptyBurner) SetupBuild(buildPath string) {
 func (cl *EmptyBurner) Build() error {
 	return nil
 }
-func (cl *EmptyBurner) SetupBurn(buildPath string) error {return nil
+func (cl *EmptyBurner) SetupBurn(buildPath string) error {
+	return nil
 }
 func (cl *EmptyBurner) Burn() error {
 	return nil
