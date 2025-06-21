@@ -2,6 +2,9 @@ package toolchain
 
 import (
 	"fmt"
+	"os/exec"
+	"path/filepath"
+	"strings"
 
 	"github.com/jurgen-kluft/ccode/clay/toolchain/deptrackr"
 	"github.com/jurgen-kluft/ccode/foundation"
@@ -42,63 +45,108 @@ func (m *WinMsdev) NewCompiler(config *Config) Compiler {
 }
 
 func (cl *WinMsDevCompiler) ObjFilepath(srcRelFilepath string) string {
+	srcRelFilepath = strings.TrimSuffix(srcRelFilepath, ".c")
+	srcRelFilepath = strings.TrimSuffix(srcRelFilepath, ".cpp")
 	return srcRelFilepath + ".obj"
 }
 
 func (cl *WinMsDevCompiler) DepFilepath(objRelFilepath string) string {
+	objRelFilepath = strings.TrimSuffix(objRelFilepath, ".c")
+	objRelFilepath = strings.TrimSuffix(objRelFilepath, ".cpp")
 	return objRelFilepath + ".d"
 }
 
 func (cl *WinMsDevCompiler) SetupArgs(_defines []string, _includes []string) {
+	argsArray := []*Arguments{cl.cArgs, cl.cppArgs}
+	for i, args := range argsArray {
+		isCpp := i == 1 // C++ compiler is the second in the array
 
-	// PathToTools\CL.exe
-	// /c
-	// /I{compiler.includes}
+		args.Add("/c")                         // Compile only, do not link.
+		args.Add("/nologo")                    // Suppress display of sign-on banner.
+		args.Add("/diagnostics:column")        // Diagnostics format: prints column information.
+		args.AddWithPrefix("/I", _includes...) // Add include directories.
 
-	// /nologo                                                        Suppresses display of sign-on banner.
-	// /diagnostics:column                                            Diagnostics format: prints column information.
+		args.Add("/W3") // Set output warning level to 3 (high warnings).
+		args.Add("/WX") // Treat warnings as errors.
+		args.Add("/MP") // Build multiple source files concurrently.
 
-	// /W3                                                            Set output warning level.
-	// /WX                                                            Treat warnings as errors.
-	// /MP                                                            Builds multiple source files concurrently.
+		if cl.config.Config.IsDebug() {
+			args.Add("/Od")  // Disable optimizations for debugging.
+			args.Add("/Zi")  // Generate complete debugging information.
+			args.Add("/Oy-") // Do not omit frame pointer.
+		} else {
+			args.Add("/O2")  // Optimize for speed.
+			args.Add("/Ob2") // Enable inline expansion for functions that are small and frequently called.
+			args.Add("/Oi")  // Enable intrinsic functions.
+			args.Add("/Oy")  // Omit frame pointer for functions that do not require one.
+		}
 
-	// DEBUG
-	// /Zi                                                            Generates complete debugging information.
-	// /Od                                                            Disables optimization.
-	// /Oy-                                                           Omits frame pointer
+		args.AddWithPrefix("/D", _defines...)
 
-	// /D{compiler.defines}
+		args.Add("/sdl") // Enable more security features and warnings.
+		args.Add("/GS")  // Enable security checks to detect buffer overflows.
 
-	// /sdl                                                           Enable more security features and warnings.
-	// /GS                                                            Enable security checks to detect buffer overflows.
+		if isCpp && cl.config.Config.IsTest() {
+			args.Add("/EHsc") // Enable standard C++ exception handling.
+		}
 
-	// TEST
-	// /EHsc                                                          Enable standard C++ exception handling.
+		args.Add("/MTd")        // Use the multithreaded debug version of the C runtime library.
+		args.Add("/fp:precise") // Floating-point model: precise.
+		args.Add("/Zc:wchar_t") // Treats wchar_t as a built-in type.
 
-	// /MTd                                                           Use the multithreaded debug version of the C runtime library.
-	// /fp:precise                                                    Floating-point model: precise.
-	// /Zc:wchar_t                                                    Treats wchar_t as a built-in type.
-	// /std:c++17                                                     Specifies the C++ language standard to use (C++17).
-
-	// /Fo"obj\ccore\DebugTest_x86_64_v143\\"                         Output directory for object files.
-	// /Fd"lib\ccore\DebugTest_x86_64_v143\ccore.pdb"                 Output filepath for program database (PDB)
-
-	// /TP                                                            Treats all source files as C++ files.
-	// /FC                                                            Full path of source files in diagnostics.
-
-	// ..\..\..\ccore\source\main\cpp\c_allocator.cpp
-	// ..\..\..\ccore\source\main\cpp\c_binary_search.cpp
-	// ..\..\..\ccore\source\main\cpp\c_binmap1.cpp
-	// ..\..\..\ccore\source\main\cpp\c_debug.cpp
-	// ..\..\..\ccore\source\main\cpp\c_error.cpp
-	// ..\..\..\ccore\source\main\cpp\c_memcpy_neon.cpp
-	// ..\..\..\ccore\source\main\cpp\c_memcpy_sse.cpp
-	// ..\..\..\ccore\source\main\cpp\c_memory.cpp
-	// ..\..\..\ccore\source\main\cpp\c_qsort.cpp
-
+		if isCpp {
+			args.Add("/std:c++17") // Specifies the C++ language standard to use (C++17).
+			args.Add("/TP")        // Treats all source files as C++ files.
+		} else {
+			args.Add("/std:c17") // Specifies the C language standard to use (C17).
+		}
+		args.Add("/FC") // Full path of source files in diagnostics.
+	}
 }
 
 func (cl *WinMsDevCompiler) Compile(sourceAbsFilepaths []string, objRelFilepaths []string) error {
+	// Analyze all the object filepaths and organize them per directory, we do this because
+	// the MSVC compiler outputs object files into a single directory, we do not want this.
+	// And we do not want to call the compiler for each source file, but rather for each directory.
+	sourceFilesPerDir := make(map[string][]string)
+	for i, objFilepath := range objRelFilepaths {
+		objFile := foundation.PathFilename(objFilepath, true)
+		srcDir := objFile[:len(objFilepath)-len(objFile)]
+		srcFile := foundation.PathFilename(sourceAbsFilepaths[i], true)
+		if _, ok := sourceFilesPerDir[srcDir]; !ok {
+			sourceFiles := make([]string, 0, len(sourceAbsFilepaths)-i)
+			sourceFiles = append(sourceFiles, srcFile)
+			sourceFilesPerDir[srcDir] = sourceFiles
+		} else {
+			sourceFilesPerDir[srcDir] = append(sourceFilesPerDir[srcDir], srcFile)
+		}
+	}
+
+	// Iterate over the source files per directory and compile them.
+	for srcDir, srcFiles := range sourceFilesPerDir {
+		compilerPath := cl.cppCompilerPath
+		compilerArgs := cl.cppArgs.Args
+
+		if len(srcDir) > 0 {
+			compilerArgs = append(compilerArgs, "/Fo\""+foundation.PathWindowsPath(srcDir)+"\"")
+		}
+		for _, srcFile := range srcFiles {
+			compilerArgs = append(compilerArgs, foundation.PathWindowsPath(srcFile))
+			foundation.LogInfof("Compiling (%s) %s\n", cl.config.Config.AsString(), srcFile)
+		}
+
+		// Prepare the command to execute the compiler.
+		var cmd *exec.Cmd
+		cmd = exec.Command(compilerPath, compilerArgs...)
+		out, err := cmd.CombinedOutput()
+		if err != nil {
+			foundation.LogInfof("Compile failed, output:\n%s\n", string(out))
+			return foundation.LogErrorf(err, "Compiling failed")
+		}
+		if len(out) > 0 {
+			foundation.LogInfof("Compile output:\n%s\n", string(out))
+		}
+	}
 
 	return nil
 }
@@ -108,12 +156,52 @@ func (cl *WinMsDevCompiler) Compile(sourceAbsFilepaths []string, objRelFilepaths
 // Archiver
 
 func (ms *WinMsdev) NewArchiver(a ArchiverType, config *Config) Archiver {
+	return &WinMsDevArchiver{
+		toolChain:    ms,
+		config:       config,
+		archiverPath: ms.Vars.GetFirstOrEmpty("archiver.path"),
+		args:         NewArguments(512),
+	}
+}
 
-	// Lib.exe /OUT:"lib\cbase\DebugTest_x86_64_v143\cbase.lib"
-	// /NOLOGO
-	// /MACHINE:X64
-	// obj\cbase\DebugTest_x86_64_v143\c_allocator.obj
-	// obj\cbase\DebugTest_x86_64_v143\c_allocator_system_win32.obj
+type WinMsDevArchiver struct {
+	toolChain    *WinMsdev  // The toolchain this archiver belongs to
+	config       *Config    // Build configuration
+	archiverPath string     // Path to the archiver executable (e.g., lib.exe)
+	args         *Arguments // Arguments for the archiver
+}
+
+func (a *WinMsDevArchiver) LibFilepath(_filepath string) string {
+	filename := foundation.PathFilename(_filepath, true)
+	dirpath := foundation.PathDirname(_filepath)
+	return filepath.Join(dirpath, filename+".lib")
+}
+
+func (a *WinMsDevArchiver) SetupArgs() {
+	a.args.Add("/NOLOGO")      // Suppress display of sign-on banner.
+	a.args.Add("/MACHINE:X64") // Specify the target machine architecture (x64).
+}
+
+func (a *WinMsDevArchiver) Archive(inputObjectFilepaths []string, outputArchiveFilepath string) error {
+	archiverPath := a.archiverPath
+	archiverArgs := a.args.Args
+	archiverArgs = append(archiverArgs, "/OUT:\""+foundation.PathWindowsPath(outputArchiveFilepath)+"\"")
+
+	for _, objFile := range inputObjectFilepaths {
+		archiverArgs = append(archiverArgs, "\""+foundation.PathWindowsPath(objFile)+"\"")
+	}
+
+	foundation.LogInfof("Archiving (%s) %s\n", a.config.Config.AsString(), outputArchiveFilepath)
+
+	cmd := exec.Command(archiverPath, archiverArgs...)
+	out, err := cmd.CombinedOutput()
+	if err != nil {
+		foundation.LogInfof("Archive failed, output:\n%s\n", string(out))
+		return foundation.LogErrorf(err, "Archiving failed")
+	}
+	if len(out) > 0 {
+		foundation.LogInfof("Archive output:\n%s\n", string(out))
+	}
 
 	return nil
 }
@@ -126,13 +214,63 @@ func (ms *WinMsdev) NewArchiver(a ArchiverType, config *Config) Archiver {
 //	- https://github.com/MicrosoftDocs/cpp-docs/blob/main/docs/build/reference/linker-options.md
 
 func (ms *WinMsdev) NewLinker(config *Config) Linker {
-	// link.exe
-	// /ERRORREPORT:PROMPT
-	// /OUT:"bin\cbase_test\DebugTest_x86_64_v143\cbase_test.exe"
-	// /NOLOGO
-	// lib\cunittest\DebugTest_x86_64_v143\cunittest.lib
-	// lib\ccore\DebugTest_x86_64_v143\ccore.lib
-	// lib\cbase\DebugTest_x86_64_v143\cbase.lib
+	return &WinMsDevLinker{
+		toolChain:  ms,
+		config:     config,
+		linkerPath: ms.Vars.GetFirstOrEmpty("linker.path"),
+		args:       NewArguments(512),
+	}
+}
+
+type WinMsDevLinker struct {
+	toolChain  *WinMsdev  // The toolchain this archiver belongs to
+	config     *Config    // Build configuration
+	linkerPath string     // Path to the linker executable (e.g., ld.exe)
+	args       *Arguments // Arguments for the linker
+}
+
+func (l *WinMsDevLinker) LinkedFilepath(filepath string) string {
+	return filepath + ".exe"
+}
+
+func (l *WinMsDevLinker) SetupArgs(libraryPaths []string, libraryFiles []string) {
+
+	// Note: According to the MSVC documentation, the linker options can be specified in any order.
+
+	l.args.Add("/ERRORREPORT:PROMPT")
+	l.args.Add("/NOLOGO")
+
+	// TODO: Need to figure out if we want to use the manifest options.
+	// /MANIFEST
+	// /MANIFESTUAC:"level='asInvoker' uiAccess='false'"
+	// /manifest:embed
+
+	if l.config.Config.IsDebug() {
+		l.args.Add("/DEBUG") // Generate debug information.
+	}
+
+	// What is this used for?
+	// /TLBID:1
+
+	l.args.Add("/SUBSYSTEM:CONSOLE") // Specify the subsystem type (console application).
+	l.args.Add("/DYNAMICBASE")       // Enable ASLR (Address Space Layout Randomization).
+	l.args.Add("/NXCOMPAT")          // Enable DEP (Data Execution Prevention).
+	l.args.Add("/MACHINE:X64")       // Specify the target machine architecture (x64).
+}
+
+func (l *WinMsDevLinker) Link(inputArchiveAbsFilepaths []string, outputAppRelFilepath string) error {
+
+	linkerPath := l.linkerPath
+	linkerArgs := l.args.Args
+
+	outputAppRelFilepath = foundation.PathWindowsPath(outputAppRelFilepath)
+
+	linkerArgs = append(linkerArgs, "/OUT:\""+outputAppRelFilepath+"\"")
+	linkerArgs = append(linkerArgs, "/MAP:"+foundation.FileChangeExtension(outputAppRelFilepath, ".map"))
+
+	// Where do we get this list of libraries from?
+	// Note: Could we perhaps scan all the header files that are included for any patterns that
+	//       give us hints about the libraries that are needed?
 	// kernel32.lib
 	// user32.lib
 	// gdi32.lib
@@ -145,20 +283,23 @@ func (ms *WinMsdev) NewLinker(config *Config) Linker {
 	// uuid.lib
 	// odbc32.lib
 	// odbccp32.lib
-	// /MANIFEST
-	// /MANIFESTUAC:"level='asInvoker' uiAccess='false'"
-	// /manifest:embed
-	// /DEBUG
-	// /PDB:"bin\cbase_test\DebugTest_x86_64_v143\cbase_test.pdb"
-	// /SUBSYSTEM:CONSOLE
-	// /TLBID:1
-	// /DYNAMICBASE
-	// /NXCOMPAT
-	// /IMPLIB:"bin\cbase_test\DebugTest_x86_64_v143\cbase_test.lib"
-	// /MACHINE:X64
-	// obj\cbase_test\DebugTest_x86_64_v143\test_allocator.obj
-	// obj\cbase_test\DebugTest_x86_64_v143\test_binary_search.obj
-	// ...
+
+	for _, archiveFile := range inputArchiveAbsFilepaths {
+		archiveFile = foundation.PathWindowsPath(archiveFile)
+		linkerArgs = append(linkerArgs, "\""+archiveFile+"\"")
+	}
+
+	foundation.LogInfof("Linking (%s) %s\n", l.config.Config.AsString(), outputAppRelFilepath)
+
+	cmd := exec.Command(linkerPath, linkerArgs...)
+	out, err := cmd.CombinedOutput()
+	if err != nil {
+		foundation.LogInfof("Linking failed, output:\n%s\n", string(out))
+	}
+	if len(out) > 0 {
+		foundation.LogInfof("Linking output:\n%s\n", string(out))
+	}
+
 	return nil
 }
 

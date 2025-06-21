@@ -176,13 +176,14 @@ type ToolchainDarwinClangDynamicArchiver struct {
 }
 
 func (t *DarwinClang) NewArchiver(at ArchiverType, config *Config) Archiver {
-	if at == ArchiverTypeStatic {
+	switch at {
+	case ArchiverTypeStatic:
 		return &ToolchainDarwinClangStaticArchiver{
 			toolChain:    t,
 			archiverPath: t.Vars.GetFirstOrEmpty("archiver.static"),
 			args:         []string{},
 		}
-	} else if at == ArchiverTypeDynamic {
+	case ArchiverTypeDynamic:
 		return &ToolchainDarwinClangDynamicArchiver{
 			toolChain:    t,
 			archiverPath: t.Vars.GetFirstOrEmpty("archiver.dynamic"),
