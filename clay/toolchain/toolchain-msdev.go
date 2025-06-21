@@ -446,7 +446,7 @@ func NewWinMsdev(arch string, product string) (t *WinMsdev, err error) {
 
 	vars.Set("linker.path", msdevSetup.LinkerBin)
 	vars.Set("linker.libraries", msdevSetup.Libs...)
-	vars.Set("linker.library.paths", msdevSetup.LibPath...)
+	vars.Set("linker.library.paths", msdevSetup.LibPaths...)
 
 	vars.SetMany(msdevOptions)
 

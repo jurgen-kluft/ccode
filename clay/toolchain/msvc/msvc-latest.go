@@ -111,36 +111,6 @@ var supported_app_platforms = map[string]winAppPlatform{
 	"onecore": winAppOneCore,
 }
 
-func getProduct(options *foundation.Vars) vsProduct {
-	vsProduct := options.GetFirstOrEmpty("Product")
-	switch strings.ToLower(vsProduct) {
-	case "buildtools":
-		return vsProductBuildTools
-	case "community":
-		return vsProductCommunity
-	case "professional":
-		return vsProductProfessional
-	case "enterprise":
-		return vsProductEnterprise
-	default:
-		return vsProductBuildTools // fallback, should never reach here
-	}
-}
-
-func getVsVersion(options *foundation.Vars) VsVersion {
-	VsVersion := options.GetFirstOrEmpty("Version")
-	switch strings.ToLower(VsVersion) {
-	case "2017":
-		return VsVersion2017
-	case "2019":
-		return VsVersion2019
-	case "2022":
-		return VsVersion2022
-	default:
-		return vsDefaultVersion // fallback, should never reach here
-	}
-}
-
 func getArch(arch WinSupportedArch) WinSupportedArch {
 	if arch2, ok := supported_arch_mappings[strings.ToLower(arch.String())]; ok {
 		return arch2
@@ -175,14 +145,6 @@ func getTargetArch(targetArch WinSupportedArch) WinSupportedArch {
 		return WinArchx64 // If not specified, default to x64
 	}
 	return getArch(targetArch)
-}
-
-func getAppPlatform(options *foundation.Vars) winAppPlatform {
-	winAppPlatform := options.GetFirstOrEmpty("AppPlatform")
-	if platform, ok := supported_app_platforms[strings.ToLower(winAppPlatform)]; ok {
-		return platform
-	}
-	return winAppDesktop // default
 }
 
 func findVcTools(vsPath string, VsVersion VsVersion, vsProduct vsProduct, targetVcToolsVersion string, searchSet []string) (string, string, string, error) {
@@ -256,7 +218,7 @@ func NewMsvcVersion() *MsvcVersion {
 	}
 }
 
-func SetupMsvcVersion(env *foundation.Vars, msvcVersion *MsvcVersion, useClang bool) (externalEnv *foundation.Vars, err error) {
+func setupMsvcVersion(msdev *MsDevSetup, msvcVersion *MsvcVersion, useClang bool) error {
 
 	// These control the environment
 
@@ -266,10 +228,10 @@ func SetupMsvcVersion(env *foundation.Vars, msvcVersion *MsvcVersion, useClang b
 		msvcVersion.vsPath = vsDefaultPath
 	}
 
-	envPath, _ := env.Get("PATH")
-	envInclude, _ := env.Get("INCLUDE")
-	envLib, _ := env.Get("LIB")
-	envLibPath, _ := env.Get("LIBPATH")
+	envPath := msdev.Path
+	envInclude := msdev.IncludePaths
+	envLib := msdev.Libs
+	envLibPaths := msdev.LibPaths
 
 	// ------------------
 	// Windows SDK
@@ -279,7 +241,7 @@ func SetupMsvcVersion(env *foundation.Vars, msvcVersion *MsvcVersion, useClang b
 
 	winsdkDir, winsdkVersion, err := findWindowsSDK(msvcVersion.targetWinsdkVersion, msvcVersion.winAppPlatform)
 	if err != nil {
-		return nil, err
+		return err
 	}
 
 	envPath = append(envPath, filepath.Join(winsdkDir, "bin", winsdkVersion, msvcVersion.hostArch.String()))
@@ -381,27 +343,22 @@ func SetupMsvcVersion(env *foundation.Vars, msvcVersion *MsvcVersion, useClang b
 		} else if msvcVersion.targetArch == WinArchx86 {
 			envPath = append(envPath, filepath.Join(vsInstallDir, "VC", "Tools", "Llvm", "bin"))
 		} else {
-			return nil, fmt.Errorf("msvc-clang: target architecture '%s' not supported", msvcVersion.targetArch.String())
+			return fmt.Errorf("msvc-clang: target architecture '%s' not supported", msvcVersion.targetArch.String())
 		}
-	}
-
-	if paths, ok := env.Get("PATH"); ok {
-		envPath = append(envPath, paths...)
 	}
 
 	// Force MSPDBSRV.EXE (fix for issue with cl.exe running in parallel and otherwise corrupting PDB files)
 	// These options were added to Visual C++ in Visual Studio 2013. They do not exist in older versions.
-	env.Set("CCOPTS", "/FS")
-	env.Set("CXXOPTS", "/FS")
+	msdev.CcOptions = []string{"/FS"} // This is the C compiler option
+	msdev.CxxOptions = []string{"/FS"}
 
-	externalEnv = foundation.NewVars()
-	externalEnv.Set("VSTOOLSVERSION", vcToolsVersion)
-	externalEnv.Set("VSINSTALLDIR", vsInstallDir)
-	externalEnv.Set("VCINSTALLDIR", vcInstallDir)
-	externalEnv.Set("INCLUDE", envInclude...)
-	externalEnv.Set("LIB", envLib...)
-	externalEnv.Set("LIBPATH", envLibPath...)
-	externalEnv.Set("PATH", envPath...)
+	msdev.VcToolsVersion = vcToolsVersion
+	msdev.VsInstallDir = vsInstallDir
+	msdev.VcInstallDir = vcInstallDir
+	msdev.IncludePaths = envInclude
+	msdev.Libs = envLib
+	msdev.LibPaths = envLibPaths
+	msdev.Path = envPath
 
 	// Since there's a bit of magic involved in finding these we log them once, at the end.
 	// This also makes it easy to lock the SDK and C++ tools version if you want to do that.
@@ -412,5 +369,5 @@ func SetupMsvcVersion(env *foundation.Vars, msvcVersion *MsvcVersion, useClang b
 		foundation.LogInfof("  VcToolsVersion    : %s", vcToolsVersion) // verbose?
 	}
 
-	return externalEnv, nil
+	return nil
 }

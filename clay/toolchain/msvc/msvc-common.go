@@ -9,7 +9,6 @@ import (
 )
 
 // Visual Studio tooling layout
-
 var vcBinMap = map[WinSupportedArch]map[WinSupportedArch]string{
 	WinArchx86: {WinArchx86: "", WinArchx64: "x86_amd64", WinArchArm: "x86_arm"},
 	WinArchx64: {WinArchx86: "", WinArchx64: "amd64", WinArchArm: "x86_arm"},
@@ -146,49 +145,17 @@ var win10Sdk = []string{
 	"SOFTWARE\\Microsoft\\Windows Kits\\Installed Roots", "KitsRoot10",
 }
 
-/*
-local function get_host_arch()
-  local snative = native.getenv("PROCESSOR_ARCHITECTURE")
-  local swow = native.getenv("PROCESSOR_ARCHITEW6432", "")
-  if snative == "AMD64" or swow == "AMD64" then
-    return "x64"
-  elseif snative == "IA64" or swow == "IA64" then
-    return "itanium";
-  else
-    return "x86"
-  end
-end
-
-function path_combine(path, path_to_append)
-  if path == nil then
-    return path_to_append
-  end
-  if path:find("\\$") then
-    return path .. path_to_append
-  end
-  return path .. "\\" .. path_to_append
-end
-
-function path_it(maybe_list)
-  if type(maybe_list) == "table" then
-    return ipairs(maybe_list)
-  end
-  return ipairs({maybe_list})
-end
-
-*/
-
-func getPreWin10Sdk(sdkVersion string, vsVersion VsVersion, targetArch WinSupportedArch) (string, winSdkDirs) {
+func getPreWin10Sdk(sdkVersion string, vsVersion VsVersion, targetArch WinSupportedArch) (string, winSdkDirs, error) {
 	result := winSdkDirs{}
 
 	sdk, exists := preWin10SdkMap[sdkVersion]
 	if !exists {
-		panic("The requested version of Visual Studio isn't supported")
+		return "", result, fmt.Errorf("the requested version of Visual Studio isn't supported: %s", sdkVersion)
 	}
 
 	sdkRoot, err := foundation.QueryRegistryForStringValue(foundation.RegistryKeyLocalMachine, sdk.regKey, sdk.regValue)
 	if sdkRoot == "" || err != nil {
-		panic("The requested version of the SDK isn't installed")
+		return "", result, fmt.Errorf("the requested version of the SDK isn't installed: %s", sdkVersion)
 	}
 	sdkRoot = strings.ReplaceAll(sdkRoot, "\\+$", "\\")
 
@@ -217,21 +184,21 @@ func getPreWin10Sdk(sdkVersion string, vsVersion VsVersion, targetArch WinSuppor
 		result.libs = append(result.libs, win10SdkRoot+"Lib\\10.0.10150.0\\ucrt\\"+sdkDir.libs[0])
 	}
 
-	return sdkRoot, result
+	return sdkRoot, result, nil
 }
 
-func getWin10Sdk(sdkVersion string, targetArch WinSupportedArch) (string, winSdkDirs) {
+func getWin10Sdk(sdkVersion string, targetArch WinSupportedArch) (string, winSdkDirs, error) {
 	sdkVersion = sdkVersion[2:] // Remove v prefix
+
+	result := winSdkDirs{}
 
 	// This only checks if the windows 10 SDK specifically is installed. A
 	// 'dir exists' method would be needed here to check if a specific SDK
 	// target folder exists.
 	sdkRoot, err := foundation.QueryRegistryForStringValue(foundation.RegistryKeyLocalMachine, win10Sdk[0], win10Sdk[1])
 	if sdkRoot == "" || err != nil {
-		panic("The requested version of the SDK isn't installed")
+		return "", result, fmt.Errorf("The requested version of the SDK isn't installed")
 	}
-
-	result := winSdkDirs{}
 
 	postWin8Sdk := getPostWin8Sdk(targetArch)
 	result.bin = sdkRoot + "bin\\" + postWin8Sdk.bin
@@ -247,74 +214,80 @@ func getWin10Sdk(sdkVersion string, targetArch WinSupportedArch) (string, winSdk
 	result.libs = append(result.libs, sdkDirBaseLib+"ucrt\\"+postWin8Sdk.libs[0])
 	result.libs = append(result.libs, sdkDirBaseLib+"um\\"+postWin8Sdk.libs[0])
 
-	return sdkRoot, result
+	return sdkRoot, result, nil
 }
 
-func getSdk(sdkVersion string, vsVersion VsVersion, targetArch WinSupportedArch) (string, winSdkDirs) {
+func getSdk(sdkVersion string, vsVersion VsVersion, targetArch WinSupportedArch) (string, winSdkDirs, error) {
 	// All versions using v10.0.xxxxx.x use specific releases of the
 	// Win10 SDK. Other versions are assumed to be pre-win10
-	if sdkVersion[:6] == "v10.0." {
+	if strings.HasPrefix(sdkVersion, "v10.0.") {
 		return getWin10Sdk(sdkVersion, targetArch)
 	}
 	return getPreWin10Sdk(sdkVersion, vsVersion, targetArch)
 }
 
 // MsDevSetup represents the installation of Microsoft Visual Studio that was found.
-// type MsDevSetup struct {
-// 	RootPath     string   // The root path of the installation, e.g., "C:\\Program Files (x86)\\Microsoft Visual Studio\\2019\\Community"
-// 	Version      string   // The version of the installation, e.g., "16.0"
-// 	Arch         string   // The architecture of the installation, e.g., "x86", "x64", "arm64"
-// 	BinPath      string   // The path to the bin directory, e.g., RootPath + "\\VC\\Tools\\MSVC\\14.29.30133\\bin\\Hostx64\\x64"
-// 	CCPath       string   // The path to the cl.exe compiler, e.g., RootPath + "\\VC\\Tools\\MSVC\\14.29.30133\\bin\\Hostx64\\x64\\cl.exe"
-// 	CXXPath      string   // The path to the cl.exe compiler, e.g., RootPath + "\\VC\\Tools\\MSVC\\14.29.30133\\bin\\Hostx64\\x64\\cl.exe"
-// 	LIBPath      string   // The path to the lib directory, e.g., RootPath + "\\VC\\Tools\\MSVC\\14.29.30133\\lib\\x64"
-// 	LDPath       string   // The path to the link.exe linker, e.g., RootPath + "\\VC\\Tools\\MSVC\\14.29.30133\\bin\\Hostx64\\x64\\link.exe"
-// 	RCPath       string   // The path to the rc.exe resource compiler, e.g., RootPath + "\\VC\\Tools\\MSVC\\14.29.30133\\bin\\Hostx64\\x64\\rc.exe"
-// 	IncludePaths []string //
-// 	LibraryPaths []string // The paths to the library directories, e.g., RootPath + "\\VC\\Tools\\MSVC\\14.29.30133\\lib\\x64"
-// 	CCOpts       []string // Compiler options, e.g., "/nologo /W3 /O2 /DWIN32 /D_WINDOWS /D_USRDLL /D_MBCS"
-// 	CXXOpts      []string // C++ compiler options, e.g., "/nologo /W3 /O2 /DWIN32 /D_WINDOWS /D_USRDLL /D_MBCS"
-// }
-
 type MsDevSetup struct {
-	CompilerBin   string
-	CcOptions     []string
-	CxxOptions    []string
-	IncludePaths  []string
-	ArchiverBin   string
-	LinkerBin     string
-	Libs          []string
-	LibPath       []string
-	RcBin         string
-	RcOptions     []string
-	VsInstallDir  string
-	VcInstallDir  string
-	DevEnvDir     string
-	WindowsSdkDir string
+	CompilerBin    string
+	CcOptions      []string
+	CxxOptions     []string
+	IncludePaths   []string
+	ArchiverBin    string
+	LinkerBin      string
+	Libs           []string
+	LibPaths       []string
+	RcBin          string
+	RcOptions      []string
+	VcToolsVersion string
+	VsInstallDir   string
+	VcInstallDir   string
+	DevEnvDir      string
+	WindowsSdkDir  string
+	Path           []string
 }
 
-func InitMsvcVisualStudio(version VsVersion, _sdkVersion string, _hostArch WinSupportedArch, _targetArch WinSupportedArch) (*MsDevSetup, error) {
+func NewMsDevSetup() *MsDevSetup {
+	return &MsDevSetup{
+		CompilerBin:   "",
+		CcOptions:     []string{},
+		CxxOptions:    []string{},
+		IncludePaths:  []string{},
+		ArchiverBin:   "",
+		LinkerBin:     "",
+		Libs:          []string{},
+		LibPaths:      []string{},
+		RcBin:         "",
+		RcOptions:     []string{},
+		VsInstallDir:  "",
+		VcInstallDir:  "",
+		DevEnvDir:     "",
+		WindowsSdkDir: "",
+		Path:          []string{},
+	}
+}
+
+func InitMsvcVisualStudio(_vsVersion VsVersion, _sdkVersion string, _hostArch WinSupportedArch, _targetArch WinSupportedArch) (*MsDevSetup, error) {
 	targetArch := getTargetArch(_targetArch)
 
 	sdkVersion := _sdkVersion
 	if sdkVersion == "" {
-		sdkVersion = string(version)
+		sdkVersion = string(_vsVersion)
 	}
 	if sdkVersion, ok := vsSdkMap[sdkVersion]; ok {
 		sdkVersion = string(sdkVersion)
 	}
 
 	// We will find any edition of VS (including Express) here
-	vsRoot, err := foundation.QueryRegistryForStringValue(foundation.RegistryKeyLocalMachine, "SOFTWARE\\Microsoft\\VisualStudio\\SxS\\VS7", string(version))
+	vsRoot, err := foundation.QueryRegistryForStringValue(foundation.RegistryKeyLocalMachine, "SOFTWARE\\Microsoft\\VisualStudio\\SxS\\VS7", string(_vsVersion))
 	if vsRoot == "" || err != nil {
 		// This is necessary for supporting the "Visual C++ Build Tools", which includes only the Compiler & SDK (not Visual Studio)
-		vcRoot, err := foundation.QueryRegistryForStringValue(foundation.RegistryKeyLocalMachine, "SOFTWARE\\Microsoft\\VisualStudio\\SxS\\VC7", string(version))
+		vcRoot, err := foundation.QueryRegistryForStringValue(foundation.RegistryKeyLocalMachine, "SOFTWARE\\Microsoft\\VisualStudio\\SxS\\VC7", string(_vsVersion))
 		if vcRoot != "" && err == nil {
 			vsRoot = strings.ReplaceAll(vcRoot, "\\VC\\$", "\\")
 		}
 	}
 	if vsRoot == "" {
-		return nil, fmt.Errorf("Visual Studio [Version %s] isn't installed. Please use a different Visual Studio version", string(version))
+		return nil, fmt.Errorf("Visual Studio [Version %s] isn't installed. Please use a different Visual Studio version", string(_vsVersion))
 	}
 	vsRoot = strings.TrimSuffix(vsRoot, "\\")
 
@@ -333,34 +306,34 @@ func InitMsvcVisualStudio(version VsVersion, _sdkVersion string, _hostArch WinSu
 	//
 	// Now fix up the SDK
 	//
-	sdkRoot, sdkDirs := getSdk(sdkVersion, version, targetArch)
+	sdkRoot, sdkDirs, err := getSdk(sdkVersion, _vsVersion, targetArch)
 
-	env := &MsDevSetup{}
-	env.WindowsSdkDir = sdkRoot
+	msdev := NewMsDevSetup()
+	msdev.WindowsSdkDir = sdkRoot
 
 	//
 	// Tools
 	//
-	env.CompilerBin = filepath.Join(vcBin, "cl.exe")
-	env.ArchiverBin = filepath.Join(vcBin, "lib.exe")
-	env.LinkerBin = filepath.Join(vcBin, "link.exe")
-	env.RcBin = filepath.Join(sdkDirs.bin, "rc.exe")
+	msdev.CompilerBin = filepath.Join(vcBin, "cl.exe")
+	msdev.ArchiverBin = filepath.Join(vcBin, "lib.exe")
+	msdev.LinkerBin = filepath.Join(vcBin, "link.exe")
+	msdev.RcBin = filepath.Join(sdkDirs.bin, "rc.exe")
 
 	if sdkVersion == "9.0" {
 		// clear the "/nologo" option (it was first added in VS2010)
-		env.RcOptions = []string{}
+		msdev.RcOptions = []string{}
 	}
 
-	if version == "12.0" || version == "14.0" {
+	if _vsVersion == "12.0" || _vsVersion == "14.0" {
 		// Force MSPDBSRV.EXE
-		env.CcOptions = []string{"/FS"}
-		env.CxxOptions = []string{"/FS"}
+		msdev.CcOptions = []string{"/FS"}
+		msdev.CxxOptions = []string{"/FS"}
 	}
 
 	// Wire-up the external environment
-	env.VsInstallDir = vsRoot
-	env.VcInstallDir = vsRoot + "\\VC"
-	env.DevEnvDir = vsRoot + "\\Common7\\IDE"
+	msdev.VsInstallDir = vsRoot
+	msdev.VcInstallDir = vsRoot + "\\VC"
+	msdev.DevEnvDir = vsRoot + "\\Common7\\IDE"
 
 	include := make([]string, 0, len(sdkDirs.includes)+2)
 
@@ -384,25 +357,26 @@ func InitMsvcVisualStudio(version VsVersion, _sdkVersion string, _hostArch WinSu
 	libPaths = append(libPaths, mfcLibPath)
 	libPaths = append(libPaths, vcLib)
 
-	env.IncludePaths = include
+	msdev.IncludePaths = include
 
-	env.Libs = libPaths
-	env.LibPath = libPaths
+	msdev.Libs = libPaths
+	msdev.LibPaths = libPaths
 
 	// Extend PATH with the necessary directories
 	path := make([]string, 0, 5)
 	path = append(path, sdkRoot)
 	path = append(path, vsRoot+"\\Common7\\IDE")
 
-	if _hostArch == WinArchx86 {
+	switch _hostArch {
+	case WinArchx86:
 		path = append(path, vsRoot+"\\VC\\Bin")
-	} else if _hostArch == WinArchx64 {
+	case WinArchx64:
 		path = append(path, vsRoot+"\\VC\\Bin\\amd64")
-	} else if _hostArch == WinArchArm {
+	case WinArchArm:
 		path = append(path, vsRoot+"\\VC\\Bin\\arm")
 	}
 
-	// env.Append("PATH", path...)
+	msdev.Path = path
 
-	return env, nil
+	return msdev, nil
 }
