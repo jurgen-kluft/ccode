@@ -7,6 +7,7 @@ import (
 	"strings"
 
 	"github.com/jurgen-kluft/ccode/clay/toolchain/deptrackr"
+	"github.com/jurgen-kluft/ccode/clay/toolchain/msvc"
 	"github.com/jurgen-kluft/ccode/foundation"
 )
 
@@ -65,6 +66,34 @@ func (cl *WinMsDevCompiler) SetupArgs(_defines []string, _includes []string) {
 		args.Add("/nologo")                    // Suppress display of sign-on banner.
 		args.Add("/diagnostics:column")        // Diagnostics format: prints column information.
 		args.AddWithPrefix("/I", _includes...) // Add include directories.
+
+		if isCpp {
+			if cppOptions, ok := cl.toolChain.Vars.Get("cpp.compiler.options"); ok {
+				for _, opt := range cppOptions {
+					args.Add(opt)
+				}
+			}
+		} else {
+			if cOptions, ok := cl.toolChain.Vars.Get("c.compiler.options"); ok {
+				for _, opt := range cOptions {
+					args.Add(opt)
+				}
+			}
+		}
+
+		if isCpp {
+			if cppIncludes, ok := cl.toolChain.Vars.Get("cpp.compiler.includes"); ok {
+				for _, inc := range cppIncludes {
+					args.Add("/I" + foundation.PathWindowsPath(inc))
+				}
+			}
+		} else {
+			if cIncludes, ok := cl.toolChain.Vars.Get("c.compiler.includes"); ok {
+				for _, inc := range cIncludes {
+					args.Add("/I" + foundation.PathWindowsPath(inc))
+				}
+			}
+		}
 
 		args.Add("/W3") // Set output warning level to 3 (high warnings).
 		args.Add("/WX") // Treat warnings as errors.
@@ -268,21 +297,26 @@ func (l *WinMsDevLinker) Link(inputArchiveAbsFilepaths []string, outputAppRelFil
 	linkerArgs = append(linkerArgs, "/OUT:\""+outputAppRelFilepath+"\"")
 	linkerArgs = append(linkerArgs, "/MAP:"+foundation.FileChangeExtension(outputAppRelFilepath, ".map"))
 
-	// Where do we get this list of libraries from?
+	// TODO Where do we get this list of libraries from?
 	// Note: Could we perhaps scan all the header files that are included for any patterns that
 	//       give us hints about the libraries that are needed?
-	// kernel32.lib
-	// user32.lib
-	// gdi32.lib
-	// winspool.lib
-	// comdlg32.lib
-	// advapi32.lib
-	// shell32.lib
-	// ole32.lib
-	// oleaut32.lib
-	// uuid.lib
-	// odbc32.lib
-	// odbccp32.lib
+	systemLibraries := []string{
+		"kernel32.lib",
+		"user32.lib",
+		"gdi32.lib",
+		"winspool.lib",
+		"comdlg32.lib",
+		"advapi32.lib",
+		"shell32.lib",
+		"ole32.lib",
+		"oleaut32.lib",
+		"uuid.lib",
+		"odbc32.lib",
+		"odbccp32.lib",
+	}
+	for _, systemLib := range systemLibraries {
+		linkerArgs = append(linkerArgs, "\""+systemLib+"\"")
+	}
 
 	for _, archiveFile := range inputArchiveAbsFilepaths {
 		archiveFile = foundation.PathWindowsPath(archiveFile)
@@ -321,34 +355,18 @@ func (t *WinMsdev) NewDependencyTracker(dirpath string) deptrackr.FileTrackr {
 	return nil
 }
 
-// MsDevSetup represents the installation of Microsoft Visual Studio that was found.
-type MsDevSetup struct {
-	RootPath     string   // The root path of the installation, e.g., "C:\\Program Files (x86)\\Microsoft Visual Studio\\2019\\Community"
-	Version      string   // The version of the installation, e.g., "16.0"
-	Arch         string   // The architecture of the installation, e.g., "x86", "x64", "arm64"
-	BinPath      string   // The path to the bin directory, e.g., RootPath + "\\VC\\Tools\\MSVC\\14.29.30133\\bin\\Hostx64\\x64"
-	CCPath       string   // The path to the cl.exe compiler, e.g., RootPath + "\\VC\\Tools\\MSVC\\14.29.30133\\bin\\Hostx64\\x64\\cl.exe"
-	CXXPath      string   // The path to the cl.exe compiler, e.g., RootPath + "\\VC\\Tools\\MSVC\\14.29.30133\\bin\\Hostx64\\x64\\cl.exe"
-	LIBPath      string   // The path to the lib directory, e.g., RootPath + "\\VC\\Tools\\MSVC\\14.29.30133\\lib\\x64"
-	LDPath       string   // The path to the link.exe linker, e.g., RootPath + "\\VC\\Tools\\MSVC\\14.29.30133\\bin\\Hostx64\\x64\\link.exe"
-	RCPath       string   // The path to the rc.exe resource compiler, e.g., RootPath + "\\VC\\Tools\\MSVC\\14.29.30133\\bin\\Hostx64\\x64\\rc.exe"
-	IncludePaths []string //
-	LibraryPaths []string // The paths to the library directories, e.g., RootPath + "\\VC\\Tools\\MSVC\\14.29.30133\\lib\\x64"
-	CCOpts       []string // Compiler options, e.g., "/nologo /W3 /O2 /DWIN32 /D_WINDOWS /D_USRDLL /D_MBCS"
-	CXXOpts      []string // C++ compiler options, e.g., "/nologo /W3 /O2 /DWIN32 /D_WINDOWS /D_USRDLL /D_MBCS"
-}
-
 // --------------------------------------------------------------------------------------------------
 // --------------------------------------------------------------------------------------------------
 // Toolchain for Visual Studio on Windows
 
 func NewWinMsdev(arch string, product string) (t *WinMsdev, err error) {
-	msdevSetup := determineMsDevSetup(arch, product)
+	msdevSetup, err := msvc.InitMsvcVisualStudio(msvc.VsVersion2022, "", msvc.WinArchx64, msvc.WinArchx64)
+	if err != nil {
+		return nil, err
+	}
 	if msdevSetup == nil {
 		return nil, fmt.Errorf("NewWinMsdev is not implemented yet")
 	}
-
-	vars := foundation.NewVars()
 
 	msdevOptions := map[string][]string{
 		"dynamic.debugging":              {"/dynamicdeopt"},       // Enable dynamic debugging; allows for dynamic analysis of the program.
@@ -414,22 +432,21 @@ func NewWinMsdev(arch string, product string) (t *WinMsdev, err error) {
 		"link.multithreaded.debug.exe":   {"/MTd"},                // Generate a debug multithreaded executable file, by using *LIBCMTD.lib*
 	}
 
-	// "NATIVE_SUFFIXES":         {".c", ".cpp", ".cc", ".cxx", ".lib", ".obj", ".res", ".rc"},
-	// "OBJECTSUFFIX":            {".obj"},
-	// "LIBSUFFIX":               {".lib"},
-	// "CC":                      {"cl"},
-	// "CXX":                     {"cl"},
-	// "LIB":                     {"lib"},
-	// "LD":                      {"link"},
-	// "RCCOM":                   {"$(RC)", "$(RCOPTS)", "/fo$(@:b)", "$(_CPPDEFS)", "/i$(CPPPATH:b:q)", "$(b)"},
-	// "CCCOM":                   {"$(CC)", "/c", "@RESPONSE|@|", "$(_CPPDEFS)", "/I$(CPPPATH:b:q)", "/nologo", "$(CCOPTS)", "$(CCOPTS_$(CURRENT_VARIANT:u))", "$(_USE_PCH)", "$(_USE_PDB_CC)", "/Fo$(@:b)", "$(b)"},
-	// "CXXCOM":                  {"$(CC)", "/c", "@RESPONSE|@|", "$(_CPPDEFS)", "/I$(CPPPATH:b:q)", "/nologo", "$(CXXOPTS)", "$(CXXOPTS_$(CURRENT_VARIANT:u))", "$(_USE_PCH)", "$(_USE_PDB_CC)", "/Fo$(@:b)", "$(b)"},
-	// "PCHCOMPILE_CC":           {"$(CC)", "/c", "$(_CPPDEFS)", "/I$(CPPPATH:b:q)", "/nologo", "$(CCOPTS)", "$(CCOPTS_$(CURRENT_VARIANT:u))", "$(_USE_PDB_CC)", "/Yc$(_PCH_HEADER)", "/Fp$(@:i1:b)", "/Fo$(@:i2:b)", "$(b:i1:b)"},
-	// "PCHCOMPILE_CXX":          {"$(CXX)", "/c", "$(_CPPDEFS)", "/I$(CPPPATH:b:q)", "/nologo", "$(CXXOPTS)", "$(CXXOPTS_$(CURRENT_VARIANT:u))", "$(_USE_PDB_CC)", "/Yc$(_PCH_HEADER)", "/Fp$(@:i1:b)", "/Fo$(@:i2:b)", "$(b:i1:b)"},
-	// "PROGCOM":                 {"$(LD)", "/nologo", "@RESPONSE|@|", "$(_USE_PDB_LINK)", "$(PROGOPTS)", "/LIBPATH\\:$(LIBPATH:b:q)", "$(_USE_MODDEF)", "$(LIBS:q)", "/out:$(@:b:q)", "$(b:q:p\n)"},
-	// "LIBCOM":                  {"$(LIB)", "/nologo", "@RESPONSE|@|", "$(LIBOPTS)", "/out:$(@:b:q)", "$(_USE_MODDEF)", "$(b:q:p\n)"},
-	// "SHLIBLINKSUFFIX":         {".lib"},
-	// "SHLIBCOM":                {"$(LD)", "/DLL", "/nologo", "@RESPONSE|@|", "$(_USE_PDB_LINK)", "$(SHLIBOPTS)", "/LIBPATH\\:$(LIBPATH:b:q)", "$(_USE_MODDEF)", "$(LIBS:q)", "/out:$(@:b)", "$(b)"},
+	vars := foundation.NewVars()
+	vars.Set("c.compiler", msdevSetup.CompilerBin)
+	vars.Set("c.compiler.includes", msdevSetup.IncludePaths...)
+	vars.Set("c.compiler.options", msdevSetup.CcOptions...)
+
+	vars.Set("cpp.compiler", msdevSetup.CompilerBin)
+	vars.Set("cpp.compiler.includes", msdevSetup.IncludePaths...)
+	vars.Set("cpp.compiler.options", msdevSetup.CxxOptions...)
+
+	vars.Set("archiver.path", msdevSetup.ArchiverBin)
+	vars.Set("rc.compiler", msdevSetup.RcBin)
+
+	vars.Set("linker.path", msdevSetup.LinkerBin)
+	vars.Set("linker.libraries", msdevSetup.Libs...)
+	vars.Set("linker.library.paths", msdevSetup.LibPath...)
 
 	vars.SetMany(msdevOptions)
 
@@ -438,11 +455,4 @@ func NewWinMsdev(arch string, product string) (t *WinMsdev, err error) {
 		Vars:  vars,
 		Tools: make(map[string]string),
 	}, nil
-}
-
-func determineMsDevSetup(arch string, product string) *MsDevSetup {
-	// This function should determine the installation of Microsoft Visual Studio
-	// and return a MsDevSetup struct with the relevant paths and options.
-	// For now, we return nil to indicate that this is not implemented yet.
-	return nil
 }

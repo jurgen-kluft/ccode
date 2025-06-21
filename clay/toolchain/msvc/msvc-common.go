@@ -10,13 +10,13 @@ import (
 
 // Visual Studio tooling layout
 
-var vc_bin_map = map[winSupportedArch]map[winSupportedArch]string{
-	winArchx86: {winArchx86: "", winArchx64: "x86_amd64", winArchArm: "x86_arm"},
-	winArchx64: {winArchx86: "", winArchx64: "amd64", winArchArm: "x86_arm"},
+var vcBinMap = map[WinSupportedArch]map[WinSupportedArch]string{
+	WinArchx86: {WinArchx86: "", WinArchx64: "x86_amd64", WinArchArm: "x86_arm"},
+	WinArchx64: {WinArchx86: "", WinArchx64: "amd64", WinArchArm: "x86_arm"},
 }
 
-func getVcBin(hostArch, targetArch winSupportedArch) (string, error) {
-	if hostBinMap, exists := vc_bin_map[hostArch]; !exists {
+func getVcBin(hostArch, targetArch WinSupportedArch) (string, error) {
+	if hostBinMap, exists := vcBinMap[hostArch]; !exists {
 		return "", fmt.Errorf("unknown host architecture: %s", hostArch.String())
 	} else if binPath, exists := hostBinMap[targetArch]; !exists {
 		return "", fmt.Errorf("unknown target architecture: %s", targetArch.String())
@@ -25,13 +25,13 @@ func getVcBin(hostArch, targetArch winSupportedArch) (string, error) {
 	}
 }
 
-var vc_lib_map = map[winSupportedArch]map[winSupportedArch]string{
-	winArchx86: {winArchx86: "", winArchx64: "amd64", winArchArm: "arm"},
-	winArchx64: {winArchx86: "", winArchx64: "amd64", winArchArm: "arm"},
+var vcLibMap = map[WinSupportedArch]map[WinSupportedArch]string{
+	WinArchx86: {WinArchx86: "", WinArchx64: "amd64", WinArchArm: "arm"},
+	WinArchx64: {WinArchx86: "", WinArchx64: "amd64", WinArchArm: "arm"},
 }
 
-func getVcLib(hostArch, targetArch winSupportedArch) (string, error) {
-	if hostLibMap, exists := vc_lib_map[hostArch]; !exists {
+func getVcLib(hostArch, targetArch WinSupportedArch) (string, error) {
+	if hostLibMap, exists := vcLibMap[hostArch]; !exists {
 		return "", fmt.Errorf("unknown host architecture: %s", hostArch.String())
 	} else if libPath, exists := hostLibMap[targetArch]; !exists {
 		return "", fmt.Errorf("unknown target architecture: %s", targetArch.String())
@@ -97,15 +97,15 @@ var postWin8SdkArm = winSdkDirs{
 	libs:     []string{"arm"},
 }
 
-func getPostWin8Sdk(arch winSupportedArch) *winSdkDirs {
+func getPostWin8Sdk(arch WinSupportedArch) *winSdkDirs {
 	switch arch {
-	case winArchx86:
+	case WinArchx86:
 		return &postWin8Sdkx86
-	case winArchx64:
+	case WinArchx64:
 		return &postWin8Sdkx64
-	case winArchArm:
+	case WinArchArm:
 		return &postWin8SdkArm
-	case winArchArm64:
+	case WinArchArm64:
 		return &postWin8SdkArm
 	}
 	return &postWin8SdkArm
@@ -178,7 +178,7 @@ end
 
 */
 
-func getPreWin10Sdk(sdkVersion string, vsVersion vsVersion, targetArch winSupportedArch) (string, winSdkDirs) {
+func getPreWin10Sdk(sdkVersion string, vsVersion VsVersion, targetArch WinSupportedArch) (string, winSdkDirs) {
 	result := winSdkDirs{}
 
 	sdk, exists := preWin10SdkMap[sdkVersion]
@@ -220,7 +220,7 @@ func getPreWin10Sdk(sdkVersion string, vsVersion vsVersion, targetArch winSuppor
 	return sdkRoot, result
 }
 
-func getWin10Sdk(sdkVersion string, vsVersion vsVersion, targetArch winSupportedArch) (string, winSdkDirs) {
+func getWin10Sdk(sdkVersion string, targetArch WinSupportedArch) (string, winSdkDirs) {
 	sdkVersion = sdkVersion[2:] // Remove v prefix
 
 	// This only checks if the windows 10 SDK specifically is installed. A
@@ -250,41 +250,53 @@ func getWin10Sdk(sdkVersion string, vsVersion vsVersion, targetArch winSupported
 	return sdkRoot, result
 }
 
-func getSdk(sdkVersion string, vsVersion vsVersion, targetArch winSupportedArch) (string, winSdkDirs) {
+func getSdk(sdkVersion string, vsVersion VsVersion, targetArch WinSupportedArch) (string, winSdkDirs) {
 	// All versions using v10.0.xxxxx.x use specific releases of the
 	// Win10 SDK. Other versions are assumed to be pre-win10
 	if sdkVersion[:6] == "v10.0." {
-		return getWin10Sdk(sdkVersion, vsVersion, targetArch)
+		return getWin10Sdk(sdkVersion, targetArch)
 	}
 	return getPreWin10Sdk(sdkVersion, vsVersion, targetArch)
 }
 
+// MsDevSetup represents the installation of Microsoft Visual Studio that was found.
+// type MsDevSetup struct {
+// 	RootPath     string   // The root path of the installation, e.g., "C:\\Program Files (x86)\\Microsoft Visual Studio\\2019\\Community"
+// 	Version      string   // The version of the installation, e.g., "16.0"
+// 	Arch         string   // The architecture of the installation, e.g., "x86", "x64", "arm64"
+// 	BinPath      string   // The path to the bin directory, e.g., RootPath + "\\VC\\Tools\\MSVC\\14.29.30133\\bin\\Hostx64\\x64"
+// 	CCPath       string   // The path to the cl.exe compiler, e.g., RootPath + "\\VC\\Tools\\MSVC\\14.29.30133\\bin\\Hostx64\\x64\\cl.exe"
+// 	CXXPath      string   // The path to the cl.exe compiler, e.g., RootPath + "\\VC\\Tools\\MSVC\\14.29.30133\\bin\\Hostx64\\x64\\cl.exe"
+// 	LIBPath      string   // The path to the lib directory, e.g., RootPath + "\\VC\\Tools\\MSVC\\14.29.30133\\lib\\x64"
+// 	LDPath       string   // The path to the link.exe linker, e.g., RootPath + "\\VC\\Tools\\MSVC\\14.29.30133\\bin\\Hostx64\\x64\\link.exe"
+// 	RCPath       string   // The path to the rc.exe resource compiler, e.g., RootPath + "\\VC\\Tools\\MSVC\\14.29.30133\\bin\\Hostx64\\x64\\rc.exe"
+// 	IncludePaths []string //
+// 	LibraryPaths []string // The paths to the library directories, e.g., RootPath + "\\VC\\Tools\\MSVC\\14.29.30133\\lib\\x64"
+// 	CCOpts       []string // Compiler options, e.g., "/nologo /W3 /O2 /DWIN32 /D_WINDOWS /D_USRDLL /D_MBCS"
+// 	CXXOpts      []string // C++ compiler options, e.g., "/nologo /W3 /O2 /DWIN32 /D_WINDOWS /D_USRDLL /D_MBCS"
+// }
+
 type MsDevSetup struct {
-	ClBin         string
-	LibBin        string
-	LdBin         string
-	RcBin         string
-	RcOptions     []string
+	CompilerBin   string
 	CcOptions     []string
 	CxxOptions    []string
+	IncludePaths  []string
+	ArchiverBin   string
+	LinkerBin     string
+	Libs          []string
+	LibPath       []string
+	RcBin         string
+	RcOptions     []string
 	VsInstallDir  string
 	VcInstallDir  string
 	DevEnvDir     string
 	WindowsSdkDir string
-	IncludePaths  []string
-	Libs          []string
-	LibPath       []string
 }
 
-func InitMsvcVisualStudio(version vsVersion, options *foundation.Vars) (*MsDevSetup, error) {
-	hostArch := getHostArch(options)
-	if hostArch != "windows" {
-		return nil, fmt.Errorf("the msvc toolset only works on windows hosts, but got %s", hostArch)
-	}
+func InitMsvcVisualStudio(version VsVersion, _sdkVersion string, _hostArch WinSupportedArch, _targetArch WinSupportedArch) (*MsDevSetup, error) {
+	targetArch := getTargetArch(_targetArch)
 
-	targetArch := getTargetArch(options)
-
-	sdkVersion := options.GetFirstOrEmpty("SdkVersion")
+	sdkVersion := _sdkVersion
 	if sdkVersion == "" {
 		sdkVersion = string(version)
 	}
@@ -306,13 +318,13 @@ func InitMsvcVisualStudio(version vsVersion, options *foundation.Vars) (*MsDevSe
 	}
 	vsRoot = strings.TrimSuffix(vsRoot, "\\")
 
-	vcBin, err := getVcBin(hostArch, targetArch)
+	vcBin, err := getVcBin(_hostArch, targetArch)
 	if err != nil {
 		return nil, err
 	}
 	vcBin = vsRoot + "\\vc\\bin\\" + vcBin
 
-	vcLib, err := getVcLib(hostArch, targetArch)
+	vcLib, err := getVcLib(_hostArch, targetArch)
 	if err != nil {
 		return nil, err
 	}
@@ -329,9 +341,9 @@ func InitMsvcVisualStudio(version vsVersion, options *foundation.Vars) (*MsDevSe
 	//
 	// Tools
 	//
-	env.ClBin = filepath.Join(vcBin, "cl.exe")
-	env.LibBin = filepath.Join(vcBin, "lib.exe")
-	env.LdBin = filepath.Join(vcBin, "link.exe")
+	env.CompilerBin = filepath.Join(vcBin, "cl.exe")
+	env.ArchiverBin = filepath.Join(vcBin, "lib.exe")
+	env.LinkerBin = filepath.Join(vcBin, "link.exe")
 	env.RcBin = filepath.Join(sdkDirs.bin, "rc.exe")
 
 	if sdkVersion == "9.0" {
@@ -382,11 +394,11 @@ func InitMsvcVisualStudio(version vsVersion, options *foundation.Vars) (*MsDevSe
 	path = append(path, sdkRoot)
 	path = append(path, vsRoot+"\\Common7\\IDE")
 
-	if hostArch == winArchx86 {
+	if _hostArch == WinArchx86 {
 		path = append(path, vsRoot+"\\VC\\Bin")
-	} else if hostArch == winArchx64 {
+	} else if _hostArch == WinArchx64 {
 		path = append(path, vsRoot+"\\VC\\Bin\\amd64")
-	} else if hostArch == winArchArm {
+	} else if _hostArch == WinArchArm {
 		path = append(path, vsRoot+"\\VC\\Bin\\arm")
 	}
 

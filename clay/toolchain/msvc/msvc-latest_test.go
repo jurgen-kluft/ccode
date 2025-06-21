@@ -10,10 +10,10 @@ import (
 func TestSetupMsvcVersion(t *testing.T) {
 
 	env := foundation.NewVars()
-	options := foundation.NewVars()
-	extra := foundation.NewVars()
 
-	externalEnv, err := SetupMsvcVersion(env, options, extra)
+	msvcVersion := NewMsvcVersion()
+
+	externalEnv, err := SetupMsvcVersion(env, msvcVersion, false)
 	if err != nil {
 		t.Fatal(err)
 	}

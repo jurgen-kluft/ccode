@@ -6,7 +6,7 @@ import (
 )
 
 func TestWindowsSDK(t *testing.T) {
-	sdkDir, sdkVersion, err := findWindowsSDK("", Desktop)
+	sdkDir, sdkVersion, err := findWindowsSDK("", winAppDesktop)
 	if err != nil {
 		t.Fatalf("Failed to create Windows SDK: %v", err)
 	}

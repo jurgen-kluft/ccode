@@ -26,7 +26,7 @@ func findWindowsSDK(targetWinsdkVersion string, winAppPlatform winAppPlatform) (
 
 	// Due to the SDK installer changes beginning with the 10.0.15063.0
 	checkFile := "winsdkver.h"
-	if winAppPlatform == UWP {
+	if winAppPlatform == winAppUWP {
 		checkFile = "Windows.h"
 	}
 
