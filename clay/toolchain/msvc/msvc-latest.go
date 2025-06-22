@@ -97,18 +97,18 @@ var supported_arch_mappings = map[string]WinSupportedArch{
 	"amd64": WinArchx64,
 }
 
-type winAppPlatform string
+type WinAppPlatform string
 
 const (
-	winAppDesktop winAppPlatform = "Desktop" // default
-	winAppUWP     winAppPlatform = "UWP"     // Universal Windows Platform
-	winAppOneCore winAppPlatform = "OneCore" // OneCore (Windows 10, Windows 11, Xbox, HoloLens)
+	WinAppDesktop WinAppPlatform = "Desktop" // default
+	WinAppUWP     WinAppPlatform = "UWP"     // Universal Windows Platform
+	WinAppOneCore WinAppPlatform = "OneCore" // OneCore (Windows 10, Windows 11, Xbox, HoloLens)
 )
 
-var supported_app_platforms = map[string]winAppPlatform{
-	"desktop": winAppDesktop,
-	"uwp":     winAppUWP,
-	"onecore": winAppOneCore,
+var supported_app_platforms = map[string]WinAppPlatform{
+	"desktop": WinAppDesktop,
+	"uwp":     WinAppUWP,
+	"onecore": WinAppOneCore,
 }
 
 func getArch(arch WinSupportedArch) WinSupportedArch {
@@ -147,7 +147,23 @@ func getTargetArch(targetArch WinSupportedArch) WinSupportedArch {
 	return getArch(targetArch)
 }
 
-func findVcTools(vsPath string, VsVersion VsVersion, vsProduct vsProduct, targetVcToolsVersion string, searchSet []string) (string, string, string, error) {
+type VcTools struct {
+	vsInstallDir   string
+	vcInstallDir   string
+	vcToolsVersion string
+}
+
+type InstalledVcTools struct {
+	vcTools []*VcTools
+}
+
+func NewInstalledVcTools() *InstalledVcTools {
+	return &InstalledVcTools{
+		vcTools: []*VcTools{},
+	}
+}
+
+func (v *InstalledVcTools) find(vsPath string, VsVersion VsVersion, vsProduct vsProduct, targetVcToolsVersion string) *VcTools {
 	if vsPath == "" {
 		if vsProduct == vsProductBuildTools {
 			vsPath = vs_default_path
@@ -181,15 +197,22 @@ func findVcTools(vsPath string, VsVersion VsVersion, vsProduct vsProduct, target
 		vcToolsVersion = targetVcToolsVersion
 	}
 
+	vcTools := &VcTools{
+		vsInstallDir:   vsInstallDir,
+		vcInstallDir:   vcInstallDir,
+		vcToolsVersion: vcToolsVersion,
+	}
+	v.vcTools = append(v.vcTools, vcTools)
+
 	if vcToolsVersion != "" {
 		testPath := filepath.Join(vcInstallDir, "Tools", "MSVC", vcToolsVersion, "include", "vcruntime.h")
 		if foundation.FileExists(testPath) {
-			return vsInstallDir, vcInstallDir, vcToolsVersion, nil
+			v.vcTools = append(v.vcTools, vcTools)
+			return vcTools
 		}
 	}
 
-	searchSet = append(searchSet, vsInstallDir)
-	return "", "", "", fmt.Errorf("VC tools version '%s' not found in %s", vcToolsVersion, vsInstallDir)
+	return nil
 }
 
 type MsvcVersion struct {
@@ -198,7 +221,7 @@ type MsvcVersion struct {
 	vsProduct            vsProduct        // default is BuildTools
 	hostArch             WinSupportedArch // default is x64
 	targetArch           WinSupportedArch // default is x64
-	winAppPlatform       winAppPlatform   // default is Desktop
+	WinAppPlatform       WinAppPlatform   // default is Desktop
 	targetWinsdkVersion  string           // Windows SDK version
 	targetVcToolsVersion string           // Visual C++ tools version
 	atlMfc               string
@@ -211,7 +234,7 @@ func NewMsvcVersion() *MsvcVersion {
 		vsProduct:            vsProductBuildTools,
 		hostArch:             getHostArch(""),
 		targetArch:           getTargetArch(""),
-		winAppPlatform:       winAppDesktop,
+		WinAppPlatform:       WinAppDesktop,
 		targetWinsdkVersion:  "",
 		targetVcToolsVersion: "",
 		atlMfc:               "false", // default is false
@@ -220,18 +243,11 @@ func NewMsvcVersion() *MsvcVersion {
 
 func setupMsvcVersion(msdev *MsDevSetup, msvcVersion *MsvcVersion, useClang bool) error {
 
-	// These control the environment
-
 	if vsDefaultPath, ok := vs_default_paths[msvcVersion.VsVersion]; !ok {
 		foundation.LogWarnf("Visual Studio %s has not been tested and might not work out of the box", msvcVersion.VsVersion.String())
 	} else if msvcVersion.vsPath == "" {
 		msvcVersion.vsPath = vsDefaultPath
 	}
-
-	envPath := msdev.Path
-	envInclude := msdev.IncludePaths
-	envLib := msdev.Libs
-	envLibPaths := msdev.LibPaths
 
 	// ------------------
 	// Windows SDK
@@ -239,59 +255,70 @@ func setupMsvcVersion(msdev *MsDevSetup, msvcVersion *MsvcVersion, useClang bool
 
 	// file:///C:/Program%20Files%20(x86)/Microsoft%20Visual%20Studio/2022/BuildTools/Common7/Tools/vsdevcmd/core/winsdk.bat#L513
 
-	winsdkDir, winsdkVersion, err := findWindowsSDK(msvcVersion.targetWinsdkVersion, msvcVersion.winAppPlatform)
+	winSdk, err := FindWindowsSDK(msvcVersion.WinAppPlatform)
 	if err != nil {
 		return err
 	}
+	winsdkDir := winSdk.Dir
+	winsdkVersion := msvcVersion.targetWinsdkVersion
+	if len(winsdkVersion) > 0 && !winSdk.HasVersion(winsdkVersion) {
+		return fmt.Errorf("Windows SDK version %s not found in %s", winsdkVersion, winSdk.Dir)
+	} else {
+		winsdkVersion = winSdk.GetLatestVersion()
+	}
 
-	envPath = append(envPath, filepath.Join(winsdkDir, "bin", winsdkVersion, msvcVersion.hostArch.String()))
+	msdev.Path = append(msdev.Path, filepath.Join(winsdkDir, "bin", winsdkVersion, msvcVersion.hostArch.String()))
 
-	envInclude = append(envInclude, filepath.Join(winsdkDir, "Include", winsdkVersion, "shared"))
-	envInclude = append(envInclude, filepath.Join(winsdkDir, "Include", winsdkVersion, "um"))
-	envInclude = append(envInclude, filepath.Join(winsdkDir, "Include", winsdkVersion, "winrt")) // WinRT (used by DirectX 12 headers)
-
-	envLib = append(envLib, filepath.Join(winsdkDir, "Lib", winsdkVersion, "um", msvcVersion.targetArch.String()))
+	msdev.IncludePaths = append(msdev.IncludePaths, filepath.Join(winsdkDir, "Include", winsdkVersion, "shared"))
+	msdev.IncludePaths = append(msdev.IncludePaths, filepath.Join(winsdkDir, "Include", winsdkVersion, "um"))
+	msdev.IncludePaths = append(msdev.IncludePaths, filepath.Join(winsdkDir, "Include", winsdkVersion, "winrt")) // WinRT (used by DirectX 12 headers)
 
 	// We assume that the Universal CRT isn't loaded from a different directory
 	ucrtSdkDir := winsdkDir
 	ucrtVersion := winsdkVersion
 
-	envInclude = append(envInclude, filepath.Join(ucrtSdkDir, "Include", ucrtVersion, "ucrt"))
+	msdev.IncludePaths = append(msdev.IncludePaths, filepath.Join(ucrtSdkDir, "Include", ucrtVersion, "ucrt"))
 
-	envLib = append(envLib, filepath.Join(ucrtSdkDir, "Lib", ucrtVersion, "ucrt", msvcVersion.targetArch.String()))
+	msdev.Libs = append(msdev.Libs, filepath.Join(winsdkDir, "Lib", winsdkVersion, "um", msvcVersion.targetArch.String()))
+	msdev.Libs = append(msdev.Libs, filepath.Join(ucrtSdkDir, "Lib", ucrtVersion, "ucrt", msvcVersion.targetArch.String()))
 
 	// Skip if the Universal CRT is loaded from the same path as the Windows SDK
 	if ucrtSdkDir != winsdkDir || ucrtVersion != winsdkVersion {
-		envLib = append(envLib, filepath.Join(ucrtSdkDir, "Lib", ucrtVersion, "um", msvcVersion.targetArch.String()))
+		msdev.Libs = append(msdev.Libs, filepath.Join(ucrtSdkDir, "Lib", ucrtVersion, "um", msvcVersion.targetArch.String()))
 	}
 
 	// -------------------
 	// Visual C++
 	// -------------------
 
-	searchSet := []string{}
-
-	vsInstallDir, vcInstallDir, vcToolsVersion, err := findVcTools(msvcVersion.vsPath, msvcVersion.VsVersion, msvcVersion.vsProduct, msvcVersion.targetVcToolsVersion, searchSet)
-	if err != nil {
+	installedVcTools := NewInstalledVcTools()
+	vcTools := installedVcTools.find(msvcVersion.vsPath, msvcVersion.VsVersion, msvcVersion.vsProduct, msvcVersion.targetVcToolsVersion)
+	if vcTools == nil {
 		for _, product := range vsProducts {
 			if product == msvcVersion.vsProduct {
 				continue // Skip the product we already have done
 			}
-			vsInstallDir, vcInstallDir, vcToolsVersion, err = findVcTools(msvcVersion.vsPath, msvcVersion.VsVersion, product, msvcVersion.targetVcToolsVersion, searchSet)
-			if err == nil {
+			vcTools = installedVcTools.find(msvcVersion.vsPath, msvcVersion.VsVersion, product, msvcVersion.targetVcToolsVersion)
+			if vcTools != nil {
 				msvcVersion.vsProduct = product
 				break
 			}
 		}
 	}
 
-	if vcToolsVersion == "" {
+	if vcTools == nil {
 		vcProduct := "Visual C++ tools"
 		vcProductVersionDisclaimer := ""
 		if msvcVersion.targetVcToolsVersion != "" {
 			vcProduct = fmt.Sprintf("%s [Version %s]", vcProduct, msvcVersion.targetVcToolsVersion)
 			vcProductVersionDisclaimer = "Note that a specific version of the Visual C++ tools has been requested. Remove the setting VcToolsVersion if this was undesirable\n"
 		}
+
+		searchSet := []string{}
+		for _, tools := range installedVcTools.vcTools {
+			searchSet = append(searchSet, tools.vsInstallDir)
+		}
+
 		vsDefaultPath := strings.ReplaceAll(vs_default_paths[vsDefaultVersion], "\\", "\\\\")
 		foundation.LogFatalf("%s not found\n\n  Cannot find %s in any of the following locations:\n    %s\n\n  Check that 'Desktop development with C++' is installed together with the product version in Visual Studio Installer\n\n  If you want to use a specific version of Visual Studio you can try setting Path, Version and Product like this:\n\n  Tools = {\n    { \"msvc-vs-latest\", Path = \"%s\", Version = \"%s\", Product = \"%s\" }\n  }\n\n  %s",
 			vcProduct, vcProduct, strings.Join(searchSet, "\n    "), vsDefaultPath, vsDefaultVersion, vsProducts[0], vcProductVersionDisclaimer)
@@ -300,49 +327,51 @@ func setupMsvcVersion(msdev *MsDevSetup, msvcVersion *MsvcVersion, useClang bool
 	// to do: extension SDKs?
 
 	// VCToolsInstallDir
-	vcToolsDir := filepath.Join(vcInstallDir, "Tools", "MSVC", vcToolsVersion)
+	vcToolsDir := filepath.Join(vcTools.vcInstallDir, "Tools", "MSVC", vcTools.vcToolsVersion)
 
 	// VCToolsRedistDir
 	// Ignored for now. Don't have a use case for this
 
 	// file:///C:/Program%20Files%20(x86)/Microsoft%20Visual%20Studio/2022/BuildTools/Common7/Tools/vsdevcmd/ext/vcvars.bat#L707
 
-	envPath = append(envPath, filepath.Join(vsInstallDir, "Common7", "IDE", "VC", "VCPackages"))
+	msdev.Path = append(msdev.Path, filepath.Join(vcTools.vsInstallDir, "Common7", "IDE", "VC", "VCPackages"))
 
 	// file:///C:/Program%20Files%20(x86)/Microsoft%20Visual%20Studio/2022/BuildTools/Common7/Tools/vsdevcmd/ext/vcvars.bat#L761
 
-	envPath = append(envPath, filepath.Join(vcToolsDir, "bin", "Host"+msvcVersion.hostArch.String(), msvcVersion.targetArch.String()))
+	msdev.Path = append(msdev.Path, filepath.Join(vcToolsDir, "bin", "Host"+msvcVersion.hostArch.String(), msvcVersion.targetArch.String()))
 
 	// to do: IFCPATH? C++ header/units and/or modules?
 	// to do: LIBPATH? Fuse with #using C++/CLI
 	// to do: https://learn.microsoft.com/en-us/windows/uwp/cpp-and-winrt-apis/intro-to-using-cpp-with-winrt#sdk-support-for-cwinrt
 
-	envInclude = append(envInclude, filepath.Join(vsInstallDir, "VC", "Auxiliary", "VS", "include"))
-	envInclude = append(envInclude, filepath.Join(vcToolsDir, "include"))
+	msdev.IncludePaths = append(msdev.IncludePaths, filepath.Join(vcTools.vsInstallDir, "VC", "Auxiliary", "VS", "include"))
+	msdev.IncludePaths = append(msdev.IncludePaths, filepath.Join(vcToolsDir, "include"))
 
-	if msvcVersion.winAppPlatform == "Desktop" {
-		envLib = append(envLib, filepath.Join(vcToolsDir, "lib", msvcVersion.targetArch.String()))
+	switch msvcVersion.WinAppPlatform {
+	case "Desktop":
+		msdev.Libs = append(msdev.Libs, filepath.Join(vcToolsDir, "lib", msvcVersion.targetArch.String()))
 		if msvcVersion.atlMfc == "true" {
-			envInclude = append(envInclude, filepath.Join(vcToolsDir, "atlmfc", "include"))
-			envLib = append(envLib, filepath.Join(vcToolsDir, "atlmfc", "lib", msvcVersion.targetArch.String()))
+			msdev.IncludePaths = append(msdev.IncludePaths, filepath.Join(vcToolsDir, "atlmfc", "include"))
+			msdev.Libs = append(msdev.Libs, filepath.Join(vcToolsDir, "atlmfc", "lib", msvcVersion.targetArch.String()))
 		}
-	} else if msvcVersion.winAppPlatform == "UWP" {
+	case "UWP":
 		// file:///C:/Program%20Files%20(x86)/Microsoft%20Visual%20Studio/2022/BuildTools/Common7/Tools/vsdevcmd/ext/vcvars.bat#825
-		envLib = append(envLib, filepath.Join(vcToolsDir, "store", msvcVersion.targetArch.String()))
-	} else if msvcVersion.winAppPlatform == "OneCore" {
+		msdev.Libs = append(msdev.Libs, filepath.Join(vcToolsDir, "store", msvcVersion.targetArch.String()))
+	case "OneCore":
 		// file:///C:/Program%20Files%20(x86)/Microsoft%20Visual%20Studio/2022/BuildTools/Common7/Tools/vsdevcmd/ext/vcvars.bat#830
-		envLib = append(envLib, filepath.Join(vcToolsDir, "lib", "onecore", msvcVersion.targetArch.String()))
+		msdev.Libs = append(msdev.Libs, filepath.Join(vcToolsDir, "lib", "onecore", msvcVersion.targetArch.String()))
 	}
 
 	if useClang {
 		// file:///C:/Program%20Files%20(x86)/Microsoft%20Visual%20Studio/2022/BuildTools/VC/Tools/Llvm
-		if msvcVersion.targetArch == WinArchx64 {
-			envPath = append(envPath, filepath.Join(vsInstallDir, "VC", "Tools", "Llvm", "x64", "bin"))
-		} else if msvcVersion.targetArch == WinArchArm64 {
-			envPath = append(envPath, filepath.Join(vsInstallDir, "VC", "Tools", "Llvm", "ARM64", "bin"))
-		} else if msvcVersion.targetArch == WinArchx86 {
-			envPath = append(envPath, filepath.Join(vsInstallDir, "VC", "Tools", "Llvm", "bin"))
-		} else {
+		switch msvcVersion.targetArch {
+		case WinArchx64:
+			msdev.Path = append(msdev.Path, filepath.Join(vcTools.vsInstallDir, "VC", "Tools", "Llvm", "x64", "bin"))
+		case WinArchArm64:
+			msdev.Path = append(msdev.Path, filepath.Join(vcTools.vsInstallDir, "VC", "Tools", "Llvm", "ARM64", "bin"))
+		case WinArchx86:
+			msdev.Path = append(msdev.Path, filepath.Join(vcTools.vsInstallDir, "VC", "Tools", "Llvm", "bin"))
+		default:
 			return fmt.Errorf("msvc-clang: target architecture '%s' not supported", msvcVersion.targetArch.String())
 		}
 	}
@@ -352,13 +381,9 @@ func setupMsvcVersion(msdev *MsDevSetup, msvcVersion *MsvcVersion, useClang bool
 	msdev.CcOptions = []string{"/FS"} // This is the C compiler option
 	msdev.CxxOptions = []string{"/FS"}
 
-	msdev.VcToolsVersion = vcToolsVersion
-	msdev.VsInstallDir = vsInstallDir
-	msdev.VcInstallDir = vcInstallDir
-	msdev.IncludePaths = envInclude
-	msdev.Libs = envLib
-	msdev.LibPaths = envLibPaths
-	msdev.Path = envPath
+	msdev.VcToolsVersion = vcTools.vcToolsVersion
+	msdev.VsInstallDir = vcTools.vsInstallDir
+	msdev.VcInstallDir = vcTools.vcInstallDir
 
 	// Since there's a bit of magic involved in finding these we log them once, at the end.
 	// This also makes it easy to lock the SDK and C++ tools version if you want to do that.
@@ -366,7 +391,7 @@ func setupMsvcVersion(msdev *MsDevSetup, msvcVersion *MsvcVersion, useClang bool
 		foundation.LogInfof("  WindowsSdkVersion : %s", winsdkVersion) // verbose?
 	}
 	if msvcVersion.targetVcToolsVersion == "" {
-		foundation.LogInfof("  VcToolsVersion    : %s", vcToolsVersion) // verbose?
+		foundation.LogInfof("  VcToolsVersion    : %s", vcTools.vcToolsVersion) // verbose?
 	}
 
 	return nil

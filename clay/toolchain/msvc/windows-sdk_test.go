@@ -6,11 +6,13 @@ import (
 )
 
 func TestWindowsSDK(t *testing.T) {
-	sdkDir, sdkVersion, err := findWindowsSDK("", winAppDesktop)
-	if err != nil {
+	winSDK, err := FindWindowsSDK(WinAppDesktop)
+	if err != nil || winSDK == nil {
 		t.Fatalf("Failed to create Windows SDK: %v", err)
 	}
 
-	fmt.Printf("Windows SDK Directory: %s\n", sdkDir)
-	fmt.Printf("Windows SDK Version: %s\n", sdkVersion)
+	fmt.Printf("Windows SDK Directory: %s\n", winSDK.Dir)
+	for _, version := range winSDK.Versions {
+		fmt.Printf("Available Windows SDK Version: %s\n", version)
+	}
 }

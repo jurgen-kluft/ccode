@@ -9,8 +9,33 @@ import (
 	"github.com/jurgen-kluft/ccode/foundation"
 )
 
+type WindowsSDK struct {
+	Dir      string   // Directory of the Windows SDK
+	Versions []string // List of available Windows SDK versions
+}
+
+func newWindowsSDK(dir string, versions []string) *WindowsSDK {
+	sdk := &WindowsSDK{
+		Dir:      dir,
+		Versions: versions,
+	}
+	slices.Sort(sdk.Versions)
+	return sdk
+}
+
+func (sdk *WindowsSDK) HasVersion(version string) bool {
+	return slices.Contains(sdk.Versions, version)
+}
+
+func (sdk *WindowsSDK) GetLatestVersion() string {
+	if len(sdk.Versions) == 0 {
+		return ""
+	}
+	return sdk.Versions[len(sdk.Versions)-1]
+}
+
 // From Visual Studio 2017 onwards, this is the recommended way to find the Windows SDK.
-func findWindowsSDK(targetWinsdkVersion string, winAppPlatform winAppPlatform) (string, string, error) {
+func FindWindowsSDK(winAppPlatform WinAppPlatform) (*WindowsSDK, error) {
 	// file:///C:/Program%20Files%20(x86)/Microsoft%20Visual%20Studio/2022/BuildTools/Common7/Tools/vsdevcmd/core/winsdk.bat#L63
 	//   HKLM\SOFTWARE\Wow6432Node
 	//   HKCU\SOFTWARE\Wow6432Node (ignored)
@@ -19,20 +44,20 @@ func findWindowsSDK(targetWinsdkVersion string, winAppPlatform winAppPlatform) (
 	winsdkKey := `SOFTWARE\Wow6432Node\Microsoft\Microsoft SDKs\Windows\\v10.0`
 	winsdkDir, err := foundation.QueryRegistryForStringValue(foundation.RegistryKeyLocalMachine, winsdkKey, "InstallationFolder")
 	if err != nil {
-		return "", "", err
+		return nil, err
 	}
 
 	winsdkVersions := []string{}
 
 	// Due to the SDK installer changes beginning with the 10.0.15063.0
 	checkFile := "winsdkver.h"
-	if winAppPlatform == winAppUWP {
+	if winAppPlatform == WinAppUWP {
 		checkFile = "Windows.h"
 	}
 
 	dirs, err := foundation.DirList(filepath.Join(winsdkDir, "Include"))
 	if err != nil {
-		return "", "", fmt.Errorf("failed to list Windows SDK include directory: %v", err)
+		return nil, fmt.Errorf("failed to list Windows SDK include directory: %v", err)
 	}
 
 	for _, winsdkVersion := range dirs {
@@ -45,14 +70,8 @@ func findWindowsSDK(targetWinsdkVersion string, winAppPlatform winAppPlatform) (
 	}
 
 	if len(winsdkVersions) == 0 {
-		return "", "", fmt.Errorf("no Windows SDK versions found in %s", winsdkDir)
+		return nil, fmt.Errorf("no Windows SDK versions found in %s", winsdkDir)
 	}
 
-	if targetWinsdkVersion != "" {
-		if slices.Contains(winsdkVersions, targetWinsdkVersion) {
-			return winsdkDir, targetWinsdkVersion, nil
-		}
-		return "", "", fmt.Errorf("Windows SDK version '%s' not found. Available versions: %s", targetWinsdkVersion, strings.Join(winsdkVersions, ", "))
-	}
-	return winsdkDir, winsdkVersions[len(winsdkVersions)-1], nil // latest
+	return newWindowsSDK(winsdkDir, slices.Clip(winsdkVersions)), nil
 }
