@@ -69,15 +69,11 @@ func (cl *WinMsDevCompiler) SetupArgs(_defines []string, _includes []string) {
 
 		if isCpp {
 			if cppOptions, ok := cl.toolChain.Vars.Get("cpp.compiler.options"); ok {
-				for _, opt := range cppOptions {
-					args.Add(opt)
-				}
+				args.Add(cppOptions...)
 			}
 		} else {
 			if cOptions, ok := cl.toolChain.Vars.Get("c.compiler.options"); ok {
-				for _, opt := range cOptions {
-					args.Add(opt)
-				}
+				args.Add(cOptions...)
 			}
 		}
 
@@ -103,11 +99,13 @@ func (cl *WinMsDevCompiler) SetupArgs(_defines []string, _includes []string) {
 			args.Add("/Od")  // Disable optimizations for debugging.
 			args.Add("/Zi")  // Generate complete debugging information.
 			args.Add("/Oy-") // Do not omit frame pointer.
+			args.Add("/MTd") // Use the multithreaded debug version of the C runtime library.
 		} else {
 			args.Add("/O2")  // Optimize for speed.
 			args.Add("/Ob2") // Enable inline expansion for functions that are small and frequently called.
 			args.Add("/Oi")  // Enable intrinsic functions.
 			args.Add("/Oy")  // Omit frame pointer for functions that do not require one.
+			args.Add("/MT")  // Use the multithreaded version of the C runtime library.
 		}
 
 		args.AddWithPrefix("/D", _defines...)
@@ -119,7 +117,6 @@ func (cl *WinMsDevCompiler) SetupArgs(_defines []string, _includes []string) {
 			args.Add("/EHsc") // Enable standard C++ exception handling.
 		}
 
-		args.Add("/MTd")        // Use the multithreaded debug version of the C runtime library.
 		args.Add("/fp:precise") // Floating-point model: precise.
 		args.Add("/Zc:wchar_t") // Treats wchar_t as a built-in type.
 
@@ -156,12 +153,19 @@ func (cl *WinMsDevCompiler) Compile(sourceAbsFilepaths []string, objRelFilepaths
 		compilerPath := cl.cppCompilerPath
 		compilerArgs := cl.cppArgs.Args
 
+		srcDir = foundation.PathWindowsPath(srcDir)
 		if len(srcDir) > 0 {
-			compilerArgs = append(compilerArgs, "/Fo\""+foundation.PathWindowsPath(srcDir)+"\"")
+			compilerArgs = append(compilerArgs, "/Fo\""+srcDir+"\"")
 		}
+
+		compilerArgs = append(compilerArgs, "/sourceDependencies")
+		compilerArgs = append(compilerArgs, srcDir)
+
+		configStr := cl.config.Config.AsString()
 		for _, srcFile := range srcFiles {
-			compilerArgs = append(compilerArgs, foundation.PathWindowsPath(srcFile))
-			foundation.LogInfof("Compiling (%s) %s\n", cl.config.Config.AsString(), srcFile)
+			srcFile = foundation.PathWindowsPath(srcFile)
+			compilerArgs = append(compilerArgs, srcFile)
+			foundation.LogInfof("Compiling (%s) %s\n", configStr, srcFile)
 		}
 
 		// Prepare the command to execute the compiler.
@@ -276,6 +280,23 @@ func (l *WinMsDevLinker) SetupArgs(libraryPaths []string, libraryFiles []string)
 
 	if l.config.Config.IsDebug() {
 		l.args.Add("/DEBUG") // Generate debug information.
+		l.args.Add("/MTd")   // Use the multithreaded debug version of the C runtime library.
+	} else if l.config.Config.IsRelease() {
+		l.args.Add("/MT") // Use the multithreaded version of the C runtime library.
+	} else if l.config.Config.IsFinal() {
+		l.args.Add("/OPT:REF")        // Enable optimization for references.
+		l.args.Add("/OPT:ICF")        // Enable identical COMDAT folding.
+		l.args.Add("/LTCG")           // Enable link-time code generation.
+		l.args.Add("/INCREMENTAL:NO") // Disable incremental linking.
+		l.args.Add("/MT")             // Use the multithreaded version of the C runtime library.
+	}
+
+	// vars.Set("linker.libraries", msdevSetup.Libs...)
+	// vars.Set("linker.library.paths", msdevSetup.LibPaths...)
+	if libraryPaths, ok := l.toolChain.Vars.Get("linker.library.paths"); ok {
+		for _, libPath := range libraryPaths {
+			l.args.Add("/LIBPATH:\"" + foundation.PathWindowsPath(libPath) + "\"")
+		}
 	}
 
 	// What is this used for?
