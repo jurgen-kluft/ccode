@@ -26,12 +26,12 @@ type WinMsdev struct {
 //
 
 type WinMsDevCompiler struct {
-	toolChain       *WinMsdev  // The toolchain this compiler belongs to
-	config          *Config    // Build configuration
-	cCompilerPath   string     // Path to the C compiler executable (e.g., cl.exe)
-	cppCompilerPath string     // Path to the C++ compiler executable (e.g., cl.exe)
-	cArgs           *Arguments // Arguments for the C compiler
-	cppArgs         *Arguments // Arguments for the C++ compiler
+	toolChain       *WinMsdev             // The toolchain this compiler belongs to
+	config          *Config               // Build configuration
+	cCompilerPath   string                // Path to the C compiler executable (e.g., cl.exe)
+	cppCompilerPath string                // Path to the C++ compiler executable (e.g., cl.exe)
+	cArgs           *foundation.Arguments // Arguments for the C compiler
+	cppArgs         *foundation.Arguments // Arguments for the C++ compiler
 }
 
 func (m *WinMsdev) NewCompiler(config *Config) Compiler {
@@ -40,8 +40,8 @@ func (m *WinMsdev) NewCompiler(config *Config) Compiler {
 		config:          config,
 		cCompilerPath:   m.Vars.GetFirstOrEmpty("c.compiler"),
 		cppCompilerPath: m.Vars.GetFirstOrEmpty("cpp.compiler"),
-		cArgs:           NewArguments(512),
-		cppArgs:         NewArguments(512),
+		cArgs:           foundation.NewArguments(512),
+		cppArgs:         foundation.NewArguments(512),
 	}
 }
 
@@ -51,6 +51,10 @@ func (cl *WinMsDevCompiler) ObjFilepath(srcRelFilepath string) string {
 	return srcRelFilepath + ".obj"
 }
 
+func WindowsCompilerIncludePath(incl string) string {
+	return "/I" + foundation.PathWindowsPath(incl)
+}
+
 func (cl *WinMsDevCompiler) DepFilepath(objRelFilepath string) string {
 	objRelFilepath = strings.TrimSuffix(objRelFilepath, ".c")
 	objRelFilepath = strings.TrimSuffix(objRelFilepath, ".cpp")
@@ -58,38 +62,25 @@ func (cl *WinMsDevCompiler) DepFilepath(objRelFilepath string) string {
 }
 
 func (cl *WinMsDevCompiler) SetupArgs(_defines []string, _includes []string) {
-	argsArray := []*Arguments{cl.cArgs, cl.cppArgs}
+	argsArray := []*foundation.Arguments{cl.cArgs, cl.cppArgs}
+	compilerOptions := []string{"c.compiler.options", "cpp.compiler.options"}
+	compilerIncludes := []string{"c.compiler.includes", "cpp.compiler.includes"}
 	for i, args := range argsArray {
 		isCpp := i == 1 // C++ compiler is the second in the array
 
-		args.Add("/c")                         // Compile only, do not link.
-		args.Add("/nologo")                    // Suppress display of sign-on banner.
-		args.Add("/diagnostics:column")        // Diagnostics format: prints column information.
-		args.AddWithPrefix("/I", _includes...) // Add include directories.
+		args.Add("/c")                  // Compile only, do not link.
+		args.Add("/nologo")             // Suppress display of sign-on banner.
+		args.Add("/diagnostics:column") // Diagnostics format: prints column information.
 
-		if isCpp {
-			if cppOptions, ok := cl.toolChain.Vars.Get("cpp.compiler.options"); ok {
-				args.Add(cppOptions...)
-			}
-		} else {
-			if cOptions, ok := cl.toolChain.Vars.Get("c.compiler.options"); ok {
-				args.Add(cOptions...)
-			}
+		if options, ok := cl.toolChain.Vars.Get(compilerOptions[i]); ok {
+			args.Add(options...)
 		}
 
-		if isCpp {
-			if cppIncludes, ok := cl.toolChain.Vars.Get("cpp.compiler.includes"); ok {
-				for _, inc := range cppIncludes {
-					args.Add("/I" + foundation.PathWindowsPath(inc))
-				}
-			}
-		} else {
-			if cIncludes, ok := cl.toolChain.Vars.Get("c.compiler.includes"); ok {
-				for _, inc := range cIncludes {
-					args.Add("/I" + foundation.PathWindowsPath(inc))
-				}
-			}
+		// Add include directories
+		if cppIncludes, ok := cl.toolChain.Vars.Get(compilerIncludes[i]); ok {
+			args.AddWithFunc(WindowsCompilerIncludePath, cppIncludes...)
 		}
+		args.AddWithFunc(WindowsCompilerIncludePath, _includes...)
 
 		args.Add("/W3") // Set output warning level to 3 (high warnings).
 		args.Add("/WX") // Treat warnings as errors.
@@ -193,15 +184,15 @@ func (ms *WinMsdev) NewArchiver(a ArchiverType, config *Config) Archiver {
 		toolChain:    ms,
 		config:       config,
 		archiverPath: ms.Vars.GetFirstOrEmpty("archiver.path"),
-		args:         NewArguments(512),
+		args:         foundation.NewArguments(512),
 	}
 }
 
 type WinMsDevArchiver struct {
-	toolChain    *WinMsdev  // The toolchain this archiver belongs to
-	config       *Config    // Build configuration
-	archiverPath string     // Path to the archiver executable (e.g., lib.exe)
-	args         *Arguments // Arguments for the archiver
+	toolChain    *WinMsdev             // The toolchain this archiver belongs to
+	config       *Config               // Build configuration
+	archiverPath string                // Path to the archiver executable (e.g., lib.exe)
+	args         *foundation.Arguments // Arguments for the archiver
 }
 
 func (a *WinMsDevArchiver) LibFilepath(_filepath string) string {
@@ -251,15 +242,15 @@ func (ms *WinMsdev) NewLinker(config *Config) Linker {
 		toolChain:  ms,
 		config:     config,
 		linkerPath: ms.Vars.GetFirstOrEmpty("linker.path"),
-		args:       NewArguments(512),
+		args:       foundation.NewArguments(512),
 	}
 }
 
 type WinMsDevLinker struct {
-	toolChain  *WinMsdev  // The toolchain this archiver belongs to
-	config     *Config    // Build configuration
-	linkerPath string     // Path to the linker executable (e.g., ld.exe)
-	args       *Arguments // Arguments for the linker
+	toolChain  *WinMsdev             // The toolchain this archiver belongs to
+	config     *Config               // Build configuration
+	linkerPath string                // Path to the linker executable (e.g., ld.exe)
+	args       *foundation.Arguments // Arguments for the linker
 }
 
 func (l *WinMsDevLinker) LinkedFilepath(filepath string) string {

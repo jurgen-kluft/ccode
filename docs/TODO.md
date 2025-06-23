@@ -1,6 +1,8 @@
 # TODO
  
 - MEDIOR: Clay; add MsDev toolchain for supporting Windows.
+- MINOR:  Clay; how to deal with response files, since they should be tracked by
+          the dependency tracking system.
 - MAJOR:  Clay; parse the boards.txt file and be able to fill in all the necessary
           vars in ArduinoEsp32 toolchain
 - MINOR:  Clay; Executable Stats (size, .ram, .text, .data, .bss, etc.)

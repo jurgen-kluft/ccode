@@ -23,8 +23,8 @@ type ToolchainDarwinClangCompiler struct {
 	config          *Config
 	cCompilerPath   string
 	cppCompilerPath string
-	cArgs           *Arguments
-	cppArgs         *Arguments
+	cArgs           *foundation.Arguments
+	cppArgs         *foundation.Arguments
 }
 
 func (t *DarwinClang) NewCompiler(config *Config) Compiler {
@@ -33,8 +33,8 @@ func (t *DarwinClang) NewCompiler(config *Config) Compiler {
 		config:          config,
 		cCompilerPath:   t.Vars.GetFirstOrEmpty("c.compiler"),
 		cppCompilerPath: t.Vars.GetFirstOrEmpty("cpp.compiler"),
-		cArgs:           NewArguments(512),
-		cppArgs:         NewArguments(512),
+		cArgs:           foundation.NewArguments(512),
+		cppArgs:         foundation.NewArguments(512),
 	}
 }
 

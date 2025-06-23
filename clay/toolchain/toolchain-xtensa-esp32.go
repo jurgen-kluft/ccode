@@ -30,8 +30,8 @@ type ToolchainArduinoEsp32Compiler struct {
 	config          *Config // Configuration for the compiler, e.g., debug or release
 	cCompilerPath   string
 	cppCompilerPath string
-	cCompilerArgs   *Arguments
-	cppCompilerArgs *Arguments
+	cCompilerArgs   *foundation.Arguments
+	cppCompilerArgs *foundation.Arguments
 }
 
 func (t *ArduinoEsp32) NewCompiler(config *Config) Compiler {
@@ -40,8 +40,8 @@ func (t *ArduinoEsp32) NewCompiler(config *Config) Compiler {
 		config:          config,
 		cCompilerPath:   t.Vars.GetFirstOrEmpty("c.compiler"),
 		cppCompilerPath: t.Vars.GetFirstOrEmpty("cpp.compiler"),
-		cCompilerArgs:   NewArguments(64),
-		cppCompilerArgs: NewArguments(64),
+		cCompilerArgs:   foundation.NewArguments(64),
+		cppCompilerArgs: foundation.NewArguments(64),
 	}
 }
 
@@ -213,7 +213,7 @@ type ToolchainArduinoEsp32Archiver struct {
 	toolChain    *ArduinoEsp32
 	config       *Config
 	archiverPath string
-	archiverArgs *Arguments
+	archiverArgs *foundation.Arguments
 }
 
 func (t *ArduinoEsp32) NewArchiver(a ArchiverType, config *Config) Archiver {
@@ -221,7 +221,7 @@ func (t *ArduinoEsp32) NewArchiver(a ArchiverType, config *Config) Archiver {
 		toolChain:    t,
 		config:       config,
 		archiverPath: t.Vars.GetFirstOrEmpty("archiver"),
-		archiverArgs: NewArguments(16),
+		archiverArgs: foundation.NewArguments(16),
 	}
 }
 
@@ -268,7 +268,7 @@ type ToolchainArduinoEsp32Linker struct {
 	toolChain  *ArduinoEsp32
 	config     *Config
 	linkerPath string
-	linkerArgs *Arguments
+	linkerArgs *foundation.Arguments
 }
 
 func (t *ArduinoEsp32) NewLinker(config *Config) Linker {
@@ -276,7 +276,7 @@ func (t *ArduinoEsp32) NewLinker(config *Config) Linker {
 		toolChain:  t,
 		config:     config,
 		linkerPath: t.Vars.GetFirstOrEmpty("linker"),
-		linkerArgs: NewArguments(512),
+		linkerArgs: foundation.NewArguments(512),
 	}
 }
 
@@ -373,22 +373,22 @@ type ToolchainArduinoEsp32Burner struct {
 	config                               *Config              // Configuration for the burner, e.g., debug or release
 	dependencyTracker                    deptrackr.FileTrackr // Dependency tracker for the burner
 	hasher                               hash.Hash            // Hasher for generating digests of arguments
-	genImageBinToolArgs                  *Arguments
+	genImageBinToolArgs                  *foundation.Arguments
 	genImageBinToolArgsHash              []byte   // Hash of the arguments for the image bin tool
 	genImageBinToolOutputFilepath        string   // The output file for the image bin
 	genImageBinToolInputFilepaths        []string // The input files for the image bin
 	genImageBinToolPath                  string
-	genImagePartitionsToolArgs           *Arguments
+	genImagePartitionsToolArgs           *foundation.Arguments
 	genImagePartitionsToolArgsHash       []byte   // Hash of the arguments for the image partitions tool
 	genImagePartitionsToolOutputFilepath string   // The output file for the image partitions
 	genImagePartitionsToolInputFilepaths []string // The input files for the image partitions
 	genImagePartitionsToolPath           string
-	genBootloaderToolArgs                *Arguments
+	genBootloaderToolArgs                *foundation.Arguments
 	genBootloaderToolArgsHash            []byte   // Hash of the arguments for the bootloader tool
 	genBootloaderToolOutputFilepath      string   // The output file for the bootloader
 	genBootloaderToolInputFilepaths      []string // The input files for the bootloader
 	genBootloaderToolPath                string
-	flashToolArgs                        *Arguments
+	flashToolArgs                        *foundation.Arguments
 	flashToolPath                        string
 }
 
@@ -398,22 +398,22 @@ func (t *ArduinoEsp32) NewBurner(config *Config) Burner {
 		config:                               config,
 		dependencyTracker:                    nil,
 		hasher:                               sha1.New(),
-		genImageBinToolArgs:                  NewArguments(64),
+		genImageBinToolArgs:                  foundation.NewArguments(64),
 		genImageBinToolArgsHash:              nil, // Will be set later
 		genImageBinToolOutputFilepath:        "",
 		genImageBinToolInputFilepaths:        []string{},
 		genImageBinToolPath:                  t.Vars.GetFirstOrEmpty("burner.generate-image-bin"),
-		genImagePartitionsToolArgs:           NewArguments(64),
+		genImagePartitionsToolArgs:           foundation.NewArguments(64),
 		genImagePartitionsToolArgsHash:       nil, // Will be set later
 		genImagePartitionsToolOutputFilepath: "",
 		genImagePartitionsToolInputFilepaths: []string{},
 		genImagePartitionsToolPath:           t.Vars.GetFirstOrEmpty("burner.generate-partitions-bin"),
-		genBootloaderToolArgs:                NewArguments(64),
+		genBootloaderToolArgs:                foundation.NewArguments(64),
 		genBootloaderToolArgsHash:            nil, // Will be set later
 		genBootloaderToolOutputFilepath:      "",
 		genBootloaderToolInputFilepaths:      []string{},
 		genBootloaderToolPath:                t.Vars.GetFirstOrEmpty("burner.generate-bootloader"),
-		flashToolArgs:                        NewArguments(64),
+		flashToolArgs:                        foundation.NewArguments(64),
 		flashToolPath:                        t.Vars.GetFirstOrEmpty("burner.flash"),
 	}
 }
