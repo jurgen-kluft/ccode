@@ -651,7 +651,6 @@ func (c *jsonContext) getEscapedString(f jsonField) (result string, ok bool) {
 		switch c.Json[index] {
 		case '"':
 			index++
-			break
 		case '\\':
 			index++ // skip the escape character
 			if index < end {
@@ -718,8 +717,6 @@ func (c *jsonContext) getUnicodeCodePoint(cursor int) (result rune, index int) {
 			result = result | rune(10+(c.Json[index]-'A'))
 		case 'a', 'b', 'c', 'd', 'e', 'f':
 			result = result | rune(10+(c.Json[index]-'a'))
-		default:
-			result = result | 0
 		}
 		index++
 	}

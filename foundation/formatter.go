@@ -313,13 +313,12 @@ func (sb *StringBuilder) appendAnyAsStr(item *any, itemFormat *string) {
 				dividerVal, err := strconv.ParseFloat(dividerStr, 32)
 				if err == nil {
 					// 1. Convert arg to float
-					val := (*item).(interface{})
 					var floatVal float64
-					switch val.(type) {
+					switch val := (*item).(type) {
 					case float64:
-						floatVal = val.(float64)
+						floatVal = val
 					case int:
-						floatVal = float64(val.(int))
+						floatVal = float64(val)
 					default:
 						floatVal = 0
 					}
@@ -419,7 +418,6 @@ func (sb *StringBuilder) appendAnyAsStr(item *any, itemFormat *string) {
 	}
 
 	sb.WriteString(argStr)
-	return
 }
 
 func (sb *StringBuilder) convertSliceToStrWithTypeDiscover(slice *any, separator *string) {

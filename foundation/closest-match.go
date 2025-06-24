@@ -264,7 +264,6 @@ func (cm *ClosestMatch) AccuracyMutatingLetters() float64 {
 	numTrials := 0.0
 
 	for wordTrials := 0; wordTrials < 200; wordTrials++ {
-
 		var testString, originalTestString string
 		cm.mux.Lock()
 		testStringNum := rand.Intn(len(cm.ID))

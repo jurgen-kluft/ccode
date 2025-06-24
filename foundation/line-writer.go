@@ -121,7 +121,7 @@ func (w *LineWriter) SetTabStops(stops ...int) {
 	}
 }
 
-func (w *LineWriter) WriteAligned(strs ...interface{}) {
+func (w *LineWriter) WriteAligned(strs ...any) {
 	// Example:
 	//           linewriter.SetTabStops(32, 64, 96)
 	//           linewriter.WriteAligned("PRODUCT_FRAMEWORK", 0, `:= `, project.Name)
@@ -129,12 +129,12 @@ func (w *LineWriter) WriteAligned(strs ...interface{}) {
 
 	tabstop := 0
 	for _, s := range strs {
-		switch s.(type) {
+		switch val := s.(type) {
 		case EndOfLine:
 			w.NewLine()
 			continue
 		case TabStop:
-			i := int(s.(TabStop))
+			i := int(val)
 			if i < len(w.tabstops) {
 				if w.tabstops[i] > tabstop {
 					tabstop = w.tabstops[i]
@@ -146,8 +146,8 @@ func (w *LineWriter) WriteAligned(strs ...interface{}) {
 				w.line.WriteString(" ")
 				w.lineLen += 1 // Currently every indentation is 4 'characters'
 			}
-			w.lineLen += utf8.RuneCountInString(s.(string))
-			w.line.WriteString(s.(string))
+			w.lineLen += utf8.RuneCountInString(val)
+			w.line.WriteString(val)
 		}
 	}
 }

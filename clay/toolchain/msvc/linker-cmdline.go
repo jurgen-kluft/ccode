@@ -1,12 +1,6 @@
-package toolchain
+package msvc
 
 import "github.com/jurgen-kluft/ccode/foundation"
-
-// Playground:
-// Let's see if we can come up with a declarative way of configuring a compiler commandline.
-
-// Current status:
-// What we have at the moment is pretty nice and clear to the user
 
 type LinkerFlags uint64
 
@@ -31,24 +25,10 @@ func (f LinkerFlags) WhenConsole() bool {
 }
 
 type LinkerContext struct {
-	args        *foundation.Arguments
-	flags       LinkerFlags // Build configuration
-	outputPath  string
-	libpaths    []string
-	libs        []string
-	objectFiles []string
+	args  *foundation.Arguments
+	flags LinkerFlags // Build configuration
 }
 
-func NewLinkerContext(flags LinkerFlags, args *foundation.Arguments) *LinkerContext {
-	return &LinkerContext{
-		args:        args,
-		flags:       flags,
-		outputPath:  "",
-		libs:        []string{},
-		libpaths:    []string{},
-		objectFiles: []string{},
-	}
-}
 func (c *LinkerContext) WhenDebug() bool {
 	return c.flags.WhenDebug()
 }
@@ -86,14 +66,22 @@ func (c *LinkerContext) SubsystemWindows()              { c.Add("/SUBSYSTEM:WIND
 func (c *LinkerContext) DynamicBase()                   { c.Add("/DYNAMICBASE") }
 func (c *LinkerContext) EnableDataExecutionPrevention() { c.Add("/NXCOMPAT") }
 func (c *LinkerContext) MachineX64()                    { c.Add("/MACHINE:X64") }
-func (c *LinkerContext) LibPaths() {
-	c.AddWithFunc(func(arg string) string { return "/LIBPATH:\"" + foundation.PathWindowsPath(arg) + "\"" }, c.libpaths...)
+func (c *LinkerContext) LibPaths(libpaths []string) {
+	c.AddWithFunc(func(arg string) string { return "/LIBPATH:\"" + foundation.PathWindowsPath(arg) + "\"" }, libpaths...)
 }
-func (c *LinkerContext) Libs() {
-	c.AddWithFunc(func(arg string) string { return "\"" + arg + "\"" }, c.libs...)
+func (c *LinkerContext) Libs(libs []string) {
+	c.AddWithFunc(func(arg string) string { return "\"" + arg + "\"" }, libs...)
+}
+func (c *LinkerContext) ObjectFiles(objs []string) {
+	c.AddWithFunc(func(arg string) string { return "\"" + arg + "\"" }, objs...)
 }
 
-func (c *LinkerContext) GenerateMsdevCmdline() {
+func GenerateLinkerCmdline(flags LinkerFlags, libpaths []string, libs []string, objectFiles []string) *foundation.Arguments {
+	args := foundation.NewArguments(len(libpaths) + len(libs) + len(objectFiles) + 20)
+
+	c := &LinkerContext{args: args}
+	c.flags = flags
+
 	c.ErrorReportPrompt()
 	c.NoLogo()
 	if c.WhenDebug() {
@@ -118,6 +106,9 @@ func (c *LinkerContext) GenerateMsdevCmdline() {
 	c.EnableDataExecutionPrevention()
 	c.MachineX64()
 
-	c.LibPaths()
-	c.Libs()
+	c.LibPaths(libpaths)
+	c.Libs(libs)
+	c.ObjectFiles(objectFiles)
+
+	return args
 }
