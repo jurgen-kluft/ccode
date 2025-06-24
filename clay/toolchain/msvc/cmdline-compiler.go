@@ -40,6 +40,7 @@ func (c *CompilerCmdLine) Add(arg string) { c.args.Add(arg) }
 func (c *CompilerCmdLine) AddWithPrefix(prefix string, args ...string) {
 	c.args.AddWithPrefix(prefix, args...)
 }
+
 func (c *CompilerCmdLine) CompileOnly()                          { c.Add("/c") }                        // Compile only; do not link. This is useful for generating object files without creating an executable.
 func (c *CompilerCmdLine) NoLogo()                               { c.Add("/nologo") }                   // Suppress the display of the compiler's startup banner and copyright message.
 func (c *CompilerCmdLine) DiagnosticsColumnMode()                { c.Add("/diagnostics:column") }       // Enable column mode for diagnostics, which provides more detailed error messages.

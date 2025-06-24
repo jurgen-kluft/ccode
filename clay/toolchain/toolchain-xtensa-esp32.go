@@ -331,7 +331,7 @@ func (l *ToolchainArduinoEsp32Linker) Link(inputArchiveAbsFilepaths []string, ou
 
 	linkerArgs.Add(inputArchiveAbsFilepaths...)
 	linkerArgs.Add("-Wl,--end-group")
-	linkerArgs.Add("-Wl,-EL")
+	linkerArgs.Add("-Wl,-EL") //
 
 	linkerArgs.Add("-o")
 	linkerArgs.Add(outputAppRelFilepathNoExt)
