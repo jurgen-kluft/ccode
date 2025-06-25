@@ -2,7 +2,6 @@ package msvc
 
 import (
 	"fmt"
-	"path/filepath"
 	"strings"
 
 	"github.com/jurgen-kluft/ccode/foundation"
@@ -110,15 +109,48 @@ func getPostWin8Sdk(arch WinSupportedArch) *winSdkDirs {
 	return &postWin8SdkArm
 }
 
+// Visual Studio 2008      9.0
+// Visual Studio 2008      9.0
+
+// Visual Studio 2010      10.0
+// Visual Studio 2010      10.0
+
+// Visual Studio 2012      11.0
+// Visual Studio 2012      11.0
+
+// Visual Studio 2013      12.0
+// Visual Studio 2013      12.0
+
+// Visual Studio 2015      14.0
+// Visual Studio 2015      14.0
+
+// Visual Studio 2017      15.0
+// Visual Studio 2017      15.9.11
+
+// Visual Studio 2019      16.0.0
+// Visual Studio 2019      16.11.35
+
+// Visual Studio 2022      17.0.1
+// Visual Studio 2022      17.13.6
+
 var vsSdkMap = map[string]string{
 	"9.0":  "v6.0A",
+	"2008": "v6.0A",
+
 	"10.0": "v7.0A",
 	"10.1": "v7.1A",
+	"2010": "v7.0A",
+
 	"11.0": "v8.0",
+	"2012": "v8.0",
+
 	"12.0": "v8.1",
+	"2013": "v8.1",
+
 	// The current Visual Studio 2015 download does not include the full Windows
 	// 10 SDK, and new Win32 apps created in VS2015 default to using the 8.1 SDK
 	"14.0": "v8.1",
+	"2015": "v8.1",
 }
 
 // Each quadruplet specifies a registry key value that gets us the SDK location,
@@ -228,14 +260,18 @@ func getSdk(sdkVersion string, vsVersion VsVersion, targetArch WinSupportedArch)
 
 // MsDevSetup represents the installation of Microsoft Visual Studio that was found.
 type MsDevSetup struct {
+	CompilerPath   string
 	CompilerBin    string
 	CcOptions      []string
 	CxxOptions     []string
 	IncludePaths   []string
+	ArchiverPath   string
 	ArchiverBin    string
+	LinkerPath     string
 	LinkerBin      string
 	Libs           []string
 	LibPaths       []string
+	RcPath         string
 	RcBin          string
 	RcOptions      []string
 	VcToolsVersion string
@@ -248,14 +284,18 @@ type MsDevSetup struct {
 
 func NewMsDevSetup() *MsDevSetup {
 	return &MsDevSetup{
+		CompilerPath:  "",
 		CompilerBin:   "",
 		CcOptions:     []string{},
 		CxxOptions:    []string{},
 		IncludePaths:  []string{},
+		ArchiverPath:  "",
 		ArchiverBin:   "",
+		LinkerPath:    "",
 		LinkerBin:     "",
 		Libs:          []string{},
 		LibPaths:      []string{},
+		RcPath:        "",
 		RcBin:         "",
 		RcOptions:     []string{},
 		VsInstallDir:  "",
@@ -269,12 +309,23 @@ func NewMsDevSetup() *MsDevSetup {
 func InitMsvcVisualStudio(_vsVersion VsVersion, _sdkVersion string, _hostArch WinSupportedArch, _targetArch WinSupportedArch) (*MsDevSetup, error) {
 	targetArch := getTargetArch(_targetArch)
 
-	sdkVersion := _sdkVersion
-	if sdkVersion == "" {
-		sdkVersion = string(_vsVersion)
+	if _vsVersion >= VsVersion2017 {
+		msvcVersion := NewMsvcVersion()
+		msvcVersion.vsVersion = _vsVersion
+		msvcVersion.vsProduct = vsProductProfessional
+		msvcVersion.hostArch = _hostArch
+		msvcVersion.targetArch = targetArch
+		return setupMsvcVersion(msvcVersion, false)
 	}
-	if sdkVersion, ok := vsSdkMap[sdkVersion]; ok {
+
+	ok := false
+	sdkVersion := _sdkVersion
+	if sdkVersion, ok = vsSdkMap[sdkVersion]; ok {
 		sdkVersion = string(sdkVersion)
+	} else if sdkVersion, ok = vsSdkMap[_vsVersion.String()]; ok {
+		sdkVersion = string(sdkVersion)
+	} else {
+		return nil, fmt.Errorf("the requested version of the SDK isn't supported: %s", _sdkVersion)
 	}
 
 	// We will find any edition of VS (including Express) here
@@ -314,10 +365,14 @@ func InitMsvcVisualStudio(_vsVersion VsVersion, _sdkVersion string, _hostArch Wi
 	//
 	// Tools
 	//
-	msdev.CompilerBin = filepath.Join(vcBin, "cl.exe")
-	msdev.ArchiverBin = filepath.Join(vcBin, "lib.exe")
-	msdev.LinkerBin = filepath.Join(vcBin, "link.exe")
-	msdev.RcBin = filepath.Join(sdkDirs.bin, "rc.exe")
+	msdev.CompilerPath = vcBin
+	msdev.CompilerBin = "cl.exe"
+	msdev.ArchiverPath = vcBin
+	msdev.ArchiverBin = "lib.exe"
+	msdev.LinkerPath = vcBin
+	msdev.LinkerBin = "link.exe"
+	msdev.RcPath = sdkDirs.bin
+	msdev.RcBin = "rc.exe"
 
 	if sdkVersion == "9.0" {
 		// clear the "/nologo" option (it was first added in VS2010)

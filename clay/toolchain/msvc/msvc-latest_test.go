@@ -6,11 +6,8 @@ import (
 )
 
 func TestSetupMsvcVersion(t *testing.T) {
-
 	msvcVersion := NewMsvcVersion()
-	msdevSetup := NewMsDevSetup()
-
-	err := setupMsvcVersion(msdevSetup, msvcVersion, false)
+	msdevSetup, err := setupMsvcVersion(msvcVersion, false)
 	if err != nil {
 		t.Fatal(err)
 	}
