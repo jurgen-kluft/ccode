@@ -9,6 +9,10 @@ func NewArguments(init int) *Arguments {
 	return &Arguments{Args: make([]string, 0, init)}
 }
 
+func (a *Arguments) Len() int {
+	return len(a.Args)
+}
+
 func (a *Arguments) Clear() {
 	a.Args = a.Args[:0]
 }

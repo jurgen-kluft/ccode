@@ -243,7 +243,7 @@ func NewMsvcVersion() *MsvcVersion {
 	}
 }
 
-func setupMsvcVersion(msvcVersion *MsvcVersion, useClang bool) (msdev *MsDevSetup, err error) {
+func setupMsvcVersion(msvcVersion *MsvcVersion, useClang bool) (msdev *MsvcEnvironment, err error) {
 
 	if vsDefaultPath, ok := vsDefaultPaths[msvcVersion.vsVersion]; !ok {
 		foundation.LogWarnf("Visual Studio %s has not been tested and might not work out of the box", msvcVersion.vsVersion.String())
@@ -269,7 +269,7 @@ func setupMsvcVersion(msvcVersion *MsvcVersion, useClang bool) (msdev *MsDevSetu
 		winsdkVersion = winSdk.GetLatestVersion()
 	}
 
-	msdev = NewMsDevSetup()
+	msdev = NewMsvcEnvironment()
 
 	msdev.Path = append(msdev.Path, filepath.Join(winsdkDir, "bin", winsdkVersion, msvcVersion.hostArch.String()))
 

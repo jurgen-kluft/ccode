@@ -2,33 +2,50 @@ package msvc
 
 import "github.com/jurgen-kluft/ccode/foundation"
 
-type ArchiverContext struct {
-	args *foundation.Arguments
+type ArchiverCmdline struct {
+	args   *foundation.Arguments
+	length int
 }
 
-func (c ArchiverContext) Add(arg string) {
+func NewArchiverCmdline(args *foundation.Arguments) *ArchiverCmdline {
+	return &ArchiverCmdline{
+		args:   args,
+		length: 0,
+	}
+}
+
+func (c *ArchiverCmdline) Add(arg string) {
 	c.args.Add(arg)
 }
-func (c ArchiverContext) AddWithPrefix(prefix string, args ...string) {
+func (c *ArchiverCmdline) AddWithPrefix(prefix string, args ...string) {
 	c.args.AddWithPrefix(prefix, args...)
 }
-func (c ArchiverContext) AddWithFunc(modFunc func(string) string, args ...string) {
+func (c *ArchiverCmdline) AddWithFunc(modFunc func(string) string, args ...string) {
 	c.args.AddWithFunc(modFunc, args...)
 }
 
-func (c ArchiverContext) NoLogo()     { c.Add("/NOLOGO") }      // Suppress display of sign-on banner.
-func (c ArchiverContext) MachineX64() { c.Add("/MACHINE:X64") } // Specify the target machine architecture (x64).
-func (c ArchiverContext) Out(outputArchiveFilepath string) {
+func (c *ArchiverCmdline) NoLogo()     { c.Add("/NOLOGO") }      // Suppress display of sign-on banner.
+func (c *ArchiverCmdline) MachineX64() { c.Add("/MACHINE:X64") } // Specify the target machine architecture (x64).
+func (c *ArchiverCmdline) Out(outputArchiveFilepath string) {
 	c.AddWithPrefix("/OUT:", outputArchiveFilepath)
 }
-func (c ArchiverContext) ObjectFiles(objs []string) {
-	c.AddWithFunc(func(arg string) string { return "\"" + arg + "\"" }, objs...)
+func (c *ArchiverCmdline) ObjectFiles(objs []string) {
+	c.AddWithFunc(func(arg string) string { return "\"" + foundation.PathWindowsPath(arg) + "\"" }, objs...)
+}
+
+func (c *ArchiverCmdline) Save() {
+	c.length = c.args.Len()
+}
+func (c *ArchiverCmdline) Restore() {
+	if c.length < c.args.Len() {
+		c.args.Args = c.args.Args[:c.length]
+	}
 }
 
 func GenerateArchiverCmdline(inputObjectFilepaths []string, outputArchiveFilepath string) *foundation.Arguments {
 	args := foundation.NewArguments(len(inputObjectFilepaths) + 8)
 
-	ac := ArchiverContext{args: args}
+	ac := NewArchiverCmdline(args)
 
 	ac.NoLogo()
 	ac.MachineX64()

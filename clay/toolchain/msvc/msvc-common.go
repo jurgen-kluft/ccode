@@ -258,8 +258,8 @@ func getSdk(sdkVersion string, vsVersion VsVersion, targetArch WinSupportedArch)
 	return getPreWin10Sdk(sdkVersion, vsVersion, targetArch)
 }
 
-// MsDevSetup represents the installation of Microsoft Visual Studio that was found.
-type MsDevSetup struct {
+// MsvcEnvironment represents the installation of Microsoft Visual Studio that was found.
+type MsvcEnvironment struct {
 	CompilerPath   string
 	CompilerBin    string
 	CcOptions      []string
@@ -282,8 +282,8 @@ type MsDevSetup struct {
 	Path           []string
 }
 
-func NewMsDevSetup() *MsDevSetup {
-	return &MsDevSetup{
+func NewMsvcEnvironment() *MsvcEnvironment {
+	return &MsvcEnvironment{
 		CompilerPath:  "",
 		CompilerBin:   "",
 		CcOptions:     []string{},
@@ -306,7 +306,7 @@ func NewMsDevSetup() *MsDevSetup {
 	}
 }
 
-func InitMsvcVisualStudio(_vsVersion VsVersion, _sdkVersion string, _hostArch WinSupportedArch, _targetArch WinSupportedArch) (*MsDevSetup, error) {
+func InitMsvcVisualStudio(_vsVersion VsVersion, _sdkVersion string, _hostArch WinSupportedArch, _targetArch WinSupportedArch) (*MsvcEnvironment, error) {
 	targetArch := getTargetArch(_targetArch)
 
 	if _vsVersion >= VsVersion2017 {
@@ -359,7 +359,7 @@ func InitMsvcVisualStudio(_vsVersion VsVersion, _sdkVersion string, _hostArch Wi
 	//
 	sdkRoot, sdkDirs, err := getSdk(sdkVersion, _vsVersion, targetArch)
 
-	msdev := NewMsDevSetup()
+	msdev := NewMsvcEnvironment()
 	msdev.WindowsSdkDir = sdkRoot
 
 	//

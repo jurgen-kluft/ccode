@@ -17,6 +17,13 @@ func NewConfig(config dev.BuildConfig, target dev.BuildTarget) *Config {
 	}
 }
 
+func (t *Config) IsDebug() bool       { return t.Config.IsDebug() }
+func (t *Config) IsRelease() bool     { return t.Config.IsRelease() }
+func (t *Config) IsDevelopment() bool { return t.Config.IsDevelopment() }
+func (t *Config) IsFinal() bool       { return t.Config.IsFinal() }
+func (t *Config) IsTest() bool        { return t.Config.IsTest() }
+func (t *Config) IsProfile() bool     { return t.Config.IsProfile() }
+
 // GetDirname returns "os-arch-build-variant-mode"
 func (c *Config) GetDirname() string {
 	return c.Target.OSAsString() + "-" + c.Target.ArchAsString() + "-" + c.Config.AsString()

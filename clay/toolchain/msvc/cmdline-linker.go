@@ -29,6 +29,13 @@ type LinkerContext struct {
 	flags LinkerFlags // Build configuration
 }
 
+func NewLinkerContext(args *foundation.Arguments, flags LinkerFlags) *LinkerContext {
+	return &LinkerContext{
+		args:  args,
+		flags: flags,
+	}
+}
+
 func (c *LinkerContext) WhenDebug() bool {
 	return c.flags.WhenDebug()
 }
@@ -51,11 +58,19 @@ func (c *LinkerContext) AddWithFunc(modFunc func(string) string, args ...string)
 	c.args.AddWithFunc(modFunc, args...)
 }
 
+// Linker options
+//	- https://github.com/MicrosoftDocs/cpp-docs/blob/main/docs/build/reference/linker-options.md
+
 func (c *LinkerContext) ErrorReportPrompt()             { c.Add("/ERRORREPORT:PROMPT") }
 func (c *LinkerContext) NoLogo()                        { c.Add("/NOLOGO") }
+func (c *LinkerContext) GenerateMapfile(fp string)      { c.Add("/MAP:" + fp) }
 func (c *LinkerContext) GenerateDebugInfo()             { c.Add("/DEBUG") }
-func (c *LinkerContext) UseMultithreadedDebug()         { c.Add("/MTd") }
-func (c *LinkerContext) UseMultithreaded()              { c.Add("/MT") }
+func (c *LinkerContext) GenerateDll()                   { c.Add("/LD") }
+func (c *LinkerContext) GenerateDebugDll()              { c.Add("/LDd") }
+func (c *LinkerContext) GenerateMultithreadedDll()      { c.Add("/MD") }
+func (c *LinkerContext) GenerateMultithreadedDebugDll() { c.Add("/MDd") }
+func (c *LinkerContext) GenerateMultithreadedExe()      { c.Add("/MT") }
+func (c *LinkerContext) GenerateMultithreadedDebugExe() { c.Add("/MTd") }
 func (c *LinkerContext) OptimizeReferences()            { c.Add("/OPT:REF") }
 func (c *LinkerContext) OptimizeIdenticalFolding()      { c.Add("/OPT:ICF") }
 func (c *LinkerContext) LinkTimeCodeGeneration()        { c.Add("/LTCG") }
@@ -75,6 +90,9 @@ func (c *LinkerContext) Libs(libs []string) {
 func (c *LinkerContext) ObjectFiles(objs []string) {
 	c.AddWithFunc(func(arg string) string { return "\"" + arg + "\"" }, objs...)
 }
+func (c *LinkerContext) Out(outputFilepath string) {
+	c.Add("/OUT:" + outputFilepath)
+}
 
 func GenerateLinkerCmdline(flags LinkerFlags, libpaths []string, libs []string, objectFiles []string) *foundation.Arguments {
 	args := foundation.NewArguments(len(libpaths) + len(libs) + len(objectFiles) + 20)
@@ -86,10 +104,10 @@ func GenerateLinkerCmdline(flags LinkerFlags, libpaths []string, libs []string, 
 	c.NoLogo()
 	if c.WhenDebug() {
 		c.GenerateDebugInfo()
-		c.UseMultithreadedDebug()
+		c.GenerateMultithreadedDebugExe()
 	}
 	if c.WhenRelease() || c.WhenFinal() {
-		c.UseMultithreaded()
+		c.GenerateMultithreadedExe()
 		c.OptimizeReferences()
 		c.OptimizeIdenticalFolding()
 	}
@@ -106,6 +124,8 @@ func GenerateLinkerCmdline(flags LinkerFlags, libpaths []string, libs []string, 
 	c.EnableDataExecutionPrevention()
 	c.MachineX64()
 
+	c.GenerateMapfile("clay.exe.map")
+	c.Out("clay.exe")
 	c.LibPaths(libpaths)
 	c.Libs(libs)
 	c.ObjectFiles(objectFiles)
