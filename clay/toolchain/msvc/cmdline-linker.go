@@ -25,29 +25,15 @@ func (f LinkerFlags) WhenConsole() bool {
 }
 
 type LinkerCmdline struct {
-	args  *foundation.Arguments
-	flags LinkerFlags // Build configuration
+	args *foundation.Arguments
 }
 
-func NewLinkerCmdline(args *foundation.Arguments, flags LinkerFlags) *LinkerCmdline {
+func NewLinkerCmdline(args *foundation.Arguments) *LinkerCmdline {
 	return &LinkerCmdline{
-		args:  args,
-		flags: flags,
+		args: args,
 	}
 }
 
-func (c *LinkerCmdline) WhenDebug() bool {
-	return c.flags.WhenDebug()
-}
-func (c *LinkerCmdline) WhenRelease() bool {
-	return c.flags.WhenRelease()
-}
-func (c *LinkerCmdline) WhenFinal() bool {
-	return c.flags.WhenFinal()
-}
-func (c *LinkerCmdline) WhenConsole() bool {
-	return c.flags.WhenConsole()
-}
 func (c *LinkerCmdline) Add(arg string) {
 	c.args.Add(arg)
 }
@@ -98,25 +84,24 @@ func GenerateLinkerCmdline(flags LinkerFlags, libpaths []string, libs []string, 
 	args := foundation.NewArguments(len(libpaths) + len(libs) + len(objectFiles) + 20)
 
 	c := &LinkerCmdline{args: args}
-	c.flags = flags
 
 	c.ErrorReportPrompt()
 	c.NoLogo()
-	if c.WhenDebug() {
+	if flags.WhenDebug() {
 		c.GenerateDebugInfo()
 		c.GenerateMultithreadedDebugExe()
 	}
-	if c.WhenRelease() || c.WhenFinal() {
+	if flags.WhenRelease() || flags.WhenFinal() {
 		c.GenerateMultithreadedExe()
 		c.OptimizeReferences()
 		c.OptimizeIdenticalFolding()
 	}
-	if c.WhenFinal() {
+	if flags.WhenFinal() {
 		c.LinkTimeCodeGeneration()
 		c.DisableIncrementalLinking()
 		c.UseMultithreadedFinal()
 	}
-	if c.WhenConsole() {
+	if flags.WhenConsole() {
 		c.SubsystemConsole()
 	}
 

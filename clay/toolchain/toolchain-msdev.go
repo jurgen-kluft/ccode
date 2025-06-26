@@ -126,7 +126,7 @@ func (cl *WinMsDevCompiler) Compile(sourceAbsFilepaths []string, objRelFilepaths
 
 		srcDir = foundation.PathWindowsPath(srcDir)
 		cl.cmdline.OutDir(srcDir)
-		cl.cmdline.GenerateDeps(srcDir)
+		cl.cmdline.GenerateDependencyFiles(srcDir)
 		cl.cmdline.SourceFiles(srcFiles)
 
 		configStr := cl.config.Config.AsString()
@@ -212,20 +212,11 @@ func (a *WinMsDevArchiver) Archive(inputObjectFilepaths []string, outputArchiveF
 // Linker
 
 func (ms *WinMsdev) NewLinker(config *Config) Linker {
-	flags := msvc.LinkerFlags(0)
-	if config.Config.IsDebug() {
-		flags |= msvc.LinkerFlagDebug
-	} else if config.Config.IsRelease() {
-		flags |= msvc.LinkerFlagRelease
-	} else if config.Config.IsFinal() {
-		flags |= msvc.LinkerFlagFinal
-	}
-
 	return &WinMsDevLinker{
 		toolChain: ms,
 		config:    config,
 		args:      foundation.NewArguments(512),
-		cmdline:   msvc.NewLinkerCmdline(foundation.NewArguments(512), flags),
+		cmdline:   msvc.NewLinkerCmdline(foundation.NewArguments(512)),
 	}
 }
 
@@ -243,23 +234,23 @@ func (l *WinMsDevLinker) LinkedFilepath(filepath string) string {
 func (l *WinMsDevLinker) SetupArgs(libraryPaths []string, libraryFiles []string) {
 	l.cmdline.ErrorReportPrompt()
 	l.cmdline.NoLogo()
-	if l.cmdline.WhenDebug() {
+	if l.config.IsDebug() {
 		l.cmdline.GenerateDebugInfo()
 		l.cmdline.GenerateMultithreadedDebugExe()
 	}
-	if l.cmdline.WhenRelease() || l.cmdline.WhenFinal() {
+	if l.config.IsRelease() || l.config.IsFinal() {
 		l.cmdline.GenerateMultithreadedExe()
 		l.cmdline.OptimizeReferences()
 		l.cmdline.OptimizeIdenticalFolding()
 	}
-	if l.cmdline.WhenFinal() {
+	if l.config.IsFinal() {
 		l.cmdline.LinkTimeCodeGeneration()
 		l.cmdline.DisableIncrementalLinking()
 		l.cmdline.UseMultithreadedFinal()
 	}
-	if l.cmdline.WhenConsole() {
-		l.cmdline.SubsystemConsole()
-	}
+
+	// Console or GUI application?
+	l.cmdline.SubsystemConsole()
 
 	l.cmdline.DynamicBase()
 	l.cmdline.EnableDataExecutionPrevention()
