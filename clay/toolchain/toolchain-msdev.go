@@ -225,7 +225,7 @@ func (ms *WinMsdev) NewLinker(config *Config) Linker {
 		toolChain: ms,
 		config:    config,
 		args:      foundation.NewArguments(512),
-		cmdline:   msvc.NewLinkerContext(foundation.NewArguments(512), flags),
+		cmdline:   msvc.NewLinkerCmdline(foundation.NewArguments(512), flags),
 	}
 }
 
@@ -233,7 +233,7 @@ type WinMsDevLinker struct {
 	toolChain *WinMsdev             // The toolchain this archiver belongs to
 	config    *Config               // Build configuration
 	args      *foundation.Arguments // Arguments for the linker
-	cmdline   *msvc.LinkerContext   //
+	cmdline   *msvc.LinkerCmdline   // Cmdline for the linker
 }
 
 func (l *WinMsDevLinker) LinkedFilepath(filepath string) string {

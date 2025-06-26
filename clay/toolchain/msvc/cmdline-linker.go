@@ -24,80 +24,80 @@ func (f LinkerFlags) WhenConsole() bool {
 	return f&LinkerFlagConsole != 0
 }
 
-type LinkerContext struct {
+type LinkerCmdline struct {
 	args  *foundation.Arguments
 	flags LinkerFlags // Build configuration
 }
 
-func NewLinkerContext(args *foundation.Arguments, flags LinkerFlags) *LinkerContext {
-	return &LinkerContext{
+func NewLinkerCmdline(args *foundation.Arguments, flags LinkerFlags) *LinkerCmdline {
+	return &LinkerCmdline{
 		args:  args,
 		flags: flags,
 	}
 }
 
-func (c *LinkerContext) WhenDebug() bool {
+func (c *LinkerCmdline) WhenDebug() bool {
 	return c.flags.WhenDebug()
 }
-func (c *LinkerContext) WhenRelease() bool {
+func (c *LinkerCmdline) WhenRelease() bool {
 	return c.flags.WhenRelease()
 }
-func (c *LinkerContext) WhenFinal() bool {
+func (c *LinkerCmdline) WhenFinal() bool {
 	return c.flags.WhenFinal()
 }
-func (c *LinkerContext) WhenConsole() bool {
+func (c *LinkerCmdline) WhenConsole() bool {
 	return c.flags.WhenConsole()
 }
-func (c *LinkerContext) Add(arg string) {
+func (c *LinkerCmdline) Add(arg string) {
 	c.args.Add(arg)
 }
-func (c *LinkerContext) AddWithPrefix(prefix string, args ...string) {
+func (c *LinkerCmdline) AddWithPrefix(prefix string, args ...string) {
 	c.args.AddWithPrefix(prefix, args...)
 }
-func (c *LinkerContext) AddWithFunc(modFunc func(string) string, args ...string) {
+func (c *LinkerCmdline) AddWithFunc(modFunc func(string) string, args ...string) {
 	c.args.AddWithFunc(modFunc, args...)
 }
 
 // Linker options
 //	- https://github.com/MicrosoftDocs/cpp-docs/blob/main/docs/build/reference/linker-options.md
 
-func (c *LinkerContext) ErrorReportPrompt()             { c.Add("/ERRORREPORT:PROMPT") }
-func (c *LinkerContext) NoLogo()                        { c.Add("/NOLOGO") }
-func (c *LinkerContext) GenerateMapfile(fp string)      { c.Add("/MAP:" + fp) }
-func (c *LinkerContext) GenerateDebugInfo()             { c.Add("/DEBUG") }
-func (c *LinkerContext) GenerateDll()                   { c.Add("/LD") }
-func (c *LinkerContext) GenerateDebugDll()              { c.Add("/LDd") }
-func (c *LinkerContext) GenerateMultithreadedDll()      { c.Add("/MD") }
-func (c *LinkerContext) GenerateMultithreadedDebugDll() { c.Add("/MDd") }
-func (c *LinkerContext) GenerateMultithreadedExe()      { c.Add("/MT") }
-func (c *LinkerContext) GenerateMultithreadedDebugExe() { c.Add("/MTd") }
-func (c *LinkerContext) OptimizeReferences()            { c.Add("/OPT:REF") }
-func (c *LinkerContext) OptimizeIdenticalFolding()      { c.Add("/OPT:ICF") }
-func (c *LinkerContext) LinkTimeCodeGeneration()        { c.Add("/LTCG") }
-func (c *LinkerContext) DisableIncrementalLinking()     { c.Add("/INCREMENTAL:NO") }
-func (c *LinkerContext) UseMultithreadedFinal()         { c.Add("/MT") }
-func (c *LinkerContext) SubsystemConsole()              { c.Add("/SUBSYSTEM:CONSOLE") }
-func (c *LinkerContext) SubsystemWindows()              { c.Add("/SUBSYSTEM:WINDOWS") }
-func (c *LinkerContext) DynamicBase()                   { c.Add("/DYNAMICBASE") }
-func (c *LinkerContext) EnableDataExecutionPrevention() { c.Add("/NXCOMPAT") }
-func (c *LinkerContext) MachineX64()                    { c.Add("/MACHINE:X64") }
-func (c *LinkerContext) LibPaths(libpaths []string) {
+func (c *LinkerCmdline) ErrorReportPrompt()             { c.Add("/ERRORREPORT:PROMPT") }
+func (c *LinkerCmdline) NoLogo()                        { c.Add("/NOLOGO") }
+func (c *LinkerCmdline) GenerateMapfile(fp string)      { c.Add("/MAP:" + fp) }
+func (c *LinkerCmdline) GenerateDebugInfo()             { c.Add("/DEBUG") }
+func (c *LinkerCmdline) GenerateDll()                   { c.Add("/LD") }
+func (c *LinkerCmdline) GenerateDebugDll()              { c.Add("/LDd") }
+func (c *LinkerCmdline) GenerateMultithreadedDll()      { c.Add("/MD") }
+func (c *LinkerCmdline) GenerateMultithreadedDebugDll() { c.Add("/MDd") }
+func (c *LinkerCmdline) GenerateMultithreadedExe()      { c.Add("/MT") }
+func (c *LinkerCmdline) GenerateMultithreadedDebugExe() { c.Add("/MTd") }
+func (c *LinkerCmdline) OptimizeReferences()            { c.Add("/OPT:REF") }
+func (c *LinkerCmdline) OptimizeIdenticalFolding()      { c.Add("/OPT:ICF") }
+func (c *LinkerCmdline) LinkTimeCodeGeneration()        { c.Add("/LTCG") }
+func (c *LinkerCmdline) DisableIncrementalLinking()     { c.Add("/INCREMENTAL:NO") }
+func (c *LinkerCmdline) UseMultithreadedFinal()         { c.Add("/MT") }
+func (c *LinkerCmdline) SubsystemConsole()              { c.Add("/SUBSYSTEM:CONSOLE") }
+func (c *LinkerCmdline) SubsystemWindows()              { c.Add("/SUBSYSTEM:WINDOWS") }
+func (c *LinkerCmdline) DynamicBase()                   { c.Add("/DYNAMICBASE") }
+func (c *LinkerCmdline) EnableDataExecutionPrevention() { c.Add("/NXCOMPAT") }
+func (c *LinkerCmdline) MachineX64()                    { c.Add("/MACHINE:X64") }
+func (c *LinkerCmdline) LibPaths(libpaths []string) {
 	c.AddWithFunc(func(arg string) string { return "/LIBPATH:\"" + foundation.PathWindowsPath(arg) + "\"" }, libpaths...)
 }
-func (c *LinkerContext) Libs(libs []string) {
+func (c *LinkerCmdline) Libs(libs []string) {
 	c.AddWithFunc(func(arg string) string { return "\"" + arg + "\"" }, libs...)
 }
-func (c *LinkerContext) ObjectFiles(objs []string) {
+func (c *LinkerCmdline) ObjectFiles(objs []string) {
 	c.AddWithFunc(func(arg string) string { return "\"" + arg + "\"" }, objs...)
 }
-func (c *LinkerContext) Out(outputFilepath string) {
+func (c *LinkerCmdline) Out(outputFilepath string) {
 	c.Add("/OUT:" + outputFilepath)
 }
 
 func GenerateLinkerCmdline(flags LinkerFlags, libpaths []string, libs []string, objectFiles []string) *foundation.Arguments {
 	args := foundation.NewArguments(len(libpaths) + len(libs) + len(objectFiles) + 20)
 
-	c := &LinkerContext{args: args}
+	c := &LinkerCmdline{args: args}
 	c.flags = flags
 
 	c.ErrorReportPrompt()
