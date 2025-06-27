@@ -108,9 +108,6 @@ func CopyConfig(config *Config) *toolchain.Config {
 func (p *Project) Build(buildConfig *Config, buildPath string) (outOfDate int, err error) {
 
 	compiler := p.Toolchain.NewCompiler(CopyConfig(buildConfig))
-	staticArchiver := p.Toolchain.NewArchiver(toolchain.ArchiverTypeStatic, CopyConfig(buildConfig))
-	//dynamicArchiver := p.Toolchain.NewArchiver(toolchain.ArchiverTypeDynamic, CopyConfig(p.Config))
-
 	compiler.SetupArgs(p.Defines.Values, p.IncludeDirs.Values)
 
 	projectBuildPath := p.GetBuildPath(buildPath)
@@ -159,6 +156,8 @@ func (p *Project) Build(buildConfig *Config, buildPath string) (outOfDate int, e
 		}
 	}
 
+	staticArchiver := p.Toolchain.NewArchiver(toolchain.ArchiverTypeStatic, CopyConfig(buildConfig))
+
 	if p.IsExecutable {
 		linker := p.Toolchain.NewLinker(CopyConfig(buildConfig))
 		linker.SetupArgs([]string{}, []string{})
@@ -173,9 +172,9 @@ func (p *Project) Build(buildConfig *Config, buildPath string) (outOfDate int, e
 			}
 
 			// Project object files
-            archivesToLink := make([]string, 0, len(p.SourceFiles) + len(p.Dependencies))
-            for _, src := range p.SourceFiles {
-                srcObjRelPath := filepath.Join(projectBuildPath, compiler.ObjFilepath(src.SrcRelPath))
+			archivesToLink := make([]string, 0, len(p.SourceFiles)+len(p.Dependencies))
+			for _, src := range p.SourceFiles {
+				srcObjRelPath := filepath.Join(projectBuildPath, compiler.ObjFilepath(src.SrcRelPath))
 				archivesToLink = append(archivesToLink, srcObjRelPath)
 			}
 			// Project archive dependencies (only those matching the build config)
@@ -207,11 +206,11 @@ func (p *Project) Build(buildConfig *Config, buildPath string) (outOfDate int, e
 			// If this is a library, we don't link it, but we can create a static archive
 			staticArchiver.SetupArgs()
 
-            objFilesToArchive := make([]string, 0, len(p.SourceFiles))
-            for _, src := range p.SourceFiles {
-                srcObjRelPath := filepath.Join(projectBuildPath, compiler.ObjFilepath(src.SrcRelPath))
-                objFilesToArchive = append(objFilesToArchive, srcObjRelPath)
-            }
+			objFilesToArchive := make([]string, 0, len(p.SourceFiles))
+			for _, src := range p.SourceFiles {
+				srcObjRelPath := filepath.Join(projectBuildPath, compiler.ObjFilepath(src.SrcRelPath))
+				objFilesToArchive = append(objFilesToArchive, srcObjRelPath)
+			}
 			if err := staticArchiver.Archive(objFilesToArchive, archiveOutputFilepath); err != nil {
 				return outOfDate, err
 			}

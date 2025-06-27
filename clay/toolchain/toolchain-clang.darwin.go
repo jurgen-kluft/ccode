@@ -72,15 +72,11 @@ func (cl *ToolchainDarwinClangCompiler) SetupArgs(_defines []string, _includes [
 	}
 
 	// Test-specific arguments
-	if cl.config.IsTest() {
-		cl.cmdline.EnableExceptionHandling()
-	}
+	// if cl.config.IsTest() {
+	// 	cl.cmdline.EnableExceptionHandling()
+	// }
 
 	cl.cmdline.UseFloatingPointPrecise()
-
-	// C++ specific arguments
-	cl.cmdline.UseCpp17()
-	cl.cmdline.UseC11()
 
 	cl.cmdline.Includes(_includes)
 	cl.cmdline.Defines(_defines)
@@ -95,21 +91,23 @@ func (cl *ToolchainDarwinClangCompiler) Compile(sourceAbsFilepaths []string, obj
 	for i, sourceAbsFilepath := range sourceAbsFilepaths {
 		cl.cmdline.Restore()
 
+		var compilerPath string
+		if strings.HasSuffix(sourceAbsFilepath, ".c") {
+			cl.cmdline.UseC11()
+			compilerPath = cl.toolChain.cCompilerPath
+		} else {
+			cl.cmdline.UseCpp17()
+			compilerPath = cl.toolChain.cxxCompilerPath
+		}
+
 		// The source file and the output object file
 		cl.cmdline.ObjectFile(objRelFilepaths[i])
 		cl.cmdline.SourceFile(sourceAbsFilepath)
 
-		var compilerPath string
-		if strings.HasSuffix(sourceAbsFilepath, ".c") {
-			compilerPath = cl.toolChain.cCompilerPath
-		} else {
-			compilerPath = cl.toolChain.cxxCompilerPath
-		}
 		compilerArgs := cl.args.Args
+		cmd := exec.Command(compilerPath, compilerArgs...)
 
 		foundation.LogInfof("Compiling (%s) %s\n", cl.config.Config.AsString(), filepath.Base(sourceAbsFilepath))
-
-		cmd := exec.Command(compilerPath, compilerArgs...)
 		out, err := cmd.CombinedOutput()
 		if err != nil {
 			foundation.LogInfof("Compile failed, output:\n%s\n", string(out))
@@ -129,12 +127,14 @@ func (cl *ToolchainDarwinClangCompiler) Compile(sourceAbsFilepaths []string, obj
 
 type ToolchainDarwinClangStaticArchiver struct {
 	toolChain *DarwinClang
+	config    *Config
 	args      *foundation.Arguments
 	cmdline   *clang.ArchiverCmdline
 }
 
 type ToolchainDarwinClangDynamicArchiver struct {
 	toolChain *DarwinClang
+	config    *Config
 	args      *foundation.Arguments
 	cmdline   *clang.ArchiverCmdline
 }
@@ -144,9 +144,9 @@ func (t *DarwinClang) NewArchiver(at ArchiverType, config *Config) Archiver {
 	cmdline := clang.NewArchiverCmdline(args)
 	switch at {
 	case ArchiverTypeStatic:
-		return &ToolchainDarwinClangStaticArchiver{toolChain: t, args: args, cmdline: cmdline}
+		return &ToolchainDarwinClangStaticArchiver{toolChain: t, config: config, args: args, cmdline: cmdline}
 	case ArchiverTypeDynamic:
-		return &ToolchainDarwinClangDynamicArchiver{toolChain: t, args: args, cmdline: cmdline}
+		return &ToolchainDarwinClangDynamicArchiver{toolChain: t, config: config, args: args, cmdline: cmdline}
 	}
 	return nil
 }
@@ -158,19 +158,19 @@ func (t *ToolchainDarwinClangStaticArchiver) LibFilepath(_filepath string) strin
 }
 
 func (t *ToolchainDarwinClangStaticArchiver) SetupArgs() {
+	t.cmdline.ReplaceCreateSort()
 	t.cmdline.Save()
 }
 
 func (t *ToolchainDarwinClangStaticArchiver) Archive(inputObjectFilepaths []string, outputArchiveFilepath string) error {
+	t.cmdline.Restore()
+	t.cmdline.OutputArchiveAndObjectFiles(outputArchiveFilepath, inputObjectFilepaths)
+
 	archiverPath := t.toolChain.arPath
 	archiverArgs := t.args.Args
 
-	t.cmdline.Restore()
-	t.cmdline.ReplaceCreateSort()
-	t.cmdline.Out(outputArchiveFilepath)
-	t.cmdline.ObjectFiles(inputObjectFilepaths)
-
 	cmd := exec.Command(archiverPath, archiverArgs...)
+
 	out, err := cmd.CombinedOutput()
 
 	if err != nil {
@@ -187,17 +187,14 @@ func (t *ToolchainDarwinClangDynamicArchiver) LibFilepath(_filepath string) stri
 }
 
 func (t *ToolchainDarwinClangDynamicArchiver) SetupArgs() {
+	t.cmdline.DynamicLib()
 	t.cmdline.Save()
 }
 
 func (t *ToolchainDarwinClangDynamicArchiver) Archive(inputObjectFilepaths []string, outputArchiveFilepath string) error {
-
 	t.cmdline.Restore()
-	t.cmdline.DynamicLib()
 	t.cmdline.InstallName(outputArchiveFilepath)
-
-	t.cmdline.Out(outputArchiveFilepath)
-	t.cmdline.ObjectFiles(inputObjectFilepaths)
+	t.cmdline.OutputArchiveAndObjectFiles(outputArchiveFilepath, inputObjectFilepaths)
 
 	archiverPath := t.toolChain.arPath
 	archiverArgs := t.args.Args
@@ -241,24 +238,6 @@ func (l *ToolchainDarwinClangLinker) LinkedFilepath(filepath string) string {
 }
 
 func (l *ToolchainDarwinClangLinker) SetupArgs(libraryPaths []string, libraryFiles []string) {
-	// l.args = []string{}
-
-	// // Library paths
-	// if libPaths, ok := l.toolChain.Vars.Get("linker.lib.paths"); ok {
-	// 	for _, libPath := range libPaths {
-	// 		l.args = append(l.args, `-L`)
-	// 		l.args = append(l.args, libPath)
-	// 	}
-	// }
-
-	// // Frameworks
-	// if frameworks, ok := l.toolChain.Vars.Get("linker.frameworks"); ok {
-	// 	for _, framework := range frameworks {
-	// 		l.args = append(l.args, "-framework")
-	// 		l.args = append(l.args, framework)
-	// 	}
-	// }
-
 	l.cmdline.ErrorReportPrompt()
 	l.cmdline.NoLogo()
 
@@ -292,11 +271,11 @@ func (l *ToolchainDarwinClangLinker) Link(inputArchiveAbsFilepaths []string, out
 	l.cmdline.Restore()
 
 	l.cmdline.Out(outputAppRelFilepathNoExt)
+	l.cmdline.Libs([]string{"stdc++"})
 	l.cmdline.ObjectFiles(inputArchiveAbsFilepaths)
 
 	linkerPath := l.toolChain.linkerPath
 	linkerArgs := l.args.Args
-
 	cmd := exec.Command(linkerPath, linkerArgs...)
 	out, err := cmd.CombinedOutput()
 
@@ -341,19 +320,16 @@ func NewDarwinClang(arch string, frameworks []string) (t *DarwinClang, err error
 	if cCompilerPath, err = exec.LookPath("clang"); err != nil {
 		return nil, err
 	}
-	cCompilerPath = filepath.Dir(cCompilerPath)
 
 	var cxxCompilerPath string
 	if cxxCompilerPath, err = exec.LookPath("clang++"); err != nil {
 		return nil, err
 	}
-	cxxCompilerPath = filepath.Dir(cxxCompilerPath)
 
 	var arPath string
 	if arPath, err = exec.LookPath("ar"); err != nil {
 		return nil, err
 	}
-	arPath = filepath.Dir(arPath)
 
 	linkerPath := cCompilerPath
 

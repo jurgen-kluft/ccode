@@ -21,16 +21,16 @@ func (c *ArchiverCmdline) AddWithFunc(modFunc func(string) string, args ...strin
 	c.args.AddWithFunc(modFunc, args...)
 }
 
-func (c *ArchiverCmdline) ReplaceCreateSort() { c.Add("-rcs") }
+func (c *ArchiverCmdline) ReplaceCreateSort() { c.Add("-rs") }
 func (c *ArchiverCmdline) DynamicLib()        { c.Add("-dynamiclib") }
 func (c *ArchiverCmdline) InstallName(outputArchiveFilepath string) {
 	c.args.Add("-install_name", outputArchiveFilepath)
 }
 
-func (c *ArchiverCmdline) Out(outputArchiveFilepath string) {
-	c.args.Add("-o", outputArchiveFilepath)
+func (c *ArchiverCmdline) Out() {
 }
-func (c *ArchiverCmdline) ObjectFiles(objs []string) {
+func (c *ArchiverCmdline) OutputArchiveAndObjectFiles(outputArchiveFilepath string, objs []string) {
+    c.args.Add(outputArchiveFilepath)
 	c.args.Add(objs...)
 }
 func (c *ArchiverCmdline) Save()    { c.length = c.args.Len() }
@@ -42,8 +42,7 @@ func GenerateArchiverCmdline(objectFiles []string, outputArchiveFilepath string)
 	ac := NewArchiverCmdline(args)
 
 	ac.ReplaceCreateSort()
-	ac.Out(outputArchiveFilepath)
-	ac.ObjectFiles(objectFiles)
+	ac.OutputArchiveAndObjectFiles(outputArchiveFilepath, objectFiles)
 
 	return args
 }

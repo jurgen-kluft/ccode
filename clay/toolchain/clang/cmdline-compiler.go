@@ -49,7 +49,7 @@ func (c *CompilerCmdLine) AddWithPrefix(prefix string, args ...string) {
 }
 
 func (c *CompilerCmdLine) CompileOnly()                 { c.Add("-c") }                        // Compile only; do not link.
-func (c *CompilerCmdLine) NoLogo()                      { c.Add("-nologo") }                   // Suppress the display of the compiler's startup banner and copyright message.
+func (c *CompilerCmdLine) NoLogo()                      {}                                     // Suppress the display of the compiler's startup banner and copyright message.
 func (c *CompilerCmdLine) WarningsAreErrors()           { c.Add("-Werror") }                   // Treat warnings as errors.
 func (c *CompilerCmdLine) DisableOptimizations()        { c.Add("-O0") }                       // Disable optimizations for debugging.
 func (c *CompilerCmdLine) GenerateDebugInfo()           { c.Add("-g") }                        // Generate complete debugging information.
@@ -72,7 +72,7 @@ func (c *CompilerCmdLine) UseCLatest()                  { c.Add("-std=clatest") 
 func (c *CompilerCmdLine) GenerateDependencyFiles()     { c.Add("-MMD") }                      // Generate a dependency file for every source files being compiled.
 func (c *CompilerCmdLine) Includes(includes []string)   { c.AddWithPrefix("-I", includes...) } // Add include paths.
 func (c *CompilerCmdLine) Defines(defines []string)     { c.AddWithPrefix("-D", defines...) }  // Add preprocessor definitions.
-func (c *CompilerCmdLine) ObjectFile(outputFile string) { c.AddWithPrefix("-o", outputFile) }
+func (c *CompilerCmdLine) ObjectFile(outputFile string) { c.args.Add("-o", outputFile) }
 func (c *CompilerCmdLine) SourceFile(sourceFile string) { c.Add(sourceFile) }
 func (c *CompilerCmdLine) Save()                        { c.length = c.args.Len() }
 func (c *CompilerCmdLine) Restore()                     { c.args.Args = c.args.Args[:c.length] }

@@ -61,12 +61,10 @@ func (c *LinkerCmdline) MachineX64()                    {}
 func (c *LinkerCmdline) LibPaths(libpaths []string)     { c.AddWithPrefix("-L", libpaths...) }
 func (c *LinkerCmdline) Libs(libs []string)             { c.AddWithPrefix("-l", libs...) }
 func (c *LinkerCmdline) Frameworks(frameworks []string) { c.AddWithPrefix("-framework", frameworks...) }
-func (c *LinkerCmdline) ObjectFiles(objs []string) {
-	c.AddWithFunc(func(arg string) string { return "\"" + arg + "\"" }, objs...)
-}
-func (c *LinkerCmdline) Out(outputFilepath string) { c.args.Add("-o", outputFilepath) }
-func (c *LinkerCmdline) Save()                     { c.length = c.args.Len() }
-func (c *LinkerCmdline) Restore()                  { c.args.Args = c.args.Args[:c.length] }
+func (c *LinkerCmdline) ObjectFiles(objs []string)      { c.args.Add(objs...) }
+func (c *LinkerCmdline) Out(outputFilepath string)      { c.args.Add("-o", outputFilepath) }
+func (c *LinkerCmdline) Save()                          { c.length = c.args.Len() }
+func (c *LinkerCmdline) Restore()                       { c.args.Args = c.args.Args[:c.length] }
 
 func GenerateLinkerCmdline(flags LinkerFlags, libpaths []string, libs []string, objectFiles []string) *foundation.Arguments {
 	args := foundation.NewArguments(len(libpaths) + len(libs) + len(objectFiles) + 20)

@@ -122,20 +122,22 @@ func Build(projectName string, targetConfig *Config) (err error) {
 }
 
 func Clean(projectName string, buildConfig *Config) error {
+	buildPath := GetBuildPath(buildConfig.GetSubDir())
+
 	prjs := ClayAppCreateProjectsFunc()
 	for _, prj := range prjs {
 		if projectName == "" || projectName == prj.Name {
 			if prj.Config.Matches(buildConfig) {
 
-				buildPath := prj.GetBuildPath(buildConfig.GetSubDir())
+				projectBuildPath := prj.GetBuildPath(buildPath)
 
 				// Note: We should be running this from the "target/esp" directory
 				// Remove all folders and files from "build/"
-				if err := os.RemoveAll(buildPath + "/"); err != nil {
+				if err := os.RemoveAll(projectBuildPath + "/"); err != nil {
 					return foundation.LogError(err, "Failed to remove build directory")
 				}
 
-				if err := os.MkdirAll(buildPath+"/", os.ModePerm); err != nil {
+				if err := os.MkdirAll(projectBuildPath+"/", os.ModePerm); err != nil {
 					return foundation.LogError(err, "Failed to create build directory")
 				}
 			}
