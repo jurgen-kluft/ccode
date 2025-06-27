@@ -193,7 +193,7 @@ func (p *Project) Build(buildConfig *Config, buildPath string) (outOfDate int, e
 		} else {
 			projectDepFileTrackr.CopyItem(executableOutputFilepath)
 		}
-		_, err = projectDepFileTrackr.Save()
+
 	} else {
 		archiveOutputFilepath := p.GetOutputFilepath(buildPath, staticArchiver.LibFilepath(p.Name))
 		if outOfDate > 0 || !projectDepFileTrackr.QueryItem(archiveOutputFilepath) {
@@ -216,21 +216,21 @@ func (p *Project) Build(buildConfig *Config, buildPath string) (outOfDate int, e
 			}
 
 			projectDepFileTrackr.AddItem(archiveOutputFilepath, objFilesToArchive)
-			_, err = projectDepFileTrackr.Save()
-			if err != nil {
-				return outOfDate, err
-			}
 		} else {
 			projectDepFileTrackr.CopyItem(archiveOutputFilepath)
-			_, err = projectDepFileTrackr.Save()
 		}
+	}
+
+	_, err = projectDepFileTrackr.Save()
+	if err != nil {
+		return outOfDate, err
 	}
 
 	if outOfDate > 0 {
 		foundation.LogInfof("Building done ... (duration %s)\n", time.Since(buildStartTime).Round(time.Second))
 	}
 
-	return outOfDate, err
+	return outOfDate, nil
 }
 
 func (p *Project) Flash(buildConfig *Config, buildPath string) error {
