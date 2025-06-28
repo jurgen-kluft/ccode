@@ -203,7 +203,6 @@ func (p *Project) Build(buildConfig *Config, buildPath string) (outOfDate int, e
 				outOfDate += 1
 			}
 
-			// If this is a library, we don't link it, but we can create a static archive
 			staticArchiver.SetupArgs()
 
 			objFilesToArchive := make([]string, 0, len(p.SourceFiles))

@@ -62,11 +62,12 @@ func ParseProjectNameAndConfig() (string, *Config) {
 	flag.StringVar(&targetArch, "arch", GetDefaultArch(), "Cpu Architecture (amd64, x64, arm64, esp32, esp32s3)")
 	flag.Parse()
 
-	if runtime.GOOS == "windows" {
+	switch runtime.GOOS {
+	case "windows":
 		targetOs = "windows"
-	} else if runtime.GOOS == "darwin" {
+	case "darwin":
 		targetOs = "darwin"
-	} else {
+	default:
 		targetOs = "linux"
 	}
 
@@ -76,13 +77,14 @@ func ParseProjectNameAndConfig() (string, *Config) {
 
 	if targetArch == "" {
 		targetArch = runtime.GOARCH
-		if targetOs == "arduino" {
+		switch targetOs {
+		case "arduino":
 			targetArch = "esp32"
-		} else if targetOs == "darwin" {
+		case "darwin":
 			targetArch = "arm64"
-		} else if targetOs == "windows" {
+		case "windows":
 			targetArch = "x64"
-		} else if targetOs == "linux" {
+		case "linux":
 			targetArch = "amd64"
 		}
 	}
@@ -130,9 +132,8 @@ func Clean(projectName string, buildConfig *Config) error {
 			if prj.Config.Matches(buildConfig) {
 
 				projectBuildPath := prj.GetBuildPath(buildPath)
+				foundation.LogPrintln("Clean " + projectBuildPath)
 
-				// Note: We should be running this from the "target/esp" directory
-				// Remove all folders and files from "build/"
 				if err := os.RemoveAll(projectBuildPath + "/"); err != nil {
 					return foundation.LogError(err, "Failed to remove build directory")
 				}
