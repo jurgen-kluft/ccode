@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"hash"
 	"os"
+	"strings"
 	"time"
 )
 
@@ -78,6 +79,70 @@ func (d *jsonFileTracker) Save() (int, error) {
     }
 }
 */
+
+func ParseJsonDependencyFile(filepath string) (mainItem string, depItems []string, err error) {
+	contentBytes, err := os.ReadFile(filepath)
+	if err != nil {
+		return "", []string{}, err
+	}
+
+	type part struct {
+		from int
+		to   int
+	}
+
+	// Parse the .d file content
+	content := string(contentBytes)
+	var parts []part
+
+	startPos := strings.Index(content, "Includes\":")
+	if startPos == -1 {
+		return "", []string{}, fmt.Errorf("invalid dependency file format: %s", filepath)
+	}
+	startPos += len("Includes\":") // Move to the start of the includes array
+
+	endPos := strings.Index(content[startPos:], "]")
+	if endPos == -1 {
+		return "", []string{}, fmt.Errorf("invalid dependency file format: %s", filepath)
+	}
+	endPos += startPos // Adjust end position to the correct index in the content
+
+	for startPos < endPos {
+
+		begin := strings.Index(content[startPos:], "\"")
+		if begin == -1 {
+			break
+		}
+		begin += startPos + 1
+
+		end := strings.Index(content[begin:], "\"")
+		if end == -1 {
+			break // No closing quote found
+		}
+		end += begin // Adjust end position to the correct index in the content
+
+		parts = append(parts, part{from: begin, to: end})
+
+		startPos = end + 1 // Move to the next part after the closing quote
+
+		begin = strings.Index(content[startPos:], "\"")
+		if begin == -1 {
+			break // No more parts found
+		}
+		startPos += begin
+	}
+
+	for i, p := range parts {
+		if i == 0 {
+			mainItem = content[p.from:p.to]
+		} else {
+			depItem := content[p.from:p.to]
+			depItems = append(depItems, depItem)
+		}
+	}
+
+	return mainItem, depItems, nil
+}
 
 func (d *jsonFileTracker) CopyItem(item string) {
 	d.hasher.Reset()
