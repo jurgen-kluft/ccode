@@ -460,7 +460,7 @@ func (b *ToolchainArduinoEsp32Burner) SetupBuild(buildPath string) {
 	b.genBootloaderToolArgs.Add(sdkBootLoaderElfPath)
 
 	// File Dependency Tracker and Information
-	b.dependencyTracker = deptrackr.LoadFileTrackr(filepath.Join(buildPath, "deptrackr.burn"))
+	b.dependencyTracker = deptrackr.LoadDepFileTrackr(filepath.Join(buildPath, "deptrackr.burn"))
 
 	b.genImageBinToolOutputFilepath = projectBinFilepath
 	b.genImageBinToolInputFilepaths = []string{projectElfFilepath}
@@ -635,7 +635,7 @@ func (b *ToolchainArduinoEsp32Burner) Burn() error {
 // --------------------------------------------------------------------------------------------------
 // Dependency Tracker
 func (t *ArduinoEsp32) NewDependencyTracker(dirpath string) deptrackr.FileTrackr {
-	return deptrackr.LoadFileTrackr(filepath.Join(dirpath, "deptrackr"))
+	return deptrackr.LoadDepFileTrackr(filepath.Join(dirpath, "deptrackr"))
 }
 
 // --------------------------------------------------------------------------------------------------

@@ -167,3 +167,19 @@ func GenerateCompilerCmdline(flags CompilerFlags, outputPath string, includes []
 
 	return args
 }
+
+/* Command-line example from callocator, dev-debug-test
+/MP /ifcOutput "obj\unittest_library_callocator\debug-dev-test_x64_v143\" /GS /TP /W3 /Zc:wchar_t
+/I"..\..\source\main\include"
+/I"..\..\..\ccore\source\main\include"
+/I"..\..\..\cbase\source\main\include"
+/Zi /Gm- /Od /sdl
+/Fd"lib\unittest_library_callocator\debug-dev-test_x64_v143\unittest_library_callocator.pdb"
+/Zc:inline /fp:precise /D "TARGET_PC" /D "UNICODE" /D "_UNICODE" /D "TARGET_DEBUG" /D "_DEBUG"
+/D "TARGET_TEST" /errorReport:prompt /WX /Zc:forScope /Gd /Oy- /MTd /std:c++17 /FC
+/Fa"obj\unittest_library_callocator\debug-dev-test_x64_v143\"
+/sourceDependencies "obj\unittest_library_callocator\debug-dev-test_x64_v143\"
+/EHsc /nologo /Fo"obj\unittest_library_callocator\debug-dev-test_x64_v143\"
+/Fp"obj\unittest_library_callocator\debug-dev-test_x64_v143\unittest_library_callocator.pch"
+/diagnostics:column
+*/
