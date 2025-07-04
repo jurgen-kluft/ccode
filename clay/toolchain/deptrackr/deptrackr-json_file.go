@@ -80,7 +80,7 @@ func (d *jsonFileTracker) Save() (int, error) {
 }
 */
 
-func ParseJsonDependencyFile(filepath string) (mainItem string, depItems []string, err error) {
+func (d *jsonFileTracker) ParseDependencyFile(filepath string) (mainItem string, depItems []string, err error) {
 	contentBytes, err := os.ReadFile(filepath)
 	if err != nil {
 		return "", []string{}, err
@@ -238,7 +238,7 @@ func (d *jsonFileTracker) QueryItem(item string) bool {
 				srcFileInfo, err := os.Stat(string(itemIdData))
 				if err == nil {
 					binary.LittleEndian.PutUint64(modTimeBytes, uint64(srcFileInfo.ModTime().Unix()))
-					if bytes.Compare(modTimeBytes, itemChangeData) == 0 {
+					if bytes.Equal(modTimeBytes, itemChangeData) {
 						return StateUpToDate
 					}
 				}
@@ -282,7 +282,7 @@ func (d *jsonFileTracker) QueryItemWithExtraData(item string, data []byte) bool 
 					srcFileInfo, err := os.Stat(string(itemIdData))
 					if err == nil {
 						binary.LittleEndian.PutUint64(modTimeBytes, uint64(srcFileInfo.ModTime().Unix()))
-						if bytes.Compare(modTimeBytes, itemChangeData) == 0 {
+						if bytes.Equal(modTimeBytes, itemChangeData) {
 							return StateUpToDate
 						}
 					}

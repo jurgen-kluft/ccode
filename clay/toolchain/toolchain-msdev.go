@@ -47,9 +47,7 @@ func (cl *WinMsDevCompiler) ObjFilepath(srcRelFilepath string) string {
 }
 
 func (cl *WinMsDevCompiler) DepFilepath(objRelFilepath string) string {
-	objRelFilepath = strings.TrimSuffix(objRelFilepath, ".c")
-	objRelFilepath = strings.TrimSuffix(objRelFilepath, ".cpp")
-	return objRelFilepath + ".d"
+	return objRelFilepath + ".json"
 }
 
 func (cl *WinMsDevCompiler) SetupArgs(_defines []string, _includes []string) {

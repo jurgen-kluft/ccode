@@ -14,7 +14,7 @@ func TestLoadDotdDepTrackr(t *testing.T) {
 	}
 
 	dotdFilepath := "test_allocator.cpp.d"
-	mainItem, depItems, err := ParseDotDependencyFile(dotdFilepath)
+	mainItem, depItems, err := d.ParseDependencyFile(dotdFilepath)
 	if err != nil {
 		t.Fatalf("Failed to parse .d file '%s', with error: %v", dotdFilepath, err)
 	}

@@ -7,7 +7,6 @@ import (
 	"time"
 
 	"github.com/jurgen-kluft/ccode/clay/toolchain"
-	"github.com/jurgen-kluft/ccode/clay/toolchain/deptrackr"
 	"github.com/jurgen-kluft/ccode/foundation"
 )
 
@@ -150,7 +149,7 @@ func (p *Project) Build(buildConfig *Config, buildPath string) (outOfDate int, e
 		}
 		for _, src := range srcFilesOutOfDate {
 			depFilepath := filepath.Join(projectBuildPath, compiler.DepFilepath(src.SrcRelPath))
-			if mainItem, depItems, err := deptrackr.ParseDotDependencyFile(depFilepath); err == nil {
+			if mainItem, depItems, err := projectDepFileTrackr.ParseDependencyFile(depFilepath); err == nil {
 				projectDepFileTrackr.AddItem(mainItem, depItems)
 			}
 		}

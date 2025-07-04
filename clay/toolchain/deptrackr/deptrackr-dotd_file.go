@@ -18,6 +18,7 @@ type FileTrackr interface {
 	QueryItemWithExtraData(item string, data []byte) bool
 	AddItemWithExtraData(item string, data []byte, deps []string) error
 
+	ParseDependencyFile(filepath string) (mainItem string, depItems []string, err error)
 	CopyItem(item string)
 
 	Save() (int, error) // 0=none save (up-to-date), 1=changes saved (out-of-date), -1=error
@@ -62,7 +63,7 @@ func (d *depFileTracker) CopyItem(item string) {
 	d.current.CopyItem(d.future, itemHash)
 }
 
-func ParseDotDependencyFile(filepath string) (mainItem string, depItems []string, err error) {
+func (d *depFileTracker) ParseDependencyFile(filepath string) (mainItem string, depItems []string, err error) {
 	contentBytes, err := os.ReadFile(filepath)
 	if err != nil {
 		return "", []string{}, err
