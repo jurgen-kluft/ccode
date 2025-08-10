@@ -25,7 +25,8 @@ func (f LinkerFlags) WhenConsole() bool {
 }
 
 type LinkerCmdline struct {
-	args *foundation.Arguments
+	args   *foundation.Arguments
+	length int
 }
 
 func NewLinkerCmdline(args *foundation.Arguments) *LinkerCmdline {
@@ -78,6 +79,12 @@ func (c *LinkerCmdline) ObjectFiles(objs []string) {
 }
 func (c *LinkerCmdline) Out(outputFilepath string) {
 	c.Add("/OUT:" + outputFilepath)
+}
+func (c *LinkerCmdline) Save() { c.length = c.args.Len() }
+func (c *LinkerCmdline) Restore() {
+	if c.length < c.args.Len() {
+		c.args.Args = c.args.Args[:c.length]
+	}
 }
 
 func GenerateLinkerCmdline(flags LinkerFlags, libpaths []string, libs []string, objectFiles []string) *foundation.Arguments {

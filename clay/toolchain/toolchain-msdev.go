@@ -91,6 +91,9 @@ func (cl *WinMsDevCompiler) SetupArgs(_defines []string, _includes []string) {
 		cl.cmdline.EnableExceptionHandling()
 	}
 
+	cl.cmdline.Defines(_defines)
+	cl.cmdline.Includes(_includes)
+
 	cl.cmdline.Save()
 }
 
@@ -248,12 +251,15 @@ func (l *WinMsDevLinker) SetupArgs(libraryPaths []string, libraryFiles []string)
 	l.cmdline.DynamicBase()
 	l.cmdline.EnableDataExecutionPrevention()
 	l.cmdline.MachineX64()
+
+	l.cmdline.Save()
 }
 
 func (l *WinMsDevLinker) Link(inputArchiveAbsFilepaths []string, outputAppRelFilepath string) error {
 
 	outputAppRelFilepath = foundation.PathWindowsPath(outputAppRelFilepath)
 
+	l.cmdline.Restore()
 	l.cmdline.GenerateMapfile(foundation.FileChangeExtension(outputAppRelFilepath, ".map"))
 	l.cmdline.Out(outputAppRelFilepath)
 
