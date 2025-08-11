@@ -2,6 +2,7 @@ package toolchain
 
 import (
 	"fmt"
+	"os"
 	"os/exec"
 	"path/filepath"
 	"strings"
@@ -32,11 +33,12 @@ type WinMsDevCompiler struct {
 }
 
 func (m *WinMsdev) NewCompiler(config *Config) Compiler {
+	args := foundation.NewArguments(512)
 	return &WinMsDevCompiler{
 		toolChain: m,
 		config:    config,
-		args:      foundation.NewArguments(512),
-		cmdline:   msvc.NewCompilerCmdLine(foundation.NewArguments(512)),
+		args:      args,
+		cmdline:   msvc.NewCompilerCmdLine(args),
 	}
 }
 
@@ -93,6 +95,7 @@ func (cl *WinMsDevCompiler) SetupArgs(_defines []string, _includes []string) {
 
 	cl.cmdline.Defines(_defines)
 	cl.cmdline.Includes(_includes)
+	cl.cmdline.Includes(cl.toolChain.Msvc.IncludePaths)
 
 	cl.cmdline.Save()
 }
@@ -104,44 +107,44 @@ func (cl *WinMsDevCompiler) Compile(sourceAbsFilepaths []string, objRelFilepaths
 	sourceFilesPerDir := make(map[string][]string)
 	for i, objFilepath := range objRelFilepaths {
 		objFilepath = foundation.PathWindowsPath(objFilepath)
-		objFile := foundation.PathFilename(objFilepath, true)
-		srcDir := objFile[:len(objFilepath)-len(objFile)]
-		srcFile := foundation.PathFilename(sourceAbsFilepaths[i], true)
-		if _, ok := sourceFilesPerDir[srcDir]; !ok {
+		objDirpath := foundation.PathDirname(objFilepath)
+		srcFile := sourceAbsFilepaths[i]
+		if _, ok := sourceFilesPerDir[objDirpath]; !ok {
 			sourceFiles := make([]string, 0, len(sourceAbsFilepaths)-i)
 			sourceFiles = append(sourceFiles, srcFile)
-			sourceFilesPerDir[srcDir] = sourceFiles
+			sourceFilesPerDir[objDirpath] = sourceFiles
 		} else {
-			sourceFilesPerDir[srcDir] = append(sourceFilesPerDir[srcDir], srcFile)
+			sourceFilesPerDir[objDirpath] = append(sourceFilesPerDir[objDirpath], srcFile)
 		}
 	}
 
 	// Iterate over the source files per directory and compile them.
-	for srcDir, srcFiles := range sourceFilesPerDir {
+	configStr := cl.config.Config.AsString()
+	for objDirpath, srcFiles := range sourceFilesPerDir {
 		cl.cmdline.Restore() // Restore the command line arguments
 
-		srcDir = foundation.PathWindowsPath(srcDir)
-		cl.cmdline.OutDir(srcDir)
-		cl.cmdline.GenerateDependencyFiles(srcDir)
-		cl.cmdline.SourceFiles(srcFiles)
-
-		configStr := cl.config.Config.AsString()
 		for _, srcFile := range srcFiles {
 			foundation.LogInfof("Compiling (%s) %s\n", configStr, srcFile)
-		}
 
-		// Prepare the command to execute the compiler.
-		compilerPath := filepath.Join(cl.toolChain.Msvc.CompilerPath, cl.toolChain.Msvc.CompilerBin)
-		compilerArgs := cl.args.Args
-		cmd := exec.Command(compilerPath, compilerArgs...)
-		cmd.Env = append(cmd.Env, "PATH="+foundation.PathWindowsPath(cl.toolChain.Msvc.CompilerPath))
-		out, err := cmd.CombinedOutput()
-		if err != nil {
-			foundation.LogInfof("Compile failed, output:\n%s\n", string(out))
-			return foundation.LogErrorf(err, "Compiling failed")
-		}
-		if len(out) > 0 {
-			foundation.LogInfof("Compile output:\n%s\n", string(out))
+			objDirpath = foundation.PathWindowsPath(objDirpath)
+			cl.cmdline.OutDir(objDirpath)
+			cl.cmdline.GenerateDependencyFiles(objDirpath)
+			cl.cmdline.SourceFile(srcFile)
+
+			// Prepare the command to execute the compiler.
+			compilerPath := filepath.Join(cl.toolChain.Msvc.CompilerPath, cl.toolChain.Msvc.CompilerBin)
+			compilerArgs := cl.args.Args
+			cmd := exec.Command(compilerPath, compilerArgs...)
+			cmd.Env = os.Environ()
+			cmd.Env = append(cmd.Env, "Path="+foundation.PathWindowsPath(cl.toolChain.Msvc.CompilerPath))
+			out, err := cmd.CombinedOutput()
+			if err != nil {
+				foundation.LogInfof("Compile failed, output:\n%s\n", string(out))
+				return foundation.LogErrorf(err, "Compiling failed")
+			}
+			if len(out) > 0 {
+				foundation.LogInfof("Compile output:\n%s\n", string(out))
+			}
 		}
 	}
 

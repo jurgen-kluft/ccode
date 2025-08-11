@@ -50,6 +50,9 @@ func (c *CompilerCmdLine) Add(arg string) { c.args.Add(arg) }
 func (c *CompilerCmdLine) AddWithPrefix(prefix string, args ...string) {
 	c.args.AddWithPrefix(prefix, args...)
 }
+func (a *CompilerCmdLine) AddWithFunc(modFunc func(string) string, args ...string) {
+	a.args.AddWithFunc(modFunc, args...)
+}
 
 func (c *CompilerCmdLine) CompileOnly()                          { c.Add("/c") }                          // Compile only; do not link. This is useful for generating object files without creating an executable.
 func (c *CompilerCmdLine) NoLogo()                               { c.Add("/nologo") }                     // Suppress the display of the compiler's startup banner and copyright message.
@@ -84,11 +87,22 @@ func (c *CompilerCmdLine) UseC17()                               { c.Add("/std:c
 func (c *CompilerCmdLine) UseCLatest()                           { c.Add("/std:clatest") }                // Use the latest C standard.
 func (c *CompilerCmdLine) GenerateDependencyFiles(dirpath string) {
 	c.args.Add("/sourceDependencies", dirpath)
-}                                                           // Generate source dependencies file in the specified directory.
-func (c *CompilerCmdLine) Includes(includes []string)       { c.AddWithPrefix("/I", includes...) } // These are the directories for the compiler to find header files
-func (c *CompilerCmdLine) Defines(defines []string)         { c.AddWithPrefix("/D", defines...) }  // Define constants or enable/disable features in your code.
-func (c *CompilerCmdLine) OutDir(dirpath string)            { c.args.Add("/Fo", dirpath) }         // Set the output directory for object files.
-func (c *CompilerCmdLine) SourceFiles(sourceFiles []string) { c.args.Add(sourceFiles...) }         // These are the C++ source files that should be compiled.
+} // Generate source dependencies file in the specified directory.
+// func (c *CompilerCmdLine) Includes(includes []string)       { c.AddWithPrefix("/I", includes...) } // These are the directories for the compiler to find header files
+func (c *CompilerCmdLine) Includes(includes []string) {
+	for _, include := range includes {
+		c.Add("/I" + include)
+	}
+}
+func (c *CompilerCmdLine) Defines(defines []string) {
+	for _, define := range defines {
+		c.args.Add("/D", define)
+	}
+
+}                                                                                                 // Define constants or enable/disable features in your code.
+func (c *CompilerCmdLine) OutDir(dirpath string)            { c.args.Add("/Fo" + dirpath + `\`) } // Set the output directory for object files.
+func (c *CompilerCmdLine) SourceFile(sourceFile string)     { c.args.Add(sourceFile) }            // This is  a C++ source file that should be compiled.
+func (c *CompilerCmdLine) SourceFiles(sourceFiles []string) { c.args.Add(sourceFiles...) }        // These are the C++ source files that should be compiled.
 func (c *CompilerCmdLine) Save()                            { c.length = c.args.Len() }
 func (c *CompilerCmdLine) Restore() {
 	if c.length < c.args.Len() {
