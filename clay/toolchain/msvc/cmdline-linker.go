@@ -52,17 +52,10 @@ func (c *LinkerCmdline) ErrorReportPrompt()             { c.Add("/ERRORREPORT:PR
 func (c *LinkerCmdline) NoLogo()                        { c.Add("/NOLOGO") }
 func (c *LinkerCmdline) GenerateMapfile(fp string)      { c.Add("/MAP:" + fp) }
 func (c *LinkerCmdline) GenerateDebugInfo()             { c.Add("/DEBUG") }
-func (c *LinkerCmdline) GenerateDll()                   { c.Add("/LD") }
-func (c *LinkerCmdline) GenerateDebugDll()              { c.Add("/LDd") }
-func (c *LinkerCmdline) GenerateMultithreadedDll()      { c.Add("/MD") }
-func (c *LinkerCmdline) GenerateMultithreadedDebugDll() { c.Add("/MDd") }
-func (c *LinkerCmdline) GenerateMultithreadedExe()      { c.Add("/MT") }
-func (c *LinkerCmdline) GenerateMultithreadedDebugExe() { c.Add("/MTd") }
 func (c *LinkerCmdline) OptimizeReferences()            { c.Add("/OPT:REF") }
 func (c *LinkerCmdline) OptimizeIdenticalFolding()      { c.Add("/OPT:ICF") }
 func (c *LinkerCmdline) LinkTimeCodeGeneration()        { c.Add("/LTCG") }
 func (c *LinkerCmdline) DisableIncrementalLinking()     { c.Add("/INCREMENTAL:NO") }
-func (c *LinkerCmdline) UseMultithreadedFinal()         { c.Add("/MT") }
 func (c *LinkerCmdline) SubsystemConsole()              { c.Add("/SUBSYSTEM:CONSOLE") }
 func (c *LinkerCmdline) SubsystemWindows()              { c.Add("/SUBSYSTEM:WINDOWS") }
 func (c *LinkerCmdline) DynamicBase()                   { c.Add("/DYNAMICBASE") }
@@ -72,7 +65,7 @@ func (c *LinkerCmdline) LibPaths(libpaths []string) {
 	c.AddWithFunc(func(arg string) string { return "/LIBPATH:\"" + foundation.PathWindowsPath(arg) + "\"" }, libpaths...)
 }
 func (c *LinkerCmdline) Libs(libs []string) {
-	c.AddWithFunc(func(arg string) string { return "\"" + arg + "\"" }, libs...)
+	c.AddWithFunc(func(arg string) string { return arg }, libs...)
 }
 func (c *LinkerCmdline) ObjectFiles(objs []string) {
 	c.AddWithFunc(func(arg string) string { return "\"" + arg + "\"" }, objs...)
@@ -96,17 +89,14 @@ func GenerateLinkerCmdline(flags LinkerFlags, libpaths []string, libs []string, 
 	c.NoLogo()
 	if flags.WhenDebug() {
 		c.GenerateDebugInfo()
-		c.GenerateMultithreadedDebugExe()
 	}
 	if flags.WhenRelease() || flags.WhenFinal() {
-		c.GenerateMultithreadedExe()
 		c.OptimizeReferences()
 		c.OptimizeIdenticalFolding()
 	}
 	if flags.WhenFinal() {
 		c.LinkTimeCodeGeneration()
 		c.DisableIncrementalLinking()
-		c.UseMultithreadedFinal()
 	}
 	if flags.WhenConsole() {
 		c.SubsystemConsole()

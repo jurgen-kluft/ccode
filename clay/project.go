@@ -148,8 +148,9 @@ func (p *Project) Build(buildConfig *Config, buildPath string) (outOfDate int, e
 			projectDepFileTrackr.CopyItem(objRelFilepath)
 		}
 		for _, src := range srcFilesOutOfDate {
-			depFilepath := filepath.Join(projectBuildPath, compiler.DepFilepath(src.SrcRelPath))
-			if mainItem, depItems, err := projectDepFileTrackr.ParseDependencyFile(depFilepath); err == nil {
+			objRelFilepath := filepath.Join(projectBuildPath, compiler.ObjFilepath(src.SrcRelPath))
+			depRelFilepath := filepath.Join(projectBuildPath, compiler.DepFilepath(src.SrcRelPath))
+			if mainItem, depItems, err := projectDepFileTrackr.ParseDependencyFile(src.SrcAbsPath, objRelFilepath, depRelFilepath); err == nil {
 				projectDepFileTrackr.AddItem(mainItem, depItems)
 			}
 		}

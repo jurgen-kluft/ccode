@@ -13,8 +13,10 @@ func TestLoadDotdDepTrackr(t *testing.T) {
 		t.Fatal("Expected deptrackr to be loaded, but got nil")
 	}
 
+	srcFilepath := "test_allocator.cpp"
+	objFilepath := "test_allocator.obj"
 	dotdFilepath := "test_allocator.cpp.d"
-	mainItem, depItems, err := d.ParseDependencyFile(dotdFilepath)
+	mainItem, depItems, err := d.ParseDependencyFile(srcFilepath, objFilepath, dotdFilepath)
 	if err != nil {
 		t.Fatalf("Failed to parse .d file '%s', with error: %v", dotdFilepath, err)
 	}

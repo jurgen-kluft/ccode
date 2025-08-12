@@ -80,8 +80,8 @@ func (d *jsonFileTracker) Save() (int, error) {
 }
 */
 
-func (d *jsonFileTracker) ParseDependencyFile(filepath string) (mainItem string, depItems []string, err error) {
-	contentBytes, err := os.ReadFile(filepath)
+func (d *jsonFileTracker) ParseDependencyFile(srcFilepath, objFilepath, depFilepath string) (mainItem string, depItems []string, err error) {
+	contentBytes, err := os.ReadFile(depFilepath)
 	if err != nil {
 		return "", []string{}, err
 	}
@@ -91,19 +91,19 @@ func (d *jsonFileTracker) ParseDependencyFile(filepath string) (mainItem string,
 		to   int
 	}
 
-	// Parse the .d file content
+	// Parse the .json file content
 	content := string(contentBytes)
 	var parts []part
 
-	startPos := strings.Index(content, "Includes\":")
+	startPos := strings.Index(content, `"Includes": [`)
 	if startPos == -1 {
-		return "", []string{}, fmt.Errorf("invalid dependency file format: %s", filepath)
+		return "", []string{}, fmt.Errorf("invalid dependency file format: %s", depFilepath)
 	}
-	startPos += len("Includes\":") // Move to the start of the includes array
+	startPos += len(`"Includes": [`) // Move to the start of the includes array
 
 	endPos := strings.Index(content[startPos:], "]")
 	if endPos == -1 {
-		return "", []string{}, fmt.Errorf("invalid dependency file format: %s", filepath)
+		return "", []string{}, fmt.Errorf("invalid dependency file format: %s", depFilepath)
 	}
 	endPos += startPos // Adjust end position to the correct index in the content
 
@@ -132,11 +132,18 @@ func (d *jsonFileTracker) ParseDependencyFile(filepath string) (mainItem string,
 		startPos += begin
 	}
 
-	for i, p := range parts {
-		if i == 0 {
-			mainItem = content[p.from:p.to]
-		} else {
-			depItem := content[p.from:p.to]
+	depItemDedupMap := make(map[string]bool, len(parts))
+
+	mainItem = objFilepath // The main item is the object file path
+
+	depItems = make([]string, 0, len(parts)+1)
+	depItems = append(depItems, srcFilepath) // Add the object file path as the main item
+
+	for _, p := range parts {
+		depItem := content[p.from:p.to]
+		depItem = strings.ReplaceAll(depItem, `\\`, `\`) // Normalize double backslashes to single backslashes
+		if _, exists := depItemDedupMap[depItem]; !exists {
+			depItemDedupMap[depItem] = true
 			depItems = append(depItems, depItem)
 		}
 	}

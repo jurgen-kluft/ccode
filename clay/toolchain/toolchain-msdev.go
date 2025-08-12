@@ -125,26 +125,26 @@ func (cl *WinMsDevCompiler) Compile(sourceAbsFilepaths []string, objRelFilepaths
 
 		for _, srcFile := range srcFiles {
 			foundation.LogInfof("Compiling (%s) %s\n", configStr, srcFile)
+		}
 
-			objDirpath = foundation.PathWindowsPath(objDirpath)
-			cl.cmdline.OutDir(objDirpath)
-			cl.cmdline.GenerateDependencyFiles(objDirpath)
-			cl.cmdline.SourceFile(srcFile)
+		objDirpath = foundation.PathWindowsPath(objDirpath)
+		cl.cmdline.OutDir(objDirpath)
+		cl.cmdline.GenerateDependencyFiles(objDirpath)
+		cl.cmdline.SourceFiles(srcFiles)
 
-			// Prepare the command to execute the compiler.
-			compilerPath := filepath.Join(cl.toolChain.Msvc.CompilerPath, cl.toolChain.Msvc.CompilerBin)
-			compilerArgs := cl.args.Args
-			cmd := exec.Command(compilerPath, compilerArgs...)
-			cmd.Env = os.Environ()
-			cmd.Env = append(cmd.Env, "Path="+foundation.PathWindowsPath(cl.toolChain.Msvc.CompilerPath))
-			out, err := cmd.CombinedOutput()
-			if err != nil {
-				foundation.LogInfof("Compile failed, output:\n%s\n", string(out))
-				return foundation.LogErrorf(err, "Compiling failed")
-			}
-			if len(out) > 0 {
-				foundation.LogInfof("Compile output:\n%s\n", string(out))
-			}
+		// Prepare the command to execute the compiler.
+		compilerPath := filepath.Join(cl.toolChain.Msvc.CompilerPath, cl.toolChain.Msvc.CompilerBin)
+		compilerArgs := cl.args.Args
+		cmd := exec.Command(compilerPath, compilerArgs...)
+		cmd.Env = os.Environ()
+		cmd.Env = append(cmd.Env, "Path="+foundation.PathWindowsPath(cl.toolChain.Msvc.CompilerPath))
+		out, err := cmd.CombinedOutput()
+		if err != nil {
+			foundation.LogInfof("Compile failed, output:\n%s\n", string(out))
+			return foundation.LogErrorf(err, "Compiling failed")
+		}
+		if len(out) > 0 {
+			foundation.LogInfof("Compile output:\n%s\n", string(out))
 		}
 	}
 
@@ -156,11 +156,12 @@ func (cl *WinMsDevCompiler) Compile(sourceAbsFilepaths []string, objRelFilepaths
 // Archiver
 
 func (m *WinMsdev) NewArchiver(a ArchiverType, config *Config) Archiver {
+	args := foundation.NewArguments(512)
 	return &WinMsDevArchiver{
 		toolChain: m,
 		config:    config,
-		args:      foundation.NewArguments(512),
-		cmdline:   msvc.NewArchiverCmdline(foundation.NewArguments(512)),
+		args:      args,
+		cmdline:   msvc.NewArchiverCmdline(args),
 	}
 }
 
@@ -191,9 +192,10 @@ func (a *WinMsDevArchiver) Archive(inputObjectFilepaths []string, outputArchiveF
 	archiverArgs := a.args.Args
 	archiverPath := filepath.Join(a.toolChain.Msvc.ArchiverPath, a.toolChain.Msvc.ArchiverBin)
 	cmd := exec.Command(archiverPath, archiverArgs...)
+	cmd.Env = os.Environ()
+	cmd.Env = append(cmd.Env, "PATH="+foundation.PathWindowsPath(a.toolChain.Msvc.ArchiverPath))
 
 	foundation.LogInfof("Archiving (%s) %s\n", a.config.Config.AsString(), outputArchiveFilepath)
-	cmd.Env = append(cmd.Env, "PATH="+foundation.PathWindowsPath(a.toolChain.Msvc.ArchiverPath))
 	out, err := cmd.CombinedOutput()
 	if err != nil {
 		foundation.LogInfof("Archive failed, output:\n%s\n", string(out))
@@ -211,11 +213,12 @@ func (a *WinMsDevArchiver) Archive(inputObjectFilepaths []string, outputArchiveF
 // Linker
 
 func (ms *WinMsdev) NewLinker(config *Config) Linker {
+	args := foundation.NewArguments(512)
 	return &WinMsDevLinker{
 		toolChain: ms,
 		config:    config,
-		args:      foundation.NewArguments(512),
-		cmdline:   msvc.NewLinkerCmdline(foundation.NewArguments(512)),
+		args:      args,
+		cmdline:   msvc.NewLinkerCmdline(args),
 	}
 }
 
@@ -232,28 +235,6 @@ func (l *WinMsDevLinker) LinkedFilepath(filepath string) string {
 
 func (l *WinMsDevLinker) SetupArgs(libraryPaths []string, libraryFiles []string) {
 	l.cmdline.ErrorReportPrompt()
-	l.cmdline.NoLogo()
-	if l.config.IsDebug() {
-		l.cmdline.GenerateDebugInfo()
-		l.cmdline.GenerateMultithreadedDebugExe()
-	}
-	if l.config.IsRelease() || l.config.IsFinal() {
-		l.cmdline.GenerateMultithreadedExe()
-		l.cmdline.OptimizeReferences()
-		l.cmdline.OptimizeIdenticalFolding()
-	}
-	if l.config.IsFinal() {
-		l.cmdline.LinkTimeCodeGeneration()
-		l.cmdline.DisableIncrementalLinking()
-		l.cmdline.UseMultithreadedFinal()
-	}
-
-	// Console or GUI application?
-	l.cmdline.SubsystemConsole()
-
-	l.cmdline.DynamicBase()
-	l.cmdline.EnableDataExecutionPrevention()
-	l.cmdline.MachineX64()
 
 	l.cmdline.Save()
 }
@@ -263,19 +244,13 @@ func (l *WinMsDevLinker) Link(inputArchiveAbsFilepaths []string, outputAppRelFil
 	outputAppRelFilepath = foundation.PathWindowsPath(outputAppRelFilepath)
 
 	l.cmdline.Restore()
-	l.cmdline.GenerateMapfile(foundation.FileChangeExtension(outputAppRelFilepath, ".map"))
-	l.cmdline.Out(outputAppRelFilepath)
 
-	libraryPathsMap := map[string]bool{}
-	for _, archiveFilepath := range inputArchiveAbsFilepaths {
-		archiveFilepath = foundation.PathWindowsPath(archiveFilepath)
-		libraryPathsMap[foundation.PathDirname(archiveFilepath)] = true
-	}
-	libraryPaths := make([]string, 0, len(libraryPathsMap))
-	for libPath := range libraryPathsMap {
-		libraryPaths = append(libraryPaths, foundation.PathWindowsPath(libPath))
-	}
-	l.cmdline.LibPaths(libraryPaths)
+	l.cmdline.NoLogo()
+
+	l.cmdline.Out(outputAppRelFilepath)
+	l.cmdline.GenerateMapfile(foundation.FileChangeExtension(outputAppRelFilepath, ".map"))
+
+	l.cmdline.LibPaths(l.toolChain.Msvc.Libs)
 
 	// TODO Where do we get this list of libraries from?
 	// Note: Could we perhaps scan all the header files that are included for any patterns that
@@ -296,18 +271,33 @@ func (l *WinMsDevLinker) Link(inputArchiveAbsFilepaths []string, outputAppRelFil
 	}
 	l.cmdline.Libs(systemLibraries)
 
-	libraryPaths = libraryPaths[0:]
-	for _, archiveFile := range inputArchiveAbsFilepaths {
-		archiveFile = foundation.PathFilename(archiveFile, true)
-		libraryPaths = append(libraryPaths, archiveFile)
+	if l.config.IsDebug() {
+		l.cmdline.GenerateDebugInfo()
 	}
-	l.cmdline.Libs(libraryPaths)
+	if l.config.IsRelease() || l.config.IsFinal() {
+		l.cmdline.OptimizeReferences()
+		l.cmdline.OptimizeIdenticalFolding()
+	}
+	if l.config.IsFinal() {
+		l.cmdline.LinkTimeCodeGeneration()
+		l.cmdline.DisableIncrementalLinking()
+	}
+
+	// Console or GUI application?
+	l.cmdline.SubsystemConsole()
+
+	l.cmdline.DynamicBase()
+	l.cmdline.EnableDataExecutionPrevention()
+	l.cmdline.MachineX64()
+
+	l.cmdline.Libs(inputArchiveAbsFilepaths)
 
 	linkerPath := filepath.Join(l.toolChain.Msvc.LinkerPath, l.toolChain.Msvc.LinkerBin)
 	linkerArgs := l.args.Args
 
 	cmd := exec.Command(linkerPath, linkerArgs...)
-	cmd.Env = append(cmd.Env, "PATH="+foundation.PathWindowsPath(l.toolChain.Msvc.LinkerPath))
+	cmd.Env = os.Environ()
+	cmd.Env = append(cmd.Env, "Path="+foundation.PathWindowsPath(l.toolChain.Msvc.LinkerPath))
 
 	foundation.LogInfof("Linking (%s) %s\n", l.config.Config.AsString(), outputAppRelFilepath)
 	out, err := cmd.CombinedOutput()

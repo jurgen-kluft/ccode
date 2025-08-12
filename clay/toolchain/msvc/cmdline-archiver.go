@@ -30,7 +30,7 @@ func (c *ArchiverCmdline) Out(outputArchiveFilepath string) {
 	c.AddWithPrefix("/OUT:", outputArchiveFilepath)
 }
 func (c *ArchiverCmdline) ObjectFiles(objs []string) {
-	c.AddWithFunc(func(arg string) string { return "\"" + foundation.PathWindowsPath(arg) + "\"" }, objs...)
+	c.AddWithFunc(func(arg string) string { return foundation.PathWindowsPath(arg) }, objs...)
 }
 
 func (c *ArchiverCmdline) Save() {
