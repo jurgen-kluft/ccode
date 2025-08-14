@@ -62,7 +62,7 @@ func (c *LinkerCmdline) DynamicBase()                   { c.Add("/DYNAMICBASE") 
 func (c *LinkerCmdline) EnableDataExecutionPrevention() { c.Add("/NXCOMPAT") }
 func (c *LinkerCmdline) MachineX64()                    { c.Add("/MACHINE:X64") }
 func (c *LinkerCmdline) LibPaths(libpaths []string) {
-	c.AddWithFunc(func(arg string) string { return "/LIBPATH:\"" + foundation.PathWindowsPath(arg) + "\"" }, libpaths...)
+	c.AddWithFunc(func(arg string) string { return "/LIBPATH:" + foundation.PathWindowsPath(arg) }, libpaths...)
 }
 func (c *LinkerCmdline) Libs(libs []string) {
 	c.AddWithFunc(func(arg string) string { return arg }, libs...)
