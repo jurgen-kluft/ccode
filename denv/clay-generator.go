@@ -5,6 +5,7 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"runtime"
 	"strconv"
 	"strings"
 
@@ -55,7 +56,14 @@ func (g *ClayGenerator) Generate() error {
 	if goCmd, err := exec.LookPath("go"); err != nil {
 		return fmt.Errorf("Go command not found in PATH")
 	} else {
-		cmd := exec.Command(goCmd, "build", "-o", "clay", appDir)
+		execName := "clay"
+		if runtime.GOOS == "windows" {
+			// On Windows, we need to use 'go build -o clay.exe clay'
+			execName += ".exe"
+		}
+		cmd := exec.Command(goCmd, "build", "-o", execName, appDir)
+		cmd.Env = os.Environ()
+		cmd.Env = append(cmd.Env, "GO111MODULE=off")
 		cmd.Dir = g.TargetAbsPath
 		if out, err := cmd.CombinedOutput(); err != nil {
 			return fmt.Errorf("Error running go build: %v\nOutput: %s", err, out)
