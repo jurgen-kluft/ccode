@@ -47,6 +47,7 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"os"
 	"os/exec"
 	"sync"
 	"syscall"
@@ -143,6 +144,51 @@ type Status struct {
 // is off. To control output, use NewCmdOptions instead.
 func NewCmd(name string, args ...string) *Cmd {
 	return NewCmdOptions(Options{Buffered: true}, name, args...)
+}
+
+func ExecCmd(binPath string, stdoutFunc func(line string), stderrFunc func(line string), envVars []string, args ...string) error {
+	// Disable output buffering, enable streaming
+	cmdOptions := Options{
+		Buffered:  false,
+		Streaming: true,
+	}
+
+	// Create Cmd with options
+	envCmd := NewCmdOptions(cmdOptions, binPath, args...)
+	envCmd.Env = envVars
+
+	// Run and wait for Cmd to return, discard Status
+	status := <-envCmd.Start()
+
+	// Done when both channels have been closed
+	// https://dave.cheney.net/2013/04/30/curious-channels
+	for envCmd.Stdout != nil || envCmd.Stderr != nil {
+		select {
+		case line, open := <-envCmd.Stdout:
+			if !open {
+				envCmd.Stdout = nil
+			} else {
+				// TODO Analyze the line, if it is a warning or error, print it to stderr
+				fmt.Println(line)
+			}
+		case line, open := <-envCmd.Stderr:
+			if !open {
+				envCmd.Stderr = nil
+			} else {
+				// TODO Analyze the line, if it is a warning or error, print it to stderr
+				fmt.Fprintln(os.Stderr, line)
+			}
+		}
+	}
+
+	// Check status and return error if any
+	if status.Error != nil {
+		return fmt.Errorf("command %s %v failed: %w", binPath, args, status.Error)
+	}
+	if status.Exit != 0 {
+		return fmt.Errorf("command %s %v failed with exit code %d", binPath, args, status.Exit)
+	}
+	return nil
 }
 
 // Options represents customizations for NewCmdOptions.

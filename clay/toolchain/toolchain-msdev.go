@@ -295,54 +295,23 @@ func (l *WinMsDevLinker) Link(inputArchiveAbsFilepaths []string, outputAppRelFil
 	linkerPath := filepath.Join(l.toolChain.Msvc.LinkerPath, l.toolChain.Msvc.LinkerBin)
 	linkerArgs := l.args.Args
 
-	// Setup ccode/cmd/cmd, which can give us the ability to stream stdout and stderr while
-	// the process is running.
-
 	/*
-		// Disable output buffering, enable streaming
-		cmdOptions := cmd.Options{
-			Buffered:  false,
-			Streaming: true,
+		// Setup ccode/cmd/cmd, which can give us the ability to stream stdout and stderr while
+		// the process is running.
+
+		envVars = os.Environ()
+		envVars = append(envVars, "Path="+foundation.PathWindowsPath(l.toolChain.Msvc.LinkerPath))
+
+		handleStdout := func(line string) {
+			// TODO Analyze the line, if it is a warning or error, print it to stderr
+			fmt.Println(line)
+		}
+		handleStderr := func(line string) {
+			// TODO Analyze the line, if it is a warning or error, print it to stderr
+			fmt.Fprintln(os.Stderr, line)
 		}
 
-		// Create Cmd with options
-		envCmd := cmd.NewCmdOptions(cmdOptions, linkerPath, linkerArgs...)
-		cmd.Env = os.Environ()
-		cmd.Env = append(cmd.Env, "Path="+foundation.PathWindowsPath(l.toolChain.Msvc.LinkerPath))
-
-		// Print STDOUT and STDERR lines streaming from Cmd
-		doneChan := make(chan struct{})
-		go func() {
-			defer close(doneChan)
-			// Done when both channels have been closed
-			// https://dave.cheney.net/2013/04/30/curious-channels
-			for envCmd.Stdout != nil || envCmd.Stderr != nil {
-				select {
-				case line, open := <-envCmd.Stdout:
-					if !open {
-						envCmd.Stdout = nil
-						continue
-					}
-					// TODO Analyze the line, if it is a warning or error, print it to stderr
-					fmt.Println(line)
-				case line, open := <-envCmd.Stderr:
-					if !open {
-						envCmd.Stderr = nil
-						continue
-					}
-					// TODO Analyze the line, if it is a warning or error, print it to stderr
-					fmt.Fprintln(os.Stderr, line)
-				}
-			}
-		}()
-
-		// Run and wait for Cmd to return, discard Status
-		status := <-envCmd.Start()
-
-		// Wait for goroutine to print everything
-		<-doneChan
-
-		// Check status and return error if any
+		return cmd.ExecCmd(linkerPath, handleStdout, handleStderr, envVars, linkerArgs...)
 	*/
 
 	foundation.LogInfof("Linking (%s) %s\n", l.config.Config.AsString(), outputAppRelFilepath)
