@@ -81,6 +81,13 @@ func (cl *ToolchainArduinoEsp32Compiler) SetupArgs(defines []string, includes []
 		// Compiler user defines
 		cl.cCompilerArgs.AddWithPrefix("-D", defines...)
 
+		// Depending on Debug/Release/Final, we add CORE_DEBUG_LEVEL
+		if cl.config.Config.IsDebug() {
+			cl.cCompilerArgs.AddWithPrefix("-D", "CORE_DEBUG_LEVEL=1")
+		} else {
+			cl.cCompilerArgs.AddWithPrefix("-D", "CORE_DEBUG_LEVEL=0")
+		}
+
 		if responseFileDefines, ok := cl.toolChain.Vars.GetFirst("c.compiler.response.defines"); ok {
 			cl.cCompilerArgs.Add("@" + responseFileDefines)
 		}
@@ -135,6 +142,13 @@ func (cl *ToolchainArduinoEsp32Compiler) SetupArgs(defines []string, includes []
 
 		// Compiler user defines
 		cl.cppCompilerArgs.AddWithPrefix("-D", defines...)
+
+		// Depending on Debug/Release/Final, we add CORE_DEBUG_LEVEL
+		if cl.config.Config.IsDebug() {
+			cl.cCompilerArgs.AddWithPrefix("-D", "CORE_DEBUG_LEVEL=1")
+		} else {
+			cl.cCompilerArgs.AddWithPrefix("-D", "CORE_DEBUG_LEVEL=0")
+		}
 
 		if responseFileDefines, ok := cl.toolChain.Vars.GetFirst("cpp.compiler.response.defines"); ok {
 			cl.cppCompilerArgs.Add("@" + responseFileDefines)
@@ -439,7 +453,7 @@ func (b *ToolchainArduinoEsp32Burner) SetupBuild(buildPath string) {
 	b.genImageBinToolArgs.Add("--flash_mode", b.toolChain.Vars.GetFirstOrEmpty("burner.flash.mode"))
 	b.genImageBinToolArgs.Add("--flash_freq", b.toolChain.Vars.GetFirstOrEmpty("burner.flash.frequency"))
 	b.genImageBinToolArgs.Add("--flash_size", b.toolChain.Vars.GetFirstOrEmpty("burner.flash.size"))
-	b.genImageBinToolArgs.Add("--elf-sha256-offset", b.toolChain.Vars.GetFirstOrEmpty("burner.flash.elf.share.offset"))
+	b.genImageBinToolArgs.Add("--elf-sha256-offset", b.toolChain.Vars.GetFirstOrEmpty("burner.flash.elf.sha256.offset"))
 	b.genImageBinToolArgs.Add("-o", projectBinFilepath)
 	b.genImageBinToolArgs.Add(projectElfFilepath)
 
@@ -554,7 +568,10 @@ func (b *ToolchainArduinoEsp32Burner) SetupBurn(buildPath string) error {
 
 	b.flashToolArgs.Clear()
 	b.flashToolArgs.Add("--chip", b.toolChain.Vars.GetFirstOrEmpty("esp.mcu"))
-	b.flashToolArgs.Add("--port", b.toolChain.Vars.GetFirstOrEmpty("burner.flash.port"))
+
+	// If we leave this empty then the tool will search for the USB port
+	// b.flashToolArgs.Add("--port", "tty port")
+
 	b.flashToolArgs.Add("--baud", b.toolChain.Vars.GetFirstOrEmpty("burner.flash.baud"))
 	b.flashToolArgs.Add("--before", "default_reset")
 	b.flashToolArgs.Add("--after", "hard_reset")
@@ -653,6 +670,8 @@ func NewArduinoEsp32(espMcu string, projectName string) (*ArduinoEsp32, error) {
 		value []string
 	}
 
+	espMcu = strings.ToLower(espMcu)
+
 	vars := []item{
 		{key: "project.name", value: []string{projectName}},
 		{key: "esp.mcu", value: []string{espMcu}},
@@ -665,20 +684,6 @@ func NewArduinoEsp32(espMcu string, projectName string) (*ArduinoEsp32, error) {
 		{key: "c.compiler.response.includes", value: []string{`{esp.arduino.sdk.path}/flags/includes`}},
 		{key: "c.compiler.switches", value: []string{`-w`, `-Os`}},
 		{key: "c.compiler.warning.switches", value: []string{`-Werror=return-type`}},
-		{key: "c.compiler.defines", value: []string{
-			`F_CPU=240000000L`,
-			`ARDUINO=10605`,
-			`ARDUINO_ESP32_DEV`,
-			`ARDUINO_ARCH_ESP32`,
-			`ARDUINO_BOARD="ESP32_DEV"`,
-			`ARDUINO_VARIANT="{esp.mcu}"`,
-			`ARDUINO_PARTITION_default`,
-			`ARDUINO_HOST_OS="` + runtime.GOOS + `"`,
-			`ARDUINO_FQBN="generic"`,
-			`ESP32=ESP32`,
-			`CORE_DEBUG_LEVEL=0`,
-			`ARDUINO_USB_CDC_ON_BOOT=0`,
-		}},
 		{key: "c.compiler.system.prefix.include", value: []string{`{esp.arduino.sdk.path}/include`}},
 		{key: "c.compiler.system.includes", value: []string{
 			`{esp.sdk.path}/cores/esp32`,
@@ -691,20 +696,6 @@ func NewArduinoEsp32(espMcu string, projectName string) (*ArduinoEsp32, error) {
 		{key: "cpp.compiler.response.includes", value: []string{`{esp.arduino.sdk.path}/flags/includes`}},
 		{key: "cpp.compiler.switches", value: []string{`-w`, `-Os`}},
 		{key: "cpp.compiler.warning.switches", value: []string{`-Werror=return-type`}},
-		{key: "cpp.compiler.defines", value: []string{
-			`F_CPU=240000000L`,
-			`ARDUINO=10605`,
-			`ARDUINO_ESP32_DEV`,
-			`ARDUINO_ARCH_ESP32`,
-			`ARDUINO_BOARD="ESP32_DEV"`,
-			`ARDUINO_VARIANT="{esp.mcu}"`,
-			`ARDUINO_PARTITION_default`,
-			`ARDUINO_HOST_OS="` + runtime.GOOS + `"`,
-			`ARDUINO_FQBN="generic"`,
-			`ESP32=ESP32`,
-			`CORE_DEBUG_LEVEL=0`,
-			`ARDUINO_USB_CDC_ON_BOOT=0`,
-		}},
 		{key: "cpp.compiler.system.prefix.include", value: []string{`{esp.arduino.sdk.path}/include`}},
 		{key: "cpp.compiler.system.includes", value: []string{
 			`{esp.sdk.path}/cores/esp32`,
@@ -727,8 +718,7 @@ func NewArduinoEsp32(espMcu string, projectName string) (*ArduinoEsp32, error) {
 		{key: "burner.flash.mode", value: []string{`dio`}},
 		{key: "burner.flash.frequency", value: []string{`40m`}},
 		{key: "burner.flash.size", value: []string{`4MB`}},
-		{key: "burner.flash.port", value: []string{`/dev/tty.usbmodem4101`}},
-		{key: "burner.flash.elf.share.offset", value: []string{`0xb0`}},
+		{key: "burner.flash.elf.sha256.offset", value: []string{`0xb0`}},
 		{key: "burner.bootapp0.bin.filepath", value: []string{`{esp.sdk.path}/tools/partitions/boot_app0.bin`}},
 		{key: "burner.flash.partitions.csv.filepath", value: []string{`{esp.sdk.path}/tools/partitions/default.csv`}},
 		{key: "burner.flash.bootloader.bin.offset", value: []string{`0x1000`}},
@@ -745,6 +735,61 @@ func NewArduinoEsp32(espMcu string, projectName string) (*ArduinoEsp32, error) {
 		{key: "burner.generate-partitions-bin", value: []string{`python3`}},
 		{key: "burner.generate-elf-size", value: []string{`{esp.sdk}/tools/xtensa-esp-elf/bin/xtensa-{esp.mcu}-elf-size"`}},
 		{key: "burner.flash", value: []string{`{esp.sdk.path}/tools/esptool/esptool`}},
+	}
+
+	if espMcu == "esp32" {
+		// #----------------------------------------------------------------------------------
+		//     xtensa-esp32
+		vars = append(vars, item{key: "c.compiler.defines", value: []string{
+			`F_CPU=240000000L`,
+			`ARDUINO=10605`,
+			`ARDUINO_ESP32_DEV`,
+			`ARDUINO_ARCH_ESP32`,
+			`ARDUINO_BOARD="ESP32_DEV"`,
+			`ARDUINO_VARIANT="esp32"`,
+			`ARDUINO_PARTITION_default`,
+			`ARDUINO_HOST_OS="` + runtime.GOOS + `"`,
+			`ARDUINO_FQBN="generic"`,
+			`ESP32=ESP32`,
+			`ARDUINO_USB_CDC_ON_BOOT=0`,
+		}})
+	} else if espMcu == "esp32s3" {
+		// #----------------------------------------------------------------------------------
+		//     xtensa-esp32s3
+		vars = append(vars, item{key: "cpp.compiler.defines", value: []string{
+			`F_CPU=240000000L`,
+			`ARDUINO=10605`,
+			`ARDUINO_ESP32S3_DEV`,
+			`ARDUINO_ARCH_ESP32`,
+			`ARDUINO_BOARD="ESP32S3_DEV"`,
+			`ARDUINO_VARIANT="esp32s3"`,
+			`ARDUINO_PARTITION_default`,
+			`ARDUINO_HOST_OS="` + runtime.GOOS + `"`,
+			`ARDUINO_FQBN="generic"`,
+			`ESP32=ESP32`,
+			`ARDUINO_USB_MODE=1`,
+			`ARDUINO_USB_CDC_ON_BOOT=0`,
+			`ARDUINO_USB_MSC_ON_BOOT=0`,
+			`ARDUINO_USB_DFU_ON_BOOT=0`,
+		}})
+	} else if espMcu == "esp32c3" {
+		// #----------------------------------------------------------------------------------
+		//     xtensa-esp32c3
+		vars = append(vars, item{key: "cpp.compiler.defines", value: []string{
+			`F_CPU=160000000L`,
+			`ARDUINO=10605`,
+			`ARDUINO_ESP32C3_DEV`,
+			`ARDUINO_ARCH_ESP32`,
+			`ARDUINO_BOARD="ESP32C3_DEV"`,
+			`ARDUINO_VARIANT="esp32c3"`,
+			`ARDUINO_PARTITION_default`,
+			`ARDUINO_HOST_OS="` + runtime.GOOS + `"`,
+			`ARDUINO_FQBN="generic"`,
+			`ESP32=ESP32`,
+			`ARDUINO_USB_CDC_ON_BOOT=0`,
+		}})
+	} else {
+		return nil, foundation.LogErrorf(os.ErrInvalid, "unsupported ESP32 MCU: %s", espMcu)
 	}
 
 	t := &ArduinoEsp32{
@@ -776,8 +821,16 @@ func NewArduinoEsp32(espMcu string, projectName string) (*ArduinoEsp32, error) {
 		t.Vars.Append("cpp.compiler.system.includes", `{esp.arduino.sdk.path}/qio_qspi/include`)
 		t.Vars.Append("cpp.compiler.system.includes", "{esp.arduino.sdk.path}/include")
 		t.Vars.Append("linker.system.library.paths", "{esp.arduino.sdk.path}/qio_qspi")
-	} else {
-		return nil, foundation.LogErrorf(os.ErrInvalid, "unsupported ESP32 MCU: %s", espMcu)
+	} else if espMcu == "esp32c3" {
+		// #----------------------------------------------------------------------------------
+		//     xtensa-esp32c3
+		t.Vars.Set("burner.sdk.bootloader.elf.path", `{esp.arduino.sdk.path}/bin/bootloader_qio_80m.elf`)
+		t.Vars.Set("burner.flash.bootloader.bin.offset", `0x0`)
+		t.Vars.Append("c.compiler.system.includes", `{esp.arduino.sdk.path}/qio_qspi/include`)
+		t.Vars.Append("c.compiler.system.includes", "{esp.arduino.sdk.path}/include")
+		t.Vars.Append("cpp.compiler.system.includes", `{esp.arduino.sdk.path}/qio_qspi/include`)
+		t.Vars.Append("cpp.compiler.system.includes", "{esp.arduino.sdk.path}/include")
+		t.Vars.Append("linker.system.library.paths", "{esp.arduino.sdk.path}/qio_qspi")
 	}
 
 	t.Vars.Resolve()
