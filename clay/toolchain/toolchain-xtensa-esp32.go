@@ -740,7 +740,7 @@ func NewArduinoEsp32(espMcu string, projectName string) (*ArduinoEsp32, error) {
 	if espMcu == "esp32" {
 		// #----------------------------------------------------------------------------------
 		//     xtensa-esp32
-		vars = append(vars, item{key: "c.compiler.defines", value: []string{
+		defines := []string{
 			`F_CPU=240000000L`,
 			`ARDUINO=10605`,
 			`ARDUINO_ESP32_DEV`,
@@ -752,11 +752,14 @@ func NewArduinoEsp32(espMcu string, projectName string) (*ArduinoEsp32, error) {
 			`ARDUINO_FQBN="generic"`,
 			`ESP32=ESP32`,
 			`ARDUINO_USB_CDC_ON_BOOT=0`,
-		}})
+		}
+		vars = append(vars, item{key: "c.compiler.defines", value: defines})
+		vars = append(vars, item{key: "cpp.compiler.defines", value: defines})
+
 	} else if espMcu == "esp32s3" {
 		// #----------------------------------------------------------------------------------
 		//     xtensa-esp32s3
-		vars = append(vars, item{key: "cpp.compiler.defines", value: []string{
+		defines := []string{
 			`F_CPU=240000000L`,
 			`ARDUINO=10605`,
 			`ARDUINO_ESP32S3_DEV`,
@@ -771,11 +774,13 @@ func NewArduinoEsp32(espMcu string, projectName string) (*ArduinoEsp32, error) {
 			`ARDUINO_USB_CDC_ON_BOOT=0`,
 			`ARDUINO_USB_MSC_ON_BOOT=0`,
 			`ARDUINO_USB_DFU_ON_BOOT=0`,
-		}})
+		}
+		vars = append(vars, item{key: "c.compiler.defines", value: defines})
+		vars = append(vars, item{key: "cpp.compiler.defines", value: defines})
 	} else if espMcu == "esp32c3" {
 		// #----------------------------------------------------------------------------------
 		//     xtensa-esp32c3
-		vars = append(vars, item{key: "cpp.compiler.defines", value: []string{
+		defines := []string{
 			`F_CPU=160000000L`,
 			`ARDUINO=10605`,
 			`ARDUINO_ESP32C3_DEV`,
@@ -787,7 +792,9 @@ func NewArduinoEsp32(espMcu string, projectName string) (*ArduinoEsp32, error) {
 			`ARDUINO_FQBN="generic"`,
 			`ESP32=ESP32`,
 			`ARDUINO_USB_CDC_ON_BOOT=0`,
-		}})
+		}
+		vars = append(vars, item{key: "c.compiler.defines", value: defines})
+		vars = append(vars, item{key: "cpp.compiler.defines", value: defines})
 	} else {
 		return nil, foundation.LogErrorf(os.ErrInvalid, "unsupported ESP32 MCU: %s", espMcu)
 	}
