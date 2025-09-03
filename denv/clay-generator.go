@@ -230,8 +230,10 @@ func (g *ClayGenerator) generateProjectFile(out *foundation.LineWriter) {
 					out.WriteILine("+", "project := projects[", projectId, "_id]")
 					out.WriteILine("+", `project.Dependencies = []*clay.Project{`)
 					for _, depProject := range prj.Dependencies.Values {
-						depProjectId := strings.ReplaceAll(depProject.Name+"_"+configName, "-", "_")
-						out.WriteILine("++", "projects[", depProjectId, "_id],")
+						if depProject.SupportedTargets.Contains(g.BuildTarget) {
+							depProjectId := strings.ReplaceAll(depProject.Name+"_"+configName, "-", "_")
+							out.WriteILine("++", "projects[", depProjectId, "_id],")
+						}
 					}
 					out.WriteILine("+", "}")
 					out.WriteILine("", "}")
