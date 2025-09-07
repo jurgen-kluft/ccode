@@ -195,6 +195,14 @@ func (proj *DevProject) CollectProjectDependencies() *DevProjectList {
 	return list
 }
 
+func (prj *DevProject) AddSharedSource(name string) {
+	prj.SourceDirs = append(prj.SourceDirs, dev.PinnedGlobPath{Path: dev.PinnedPath{Root: prj.Package.WorkspacePath(), Base: prj.Package.RepoName, Sub: "source/" + name + "/cpp"}, Glob: "**/*.c"})
+	prj.SourceDirs = append(prj.SourceDirs, dev.PinnedGlobPath{Path: dev.PinnedPath{Root: prj.Package.WorkspacePath(), Base: prj.Package.RepoName, Sub: "source/" + name + "/cpp"}, Glob: "**/*.cpp"})
+	for _, cfg := range prj.Configs {
+		cfg.IncludeDirs = append(cfg.IncludeDirs, dev.PinnedPath{Root: prj.Package.WorkspacePath(), Base: prj.Package.RepoName, Sub: "source/" + name + "/include"})
+	}
+}
+
 // SetupDefaultCppLibProject returns a default C++ library project, since such a project can be used by
 // an application as well as an unittest we need to add the appropriate configurations.
 // Example:
