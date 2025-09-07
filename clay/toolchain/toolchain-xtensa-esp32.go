@@ -678,6 +678,7 @@ func NewArduinoEsp32(espMcu string, projectName string) (*ArduinoEsp32, error) {
 		{key: "esp.sdk.path", value: []string{espSdkPath}},
 		{key: "esp.sdk.version", value: []string{`3.2.0`}},
 		{key: "esp.arduino.sdk.path", value: []string{`{esp.sdk.path}/tools/esp32-arduino-libs/{esp.mcu}`}},
+
 		{key: "c.compiler.generate.mapfile", value: []string{"-MMD"}},
 		{key: "c.compiler.response.flags", value: []string{`{esp.arduino.sdk.path}/flags/c_flags`}},
 		{key: "c.compiler.response.defines", value: []string{`{esp.arduino.sdk.path}/flags/defines`}},
