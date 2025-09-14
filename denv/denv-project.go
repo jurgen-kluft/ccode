@@ -13,6 +13,7 @@ import (
 type DevProject struct {
 	Package      *Package
 	Name         string
+	DirName      string
 	BuildType    dev.BuildType
 	Supported    dev.BuildTarget
 	Vars         map[string]string
@@ -21,10 +22,11 @@ type DevProject struct {
 	Dependencies *DevProjectList
 }
 
-func NewProject(pkg *Package, name string) *DevProject {
+func NewProject(pkg *Package, name string, dirname string) *DevProject {
 	return &DevProject{
 		Package:      pkg,
 		Name:         name,
+		DirName:      dirname,
 		BuildType:    dev.BuildTypeUnknown,
 		Supported:    dev.EmptyBuildTarget,
 		Vars:         make(map[string]string),
@@ -209,7 +211,7 @@ func (prj *DevProject) AddSharedSource(name string) {
 //
 //	SetupDefaultCppLibProject("cbase", "github.com/jurgen-kluft")
 func SetupDefaultCppLibProject(pkg *Package, name string, dir string, buildTarget dev.BuildTarget) *DevProject {
-	project := NewProject(pkg, name)
+	project := NewProject(pkg, name, dir)
 	project.BuildType = dev.BuildTypeStaticLibrary
 	project.Dependencies = NewDevProjectList()
 
@@ -272,7 +274,7 @@ func SetupCppLibProjectForArduino(pkg *Package, name string) *DevProject {
 }
 
 func SetupDefaultCppTestProject(pkg *Package, name string, buildTarget dev.BuildTarget) *DevProject {
-	project := NewProject(pkg, name)
+	project := NewProject(pkg, name, "test")
 	project.BuildType = dev.BuildTypeUnittest
 	project.Supported = dev.BuildTargetsDesktop
 	project.Configs = append(project.Configs, NewDevConfig(dev.BuildTypeUnittest, dev.NewDebugDevTestConfig()))
@@ -303,7 +305,7 @@ func SetupCppTestProject(pkg *Package, name string) *DevProject {
 //
 //	SetupDefaultCppCliProject("cmycli", "github.com\\jurgen-kluft")
 func SetupDefaultCppCliProject(pkg *Package, name string, buildTarget dev.BuildTarget) *DevProject {
-	project := NewProject(pkg, name)
+	project := NewProject(pkg, name, "cli")
 	project.BuildType = dev.BuildTypeCli
 	project.Supported = dev.BuildTargetsDesktop
 	project.Configs = append(project.Configs, NewDevConfig(dev.BuildTypeCli, dev.NewDebugDevConfig()))
@@ -326,7 +328,7 @@ func SetupDefaultCppCliProject(pkg *Package, name string, buildTarget dev.BuildT
 //
 //	SetupDefaultCppAppProject("cmyapp", "github.com\\jurgen-kluft")
 func SetupDefaultCppAppProject(pkg *Package, name string, dirname string, buildTarget dev.BuildTarget) *DevProject {
-	project := NewProject(pkg, name)
+	project := NewProject(pkg, name, dirname)
 	project.BuildType = dev.BuildTypeApplication
 	project.Supported = dev.BuildTargetsDesktop
 	project.Configs = append(project.Configs, NewDevConfig(dev.BuildTypeApplication, dev.NewDebugDevConfig()))
@@ -347,6 +349,9 @@ func SetupDefaultCppAppProject(pkg *Package, name string, dirname string, buildT
 func SetupCppAppProject(pkg *Package, name string, dirname string) *DevProject {
 	// Windows, Mac and Linux, build for the Host platform
 	project := SetupDefaultCppAppProject(pkg, "app_"+name, dirname, dev.GetBuildTarget())
+	if dev.BuildTargetsArduino.Contains(dev.GetBuildTarget()) {
+		project.SourceDirs = append(project.SourceDirs, dev.PinnedGlobPath{Path: dev.PinnedPath{Root: pkg.WorkspacePath(), Base: pkg.RepoName, Sub: "source/" + dirname + "/partitions"}, Glob: "**/*.csv"})
+	}
 	project.Supported = dev.BuildTargetsAll
 	return project
 }
@@ -361,6 +366,7 @@ func SetupCppAppProjectForDesktop(pkg *Package, name string, dirname string) *De
 func SetupCppAppProjectForArduino(pkg *Package, name string, dirname string) *DevProject {
 	// Arduino project
 	project := SetupDefaultCppAppProject(pkg, "app_"+name, dirname, dev.BuildTargetArduinoEsp32)
+	project.SourceDirs = append(project.SourceDirs, dev.PinnedGlobPath{Path: dev.PinnedPath{Root: pkg.WorkspacePath(), Base: pkg.RepoName, Sub: "source/" + dirname + "/partitions"}, Glob: "**/*.csv"})
 	project.Supported = dev.BuildTargetsArduino
 	return project
 }

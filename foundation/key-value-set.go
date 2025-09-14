@@ -1,6 +1,9 @@
 package foundation
 
-import "strings"
+import (
+	"slices"
+	"strings"
+)
 
 type KeyValueSet struct {
 	Values []string       // values corresponding to the keys
@@ -14,6 +17,32 @@ func NewKeyValueSet() *KeyValueSet {
 		Keys:   make([]string, 0),
 		KeyMap: make(map[string]int),
 	}
+}
+
+func (kv *KeyValueSet) String() string {
+	result := ""
+	for i, key := range kv.Keys {
+		result += key + "=" + kv.Values[i] + "\n"
+	}
+	return result
+}
+
+func (kv *KeyValueSet) SortByKeys() {
+	values := make([]string, len(kv.Values))
+	keys := make([]string, len(kv.Keys))
+	keymap := make(map[string]int)
+
+	slices.Sort(kv.Keys)
+	for _, key := range kv.Keys {
+		index := kv.KeyMap[strings.ToLower(key)]
+		values = append(values, kv.Values[index])
+		keys = append(keys, key)
+		keymap[strings.ToLower(key)] = len(keys) - 1
+	}
+
+	kv.Values = values
+	kv.Keys = keys
+	kv.KeyMap = keymap
 }
 
 // Merge merges another KeyValueSet into this one, preserving the original case of keys.

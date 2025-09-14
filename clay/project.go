@@ -25,40 +25,43 @@ func NewDefineMap(size int) *DefineMap {
 // Project represents a C/C++ project that can be built using the Clay build system.
 // A project can be a library or an executable.
 type Project struct {
-	Toolchain    toolchain.Environment // Build environment for this project
-	IsExecutable bool                  // Is this project an executable (true) or a library (false)
-	Name         string                // Name of the Library or Executable
-	Config       *Config               // Build configuration
-	Defines      *DefineMap            // Compiler defines (macros) for the library
-	IncludeDirs  *IncludeMap           // Include paths for the library (system)
-	SourceFiles  []SourceFile          // C/C++ Source files for the library
-	Dependencies []*Project            // Libraries that this project depends on
-	Frameworks   []string              // Frameworks to link against (for macOS)
+	Toolchain      toolchain.Environment // Build environment for this project
+	IsExecutable   bool                  // Is this project an executable (true) or a library (false)
+	Name           string                // Name of the Library or Executable
+	Config         *Config               // Build configuration
+	Defines        *DefineMap            // Compiler defines (macros) for the library
+	IncludeDirs    *IncludeMap           // Include paths for the library (system)
+	SourceFiles    []SourceFile          // C/C++ Source files for the library
+	PartitionFiles []string              // Partition CSV files (for ESP32)
+	Dependencies   []*Project            // Libraries that this project depends on
+	Frameworks     []string              // Frameworks to link against (for macOS)
 }
 
 func NewExecutableProject(name string, config *Config) *Project {
 	return &Project{
-		Name:         name,
-		Config:       config,
-		Toolchain:    nil, // Will be set later
-		IsExecutable: true,
-		Defines:      nil,
-		IncludeDirs:  nil,
-		SourceFiles:  nil,
-		Dependencies: nil,
+		Name:           name,
+		Config:         config,
+		Toolchain:      nil, // Will be set later
+		IsExecutable:   true,
+		Defines:        nil,
+		IncludeDirs:    nil,
+		SourceFiles:    nil,
+		PartitionFiles: nil,
+		Dependencies:   nil,
 	}
 }
 
 func NewLibraryProject(name string, config *Config) *Project {
 	return &Project{
-		Name:         name,
-		Config:       config,
-		Toolchain:    nil, // Will be set later
-		IsExecutable: false,
-		Defines:      nil,
-		IncludeDirs:  nil,
-		SourceFiles:  nil,
-		Dependencies: nil,
+		Name:           name,
+		Config:         config,
+		Toolchain:      nil, // Will be set later
+		IsExecutable:   false,
+		Defines:        nil,
+		IncludeDirs:    nil,
+		SourceFiles:    nil,
+		PartitionFiles: nil,
+		Dependencies:   nil,
 	}
 }
 
@@ -75,10 +78,10 @@ func (p *Project) GetBuildPath(buildPath string) string {
 	return filepath.Join(buildPath, p.Name)
 }
 
-func (p *Project) SetToolchain(config *Config) (err error) {
+func (p *Project) SetToolchain(config *Config, board *toolchain.Esp32Board) (err error) {
 	targetOS := config.Target.OSAsString()
 	if targetOS == "arduino" {
-		p.Toolchain, err = toolchain.NewArduinoEsp32(config.Target.ArchAsString(), p.Name)
+		p.Toolchain, err = toolchain.NewArduinoEsp32(board, p.Name, p.PartitionFiles)
 	} else if targetOS == "windows" {
 		p.Toolchain, err = toolchain.NewWinMsdev(config.Target.ArchAsString(), "Desktop")
 	} else if targetOS == "mac" || targetOS == "macos" || targetOS == "darwin" {
@@ -94,6 +97,10 @@ func (p *Project) AddSourceFile(srcPath string, srcRelPath string) {
 		SrcAbsPath: srcPath,
 		SrcRelPath: srcRelPath,
 	})
+}
+
+func (p *Project) AddPartitionFile(partitionFile string) {
+	p.PartitionFiles = append(p.PartitionFiles, partitionFile)
 }
 
 func (p *Project) AddLibrary(lib *Project) {
@@ -252,31 +259,31 @@ func (p *Project) Flash(buildConfig *Config, buildPath string) error {
 	return nil
 }
 
-type AddSourceFileOptions int
+// type AddSourceFileOptions int
 
-const (
-	OptionAddCppFiles            AddSourceFileOptions = 1
-	OptionAddCFiles              AddSourceFileOptions = 2
-	OptionAddRecursively         AddSourceFileOptions = 4
-	OptionRecursivelyAddCppFiles AddSourceFileOptions = OptionAddCppFiles | OptionAddRecursively
-	OptionRecursivelyAddCFiles   AddSourceFileOptions = OptionAddCFiles | OptionAddRecursively
-)
+// const (
+// 	OptionAddCppFiles            AddSourceFileOptions = 1
+// 	OptionAddCFiles              AddSourceFileOptions = 2
+// 	OptionAddRecursively         AddSourceFileOptions = 4
+// 	OptionRecursivelyAddCppFiles AddSourceFileOptions = OptionAddCppFiles | OptionAddRecursively
+// 	OptionRecursivelyAddCFiles   AddSourceFileOptions = OptionAddCFiles | OptionAddRecursively
+// )
 
-func HasOption(options AddSourceFileOptions, option AddSourceFileOptions) bool {
-	return (options & option) != 0
-}
+// func HasOption(options AddSourceFileOptions, option AddSourceFileOptions) bool {
+// 	return (options & option) != 0
+// }
 
-func (p *Project) AddSourceFilesFrom(srcPath string, options AddSourceFileOptions) {
-	handleDir := func(rootPath, relPath string) bool {
-		return len(relPath) == 0 || HasOption(options, OptionAddRecursively)
-	}
-	handleFile := func(rootPath, relPath string) {
-		isCpp := HasOption(options, OptionAddCppFiles) && (filepath.Ext(relPath) == ".cpp" || filepath.Ext(relPath) == ".cxx")
-		isC := !isCpp && (HasOption(options, OptionAddCFiles) && filepath.Ext(relPath) == ".c")
-		if isCpp || isC {
-			p.AddSourceFile(filepath.Join(rootPath, relPath), relPath)
-		}
-	}
+// func (p *Project) AddSourceFilesFrom2(srcPath string, options AddSourceFileOptions) {
+// 	handleDir := func(rootPath, relPath string) bool {
+// 		return len(relPath) == 0 || HasOption(options, OptionAddRecursively)
+// 	}
+// 	handleFile := func(rootPath, relPath string) {
+// 		isCpp := HasOption(options, OptionAddCppFiles) && (filepath.Ext(relPath) == ".cpp" || filepath.Ext(relPath) == ".cxx")
+// 		isC := !isCpp && (HasOption(options, OptionAddCFiles) && filepath.Ext(relPath) == ".c")
+// 		if isCpp || isC {
+// 			p.AddSourceFile(filepath.Join(rootPath, relPath), relPath)
+// 		}
+// 	}
 
-	foundation.FileEnumerate(srcPath, handleDir, handleFile)
-}
+// 	foundation.FileEnumerate(srcPath, handleDir, handleFile)
+// }

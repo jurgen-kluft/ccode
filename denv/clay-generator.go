@@ -186,10 +186,13 @@ func (g *ClayGenerator) generateProjectFile(out *foundation.LineWriter) {
 				out.WriteLine()
 
 				numSrcFiles := 0
+				numPartitionFiles := 0
 				for _, group := range prj.SrcFileGroups {
 					for _, src := range group.Values {
 						if src.Is_SourceFile() {
 							numSrcFiles++
+						} else if src.Is_PartitionFile() {
+							numPartitionFiles++
 						}
 					}
 				}
@@ -203,6 +206,21 @@ func (g *ClayGenerator) generateProjectFile(out *foundation.LineWriter) {
 								path := filepath.Join(group.Path, src.Path)
 								path = strings.Replace(path, "\\", "/", -1)
 								out.WriteILine("+", "project.AddSourceFile(", `"`, path, `", "`, filepath.Base(path), `")`)
+							}
+						}
+					}
+
+					out.WriteLine()
+				}
+				if numPartitionFiles > 0 {
+					out.WriteILine("+", "// Project Partition files")
+					out.WriteILine("+", "project.PartitionFiles = make([]string, 0, ", strconv.Itoa(numPartitionFiles), ")")
+					for _, group := range prj.SrcFileGroups {
+						for _, src := range group.Values {
+							if src.Is_PartitionFile() {
+								path := filepath.Join(group.Path, src.Path)
+								path = strings.Replace(path, "\\", "/", -1)
+								out.WriteILine("+", "project.AddPartitionFile(", `"`, path, `")`)
 							}
 						}
 					}

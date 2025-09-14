@@ -22,6 +22,7 @@ const (
 	FileTypeMxx
 	FileTypeStaticLib
 	FileTypeSharedLib
+	FileTypePartition
 )
 
 // -----------------------------------------------------------------------------------------------
@@ -82,6 +83,8 @@ func (fe *FileEntry) Init(path string, isGenerated bool) {
 		fe.Type = FileTypeSharedLib
 	case ".so":
 		fe.Type = FileTypeSharedLib
+	case ".csv":
+		fe.Type = FileTypePartition
 	default:
 		fe.Type = FileTypeNone
 	}
@@ -121,6 +124,10 @@ func (f *FileEntry) Is_StaticLib() bool {
 
 func (f *FileEntry) Is_SharedLib() bool {
 	return f.Type == FileTypeSharedLib
+}
+
+func (f *FileEntry) Is_PartitionFile() bool {
+	return f.Type == FileTypePartition
 }
 
 // -----------------------------------------------------------------------------------------------

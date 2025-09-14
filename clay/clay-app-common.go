@@ -1,12 +1,15 @@
 package clay
 
 import (
+	"encoding/json"
 	"flag"
+	"fmt"
 	"os"
 	"path/filepath"
 	"runtime"
 	"strings"
 
+	"github.com/jurgen-kluft/ccode/clay/toolchain"
 	"github.com/jurgen-kluft/ccode/foundation"
 )
 
@@ -16,8 +19,31 @@ const (
 
 var ClayAppCreateProjectsFunc func() []*Project
 
+type ClayConfig struct {
+	ProjectName string `json:"project,omitempty"`
+	TargetOs    string `json:"os,omitempty"`
+	TargetArch  string `json:"arch,omitempty"`
+	TargetBuild string `json:"build,omitempty"`
+	TargetBoard string `json:"board,omitempty"`
+}
+
+func (c ClayConfig) Equal(other ClayConfig) bool {
+	return c.ProjectName == other.ProjectName &&
+		c.TargetOs == other.TargetOs &&
+		c.TargetArch == other.TargetArch &&
+		c.TargetBuild == other.TargetBuild &&
+		c.TargetBoard == other.TargetBoard
+}
+
+var clayConfig ClayConfig
+
 func GetBuildPath(subdir string) string {
-	buildPath := filepath.Join("build", subdir)
+	var buildPath string
+	if len(clayConfig.TargetBoard) > 0 {
+		buildPath = filepath.Join("build", subdir, clayConfig.TargetBoard)
+	} else {
+		buildPath = filepath.Join("build", subdir)
+	}
 	return buildPath
 }
 
@@ -52,45 +78,128 @@ func GetDefaultArch() string {
 }
 
 func ParseProjectNameAndConfig() (string, *Config) {
-	var projectName string
-	var targetOs string
-	var targetArch string
-	var targetBuild string
-	flag.StringVar(&projectName, "p", "", "Name of the project")
-	flag.StringVar(&targetOs, "os", GetDefaultOs(), "Target OS (windows, darwin, linux, arduino)")
-	flag.StringVar(&targetBuild, "build", "release", "Format 'build' or 'build-variant', e.g. debug, debug-dev, release-dev, debug-dev-test)")
-	flag.StringVar(&targetArch, "arch", GetDefaultArch(), "Cpu Architecture (amd64, x64, arm64, esp32, esp32s3)")
+	flag.StringVar(&clayConfig.ProjectName, "p", "", "Name of the project")
+	flag.StringVar(&clayConfig.TargetOs, "os", "", "Target OS (windows, darwin, linux, arduino)")
+	flag.StringVar(&clayConfig.TargetBuild, "build", "", "Format 'build' or 'build-variant', e.g. debug, debug-dev, release-dev, debug-dev-test)")
+	flag.StringVar(&clayConfig.TargetArch, "arch", "", "Cpu Architecture (amd64, x64, arm64, esp32)")
+	flag.StringVar(&clayConfig.TargetBoard, "board", "", "Board name (s3, c3, xiao-c3, ...)")
 	flag.Parse()
 
-	switch runtime.GOOS {
-	case "windows":
-		targetOs = "windows"
-	case "darwin":
-		targetOs = "darwin"
-	default:
-		targetOs = "linux"
-	}
+	clayConfig.TargetArch = strings.ToLower(clayConfig.TargetArch)
+	clayConfig.TargetOs = strings.ToLower(clayConfig.TargetOs)
+	clayConfig.TargetBuild = strings.ToLower(clayConfig.TargetBuild)
+	clayConfig.TargetBoard = strings.ToLower(clayConfig.TargetBoard)
 
-	if strings.HasPrefix(targetArch, "esp32") {
-		targetOs = "arduino"
-	}
-
-	if targetArch == "" {
-		targetArch = runtime.GOARCH
-		switch targetOs {
-		case "arduino":
-			targetArch = "esp32"
-		case "darwin":
-			targetArch = "arm64"
-		case "windows":
-			targetArch = "x64"
-		case "linux":
-			targetArch = "amd64"
+	configFilePath := "clay.json"
+	loadedConfig := ClayConfig{}
+	{
+		if foundation.FileExists(configFilePath) {
+			data, err := os.ReadFile(configFilePath)
+			if err != nil {
+				foundation.LogFatalf("Failed to read config file", configFilePath, err)
+			}
+			err = json.Unmarshal(data, &loadedConfig)
+			if err != nil {
+				foundation.LogFatalf("Failed to parse config file", configFilePath, err)
+			}
 		}
 	}
 
-	config := NewConfig(targetOs, targetArch, targetBuild)
-	return projectName, config
+	if len(clayConfig.ProjectName) == 0 {
+		clayConfig.ProjectName = loadedConfig.ProjectName
+	}
+
+	if len(clayConfig.TargetBoard) > 0 {
+		clayConfig.TargetOs = "arduino"
+		clayConfig.TargetArch = "esp32"
+	}
+
+	if len(clayConfig.TargetOs) == 0 {
+		clayConfig.TargetOs = loadedConfig.TargetOs
+	} else {
+		// If the target OS was specified on the command line, clear the board and arch
+		switch clayConfig.TargetOs {
+		case "native":
+			clayConfig.TargetBoard = ""
+			clayConfig.TargetArch = GetDefaultArch()
+			clayConfig.TargetOs = GetDefaultOs()
+		case "windows":
+			clayConfig.TargetBoard = ""
+			clayConfig.TargetArch = "x64"
+		case "darwin":
+			clayConfig.TargetBoard = ""
+			clayConfig.TargetArch = "arm64"
+		case "linux":
+			clayConfig.TargetBoard = ""
+			clayConfig.TargetArch = "amd64"
+		case "arduino":
+			if len(clayConfig.TargetArch) == 0 {
+				clayConfig.TargetArch = "esp32"
+			}
+		}
+	}
+	if len(clayConfig.TargetOs) == 0 {
+		switch runtime.GOOS {
+		case "windows":
+			clayConfig.TargetOs = "windows"
+		case "darwin":
+			clayConfig.TargetOs = "darwin"
+		default:
+			clayConfig.TargetOs = "linux"
+		}
+	}
+
+	if clayConfig.TargetOs == "arduino" {
+		if len(clayConfig.TargetBoard) == 0 {
+			clayConfig.TargetBoard = loadedConfig.TargetBoard
+		}
+	}
+
+	if len(clayConfig.TargetBuild) == 0 {
+		clayConfig.TargetBuild = loadedConfig.TargetBuild
+	}
+	if len(clayConfig.TargetBuild) == 0 {
+		clayConfig.TargetBuild = "dev-release"
+	}
+
+	if len(clayConfig.TargetArch) == 0 {
+		clayConfig.TargetArch = loadedConfig.TargetArch
+	}
+	if len(clayConfig.TargetArch) == 0 {
+		clayConfig.TargetArch = runtime.GOARCH
+		switch clayConfig.TargetOs {
+		case "arduino":
+			clayConfig.TargetArch = "esp32"
+		case "darwin":
+			clayConfig.TargetArch = "arm64"
+		case "windows":
+			clayConfig.TargetArch = "x64"
+		case "linux":
+			clayConfig.TargetArch = "amd64"
+		}
+	}
+
+	// If any of the config values were updated from the command line flags, write back the config file
+	// Compare the loaded and current config, when they are different we need to update the file
+	if clayConfig.Equal(loadedConfig) == false {
+		jsonContent, err := json.MarshalIndent(clayConfig, "", "  ")
+		if err != nil {
+			foundation.LogFatalf("Failed to marshal config file", configFilePath, err)
+		}
+		if err := os.WriteFile(configFilePath, jsonContent, 0644); err != nil {
+			foundation.LogFatalf("Failed to write config file", configFilePath, err)
+		}
+	}
+
+	foundation.LogInfof("Project: %s\n", clayConfig.ProjectName)
+	foundation.LogInfof("Os: %s\n", clayConfig.TargetOs)
+	foundation.LogInfof("Arch: %s\n", clayConfig.TargetArch)
+	foundation.LogInfof("Build: %s\n", clayConfig.TargetBuild)
+	if len(clayConfig.TargetBoard) > 0 {
+		foundation.LogInfof("Board: %s\n", clayConfig.TargetBoard)
+	}
+
+	return clayConfig.ProjectName, NewConfig(clayConfig.TargetOs, clayConfig.TargetArch, clayConfig.TargetBuild)
 }
 
 func Build(projectName string, targetConfig *Config) (err error) {
@@ -99,26 +208,43 @@ func Build(projectName string, targetConfig *Config) (err error) {
 	buildPath := GetBuildPath(targetConfig.GetSubDir())
 	os.MkdirAll(buildPath+"/", os.ModePerm)
 
-	prjs := ClayAppCreateProjectsFunc()
-	for _, prj := range prjs {
-		prj.SetToolchain(targetConfig)
-	}
-
-	var outOfDate int
-	for _, prj := range prjs {
-		if projectName == "" || projectName == prj.Name {
-			if prj.Config.Matches(targetConfig) {
-				if prj.IsExecutable {
-					AddBuildInfoAsCppLibrary(prj, targetConfig)
-				}
-				if outOfDate, err = prj.Build(targetConfig, buildPath); err != nil {
-					return err
-				}
-			}
+	// Note: Here we are loading 'boards.txt', which is generated by 'clay generate-boards'
+	var board *toolchain.Esp32Board
+	if clayConfig.TargetOs == "arduino" && len(clayConfig.TargetBoard) > 0 {
+		esp32Toolchain := NewEsp32Toolchain()
+		err := LoadBoards(esp32Toolchain)
+		if err != nil {
+			return err
+		}
+		board = esp32Toolchain.GetBoardByName(clayConfig.TargetBoard)
+		if board == nil {
+			return fmt.Errorf("Board not found: %s", clayConfig.TargetBoard)
 		}
 	}
-	if outOfDate == 0 {
+
+	prjs := ClayAppCreateProjectsFunc()
+	for _, prj := range prjs {
+		prj.SetToolchain(targetConfig, board)
+	}
+
+	var noMatchConfigs int
+	var outOfDate int
+	for _, prj := range prjs {
+		if prj.Config.Matches(targetConfig) {
+			if prj.IsExecutable {
+				AddBuildInfoAsCppLibrary(prj, targetConfig)
+			}
+			if outOfDate, err = prj.Build(targetConfig, buildPath); err != nil {
+				return err
+			}
+		} else {
+			noMatchConfigs++
+		}
+	}
+	if outOfDate == 0 && noMatchConfigs < len(prjs) {
 		foundation.LogPrintln("Nothing to build, everything is up to date")
+	} else if noMatchConfigs >= len(prjs) {
+		foundation.LogError(fmt.Errorf("!"), "No matching project configurations found")
 	}
 	return err
 }
@@ -128,19 +254,18 @@ func Clean(projectName string, buildConfig *Config) error {
 
 	prjs := ClayAppCreateProjectsFunc()
 	for _, prj := range prjs {
-		if projectName == "" || projectName == prj.Name {
-			if prj.Config.Matches(buildConfig) {
+		fmt.Println(prj.Name, prj.Config.ConfigString())
+		if prj.Config.Matches(buildConfig) {
 
-				projectBuildPath := prj.GetBuildPath(buildPath)
-				foundation.LogPrintln("Clean " + projectBuildPath)
+			projectBuildPath := prj.GetBuildPath(buildPath)
+			foundation.LogPrintln("Clean " + projectBuildPath)
 
-				if err := os.RemoveAll(projectBuildPath + "/"); err != nil {
-					return foundation.LogError(err, "Failed to remove build directory")
-				}
+			if err := os.RemoveAll(projectBuildPath + "/"); err != nil {
+				return foundation.LogError(err, "Failed to remove build directory")
+			}
 
-				if err := os.MkdirAll(projectBuildPath+"/", os.ModePerm); err != nil {
-					return foundation.LogError(err, "Failed to create build directory")
-				}
+			if err := os.MkdirAll(projectBuildPath+"/", os.ModePerm); err != nil {
+				return foundation.LogError(err, "Failed to create build directory")
 			}
 		}
 	}

@@ -226,7 +226,7 @@ func (g *Generator) getOrCreateProject(devProj *DevProject, ws *Workspace) *Proj
 
 		exclusionFilter := func(_filepath string) bool { return g.ExclusionFilter.IsExcluded(_filepath) }
 
-		// Glob source files
+		// Glob all required files (*.cpp, *.c, *.h, *.hpp, *.csv)
 		for _, srcPinnedPath := range devProj.SourceDirs {
 			newProject.GlobFiles(filepath.Join(srcPinnedPath.Path.Root, srcPinnedPath.Path.Base), srcPinnedPath.Path.Sub, srcPinnedPath.Glob, exclusionFilter)
 		}

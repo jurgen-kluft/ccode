@@ -74,6 +74,10 @@ func ClayAppMainArduino() {
 		err = ListBoards(ParseBoardNameAndMax())
 	case "list-flash-sizes":
 		err = ListFlashSizes(ParseCpuAndBoardName())
+	case "board-info":
+		err = PrintBoardInfo(ParseBoardNameAndMax())
+	case "generate-boards":
+		err = GenerateBoards()
 	case "version":
 		version := foundation.NewVersionInfo()
 		foundation.LogPrintf("Version: %s\n", version.Version)
@@ -89,31 +93,32 @@ func ClayAppMainArduino() {
 func UsageAppArduino() {
 	foundation.LogPrintln("Usage: clay [command] [options]")
 	foundation.LogPrintln("Commands:")
-	foundation.LogPrintln("  build-info -p <projectName> -build <projectConfig> -arch <arch>")
-	foundation.LogPrintln("  build -p <projectName> -build <projectConfig> -arch <arch>")
-	foundation.LogPrintln("  clean -p <projectName> -build <projectConfig> -arch <arch>")
-	foundation.LogPrintln("  flash -p <projectName> -build <projectConfig> -arch <arch>")
+	foundation.LogPrintln("  build-info -p <name> -build <config> -arch <arch>")
+	foundation.LogPrintln("  build -p <name> -build <config> -board <board>")
+	foundation.LogPrintln("  clean -p <name> -build <config> -board <board>")
+	foundation.LogPrintln("  flash -p <name> -build <config> -board <board>")
 	foundation.LogPrintln("  list-libraries")
-	foundation.LogPrintln("  list-boards -b <boardName> -m <matches>")
-	foundation.LogPrintln("  list-flash-sizes -c <cpuName> -b <boardName>")
+	foundation.LogPrintln("  list-boards -b <name of board> -m <matches>")
+	foundation.LogPrintln("  list-flash-sizes -c <cpu> -b <name of board>")
 	foundation.LogPrintln("Options:")
-	foundation.LogPrintln("  projectName       Project name (if more than one) ")
-	foundation.LogPrintln("  projectConfig     Config name (debug, release, final) ")
-	foundation.LogPrintln("  boardName         Board name (e.g. esp32, esp32s3) ")
+	foundation.LogPrintln("  name              Project name (if more than one) ")
+	foundation.LogPrintln("  config            Config name (debug, release, final) ")
+	foundation.LogPrintln("  board             Board name (e.g. esp32, c3, s3, xiao_esp32c3) ")
 	foundation.LogPrintln("  matches           Maximum number of boards to list")
-	foundation.LogPrintln("  cpuName           CPU name for listing flash sizes")
+	foundation.LogPrintln("  cpu               CPU name for listing flash sizes")
 	foundation.LogPrintln("  --help            Show this help message")
 	foundation.LogPrintln("  --version         Show version information")
 
 	foundation.LogPrintln("Examples:")
 	foundation.LogPrintln("  clay build-info (generates buildinfo.h and buildinfo.cpp)")
-	foundation.LogPrintln("  clay build-info -build debug -arch esp32s3")
+	foundation.LogPrintln("  clay build-info -build debug -arch esp32 -board esp32s3")
 	foundation.LogPrintln("  clay build")
-	foundation.LogPrintln("  clay build -build debug -arch esp32s3")
-	foundation.LogPrintln("  clay clean -build debug -arch esp32s3")
-	foundation.LogPrintln("  clay flash -build debug-dev -arch esp32s3")
+	foundation.LogPrintln("  clay build -build debug -arch esp32 -board esp32s3")
+	foundation.LogPrintln("  clay clean -build debug -arch esp32 -board esp32s3")
+	foundation.LogPrintln("  clay flash -build debug-dev -arch esp32 -board esp32s3")
 	foundation.LogPrintln("  clay list-libraries")
 	foundation.LogPrintln("  clay list-boards -b esp32 -m 5")
+	foundation.LogPrintln("  clay board-info -b xiao -m 2")
 	foundation.LogPrintln("  clay list-flash-sizes -c esp32 -b esp32")
 }
 
@@ -141,25 +146,42 @@ func BuildInfo(projectName string, buildConfig *Config) error {
 
 func Flash(projectName string, buildConfig *Config) error {
 
+	esp32Toolchain := NewEsp32Toolchain()
+	err := LoadBoards(esp32Toolchain)
+	if err != nil {
+		return err
+	}
+
+	board := esp32Toolchain.GetBoardByName(clayConfig.TargetBoard)
+
 	prjs := ClayAppCreateProjectsFunc()
 	for _, prj := range prjs {
-		prj.SetToolchain(buildConfig)
+		prj.SetToolchain(buildConfig, board)
 	}
+
+	projectNames := []string{}
+	for _, prj := range prjs {
+		if prj.IsExecutable && prj.Config.Matches(buildConfig) {
+			projectNames = append(projectNames, prj.Name)
+		}
+	}
+
+	cm := foundation.NewClosestMatch(projectNames, []int{2})
+	closest := cm.ClosestN(projectName, 1)
 
 	buildPath := GetBuildPath(buildConfig.GetSubDir())
 	for _, prj := range prjs {
-		if projectName == prj.Name || projectName == "" {
-			if prj.IsExecutable && prj.Config.Matches(buildConfig) {
-				foundation.LogPrintf("Flashing project: %s, config: %s\n", prj.Name, prj.Config.ConfigString())
-				startTime := time.Now()
-				{
-					if err := prj.Flash(buildConfig, buildPath); err != nil {
-						return foundation.LogErrorf(err, "Build failed")
-					}
+		if prj.IsExecutable && prj.Config.Matches(buildConfig) && prj.Name == closest[0] {
+
+			foundation.LogPrintf("Flashing project: %s, config: %s\n", prj.Name, prj.Config.ConfigString())
+			startTime := time.Now()
+			{
+				if err := prj.Flash(buildConfig, buildPath); err != nil {
+					return foundation.LogErrorf(err, "Build failed")
 				}
-				foundation.LogPrintf("Flashing done ... (duration %s)\n", time.Since(startTime).Round(time.Second))
-				foundation.LogPrintln()
 			}
+			foundation.LogPrintf("Flashing done ... (duration %s)\n", time.Since(startTime).Round(time.Second))
+			foundation.LogPrintln()
 		}
 	}
 	return nil
@@ -174,19 +196,36 @@ func ListBoards(boardName string, matches int) error {
 	if matches <= 0 {
 		matches = 10
 	}
-	EspSdkPath := "/Users/obnosis5/sdk/arduino/esp32"
-	if env := os.Getenv("ESP_SDK"); env != "" {
-		EspSdkPath = env
+	esp32Toolchain := NewEsp32Toolchain()
+	if err := ParseEsp32Toolchain(esp32Toolchain); err != nil {
+		return err
 	}
+	return PrintAllMatchingBoards(esp32Toolchain, boardName, matches)
+}
 
-	return PrintAllMatchingBoards(EspSdkPath, boardName, matches)
+func GenerateBoards() error {
+	esp32Toolchain := NewEsp32Toolchain()
+	if err := ParseEsp32Toolchain(esp32Toolchain); err != nil {
+		return err
+	}
+	return GenerateAllBoards(esp32Toolchain)
+}
+
+func PrintBoardInfo(boardName string, matches int) error {
+	if matches <= 0 {
+		matches = 10
+	}
+	esp32Toolchain := NewEsp32Toolchain()
+	if err := ParseEsp32Toolchain(esp32Toolchain); err != nil {
+		return err
+	}
+	return PrintAllBoardInfos(esp32Toolchain, boardName, matches)
 }
 
 func ListFlashSizes(cpuName string, boardName string) error {
-	EspSdkPath := "/Users/obnosis5/sdk/arduino/esp32"
-	if env := os.Getenv("ESP_SDK"); env != "" {
-		EspSdkPath = env
+	esp32Toolchain := NewEsp32Toolchain()
+	if err := ParseEsp32Toolchain(esp32Toolchain); err != nil {
+		return err
 	}
-
-	return PrintAllFlashSizes(EspSdkPath, cpuName, boardName)
+	return PrintAllFlashSizes(esp32Toolchain, cpuName, boardName)
 }

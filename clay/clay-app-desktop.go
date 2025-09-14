@@ -48,22 +48,22 @@ func ClayAppMainDesktop() {
 func UsageDesktop() {
 	foundation.LogPrintln("Usage: clay [command] [options]")
 	foundation.LogPrintln("Commands:")
-	foundation.LogPrintln("  build-info -p <projectName> -c <projectConfig>")
-	foundation.LogPrintln("  build -p <projectName> -c <projectConfig>")
-	foundation.LogPrintln("  clean -p <projectName> -c <projectConfig>")
+	foundation.LogPrintln("  build-info -p <name> -build <config>")
+	foundation.LogPrintln("  build -p <name> -build <config>")
+	foundation.LogPrintln("  clean -p <name> -build <config>")
 	foundation.LogPrintln("  list-libraries")
 	foundation.LogPrintln("Options:")
-	foundation.LogPrintln("  projectName       Project name (if more than one) ")
-	foundation.LogPrintln("  projectConfig     Config name (debug, release, final, debug-dev, debug-test) ")
-	foundation.LogPrintln("  --help            Show this help message")
-	foundation.LogPrintln("  --version         Show version information")
+	foundation.LogPrintln("  name       Project name (if more than one) ")
+	foundation.LogPrintln("  config     Config name (debug, release, final, debug-dev, debug-test) ")
+	foundation.LogPrintln("  --help     Show this help message")
+	foundation.LogPrintln("  --version  Show version information")
 
 	foundation.LogPrintln("Examples:")
 	foundation.LogPrintln("  clay build-info (generates buildinfo.h and buildinfo.cpp for all projects and configs)")
-	foundation.LogPrintln("  clay build-info -c debug  // generates buildinfo.h and buildinfo.cpp for debug-dev config")
-	foundation.LogPrintln("  clay build                // builds the project for the release-dev config")
-	foundation.LogPrintln("  clay build -c debug       // builds the project for the debug-dev config")
-	foundation.LogPrintln("  clay clean -c debug       // cleans the project for the debug-dev config")
+	foundation.LogPrintln("  clay build-info -build debug  // generates buildinfo.h and buildinfo.cpp for debug-dev config")
+	foundation.LogPrintln("  clay build                    // builds the project for the release-dev config")
+	foundation.LogPrintln("  clay build -build debug       // builds the project for the debug-dev config")
+	foundation.LogPrintln("  clay clean -build debug       // cleans the project for the debug-dev config")
 	foundation.LogPrintln("  clay list-libraries")
 }
 
@@ -75,7 +75,7 @@ func BuildDesktop(projectName string, buildConfig *Config) error {
 
 	prjs := ClayAppCreateProjectsFunc()
 	for _, prj := range prjs {
-		prj.SetToolchain(buildConfig)
+		prj.SetToolchain(buildConfig, nil)
 	}
 
 	var outOfDate int

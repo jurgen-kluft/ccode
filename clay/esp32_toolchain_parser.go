@@ -6,6 +6,7 @@ import (
 	"runtime"
 	"strings"
 
+	"github.com/jurgen-kluft/ccode/clay/toolchain"
 	"github.com/jurgen-kluft/ccode/foundation"
 )
 
@@ -74,22 +75,6 @@ import (
 // A 'new' board is recognized by a line looking like this:
 //   xxxxxxx.name=ESP32 Wrover Module
 
-type Esp32Board struct {
-	Name        string            // The name of the board
-	Description string            // The description of the board
-	FlashSizes  map[string]string // The list of flash sizes
-	Vars        *foundation.KeyValueSet
-}
-
-func NewBoard(name string, description string) *Esp32Board {
-	return &Esp32Board{
-		Name:        name,
-		Description: description,
-		FlashSizes:  make(map[string]string),
-		Vars:        foundation.NewKeyValueSet(),
-	}
-}
-
 type Esp32ToolFunction struct {
 	Function string              // e.g. upload, program, erase, bootloader
 	Cmd      string              // .pattern
@@ -99,6 +84,7 @@ type Esp32ToolFunction struct {
 }
 
 func NewEsp32ToolFunction(function string) *Esp32ToolFunction {
+
 	return &Esp32ToolFunction{
 		Function: function,
 		Cmd:      "",
@@ -125,47 +111,47 @@ func NewEsp32Tool(name string) *Esp32Tool {
 }
 
 type Esp32Platform struct {
-	Name                    string                  // The name of the platform
-	Version                 string                  // The version of the platform
-	Vars                    *foundation.KeyValueSet // A map of variables, e.g. 'runtime.os' or 'build.path'
-	CCompilerCmd            string                  // C compiler command ('recipe.c.o.pattern')
-	CCompilerCmdLine        string                  //
-	CCompilerArgs           []string                // The arguments for the C compiler
-	CppCompilerCmd          string                  // C++ compiler command ('recipe.cpp.o.pattern')
-	CppCompilerCmdLine      string                  // C++ compiler command ('recipe.cpp.o.pattern')
-	CppCompilerArgs         []string                // The arguments for the C++ compiler
-	AssemblerCmd            string                  // S Assembler command ('recipe.S.o.pattern')
-	AssemblerCmdLine        string                  // S Assembler command ('recipe.S.o.pattern')
-	AssemblerArgs           []string                // The arguments for the assembler
-	ArchiverCmd             string                  // Archiver command ('recipe.ar.pattern')
-	ArchiverCmdLine         string                  // Archiver command ('recipe.ar.pattern')
-	ArchiverArgs            []string                // The arguments for the archiver
-	LinkerCmd               string                  // Linker command ('recipe.c.combine.pattern')
-	LinkerCmdLine           string                  // Linker command ('recipe.c.combine.pattern')
-	LinkerArgs              []string                // The arguments for the linker
-	CreatePartitionsCmd     string                  // CreatePartitions command ('recipe.objcopy.partitions.bin.pattern')
-	CreatePartitionsCmdLine string                  // CreatePartitions command ('recipe.objcopy.partitions.bin.pattern')
-	CreatePartitionsArgs    []string                // The arguments for the create partitions command
-	CreateBinCmd            string                  // CreateBin command ('recipe.objcopy.bin.pattern')
-	CreateBinCmdLine        string                  // CreateBin command ('recipe.objcopy.bin.pattern')
-	CreateBinArgs           []string                // The arguments for the create bin command
-	CreatBootloaderCmd      string                  // CreateBootloader command ('recipe.hooks.prebuild.4.pattern')
-	CreatBootloaderCmdLine  string                  // CreateBootloader command ('recipe.hooks.prebuild.4.pattern')
-	CreatBootloaderArgs     []string                // The arguments for the create bootloader command
-	CreateMergedBinCmd      string                  // CreateMergedBin command ('recipe.hooks.objcopy.postobjcopy.3.pattern')
-	CreateMergedBinCmdLine  string                  // CreateMergedBin command ('recipe.hooks.objcopy.postobjcopy.3.pattern')
-	CreateMergedBinArgs     []string                // The arguments for the create merged bin command
-	ComputeSizeCmd          string                  // ComputeSize command ('recipe.size.pattern')
-	ComputeSizeCmdLine      string                  // ComputeSize command ('recipe.size.pattern')
-	ComputeSizeArgs         []string                // The arguments for the compute size command
-	Tools                   map[string]*Esp32Tool   // The list of tools (only 'tools.esptool_py' and 'esp_ota' for now)
+	Name                    string                // The name of the platform
+	Version                 string                // The version of the platform
+	Vars                    *foundation.Vars      // A map of variables, e.g. 'runtime.os' or 'build.path'
+	CCompilerCmd            string                // C compiler command ('recipe.c.o.pattern')
+	CCompilerCmdLine        string                //
+	CCompilerArgs           []string              // The arguments for the C compiler
+	CppCompilerCmd          string                // C++ compiler command ('recipe.cpp.o.pattern')
+	CppCompilerCmdLine      string                // C++ compiler command ('recipe.cpp.o.pattern')
+	CppCompilerArgs         []string              // The arguments for the C++ compiler
+	AssemblerCmd            string                // S Assembler command ('recipe.S.o.pattern')
+	AssemblerCmdLine        string                // S Assembler command ('recipe.S.o.pattern')
+	AssemblerArgs           []string              // The arguments for the assembler
+	ArchiverCmd             string                // Archiver command ('recipe.ar.pattern')
+	ArchiverCmdLine         string                // Archiver command ('recipe.ar.pattern')
+	ArchiverArgs            []string              // The arguments for the archiver
+	LinkerCmd               string                // Linker command ('recipe.c.combine.pattern')
+	LinkerCmdLine           string                // Linker command ('recipe.c.combine.pattern')
+	LinkerArgs              []string              // The arguments for the linker
+	CreatePartitionsCmd     string                // CreatePartitions command ('recipe.objcopy.partitions.bin.pattern')
+	CreatePartitionsCmdLine string                // CreatePartitions command ('recipe.objcopy.partitions.bin.pattern')
+	CreatePartitionsArgs    []string              // The arguments for the create partitions command
+	CreateBinCmd            string                // CreateBin command ('recipe.objcopy.bin.pattern')
+	CreateBinCmdLine        string                // CreateBin command ('recipe.objcopy.bin.pattern')
+	CreateBinArgs           []string              // The arguments for the create bin command
+	CreatBootloaderCmd      string                // CreateBootloader command ('recipe.hooks.prebuild.4.pattern')
+	CreatBootloaderCmdLine  string                // CreateBootloader command ('recipe.hooks.prebuild.4.pattern')
+	CreatBootloaderArgs     []string              // The arguments for the create bootloader command
+	CreateMergedBinCmd      string                // CreateMergedBin command ('recipe.hooks.objcopy.postobjcopy.3.pattern')
+	CreateMergedBinCmdLine  string                // CreateMergedBin command ('recipe.hooks.objcopy.postobjcopy.3.pattern')
+	CreateMergedBinArgs     []string              // The arguments for the create merged bin command
+	ComputeSizeCmd          string                // ComputeSize command ('recipe.size.pattern')
+	ComputeSizeCmdLine      string                // ComputeSize command ('recipe.size.pattern')
+	ComputeSizeArgs         []string              // The arguments for the compute size command
+	Tools                   map[string]*Esp32Tool // The list of tools (only 'tools.esptool_py' and 'esp_ota' for now)
 }
 
 func NewPlatform() *Esp32Platform {
 	return &Esp32Platform{
 		Name:                    "",
 		Version:                 "",
-		Vars:                    foundation.NewKeyValueSet(),
+		Vars:                    foundation.NewVars(),
 		CCompilerCmd:            "",
 		CCompilerCmdLine:        "",
 		CCompilerArgs:           make([]string, 0),
@@ -198,45 +184,66 @@ func NewPlatform() *Esp32Platform {
 }
 
 type Esp32Toolchain struct {
-	Name        string // The name of the toolchain
-	Version     string // The version of the toolchain
-	SdkPath     string
-	Boards      []*Esp32Board  // The list of boards
-	NameToBoard map[string]int // A map of board names to their index in the boards slice
-	Platform    *Esp32Platform
+	Name         string                  `json:"name,omitempty"`    // The name of the toolchain
+	Version      string                  `json:"version,omitempty"` // The version of the toolchain
+	SdkPath      string                  `json:"sdkpath,omitempty"` // The path to the SDK
+	ListOfBoards []*toolchain.Esp32Board `json:"boards,omitempty"`  // The list of boards
+	NameToIndex  map[string]int          `json:"mapping,omitempty"` // A map of board names to their index in the boards slice
+	Platform     *Esp32Platform          // The platform
 }
 
-func ParseEsp32Toolchain(espSdkPath string) (*Esp32Toolchain, error) {
-
-	boardsFile := espSdkPath + "/boards.txt"
-	platformFile := espSdkPath + "/platform.txt"
-
-	// Create the toolchain object
-	toolchain := &Esp32Toolchain{
-		Name:        "",
-		Version:     "",
-		SdkPath:     espSdkPath,
-		Boards:      make([]*Esp32Board, 0, 350),
-		NameToBoard: make(map[string]int),
-		Platform:    NewPlatform(),
+func NewEsp32Toolchain() *Esp32Toolchain {
+	espSdkPath := "/Users/obnosis5/sdk/arduino/esp32"
+	if env := os.Getenv("ESP_SDK"); env != "" {
+		espSdkPath = env
 	}
+
+	toolchain := &Esp32Toolchain{
+		Name:         "Espressif ESP32 Arduino",
+		Version:      "3.2.0",
+		SdkPath:      espSdkPath,
+		ListOfBoards: make([]*toolchain.Esp32Board, 0, 350),
+		NameToIndex:  make(map[string]int),
+		Platform:     NewPlatform(),
+	}
+	return toolchain
+}
+
+func (t *Esp32Toolchain) PrintInfo() {
+	foundation.LogPrintf("Toolchain: %s, version: %s\n", t.Name, t.Version)
+	foundation.LogPrintf("SDK Path: %s\n", t.SdkPath)
+	foundation.LogPrintf("Number of boards: %d\n", len(t.ListOfBoards))
+	foundation.LogPrintf("Platform: %s, version: %s\n", t.Platform.Name, t.Platform.Version)
+}
+
+func (t *Esp32Toolchain) GetBoardByName(name string) *toolchain.Esp32Board {
+	if index, ok := t.NameToIndex[strings.ToLower(name)]; ok {
+		return t.ListOfBoards[index]
+	}
+	return nil
+}
+
+func ParseEsp32Toolchain(toolchain *Esp32Toolchain) error {
+
+	boardsFile := toolchain.SdkPath + "/boards.txt"
+	platformFile := toolchain.SdkPath + "/platform.txt"
 
 	// Read the boards.txt file
 	err := toolchain.ParseEsp32Boards(boardsFile)
 	if err != nil {
-		return nil, err
+		return err
 	}
 
 	// Read the platform.txt file
 	err = toolchain.ParseEsp32Platform(platformFile)
 	if err != nil {
-		return nil, err
+		return err
 	}
 
-	return toolchain, nil
+	return nil
 }
 
-func ResolveString(variable string, vars *foundation.KeyValueSet) string {
+func ResolveString(variable string, vars *foundation.Vars) string {
 	type pair struct {
 		from int
 		to   int
@@ -278,7 +285,8 @@ func ResolveString(variable string, vars *foundation.KeyValueSet) string {
 			p := list[i]
 			variableName := variable[p.from+1 : p.to]
 			// Check if the variable exists in the vars map
-			if value, ok := vars.HasGet(variableName); ok {
+			if vars.Has(variableName) {
+				value := vars.GetFirstOrEmpty(variableName)
 				// Replace the variable with its value
 				variable = variable[:p.from] + value + variable[p.to+1:]
 				replaced += 1
@@ -327,7 +335,7 @@ func RemoveEmptyEntries(list []string) []string {
 	return list
 }
 
-func ResolveStringList(variableList []string, vars *foundation.KeyValueSet) []string {
+func ResolveStringList(variableList []string, vars *foundation.Vars) []string {
 	for i, variable := range variableList {
 		variableList[i] = ResolveString(variable, vars)
 	}
@@ -379,33 +387,40 @@ func SplitCmdLineIntoArgs(cmdline string, removeEmptyEntries bool) []string {
 
 func (t *Esp32Toolchain) ResolveVariables(board string) error {
 
-	globalVars := foundation.NewKeyValueSet()
-	globalVars.Add("runtime.os", runtime.GOOS)
-	globalVars.Add("runtime.platform.path", t.SdkPath)
-	globalVars.Add("runtime.ide.version", t.Platform.Version)
-	globalVars.Add("build.path", "build")
+	globalVars := foundation.NewVars()
+	globalVars.Set("runtime.os", runtime.GOOS)
+	globalVars.Set("runtime.platform.path", t.SdkPath)
+	globalVars.Set("runtime.ide.version", t.Platform.Version)
+	globalVars.Set("build.path", "build")
 
-	if boardIndex, boardExists := t.NameToBoard[board]; !boardExists {
+	if boardIndex, boardExists := t.NameToIndex[board]; !boardExists {
 		return foundation.LogErrorf(os.ErrInvalid, "Invalid board name: %s", board)
 	} else {
-		board := t.Boards[boardIndex]
+		board := t.ListOfBoards[boardIndex]
 		for i, k := range board.Vars.Keys {
-			globalVars.Add(k, board.Vars.Values[i])
+			globalVars.Set(k, board.Vars.Values[i]...)
 		}
 	}
 
+	varResolver := foundation.NewVarResolver()
+
 	for i, _ := range t.Platform.Vars.Keys {
 		v := t.Platform.Vars.Values[i]
-		v = ResolveString(v, globalVars)
-		t.Platform.Vars.Values[i] = v
+		for i, _ := range v {
+			result := varResolver.Resolve(v[i], globalVars)
+			t.Platform.Vars.Values[i] = append(t.Platform.Vars.Values[i], result...)
+		}
 	}
 
-	globalVars.Join(t.Platform.Vars)
+	//globalVars. .Join(t.Platform.Vars)
+	globalVars.Merge(t.Platform.Vars)
 
 	for i, _ := range globalVars.Keys {
 		v := globalVars.Values[i]
-		v = ResolveString(v, globalVars)
-		globalVars.Values[i] = v
+		for i, _ := range v {
+			result := varResolver.Resolve(v[i], globalVars)
+			globalVars.Values[i] = append(globalVars.Values[i], result...)
+		}
 	}
 
 	// For platform we can resolve some of the variables that are local to the platform
@@ -468,7 +483,7 @@ func (t *Esp32Toolchain) ParseEsp32Boards(boardsFile string) error {
 	}
 	defer file.Close()
 
-	var currentBoard *Esp32Board
+	var currentBoard *toolchain.Esp32Board
 
 	scanner := bufio.NewScanner(file)
 	for scanner.Scan() {
@@ -492,9 +507,9 @@ func (t *Esp32Toolchain) ParseEsp32Boards(boardsFile string) error {
 		// Check if the line is a board definition
 		if len(keyParts) == 2 && keyParts[len(keyParts)-1] == "name" {
 			if currentBoard != nil {
-				t.Boards = append(t.Boards, currentBoard)
+				t.ListOfBoards = append(t.ListOfBoards, currentBoard)
 			}
-			currentBoard = NewBoard(keyParts[0], value)
+			currentBoard = toolchain.NewBoard(keyParts[0], value)
 			continue
 		}
 
@@ -507,18 +522,18 @@ func (t *Esp32Toolchain) ParseEsp32Boards(boardsFile string) error {
 			} else {
 				key = strings.TrimPrefix(key, currentBoard.Name)
 				key = strings.TrimPrefix(key, ".") // Remove the leading dot if present
-				currentBoard.Vars.Add(key, value)
+				currentBoard.Vars.Set(key, value)
 			}
 		}
 	}
 
 	if currentBoard != nil {
-		t.Boards = append(t.Boards, currentBoard)
+		t.ListOfBoards = append(t.ListOfBoards, currentBoard)
 	}
 
 	// Create a map of board names to their index in the boards slice
-	for i, board := range t.Boards {
-		t.NameToBoard[board.Name] = i
+	for i, board := range t.ListOfBoards {
+		t.NameToIndex[strings.ToLower(board.Name)] = i
 	}
 
 	return nil
@@ -683,24 +698,30 @@ func (t *Esp32Toolchain) ParseEsp32Platform(platformFile string) error {
 				}
 			}
 		} else {
-			// Special case for 'build.extra_flags.boardname=value'
-			// strings.HasPrefix(key, "build.extra_flags.")
-			if len(keyParts) == 3 && keyParts[0] == "build" && keyParts[1] == "extra_flags" {
+			if len(keyParts) >= 2 && keyParts[0] == "build" {
+				// Any 'build.xxx.yyy' variable is set on all boards
 				ignoreAsVar = true
-
-				// The last part is a board name, we are going to
-				// add 'build.extra_flags=value' to the matching board
-				// in the toolchain, so remove the '.boardname'
-				boardName := keyParts[2]
-				if i, ok := t.NameToBoard[boardName]; ok {
-					t.Boards[i].Vars.Add(keyParts[0]+"."+keyParts[1], value)
+				buildVar := keyParts[0] + "." + keyParts[1]
+				if len(keyParts) > 2 {
+					buildVar = buildVar + "." + strings.Join(keyParts[2:], ".")
+				}
+				if keyParts[1] == "extra_flags" {
+					// Extra flags can be a list of flags, so we need to split them
+					values := strings.Split(value, " ")
+					for i := 0; i < len(values); i++ {
+					}
+				}
+				for _, board := range t.ListOfBoards {
+					if !board.Vars.Has(buildVar) {
+						board.Vars.Set(buildVar, value)
+					}
 				}
 			}
 		}
 
 		if !ignoreAsVar {
 			// Add the variable to the platform variables
-			t.Platform.Vars.Add(key, value)
+			t.Platform.Vars.Set(key, value)
 		}
 	}
 

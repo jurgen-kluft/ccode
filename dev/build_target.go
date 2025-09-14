@@ -20,17 +20,17 @@ const (
 )
 
 // BuildTargetArch indicates the target architecture
-type BuildTargetArch uint32
+type BuildTargetArch uint64
 
 const (
 	BuildTargetArchNone    BuildTargetArch = 0x0000
 	BuildTargetArchMask    BuildTargetArch = 0xffff
+	BuildTargetVariantMask BuildTargetArch = 0xffff
 	BuildTargetArchX86     BuildTargetArch = (1 << 0)
 	BuildTargetArchX64     BuildTargetArch = (1 << 1)
 	BuildTargetArchArm32   BuildTargetArch = (1 << 2)
 	BuildTargetArchArm64   BuildTargetArch = (1 << 3)
 	BuildTargetArchEsp32   BuildTargetArch = (1 << 4)
-	BuildTargetArchEsp32s3 BuildTargetArch = (1 << 5)
 )
 
 func (arch BuildTargetArch) String() string {
@@ -56,10 +56,6 @@ func (arch BuildTargetArch) String() string {
 		full = full + sep + "esp32"
 		sep = "|"
 	}
-	if arch&BuildTargetArchEsp32s3 != 0 {
-		full = full + sep + "esp32s3"
-		sep = "|"
-	}
 	return full
 }
 
@@ -78,14 +74,13 @@ var BuildTargetLinuxArm32 = BuildTarget{Targets: [BuildTargetOsCount]BuildTarget
 var BuildTargetLinuxArm64 = BuildTarget{Targets: [BuildTargetOsCount]BuildTargetArch{BuildTargetArchNone, BuildTargetArchNone, BuildTargetArchArm64, BuildTargetArchNone, BuildTargetArchNone}}
 var BuildTargetAppleiOS = BuildTarget{Targets: [BuildTargetOsCount]BuildTargetArch{BuildTargetArchNone, BuildTargetArchNone, BuildTargetArchNone, BuildTargetArchArm64, BuildTargetArchNone}}
 var BuildTargetArduinoEsp32 = BuildTarget{Targets: [BuildTargetOsCount]BuildTargetArch{BuildTargetArchNone, BuildTargetArchNone, BuildTargetArchNone, BuildTargetArchNone, BuildTargetArchEsp32}}
-var BuildTargetArduinoEsp32s3 = BuildTarget{Targets: [BuildTargetOsCount]BuildTargetArch{BuildTargetArchNone, BuildTargetArchNone, BuildTargetArchNone, BuildTargetArchNone, BuildTargetArchEsp32s3}}
 
 var BuildTargetsAll = BuildTarget{Targets: [BuildTargetOsCount]BuildTargetArch{
 	BuildTargetArchX86 | BuildTargetArchX64,
 	BuildTargetArchX64 | BuildTargetArchArm64,
 	BuildTargetArchX86 | BuildTargetArchX64 | BuildTargetArchArm32 | BuildTargetArchArm64,
 	BuildTargetArchArm64,
-	BuildTargetArchEsp32 | BuildTargetArchEsp32s3,
+	BuildTargetArchEsp32,
 }}
 
 var BuildTargetsDesktop = BuildTarget{Targets: [BuildTargetOsCount]BuildTargetArch{
@@ -101,7 +96,7 @@ var BuildTargetsArduino = BuildTarget{Targets: [BuildTargetOsCount]BuildTargetAr
 	BuildTargetArchNone,
 	BuildTargetArchNone,
 	BuildTargetArchNone,
-	BuildTargetArchEsp32 | BuildTargetArchEsp32s3,
+	BuildTargetArchEsp32,
 }}
 
 var EmptyBuildTarget = BuildTarget{Targets: [BuildTargetOsCount]BuildTargetArch{
@@ -125,11 +120,7 @@ func SetBuildTarget(os string, arch string) BuildTarget {
 	CurrentBuildTarget = EmptyBuildTarget
 
 	if os == "arduino" {
-		if arch == "esp32s3" {
-			CurrentBuildTarget.Targets[BuildTargetOsArduino] |= BuildTargetArchEsp32s3
-		} else {
-			CurrentBuildTarget.Targets[BuildTargetOsArduino] |= BuildTargetArchEsp32
-		}
+		CurrentBuildTarget.Targets[BuildTargetOsArduino] |= BuildTargetArchEsp32
 	} else if os == "windows" {
 		if arch == "x86" {
 			CurrentBuildTarget.Targets[BuildTargetOsWindows] |= BuildTargetArchX86
@@ -267,9 +258,6 @@ func (pt BuildTarget) Arm32() bool {
 func (pt BuildTarget) Esp32() bool {
 	return pt.Targets[BuildTargetOsArduino]&BuildTargetArchEsp32 == BuildTargetArchEsp32
 }
-func (pt BuildTarget) Esp32s3() bool {
-	return pt.Targets[BuildTargetOsArduino]&BuildTargetArchEsp32s3 == BuildTargetArchEsp32s3
-}
 
 func (pt BuildTarget) OSAsString() string {
 	switch {
@@ -300,8 +288,6 @@ func (pt BuildTarget) ArchAsString() string {
 		return "arm32"
 	case pt.Esp32():
 		return "esp32"
-	case pt.Esp32s3():
-		return "esp32s3"
 	default:
 		return "unknown"
 	}
@@ -319,8 +305,6 @@ func (pt BuildTarget) ArchAsUcString() string {
 		return "ARM32"
 	case pt.Esp32():
 		return "ESP32"
-	case pt.Esp32s3():
-		return "ESP32S3"
 	default:
 		return "UNKNOWN"
 	}
@@ -357,9 +341,6 @@ func BuildTargetFromString(os string, arch string) BuildTarget {
 	// Set the build target based on the provided os and arch
 	switch os {
 	case "arduino":
-		if arch == "esp32s3" {
-			return BuildTargetArduinoEsp32s3
-		}
 		return BuildTargetArduinoEsp32
 	case "windows":
 		if arch == "x86" {

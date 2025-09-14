@@ -1,9 +1,13 @@
 package clay
 
 import (
+	"bufio"
 	"fmt"
+	"os"
 	"sort"
+	"strings"
 
+	"github.com/jurgen-kluft/ccode/clay/toolchain"
 	"github.com/jurgen-kluft/ccode/foundation"
 )
 
@@ -17,7 +21,7 @@ import (
 // - list_lwip
 
 // BoardsOperation performs a search operation on the board configuration file and returns nil if successful.
-func BoardsOperation(espSdkPath string, cpuName string, boardName string, opName string) (result []string, err error) {
+func BoardsOperation(esp32Toolchain *Esp32Toolchain, cpuName string, boardName string, opName string) (result []string, err error) {
 
 	// var flashDefMatch string
 	// if cpuName == "esp32" {
@@ -28,23 +32,18 @@ func BoardsOperation(espSdkPath string, cpuName string, boardName string, opName
 
 	// lwipDefMatch := `\.menu\.(?:LwIPVariant|ip)\.(\w+)=(.+)`
 
-	toolchain, err := ParseEsp32Toolchain(espSdkPath)
-	if err != nil {
-		return []string{}, err
-	}
-
 	if opName == "first" {
-		result := toolchain.Boards[0].Name
+		result := esp32Toolchain.ListOfBoards[0].Name
 		result = result[0:1]
 	} else if opName == "check" {
-		if i, ok := toolchain.NameToBoard[boardName]; ok {
-			result = []string{toolchain.Boards[i].Name}
+		if i, ok := esp32Toolchain.NameToIndex[boardName]; ok {
+			result = []string{esp32Toolchain.ListOfBoards[i].Name}
 		} else {
 			return []string{}, fmt.Errorf("Board %s not found in toolchain\n", boardName)
 		}
 	} else if opName == "first_flash" {
-		if i, ok := toolchain.NameToBoard[boardName]; ok {
-			for flashKey, flashValue := range toolchain.Boards[i].FlashSizes {
+		if i, ok := esp32Toolchain.NameToIndex[boardName]; ok {
+			for flashKey, flashValue := range esp32Toolchain.ListOfBoards[i].FlashSizes {
 				result = append(result, fmt.Sprintf("%s %s", flashKey, flashValue))
 				break
 			}
@@ -54,8 +53,8 @@ func BoardsOperation(espSdkPath string, cpuName string, boardName string, opName
 	} else if opName == "first_lwip" {
 		// lwip configurations for board (a manual search shows there are none)
 	} else if opName == "list_boards" {
-		for i := 0; i < len(toolchain.Boards); i++ {
-			result = append(result, fmt.Sprintf("%-20s %s", toolchain.Boards[i].Name, toolchain.Boards[i].Description))
+		for i := 0; i < len(esp32Toolchain.ListOfBoards); i++ {
+			result = append(result, fmt.Sprintf("%-20s %s", esp32Toolchain.ListOfBoards[i].Name, esp32Toolchain.ListOfBoards[i].Description))
 		}
 	} else if opName == "list_flash" {
 		// memory configurations for board
@@ -66,7 +65,7 @@ func BoardsOperation(espSdkPath string, cpuName string, boardName string, opName
 	return result, nil
 }
 
-func PrintAllFlashSizes(espSdkPath string, cpuName string, boardName string) (err error) {
+func PrintAllFlashSizes(esp32Toolchain *Esp32Toolchain, cpuName string, boardName string) (err error) {
 
 	// var flashDefMatch string
 	// if cpuName == "esp32" {
@@ -75,15 +74,10 @@ func PrintAllFlashSizes(espSdkPath string, cpuName string, boardName string) (er
 	// 	flashDefMatch = `\.menu\.(?:FlashSize|eesz)\.([^\.]+)=(.+)`
 	// }
 
-	toolchain, err := ParseEsp32Toolchain(espSdkPath)
-	if err != nil {
-		return err
-	}
-
-	// Get the board
-	var board *Esp32Board
-	if i, ok := toolchain.NameToBoard[boardName]; ok {
-		board = toolchain.Boards[i]
+	// Get the parsed board
+	var board *toolchain.Esp32Board
+	if i, ok := esp32Toolchain.NameToIndex[boardName]; ok {
+		board = esp32Toolchain.ListOfBoards[i]
 
 		column1 := make([]string, 0)
 		column2 := make([]string, 0)
@@ -119,21 +113,155 @@ func PrintAllFlashSizes(espSdkPath string, cpuName string, boardName string) (er
 	return nil
 }
 
-type Board struct {
-	Name        string
-	Description string
+func PrintAllBoardInfos(esp32Toolchain *Esp32Toolchain, boardName string, max int) error {
+
+	// Print some info
+	esp32Toolchain.PrintInfo()
+
+	// First search in the board names
+	names := make([]string, 0, len(esp32Toolchain.ListOfBoards))
+	for _, board := range esp32Toolchain.ListOfBoards {
+		names = append(names, board.Name)
+	}
+
+	cm := foundation.NewClosestMatch(names, []int{2})
+	closest := cm.ClosestN(boardName, max)
+	if len(closest) > 0 {
+		for _, match := range closest {
+			if board := esp32Toolchain.GetBoardByName(match); board != nil {
+				foundation.LogPrintf("----------------------- " + board.Name + " -----------------------\n")
+				foundation.LogPrintf("Board: %s\n", board.Name)
+				foundation.LogPrintf("Description: %s\n", board.Description)
+				foundation.LogPrint(board.Vars.String())
+				foundation.LogPrintf("\n")
+			}
+		}
+	}
+	return nil
 }
 
-func PrintAllMatchingBoards(espSdkPath string, fuzzy string, max int) error {
+func GenerateAllBoards(esp32Toolchain *Esp32Toolchain) error {
+	// Print some info
+	esp32Toolchain.PrintInfo()
 
-	toolchain, err := ParseEsp32Toolchain(espSdkPath)
+	// Generate the boards.txt file (custom format)
+	file, err := os.Create("boards.txt")
 	if err != nil {
 		return err
 	}
+	defer file.Close()
+
+	boardList := make([]string, 0, len(esp32Toolchain.ListOfBoards))
+	for _, board := range esp32Toolchain.ListOfBoards {
+		boardList = append(boardList, board.Name)
+	}
+	sort.Strings(boardList)
+
+	sb := foundation.NewStringBuilder()
+	for _, boardName := range boardList {
+		board := esp32Toolchain.GetBoardByName(boardName)
+		if board != nil {
+			sb.WriteLn("----board----")
+			sb.WriteLn(board.Name)
+			sb.WriteLn(board.Description)
+			sb.WriteLn("variables=[")
+			board.Vars.SortByKey()
+			for i, varKey := range board.Vars.Keys {
+				varValue := board.Vars.Values[i]
+				sb.WriteString(varKey)
+				sb.WriteString(":=")
+				sb.WriteLn(strings.Join(varValue, " "))
+			}
+			sb.WriteLn("]")
+			sb.WriteLn("flash_sizes=[")
+			for flashKey, flashValue := range board.FlashSizes {
+				sb.WriteString(flashKey)
+				sb.WriteString(":=")
+				sb.WriteLn(flashValue)
+			}
+			sb.WriteLn("]")
+
+			file.WriteString(sb.String())
+			sb.Reset()
+		}
+	}
+
+	return nil
+}
+
+func LoadBoards(esp32Toolchain *Esp32Toolchain) error {
+
+	file, err := os.Open("boards.txt")
+	if err != nil {
+		return foundation.LogError(err, "Failed to open boards.txt")
+	}
+	defer file.Close()
+
+	// Read the file content line by line
+	var currentBoard *toolchain.Esp32Board
+	var currentSection string
+
+	scanner := bufio.NewScanner(file)
+	for scanner.Scan() {
+		line := scanner.Text()
+		line = strings.TrimSpace(line)
+		if len(currentSection) == 0 {
+			switch line {
+			case "variables=[":
+				currentSection = line
+			case "flash_sizes=[":
+				currentSection = line
+			case "----board----":
+				scanner.Scan()
+				name := scanner.Text()
+				scanner.Scan()
+				description := scanner.Text()
+				if currentBoard != nil {
+					esp32Toolchain.ListOfBoards = append(esp32Toolchain.ListOfBoards, currentBoard)
+					esp32Toolchain.NameToIndex[strings.ToLower(currentBoard.Name)] = len(esp32Toolchain.ListOfBoards) - 1
+				}
+				currentBoard = toolchain.NewBoard(name, description)
+				currentBoard.SdkPath = esp32Toolchain.SdkPath
+				currentBoard.Vars.Set("arduino.version", esp32Toolchain.Version)
+				currentSection = ""
+			}
+		} else {
+			if line == "]" {
+				currentSection = ""
+			} else {
+				switch currentSection {
+				case "variables=[":
+					op := strings.Index(line, ":=")
+					if op > 0 {
+						key := line[0:op]
+						value := line[op+2:]
+						currentBoard.Vars.Set(key, value)
+					}
+				case "flash_sizes=[":
+					op := strings.Index(line, ":=")
+					if op > 0 {
+						key := line[0:op]
+						value := line[op+2:]
+						currentBoard.FlashSizes[key] = value
+					}
+				}
+			}
+		}
+	}
+
+	if currentBoard != nil {
+		esp32Toolchain.ListOfBoards = append(esp32Toolchain.ListOfBoards, currentBoard)
+		esp32Toolchain.NameToIndex[strings.ToLower(currentBoard.Name)] = len(esp32Toolchain.ListOfBoards) - 1
+	}
+
+	return nil
+}
+
+func PrintAllMatchingBoards(esp32Toolchain *Esp32Toolchain, fuzzy string, max int) error {
 
 	// First search in the board names
-	names := make([]string, 0, len(toolchain.Boards))
-	for _, board := range toolchain.Boards {
+	names := make([]string, 0, len(esp32Toolchain.ListOfBoards))
+	for _, board := range esp32Toolchain.ListOfBoards {
 		names = append(names, board.Name)
 	}
 
@@ -143,7 +271,7 @@ func PrintAllMatchingBoards(espSdkPath string, fuzzy string, max int) error {
 
 		// Create map of board name to board description
 		boardMap := make(map[string]string)
-		for _, board := range toolchain.Boards {
+		for _, board := range esp32Toolchain.ListOfBoards {
 			boardMap[board.Name] = board.Description
 		}
 
@@ -161,8 +289,8 @@ func PrintAllMatchingBoards(espSdkPath string, fuzzy string, max int) error {
 	if len(closest) < max {
 
 		// Now search in the board descriptions
-		descriptions := make([]string, 0, len(toolchain.Boards))
-		for _, board := range toolchain.Boards {
+		descriptions := make([]string, 0, len(esp32Toolchain.ListOfBoards))
+		for _, board := range esp32Toolchain.ListOfBoards {
 			descriptions = append(descriptions, board.Description)
 		}
 		cm = foundation.NewClosestMatch(descriptions, []int{2})
@@ -171,7 +299,7 @@ func PrintAllMatchingBoards(espSdkPath string, fuzzy string, max int) error {
 
 			// Create map of board name to board description
 			boardMap := make(map[string]string)
-			for _, board := range toolchain.Boards {
+			for _, board := range esp32Toolchain.ListOfBoards {
 				boardMap[board.Description] = board.Name
 			}
 

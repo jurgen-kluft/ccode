@@ -3,6 +3,7 @@ package foundation
 import (
 	"os"
 	"slices"
+	"sort"
 	"strconv"
 	"strings"
 )
@@ -12,21 +13,35 @@ import (
 // {VARIABLE:option1:option2:...}
 
 type Vars struct {
-	Values [][]string
-	Keys   map[string]int
-	Leader byte // Leader byte, e.g. '$' or 0 for no varOpen
-	Open   byte // Bracket byte, e.g. '(' or '{' for the start of the variable
-	Close  byte // Bracket byte, e.g. '(' or '{' for the start of the variable
+	Values     [][]string
+	Keys       []string
+	KeyToIndex map[string]int
+	Leader     byte // Leader byte, e.g. '$' or 0 for no varOpen
+	Open       byte // Bracket byte, e.g. '(' or '{' for the start of the variable
+	Close      byte // Bracket byte, e.g. '(' or '{' for the start of the variable
 }
 
 func NewVars() *Vars {
 	return &Vars{
-		Values: make([][]string, 0, 4),
-		Keys:   make(map[string]int, 4),
-		Leader: '$', // Default varOpen byte
-		Open:   '(', // Default opening bracket
-		Close:  ')', // Default closing bracket
+		Values:     make([][]string, 0, 4),
+		Keys:       make([]string, 0, 4),
+		KeyToIndex: make(map[string]int, 4),
+		Leader:     '$', // Default varOpen byte
+		Open:       '(', // Default opening bracket
+		Close:      ')', // Default closing bracket
 	}
+}
+
+func (v *Vars) String() string {
+	sb := NewStringBuilder()
+	for i, key := range v.Keys {
+		value := v.Values[i]
+		sb.WriteString(key)
+		sb.WriteString(" := ")
+		sb.WriteString(strings.Join(value, ", "))
+		sb.WriteString("\n")
+	}
+	return sb.String()
 }
 
 type VarsFormat int8
@@ -38,11 +53,12 @@ const (
 
 func NewVarsCustom(format VarsFormat) *Vars {
 	vars := &Vars{
-		Values: make([][]string, 0, 4),
-		Keys:   make(map[string]int, 4),
-		Leader: 0, // Default varOpen byte
-		Open:   0, // Default opening bracket
-		Close:  0, // Default closing bracket
+		Values:     make([][]string, 0, 4),
+		Keys:       make([]string, 0, 4),
+		KeyToIndex: make(map[string]int, 4),
+		Leader:     0, // Default varOpen byte
+		Open:       0, // Default opening bracket
+		Close:      0, // Default closing bracket
 	}
 
 	if format == VarsFormatDollarParenthesis {
@@ -58,10 +74,51 @@ func NewVarsCustom(format VarsFormat) *Vars {
 	return vars
 }
 
+func (v *Vars) Merge(other *Vars) {
+	for i, key := range other.Keys {
+		if j, ok := v.KeyToIndex[key]; ok {
+			v.Values[j] = append(v.Values[j], other.Values[i]...)
+		} else {
+			v.KeyToIndex[key] = len(v.Values)
+			v.Keys = append(v.Keys, key)
+			v.Values = append(v.Values, other.Values[i])
+		}
+	}
+}
+
+type SortKeyAndValue struct {
+	Keys   []string
+	Values [][]string
+}
+
+// Implement the sort.Interface for SortKeyAndValue
+func (s SortKeyAndValue) Len() int {
+	return len(s.Keys)
+}
+
+func (s SortKeyAndValue) Less(i, j int) bool {
+	return strings.Compare(s.Keys[i], s.Keys[j]) < 0
+}
+
+func (s SortKeyAndValue) Swap(i, j int) {
+	s.Keys[i], s.Keys[j] = s.Keys[j], s.Keys[i]
+	s.Values[i], s.Values[j] = s.Values[j], s.Values[i]
+}
+
+func (v *Vars) SortByKey() {
+	sort.Sort(SortKeyAndValue{Keys: v.Keys, Values: v.Values})
+	newMap := make(map[string]int, len(v.KeyToIndex))
+	for i, key := range v.Keys {
+		newMap[key] = i
+	}
+	v.KeyToIndex = newMap
+}
+
 func (v *Vars) Set(key string, value ...string) {
-	if i, ok := v.Keys[key]; !ok {
-		v.Keys[key] = len(v.Values)
+	if i, ok := v.KeyToIndex[key]; !ok {
+		v.KeyToIndex[key] = len(v.Values)
 		v.Values = append(v.Values, value)
+		v.Keys = append(v.Keys, key)
 	} else {
 		v.Values[i] = value
 	}
@@ -69,9 +126,10 @@ func (v *Vars) Set(key string, value ...string) {
 
 func (v *Vars) SetMany(vars map[string][]string) {
 	for key, value := range vars {
-		if i, ok := v.Keys[key]; !ok {
-			v.Keys[key] = len(v.Values)
+		if i, ok := v.KeyToIndex[key]; !ok {
+			v.KeyToIndex[key] = len(v.Values)
 			v.Values = append(v.Values, value)
+			v.Keys = append(v.Keys, key)
 		} else {
 			v.Values[i] = value
 		}
@@ -79,16 +137,17 @@ func (v *Vars) SetMany(vars map[string][]string) {
 }
 
 func (v *Vars) Append(key string, value ...string) {
-	if i, ok := v.Keys[key]; !ok {
-		v.Keys[key] = len(v.Values)
+	if i, ok := v.KeyToIndex[key]; !ok {
+		v.KeyToIndex[key] = len(v.Values)
 		v.Values = append(v.Values, value)
+		v.Keys = append(v.Keys, key)
 	} else {
 		v.Values[i] = append(v.Values[i], value...)
 	}
 }
 
 func (v *Vars) GetFirstOrEmpty(key string) string {
-	if i, ok := v.Keys[key]; ok {
+	if i, ok := v.KeyToIndex[key]; ok {
 		values := v.Values[i]
 		if len(values) > 0 {
 			return values[0]
@@ -98,7 +157,7 @@ func (v *Vars) GetFirstOrEmpty(key string) string {
 }
 
 func (v *Vars) GetFirst(key string) (string, bool) {
-	if i, ok := v.Keys[key]; ok {
+	if i, ok := v.KeyToIndex[key]; ok {
 		values := v.Values[i]
 		if len(values) > 0 {
 			return values[0], true
@@ -107,8 +166,13 @@ func (v *Vars) GetFirst(key string) (string, bool) {
 	return "", false
 }
 
+func (v *Vars) Has(key string) bool {
+	_, ok := v.KeyToIndex[key]
+	return ok
+}
+
 func (v *Vars) Get(key string) ([]string, bool) {
-	if i, ok := v.Keys[key]; ok {
+	if i, ok := v.KeyToIndex[key]; ok {
 		return v.Values[i], true
 	}
 	return []string{}, false
@@ -117,15 +181,18 @@ func (v *Vars) Get(key string) ([]string, bool) {
 // Cull removes variables that have no values or nil
 func (v *Vars) Cull() {
 	newValues := make([][]string, 0, len(v.Values))
-	newKeys := make(map[string]int, len(v.Keys))
-	for key, i := range v.Keys {
+	newKeys := make([]string, 0, len(v.Keys))
+	newKeyMap := make(map[string]int, len(v.KeyToIndex))
+	for key, i := range v.KeyToIndex {
 		if len(v.Values[i]) > 0 {
-			newKeys[key] = len(newValues)
+			newKeyMap[key] = len(newValues)
 			newValues = append(newValues, v.Values[i])
+			newKeys = append(newKeys, key)
 		}
 	}
 	v.Values = newValues
 	v.Keys = newKeys
+	v.KeyToIndex = newKeyMap
 }
 
 func (v *Vars) Resolve() {
@@ -196,48 +263,48 @@ func actionDirName(values []string, param string) []string {
 	return values
 }
 
-func actionDelimitValue(values []string, param string) []string {
-	for i, value := range values {
-		values[i] = param + value + param
-	}
-	return values
-}
+// func actionDelimitValue(values []string, param string) []string {
+// 	for i, value := range values {
+// 		values[i] = param + value + param
+// 	}
+// 	return values
+// }
 
-func actionTrimValue(values []string, param string) []string {
-	for i, value := range values {
-		if strings.HasPrefix(value, param) {
-			values[i] = value[len(param):]
-		}
-		if strings.HasSuffix(value, param) {
-			values[i] = value[:len(value)-len(param)]
-		}
-	}
-	return values
-}
+// func actionTrimValue(values []string, param string) []string {
+// 	for i, value := range values {
+// 		if strings.HasPrefix(value, param) {
+// 			values[i] = value[len(param):]
+// 		}
+// 		if strings.HasSuffix(value, param) {
+// 			values[i] = value[:len(value)-len(param)]
+// 		}
+// 	}
+// 	return values
+// }
 
-func actionTrimValueAny(values []string, param string) []string {
-	for i, value := range values {
-		runes := []rune(value)
-		// Trim any character from the start
-		for len(runes) > 0 {
-			if strings.ContainsRune(param, runes[0]) {
-				runes = runes[1:]
-			} else {
-				break
-			}
-		}
-		// Trim any character from the end
-		for len(runes) > 0 {
-			if strings.ContainsRune(param, runes[len(runes)-1]) {
-				runes = runes[:len(runes)-1]
-			} else {
-				break // No more characters to remove
-			}
-		}
-		values[i] = string(runes)
-	}
-	return values
-}
+// func actionTrimValueAny(values []string, param string) []string {
+// 	for i, value := range values {
+// 		runes := []rune(value)
+// 		// Trim any character from the start
+// 		for len(runes) > 0 {
+// 			if strings.ContainsRune(param, runes[0]) {
+// 				runes = runes[1:]
+// 			} else {
+// 				break
+// 			}
+// 		}
+// 		// Trim any character from the end
+// 		for len(runes) > 0 {
+// 			if strings.ContainsRune(param, runes[len(runes)-1]) {
+// 				runes = runes[:len(runes)-1]
+// 			} else {
+// 				break // No more characters to remove
+// 			}
+// 		}
+// 		values[i] = string(runes)
+// 	}
+// 	return values
+// }
 
 func actionPrefix(values []string, prefix string) []string {
 	for i, value := range values {
@@ -600,7 +667,7 @@ func (vr *varResolver) parse() int {
 
 func (vr *varResolver) resolveNode(vars *Vars, node int) []string {
 	if node < 0 || node >= len(vr.nodes) {
-		return nil // Invalid node index, return empty slice
+		return []string{} // Invalid node index, return empty slice
 	}
 
 	results := make([]string, 0, 8) // results of the resolution

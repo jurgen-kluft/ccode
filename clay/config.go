@@ -62,8 +62,6 @@ func (c *Config) GetCppDefines() []string {
 		defines = append(defines, "TARGET_ARCH_X64")
 	} else if c.Target.Esp32() {
 		defines = append(defines, "TARGET_ARCH_ESP32")
-	} else if c.Target.Esp32s3() {
-		defines = append(defines, "TARGET_ARCH_ESP32S3")
 	}
 
 	if c.Config.IsDebug() {

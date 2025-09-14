@@ -1,5 +1,6 @@
 # TODO
- 
+
+- MEDIOR: Clay; support SPIFFS; build_fs and flash_fs commands 
 - MEDIOR: Clay; add MsDev toolchain for supporting Windows.
 - MINOR:  Clay; how to deal with response files, since they should be tracked by
           the dependency tracking system.
