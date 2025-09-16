@@ -695,6 +695,9 @@ func NewArduinoEsp32(espBoard *Esp32Board, projectName string, partitionFiles []
 	}
 
 	vars := []item{
+		{key: "runtime.os", value: []string{runtime.GOOS}},
+		{key: "build.fqbn", value: []string{"generic"}},
+
 		{key: "project.name", value: []string{projectName}},
 		{key: "esp.sdk.path", value: []string{espBoard.SdkPath}},
 		{key: "esp.arduino.sdk.path", value: []string{`{esp.sdk.path}/tools/esp32-arduino-libs/{build.mcu}`}},
@@ -732,7 +735,7 @@ func NewArduinoEsp32(espBoard *Esp32Board, projectName string, partitionFiles []
 			`{esp.arduino.sdk.path}/ld`,
 		}},
 
-		{key: "burner.generate-image-bin.script", value: []string{`{esp.sdk}/tools/gen_esp32part.py`}},
+		{key: "burner.generate-image-bin.script", value: []string{`{esp.sdk.path}/tools/gen_esp32part.py`}},
 		{key: "burner.generate-partitions-bin.script", value: []string{`{esp.sdk.path}/tools/gen_esp32part.py`}},
 
 		{key: "elf-sha256-offset", value: []string{`0xb0`}},
@@ -749,7 +752,7 @@ func NewArduinoEsp32(espBoard *Esp32Board, projectName string, partitionFiles []
 		{key: "burner.generate-bootloader", value: []string{`{esp.sdk.path}/tools/esptool/esptool`}},
 		{key: "burner.generate-image-bin", value: []string{`{esp.sdk.path}/tools/esptool/esptool`}},
 		{key: "burner.generate-partitions-bin", value: []string{`python3`}},
-		{key: "burner.generate-elf-size", value: []string{`{esp.sdk}/tools/{build.tarch}-esp-elf/bin/{build.tarch}-{build.target}-elf-size"`}},
+		{key: "burner.generate-elf-size", value: []string{`{esp.sdk.path}/tools/{build.tarch}-esp-elf/bin/{build.tarch}-{build.target}-elf-size"`}},
 		{key: "burner.flash", value: []string{`{esp.sdk.path}/tools/esptool/esptool`}},
 	}
 
@@ -786,6 +789,9 @@ func NewArduinoEsp32(espBoard *Esp32Board, projectName string, partitionFiles []
 		vars = append(vars, item{key: "burner.flash.partitions.csv.filepath", value: []string{partitionFile}})
 	}
 
+	// #----------------------------------------------------------------------------------
+	//     xtensa-esp32 build properties
+
 	defines := []string{
 		`F_CPU={build.f_cpu}`,
 		`ARDUINO={arduino.version}`,
@@ -794,24 +800,49 @@ func NewArduinoEsp32(espBoard *Esp32Board, projectName string, partitionFiles []
 		`ARDUINO_BOARD="{build.board}"`,
 		`ARDUINO_VARIANT="{build.variant}"`,
 		`ARDUINO_PARTITION_{build.partitions}`,
-		`ARDUINO_HOST_OS="` + runtime.GOOS + `"`,
-		`ARDUINO_FQBN="{build.fqbn}"`,
-		`ESP32=ESP32`,
 	}
 
-	// TODO process build.extra_flags and build.extra_flags.{build.mcu}
-	// This means that we have to split the flags by space and remove any '-D' prefix
+	// Process build.extra_flags and build.extra_flags.{build.mcu}
+	// This means we have to split the flags by space and remove any '-D' prefix
 	// Some of the defines we should ignore, like the ones already defined above here in 'defines'
+	extra_flags_splitted := []string{}
+	if extra_flags, has_extra_flags := t.Vars.Get("build.extra_flags"); has_extra_flags {
+
+		if extra_flags_mcu, has_extra_flags_mcu := t.Vars.Get("build.extra_flags." + espMcu); has_extra_flags_mcu {
+			extra_flags = append(extra_flags, extra_flags_mcu...)
+		}
+
+		for _, flag := range extra_flags {
+			flag = strings.TrimSpace(flag)
+			flags := strings.Split(flag, " ")
+			for _, f := range flags {
+				f = strings.TrimSpace(f)
+				if strings.HasPrefix(f, "-D") {
+					f = strings.TrimPrefix(f, "-D")
+					if len(f) > 0 {
+						// Ignore any of the following defines
+						if strings.HasPrefix(f, "CORE_DEBUG_LEVEL=") {
+							continue
+						}
+						defines = append(defines, f)
+					}
+				} else if len(f) > 0 {
+					extra_flags_splitted = append(extra_flags_splitted, f)
+				}
+			}
+		}
+	}
+	t.Vars.Set("build.extra_flags", extra_flags_splitted...)
 
 	t.Vars.Set("c.compiler.defines", defines...)
 	t.Vars.Set("cpp.compiler.defines", defines...)
 
 	t.Vars.Set("burner.sdk.bootloader.elf.path", `{esp.arduino.sdk.path}/bin/bootloader_{build.boot}_{build.boot_freq}.elf`)
-	t.Vars.Append("c.compiler.system.includes", `{esp.arduino.sdk.path}/{build.boot}_{build.psram_type}/include`)
+	t.Vars.Append("c.compiler.system.includes", `{esp.arduino.sdk.path}/{build.memory_type}/include`)
 	t.Vars.Append("c.compiler.system.includes", "{esp.arduino.sdk.path}/include")
-	t.Vars.Append("cpp.compiler.system.includes", `{esp.arduino.sdk.path}/{build.boot}_{build.psram_type}/include`)
+	t.Vars.Append("cpp.compiler.system.includes", `{esp.arduino.sdk.path}/{build.memory_type}/include`)
 	t.Vars.Append("cpp.compiler.system.includes", "{esp.arduino.sdk.path}/include")
-	t.Vars.Append("linker.system.library.paths", "{esp.arduino.sdk.path}/{build.boot}_{build.psram_type}")
+	t.Vars.Append("linker.system.library.paths", "{esp.arduino.sdk.path}/{build.memory_type}")
 
 	t.Vars.Resolve()
 	return t, nil

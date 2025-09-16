@@ -197,13 +197,20 @@ func (v *Vars) Cull() {
 
 func (v *Vars) Resolve() {
 	resolver := NewVarResolver()
-	for ki, values := range v.Values {
-		newValues := make([]string, 0, len(values))
-		for _, value := range values {
-			resolvedValues := resolver.Resolve(value, v)
-			newValues = append(newValues, resolvedValues...)
+	for ki, _ := range v.Values {
+		for true {
+            resolvedCountTotal := 0
+			newValues := make([]string, 0, len(v.Values[ki]))
+			for _, value := range v.Values[ki] {
+				resolvedCount, resolvedValues := resolver.Resolve(value, v)
+				newValues = append(newValues, resolvedValues...)
+				resolvedCountTotal += resolvedCount
+			}
+			v.Values[ki] = newValues
+			if resolvedCountTotal == 0 {
+				break
+			}
 		}
-		v.Values[ki] = newValues
 	}
 }
 
@@ -385,7 +392,7 @@ var varOptionActionMap = map[int8]func([]string, string) []string{
 // Note: This is, of course, resolved as 'Of course Bruce Willis'
 
 type VarResolver interface {
-	Resolve(text string, vars *Vars) []string
+	Resolve(text string, vars *Vars) (int, []string)
 }
 
 func NewVarResolver() VarResolver {
@@ -417,7 +424,7 @@ type varResolver struct {
 	varClose    uint8       // The closing bracket, e.g. ')' or '}'
 }
 
-func (vr *varResolver) Resolve(text string, vars *Vars) []string {
+func (vr *varResolver) Resolve(text string, vars *Vars) (int, []string) {
 	vr.strings = vr.strings[:0]
 	vr.options = vr.options[:0]
 	vr.nodes = vr.nodes[:1]                        // Reset the nodes, we will parse again
@@ -434,8 +441,11 @@ func (vr *varResolver) Resolve(text string, vars *Vars) []string {
 		vr.varOpen = uint16(vars.Leader)<<8 | uint16(vars.Open) // e.g. '$(' or '${'
 	}
 	vr.varClose = uint8(vars.Close) // e.g. ')' or '}'
-	vr.parse()
-	return vr.resolveNode(vars, 0)
+	numberOfNodes := vr.parse()
+    if numberOfNodes>1 {
+        return numberOfNodes-1, vr.resolveNode(vars, 0)
+    }
+    return 0, []string{text}
 }
 
 type varText struct {
@@ -462,6 +472,7 @@ func newVarOption(opt int8) varOption {
 func (vr *varResolver) scanForVariable() int {
 	cursor := vr.cursor
 	c := uint16(0)
+	// varOpen can be 1 or 2 characters, so we need to compare as well as adjust the cursor accordingly
 	for cursor < len(vr.source) {
 		c = ((c << 8) | uint16(vr.source[cursor])) & vr.varOpenMask
 		if vr.varOpen == c {
@@ -578,12 +589,12 @@ func (vr *varResolver) parse() int {
 	for vr.cursor < len(vr.source) {
 		startVar := vr.scanForVariable()
 
-		// Do we need to register any 'PartTypeText' for the current node
-		if startVar > vr.cursor {
-			vr.addPart(vr.current, PartTypeText, varPartIndex(len(vr.strings)))
-			vr.strings = append(vr.strings, varText{from: int16(vr.cursor), to: int16(startVar)})
-		}
-		startVar = startVar + 1 + int((vr.varOpenMask>>8)&1)
+        // Do we need to register any 'PartTypeText' for the current node
+        if startVar > vr.cursor {
+            vr.addPart(vr.current, PartTypeText, varPartIndex(len(vr.strings)))
+            vr.strings = append(vr.strings, varText{from: int16(vr.cursor), to: int16(startVar)})
+        }
+        startVar = startVar + 1 + int((vr.varOpenMask>>8)&1)
 
 		vr.cursor = startVar
 		for vr.cursor < len(vr.source) {

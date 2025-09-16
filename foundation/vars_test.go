@@ -60,7 +60,11 @@ func TestInterpolateNew(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			resolver := NewVarResolver()
-			results := resolver.Resolve(tt.input, vars)
+			resolved, results := resolver.Resolve(tt.input, vars)
+
+			if resolved == 0 {
+				t.Errorf("expected resolved to be more than 0")
+			}
 
 			if len(results) != len(tt.expected) {
 				t.Errorf("expected length %q, got %q", len(tt.expected), len(results))
@@ -103,7 +107,7 @@ func TestInterpolateNew2(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			resolver := NewVarResolver()
-			results := resolver.Resolve(tt.input, vars)
+			_, results := resolver.Resolve(tt.input, vars)
 
 			if len(results) != len(tt.expected) {
 				t.Errorf("expected length %q, got %q", len(tt.expected), len(results))
@@ -142,7 +146,7 @@ func TestNestedInterpolationNew(t *testing.T) {
 	vars.Set("CCOPTS_DEBUG", "-g -O0")
 
 	resolver := NewVarResolver()
-	result := resolver.Resolve("Test $(CCOPTS_$(CURRENT_VARIANT:u))", vars)
+	_, result := resolver.Resolve("Test $(CCOPTS_$(CURRENT_VARIANT:u))", vars)
 
 	if len(result) != 1 {
 		t.Errorf("expected length %d, got %d", 1, len(result))
@@ -161,7 +165,7 @@ func TestNestedInterpolationNew2(t *testing.T) {
 	vars.Set("CCOPTS_DEBUG", "-g -O0")
 
 	resolver := NewVarResolver()
-	result := resolver.Resolve("Test {CCOPTS_{CURRENT_VARIANT:u}}", vars)
+	_, result := resolver.Resolve("Test {CCOPTS_{CURRENT_VARIANT:u}}", vars)
 
 	if len(result) != 1 {
 		t.Errorf("expected length %d, got %d", 1, len(result))
@@ -182,7 +186,7 @@ func TestNestedInterpolationExtensiveNew(t *testing.T) {
 	vars.Set("CCOPTS_CUSTOM", "-g -O0 -DCUSTOM")
 
 	resolver := NewVarResolver()
-	result := resolver.Resolve("Test $(CCOPTS_$(CURRENT_VARIANT:u):p__:s__)", vars)
+	_, result := resolver.Resolve("Test $(CCOPTS_$(CURRENT_VARIANT:u):p__:s__)", vars)
 	if len(result) != 1 {
 		t.Errorf("expected length %d, got %d", 1, len(result))
 	}

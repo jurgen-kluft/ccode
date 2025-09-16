@@ -402,26 +402,30 @@ func (t *Esp32Toolchain) ResolveVariables(board string) error {
 		}
 	}
 
-	varResolver := foundation.NewVarResolver()
+	//varResolver := foundation.NewVarResolver()
 
-	for i, _ := range t.Platform.Vars.Keys {
-		v := t.Platform.Vars.Values[i]
-		for i, _ := range v {
-			result := varResolver.Resolve(v[i], globalVars)
-			t.Platform.Vars.Values[i] = append(t.Platform.Vars.Values[i], result...)
-		}
-	}
+	// for i, _ := range t.Platform.Vars.Keys {
+	// 	v := t.Platform.Vars.Values[i]
+	// 	for i, _ := range v {
+	// 		result := varResolver.Resolve(v[i], globalVars)
+	// 		t.Platform.Vars.Values[i] = append(t.Platform.Vars.Values[i], result...)
+	// 	}
+	// }
 
 	//globalVars. .Join(t.Platform.Vars)
+	t.Platform.Vars.Resolve()
 	globalVars.Merge(t.Platform.Vars)
+	globalVars.Resolve()
+	t.Platform.Vars.Merge(globalVars)
+	t.Platform.Vars.Resolve()
 
-	for i, _ := range globalVars.Keys {
-		v := globalVars.Values[i]
-		for i, _ := range v {
-			result := varResolver.Resolve(v[i], globalVars)
-			globalVars.Values[i] = append(globalVars.Values[i], result...)
-		}
-	}
+	// for i, _ := range globalVars.Keys {
+	// 	v := globalVars.Values[i]
+	// 	for i, _ := range v {
+	// 		result := varResolver.Resolve(v[i], globalVars)
+	// 		globalVars.Values[i] = append(globalVars.Values[i], result...)
+	// 	}
+	// }
 
 	// For platform we can resolve some of the variables that are local to the platform
 	t.Platform.CCompilerCmd = ResolveString(t.Platform.CCompilerCmd, globalVars)
@@ -610,10 +614,10 @@ func (t *Esp32Toolchain) ParseEsp32Platform(platformFile string) error {
 			// keyParts = keyParts[:len(keyParts)-1]
 		}
 
-		ignoreAsVar := false
+		ignoreAsPlatformVar := false
 
 		if len(keyParts) >= 3 && keyParts[0] == "recipe" {
-			ignoreAsVar = true
+			ignoreAsPlatformVar = true
 			if strings.Compare(key, "recipe.c.o.pattern") == 0 {
 				t.Platform.CCompilerCmd = value
 				t.Platform.CCompilerCmd, t.Platform.CCompilerCmdLine = ParseCmdAndArgs(t.Platform.CCompilerCmd)
@@ -659,7 +663,7 @@ func (t *Esp32Toolchain) ParseEsp32Platform(platformFile string) error {
 				t.Platform.ComputeSizeCmd, t.Platform.ComputeSizeCmdLine = ParseCmdAndArgs(t.Platform.ComputeSizeCmd)
 				continue
 			}
-			ignoreAsVar = false
+			ignoreAsPlatformVar = false
 		} else if keyParts[0] == "tools" && (keyParts[1] == "esptool_py" || keyParts[1] == "esp_ota" || keyParts[1] == "gen_esp32part" || keyParts[1] == "gen_insights_pkg") {
 
 			toolName := keyParts[1] // e.g. 'esptool_py' or 'esp_ota'
@@ -700,17 +704,8 @@ func (t *Esp32Toolchain) ParseEsp32Platform(platformFile string) error {
 		} else {
 			if len(keyParts) >= 2 && keyParts[0] == "build" {
 				// Any 'build.xxx.yyy' variable is set on all boards
-				ignoreAsVar = true
-				buildVar := keyParts[0] + "." + keyParts[1]
-				if len(keyParts) > 2 {
-					buildVar = buildVar + "." + strings.Join(keyParts[2:], ".")
-				}
-				if keyParts[1] == "extra_flags" {
-					// Extra flags can be a list of flags, so we need to split them
-					values := strings.Split(value, " ")
-					for i := 0; i < len(values); i++ {
-					}
-				}
+				ignoreAsPlatformVar = true
+				buildVar := strings.Join(keyParts, ".")
 				for _, board := range t.ListOfBoards {
 					if !board.Vars.Has(buildVar) {
 						board.Vars.Set(buildVar, value)
@@ -719,7 +714,7 @@ func (t *Esp32Toolchain) ParseEsp32Platform(platformFile string) error {
 			}
 		}
 
-		if !ignoreAsVar {
+		if !ignoreAsPlatformVar {
 			// Add the variable to the platform variables
 			t.Platform.Vars.Set(key, value)
 		}
