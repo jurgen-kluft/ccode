@@ -3,7 +3,7 @@ package clay
 import (
 	"os"
 
-	"github.com/jurgen-kluft/ccode/foundation"
+	corepkg "github.com/jurgen-kluft/ccode/core"
 )
 
 // Clay App Desktop
@@ -33,38 +33,38 @@ func ClayAppMainDesktop() {
 	case "list-libraries":
 		err = ListLibraries()
 	case "version":
-		version := foundation.NewVersionInfo()
-		foundation.LogPrintf("Version: %s\n", version.Version)
+		version := corepkg.NewVersionInfo()
+		corepkg.LogPrintf("Version: %s\n", version.Version)
 	default:
 		UsageDesktop()
 	}
 
 	if err != nil {
-		foundation.LogPrintf("Error: %v\n", err)
+		corepkg.LogPrintf("Error: %v\n", err)
 		os.Exit(1)
 	}
 }
 
 func UsageDesktop() {
-	foundation.LogPrintln("Usage: clay [command] [options]")
-	foundation.LogPrintln("Commands:")
-	foundation.LogPrintln("  build-info -p <name> -build <config>")
-	foundation.LogPrintln("  build -p <name> -build <config>")
-	foundation.LogPrintln("  clean -p <name> -build <config>")
-	foundation.LogPrintln("  list-libraries")
-	foundation.LogPrintln("Options:")
-	foundation.LogPrintln("  name       Project name (if more than one) ")
-	foundation.LogPrintln("  config     Config name (debug, release, final, debug-dev, debug-test) ")
-	foundation.LogPrintln("  --help     Show this help message")
-	foundation.LogPrintln("  --version  Show version information")
+	corepkg.LogPrintln("Usage: clay [command] [options]")
+	corepkg.LogPrintln("Commands:")
+	corepkg.LogPrintln("  build-info -p <name> -build <config>")
+	corepkg.LogPrintln("  build -p <name> -build <config>")
+	corepkg.LogPrintln("  clean -p <name> -build <config>")
+	corepkg.LogPrintln("  list-libraries")
+	corepkg.LogPrintln("Options:")
+	corepkg.LogPrintln("  name       Project name (if more than one) ")
+	corepkg.LogPrintln("  config     Config name (debug, release, final, debug-dev, debug-test) ")
+	corepkg.LogPrintln("  --help     Show this help message")
+	corepkg.LogPrintln("  --version  Show version information")
 
-	foundation.LogPrintln("Examples:")
-	foundation.LogPrintln("  clay build-info (generates buildinfo.h and buildinfo.cpp for all projects and configs)")
-	foundation.LogPrintln("  clay build-info -build debug  // generates buildinfo.h and buildinfo.cpp for debug-dev config")
-	foundation.LogPrintln("  clay build                    // builds the project for the release-dev config")
-	foundation.LogPrintln("  clay build -build debug       // builds the project for the debug-dev config")
-	foundation.LogPrintln("  clay clean -build debug       // cleans the project for the debug-dev config")
-	foundation.LogPrintln("  clay list-libraries")
+	corepkg.LogPrintln("Examples:")
+	corepkg.LogPrintln("  clay build-info (generates buildinfo.h and buildinfo.cpp for all projects and configs)")
+	corepkg.LogPrintln("  clay build-info -build debug  // generates buildinfo.h and buildinfo.cpp for debug-dev config")
+	corepkg.LogPrintln("  clay build                    // builds the project for the release-dev config")
+	corepkg.LogPrintln("  clay build -build debug       // builds the project for the debug-dev config")
+	corepkg.LogPrintln("  clay clean -build debug       // cleans the project for the debug-dev config")
+	corepkg.LogPrintln("  clay list-libraries")
 }
 
 func BuildDesktop(projectName string, buildConfig *Config) error {
@@ -106,7 +106,7 @@ func BuildDesktop(projectName string, buildConfig *Config) error {
 	}
 
 	if outOfDate == 0 {
-		foundation.LogPrintln("Nothing to build, everything is up to date...")
+		corepkg.LogPrintln("Nothing to build, everything is up to date...")
 	}
 
 	return nil
@@ -131,6 +131,6 @@ func BuildInfoDesktop(projectName string, buildConfig *Config) error {
 			}
 		}
 	}
-	foundation.LogPrintln("Ok, build info generated Ok")
+	corepkg.LogPrintln("Ok, build info generated Ok")
 	return nil
 }

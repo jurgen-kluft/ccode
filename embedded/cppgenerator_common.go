@@ -6,7 +6,7 @@ import (
 	"os"
 	"strings"
 
-	"github.com/jurgen-kluft/ccode/foundation"
+	corepkg "github.com/jurgen-kluft/ccode/core"
 )
 
 // This is the public function that will generate the C++ code
@@ -18,7 +18,7 @@ func GenerateCppCode(inputFile string, outputFile string) error {
 	}
 
 	// Parse the JSON file
-	decoder := foundation.NewJsonDecoder()
+	decoder := corepkg.NewJsonDecoder()
 	if !decoder.Begin(string(data)) {
 		return fmt.Errorf("error decoding JSON from file %s", inputFile)
 	}
@@ -143,18 +143,18 @@ func newCppCodeGenerator() *cppCodeGenerator {
 	return g
 }
 
-func decodeFeatureFlags(decoder *foundation.JsonDecoder, ff *featureFlags) *featureFlags {
+func decodeFeatureFlags(decoder *corepkg.JsonDecoder, ff *featureFlags) *featureFlags {
 	ff.decodeJSON(decoder)
 	return ff
 }
 
-func decodeCppEnum(decoder *foundation.JsonDecoder, ce *cppEnum) {
-	fields := map[string]foundation.JsonDecode{
-		"name":      func(decoder *foundation.JsonDecoder) { ce.name = decoder.DecodeString() },
-		"namespace": func(decoder *foundation.JsonDecoder) { ce.namespace = decoder.DecodeBool() },
-		"enumtype":  func(decoder *foundation.JsonDecoder) { ce.enumType = decoder.DecodeString() },
-		"members":   func(decoder *foundation.JsonDecoder) { ce.members = decoder.DecodeStringArray() },
-		"generate": func(decoder *foundation.JsonDecoder) {
+func decodeCppEnum(decoder *corepkg.JsonDecoder, ce *cppEnum) {
+	fields := map[string]corepkg.JsonDecode{
+		"name":      func(decoder *corepkg.JsonDecoder) { ce.name = decoder.DecodeString() },
+		"namespace": func(decoder *corepkg.JsonDecoder) { ce.namespace = decoder.DecodeBool() },
+		"enumtype":  func(decoder *corepkg.JsonDecoder) { ce.enumType = decoder.DecodeString() },
+		"members":   func(decoder *corepkg.JsonDecoder) { ce.members = decoder.DecodeStringArray() },
+		"generate": func(decoder *corepkg.JsonDecoder) {
 			ce.generate = make([]enumGenerate, 0, 4)
 			i := 0
 			for !decoder.ReadUntilArrayEnd() {
@@ -172,11 +172,11 @@ func decodeCppEnum(decoder *foundation.JsonDecoder, ce *cppEnum) {
 // 	Initializer string `json:"initializer,omitempty"`
 // }
 
-func decodeCppStructMember(decoder *foundation.JsonDecoder, csm *cppStructMember) {
-	decodeInitializer := func(decoder *foundation.JsonDecoder) { csm.initializer = decoder.DecodeString() }
-	decodeType := func(decoder *foundation.JsonDecoder) { csm.memberType = decoder.DecodeString() }
-	fields := map[string]foundation.JsonDecode{
-		"name":        func(decoder *foundation.JsonDecoder) { csm.name = decoder.DecodeString() },
+func decodeCppStructMember(decoder *corepkg.JsonDecoder, csm *cppStructMember) {
+	decodeInitializer := func(decoder *corepkg.JsonDecoder) { csm.initializer = decoder.DecodeString() }
+	decodeType := func(decoder *corepkg.JsonDecoder) { csm.memberType = decoder.DecodeString() }
+	fields := map[string]corepkg.JsonDecode{
+		"name":        func(decoder *corepkg.JsonDecoder) { csm.name = decoder.DecodeString() },
 		"type":        decodeType,
 		"membertype":  decodeType,
 		"init":        decodeInitializer,
@@ -185,14 +185,14 @@ func decodeCppStructMember(decoder *foundation.JsonDecoder, csm *cppStructMember
 	decoder.Decode(fields)
 }
 
-func decodeCppStruct(decoder *foundation.JsonDecoder, cs *cppStruct) {
-	memberPrefix := func(decoder *foundation.JsonDecoder) { cs.memberPrefix = decoder.DecodeString() }
-	fields := map[string]foundation.JsonDecode{
-		"name":         func(decoder *foundation.JsonDecoder) { cs.name = decoder.DecodeString() },
+func decodeCppStruct(decoder *corepkg.JsonDecoder, cs *cppStruct) {
+	memberPrefix := func(decoder *corepkg.JsonDecoder) { cs.memberPrefix = decoder.DecodeString() }
+	fields := map[string]corepkg.JsonDecode{
+		"name":         func(decoder *corepkg.JsonDecoder) { cs.name = decoder.DecodeString() },
 		"prefix":       memberPrefix,
 		"memberprefix": memberPrefix,
-		"features":     func(decoder *foundation.JsonDecoder) { cs.features = decodeFeatureFlags(decoder, newFeatureFlags()) },
-		"members": func(decoder *foundation.JsonDecoder) {
+		"features":     func(decoder *corepkg.JsonDecoder) { cs.features = decodeFeatureFlags(decoder, newFeatureFlags()) },
+		"members": func(decoder *corepkg.JsonDecoder) {
 			cs.members = make([]cppStructMember, 0, 4)
 			for !decoder.ReadUntilArrayEnd() {
 				cs.members = append(cs.members, newCppStructMember())
@@ -203,33 +203,33 @@ func decodeCppStruct(decoder *foundation.JsonDecoder, cs *cppStruct) {
 	decoder.Decode(fields)
 }
 
-func (r *cppCodeGenerator) decodeJSON(decoder *foundation.JsonDecoder) error {
-	indentType := func(decoder *foundation.JsonDecoder) { r.indentType = indentType(decoder.DecodeString()) }
-	indentSize := func(decoder *foundation.JsonDecoder) { r.indentSize = int(decoder.DecodeInt32()) }
-	memberPrefix := func(decoder *foundation.JsonDecoder) { r.memberPrefix = decoder.DecodeString() }
-	bitsetType := func(decoder *foundation.JsonDecoder) { r.bitsetType = decoder.DecodeString() }
-	bitsetSize := func(decoder *foundation.JsonDecoder) { r.bitsetSize = int(decoder.DecodeInt32()) }
-	fields := map[string]foundation.JsonDecode{
-		"between":      func(decoder *foundation.JsonDecoder) { r.between = decoder.DecodeString() },
+func (r *cppCodeGenerator) decodeJSON(decoder *corepkg.JsonDecoder) error {
+	indentType := func(decoder *corepkg.JsonDecoder) { r.indentType = indentType(decoder.DecodeString()) }
+	indentSize := func(decoder *corepkg.JsonDecoder) { r.indentSize = int(decoder.DecodeInt32()) }
+	memberPrefix := func(decoder *corepkg.JsonDecoder) { r.memberPrefix = decoder.DecodeString() }
+	bitsetType := func(decoder *corepkg.JsonDecoder) { r.bitsetType = decoder.DecodeString() }
+	bitsetSize := func(decoder *corepkg.JsonDecoder) { r.bitsetSize = int(decoder.DecodeInt32()) }
+	fields := map[string]corepkg.JsonDecode{
+		"between":      func(decoder *corepkg.JsonDecoder) { r.between = decoder.DecodeString() },
 		"indenttype":   indentType,
 		"indent_type":  indentType,
 		"indentsize":   indentSize,
 		"indent_size":  indentSize,
 		"prefix":       memberPrefix,
 		"memberprefix": memberPrefix,
-		"features":     func(decoder *foundation.JsonDecoder) { r.features = decodeFeatureFlags(decoder, newFeatureFlags()) },
+		"features":     func(decoder *corepkg.JsonDecoder) { r.features = decodeFeatureFlags(decoder, newFeatureFlags()) },
 		"bitsettype":   bitsetType,
 		"bitset_type":  bitsetType,
 		"bitsetsize":   bitsetSize,
 		"bitset_size":  bitsetSize,
-		"enums": func(decoder *foundation.JsonDecoder) {
+		"enums": func(decoder *corepkg.JsonDecoder) {
 			r.cppEnum = make([]cppEnum, 0, 4)
 			for !decoder.ReadUntilArrayEnd() {
 				r.cppEnum = append(r.cppEnum, newCppEnum())
 				decodeCppEnum(decoder, &r.cppEnum[len(r.cppEnum)-1])
 			}
 		},
-		"structs": func(decoder *foundation.JsonDecoder) {
+		"structs": func(decoder *corepkg.JsonDecoder) {
 			r.cppStruct = make([]cppStruct, 0, 4)
 			for !decoder.ReadUntilArrayEnd() {
 				r.cppStruct = append(r.cppStruct, newCppStruct())

@@ -6,7 +6,7 @@ import (
 	"runtime"
 	"strings"
 
-	"github.com/jurgen-kluft/ccode/foundation"
+	corepkg "github.com/jurgen-kluft/ccode/core"
 )
 
 // How does this work?
@@ -188,7 +188,7 @@ func (v *InstalledVcTools) find(vsPath string, VsVersion VsVersion, vsProduct vs
 	var vcToolsVersion string
 	if targetVcToolsVersion == "" {
 		versionFile := filepath.Join(vcInstallDir, "Auxiliary", "Build", "Microsoft.VCToolsVersion.default.txt")
-		data, err := foundation.FileOpenReadClose(versionFile)
+		data, err := corepkg.FileOpenReadClose(versionFile)
 		if err == nil {
 			lines := strings.Split(string(data), "\n")
 			if len(lines) > 0 {
@@ -208,7 +208,7 @@ func (v *InstalledVcTools) find(vsPath string, VsVersion VsVersion, vsProduct vs
 
 	if vcToolsVersion != "" {
 		testPath := filepath.Join(vcInstallDir, "Tools", "MSVC", vcToolsVersion, "include", "vcruntime.h")
-		if foundation.FileExists(testPath) {
+		if corepkg.FileExists(testPath) {
 			v.vcTools = append(v.vcTools, vcTools)
 			return vcTools
 		}
@@ -246,7 +246,7 @@ func NewMsvcVersion() *MsvcVersion {
 func setupMsvcVersion(msvcVersion *MsvcVersion, useClang bool) (msdev *MsvcEnvironment, err error) {
 
 	if vsDefaultPath, ok := vsDefaultPaths[msvcVersion.vsVersion]; !ok {
-		foundation.LogWarnf("Visual Studio %s has not been tested and might not work out of the box", msvcVersion.vsVersion.String())
+		corepkg.LogWarnf("Visual Studio %s has not been tested and might not work out of the box", msvcVersion.vsVersion.String())
 	} else if msvcVersion.vsPath == "" {
 		msvcVersion.vsPath = vsDefaultPath
 	}
@@ -324,7 +324,7 @@ func setupMsvcVersion(msvcVersion *MsvcVersion, useClang bool) (msdev *MsvcEnvir
 		}
 
 		vsDefaultPath := strings.ReplaceAll(vsDefaultPaths[vsDefaultVersion], "\\", "\\\\")
-		foundation.LogFatalf("%s not found\n\n  Cannot find %s in any of the following locations:\n    %s\n\n  Check that 'Desktop development with C++' is installed together with the product version in Visual Studio Installer\n\n  If you want to use a specific version of Visual Studio you can try setting Path, Version and Product like this:\n\n  Tools = {\n    { \"msvc-vs-latest\", Path = \"%s\", Version = \"%s\", Product = \"%s\" }\n  }\n\n  %s",
+		corepkg.LogFatalf("%s not found\n\n  Cannot find %s in any of the following locations:\n    %s\n\n  Check that 'Desktop development with C++' is installed together with the product version in Visual Studio Installer\n\n  If you want to use a specific version of Visual Studio you can try setting Path, Version and Product like this:\n\n  Tools = {\n    { \"msvc-vs-latest\", Path = \"%s\", Version = \"%s\", Product = \"%s\" }\n  }\n\n  %s",
 			vcProduct, vcProduct, strings.Join(searchSet, "\n    "), vsDefaultPath, vsDefaultVersion, vsProducts[0], vcProductVersionDisclaimer)
 	}
 
@@ -416,10 +416,10 @@ func setupMsvcVersion(msvcVersion *MsvcVersion, useClang bool) (msdev *MsvcEnvir
 	// Since there's a bit of magic involved in finding these we log them once, at the end.
 	// This also makes it easy to lock the SDK and C++ tools version if you want to do that.
 	if msvcVersion.targetWinsdkVersion == "" {
-		foundation.LogInfof("  WindowsSdkVersion : %s\n", winsdkVersion) // verbose?
+		corepkg.LogInfof("  WindowsSdkVersion : %s\n", winsdkVersion) // verbose?
 	}
 	if msvcVersion.targetVcToolsVersion == "" {
-		foundation.LogInfof("  VcToolsVersion    : %s\n", vcTools.vcToolsVersion) // verbose?
+		corepkg.LogInfof("  VcToolsVersion    : %s\n", vcTools.vcToolsVersion) // verbose?
 	}
 
 	return msdev, nil

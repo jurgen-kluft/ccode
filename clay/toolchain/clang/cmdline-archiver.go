@@ -1,13 +1,15 @@
 package clang
 
-import "github.com/jurgen-kluft/ccode/foundation"
+import (
+	corepkg "github.com/jurgen-kluft/ccode/core"
+)
 
 type ArchiverCmdline struct {
-	args   *foundation.Arguments
+	args   *corepkg.Arguments
 	length int
 }
 
-func NewArchiverCmdline(args *foundation.Arguments) *ArchiverCmdline {
+func NewArchiverCmdline(args *corepkg.Arguments) *ArchiverCmdline {
 	return &ArchiverCmdline{args: args}
 }
 
@@ -30,14 +32,14 @@ func (c *ArchiverCmdline) InstallName(outputArchiveFilepath string) {
 func (c *ArchiverCmdline) Out() {
 }
 func (c *ArchiverCmdline) OutputArchiveAndObjectFiles(outputArchiveFilepath string, objs []string) {
-    c.args.Add(outputArchiveFilepath)
+	c.args.Add(outputArchiveFilepath)
 	c.args.Add(objs...)
 }
 func (c *ArchiverCmdline) Save()    { c.length = c.args.Len() }
 func (c *ArchiverCmdline) Restore() { c.args.Args = c.args.Args[:c.length] }
 
-func GenerateArchiverCmdline(objectFiles []string, outputArchiveFilepath string) *foundation.Arguments {
-	args := foundation.NewArguments(len(objectFiles) + 8)
+func GenerateArchiverCmdline(objectFiles []string, outputArchiveFilepath string) *corepkg.Arguments {
+	args := corepkg.NewArguments(len(objectFiles) + 8)
 
 	ac := NewArchiverCmdline(args)
 

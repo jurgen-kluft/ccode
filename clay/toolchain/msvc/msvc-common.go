@@ -4,7 +4,7 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/jurgen-kluft/ccode/foundation"
+	corepkg "github.com/jurgen-kluft/ccode/core"
 )
 
 // Visual Studio tooling layout
@@ -185,7 +185,7 @@ func getPreWin10Sdk(sdkVersion string, vsVersion VsVersion, targetArch WinSuppor
 		return "", result, fmt.Errorf("the requested version of Visual Studio isn't supported: %s", sdkVersion)
 	}
 
-	sdkRoot, err := foundation.QueryRegistryForStringValue(foundation.RegistryKeyLocalMachine, sdk.regKey, sdk.regValue)
+	sdkRoot, err := corepkg.QueryRegistryForStringValue(corepkg.RegistryKeyLocalMachine, sdk.regKey, sdk.regValue)
 	if sdkRoot == "" || err != nil {
 		return "", result, fmt.Errorf("the requested version of the SDK isn't installed: %s", sdkVersion)
 	}
@@ -208,7 +208,7 @@ func getPreWin10Sdk(sdkVersion string, vsVersion VsVersion, targetArch WinSuppor
 	// It appears that when targeting pre-win10 with VS2015 you should always use
 	// use 10.0.10150.0, according to Microsoft.Cpp.Common.props in MSBuild.
 	if vsVersion == "14.0" {
-		win10SdkRoot, err := foundation.QueryRegistryForStringValue(foundation.RegistryKeyLocalMachine, win10Sdk[0], win10Sdk[1])
+		win10SdkRoot, err := corepkg.QueryRegistryForStringValue(corepkg.RegistryKeyLocalMachine, win10Sdk[0], win10Sdk[1])
 		if win10SdkRoot == "" || err != nil {
 			panic("The windows 10 UCRT is required when building using Visual studio 2015")
 		}
@@ -227,7 +227,7 @@ func getWin10Sdk(sdkVersion string, targetArch WinSupportedArch) (string, winSdk
 	// This only checks if the windows 10 SDK specifically is installed. A
 	// 'dir exists' method would be needed here to check if a specific SDK
 	// target folder exists.
-	sdkRoot, err := foundation.QueryRegistryForStringValue(foundation.RegistryKeyLocalMachine, win10Sdk[0], win10Sdk[1])
+	sdkRoot, err := corepkg.QueryRegistryForStringValue(corepkg.RegistryKeyLocalMachine, win10Sdk[0], win10Sdk[1])
 	if sdkRoot == "" || err != nil {
 		return "", result, fmt.Errorf("The requested version of the SDK isn't installed")
 	}
@@ -329,10 +329,10 @@ func InitMsvcVisualStudio(_vsVersion VsVersion, _sdkVersion string, _hostArch Wi
 	}
 
 	// We will find any edition of VS (including Express) here
-	vsRoot, err := foundation.QueryRegistryForStringValue(foundation.RegistryKeyLocalMachine, "SOFTWARE\\Microsoft\\VisualStudio\\SxS\\VS7", string(_vsVersion))
+	vsRoot, err := corepkg.QueryRegistryForStringValue(corepkg.RegistryKeyLocalMachine, "SOFTWARE\\Microsoft\\VisualStudio\\SxS\\VS7", string(_vsVersion))
 	if vsRoot == "" || err != nil {
 		// This is necessary for supporting the "Visual C++ Build Tools", which includes only the Compiler & SDK (not Visual Studio)
-		vcRoot, err := foundation.QueryRegistryForStringValue(foundation.RegistryKeyLocalMachine, "SOFTWARE\\Microsoft\\VisualStudio\\SxS\\VC7", string(_vsVersion))
+		vcRoot, err := corepkg.QueryRegistryForStringValue(corepkg.RegistryKeyLocalMachine, "SOFTWARE\\Microsoft\\VisualStudio\\SxS\\VC7", string(_vsVersion))
 		if vcRoot != "" && err == nil {
 			vsRoot = strings.ReplaceAll(vcRoot, "\\VC\\$", "\\")
 		}
@@ -401,7 +401,7 @@ func InitMsvcVisualStudio(_vsVersion VsVersion, _sdkVersion string, _hostArch Wi
 	// if MFC isn't installed with VS
 	// the linker will throw an error when looking for libs
 	mfcLibPath := vsRoot + "\\VC\\ATLMFC\\lib\\" + vcLib
-	if !foundation.DirExists(mfcLibPath) {
+	if !corepkg.DirExists(mfcLibPath) {
 		return nil, fmt.Errorf("MFC libraries not found in %s", mfcLibPath)
 	}
 

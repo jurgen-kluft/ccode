@@ -1,16 +1,16 @@
 package denv
 
 import (
+	corepkg "github.com/jurgen-kluft/ccode/core"
 	"github.com/jurgen-kluft/ccode/dev"
-	"github.com/jurgen-kluft/ccode/foundation"
 )
 
 type DevConfig struct {
 	BuildType   dev.BuildType // Static, Dynamic, Executable
 	BuildConfig dev.BuildConfig
 	IncludeDirs []dev.PinnedPath
-	Defines     *foundation.ValueSet
-	LinkFlags   *foundation.ValueSet
+	Defines     *corepkg.ValueSet
+	LinkFlags   *corepkg.ValueSet
 	Libs        []dev.PinnedFilepath // Libraries to link against
 }
 
@@ -22,8 +22,8 @@ func NewDevConfig(buildType dev.BuildType, buildConfig dev.BuildConfig) *DevConf
 		// Build:   "Dev",    // Development(dev), Unittest(test), Profile(prof), Production(prod)
 		BuildConfig: buildConfig,
 		IncludeDirs: []dev.PinnedPath{},
-		Defines:     foundation.NewValueSet(),
-		LinkFlags:   foundation.NewValueSet(),
+		Defines:     corepkg.NewValueSet(),
+		LinkFlags:   corepkg.NewValueSet(),
 		Libs:        []dev.PinnedFilepath{},
 	}
 

@@ -3,7 +3,7 @@ package denv
 import (
 	"fmt"
 
-	"github.com/jurgen-kluft/ccode/foundation"
+	corepkg "github.com/jurgen-kluft/ccode/core"
 )
 
 type LevelType int8
@@ -14,7 +14,7 @@ const (
 )
 
 type XcodeWriter struct {
-	buffer        *foundation.StringBuilder
+	buffer        *corepkg.StringBuilder
 	lines         []string
 	levels        []int8
 	newlineNeeded bool
@@ -22,7 +22,7 @@ type XcodeWriter struct {
 
 func NewXcodeWriter() *XcodeWriter {
 	w := &XcodeWriter{}
-	w.buffer = foundation.NewStringBuilder()
+	w.buffer = corepkg.NewStringBuilder()
 	w.lines = make([]string, 0, 2048)
 	w.levels = make([]int8, 0, 16)
 	w.newlineNeeded = true
@@ -31,7 +31,7 @@ func NewXcodeWriter() *XcodeWriter {
 
 func (w *XcodeWriter) WriteToFile(filename string) error {
 	w.finalize()
-	return foundation.WriteLinesToFile(filename, w.lines)
+	return corepkg.WriteLinesToFile(filename, w.lines)
 }
 
 // ------------------------------------------------------------------------------------------------

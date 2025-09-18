@@ -1,6 +1,8 @@
 package msvc
 
-import "github.com/jurgen-kluft/ccode/foundation"
+import (
+	corepkg "github.com/jurgen-kluft/ccode/core"
+)
 
 type LinkerFlags uint64
 
@@ -25,11 +27,11 @@ func (f LinkerFlags) WhenConsole() bool {
 }
 
 type LinkerCmdline struct {
-	args   *foundation.Arguments
+	args   *corepkg.Arguments
 	length int
 }
 
-func NewLinkerCmdline(args *foundation.Arguments) *LinkerCmdline {
+func NewLinkerCmdline(args *corepkg.Arguments) *LinkerCmdline {
 	return &LinkerCmdline{
 		args: args,
 	}
@@ -62,7 +64,7 @@ func (c *LinkerCmdline) DynamicBase()                   { c.Add("/DYNAMICBASE") 
 func (c *LinkerCmdline) EnableDataExecutionPrevention() { c.Add("/NXCOMPAT") }
 func (c *LinkerCmdline) MachineX64()                    { c.Add("/MACHINE:X64") }
 func (c *LinkerCmdline) LibPaths(libpaths []string) {
-	c.AddWithFunc(func(arg string) string { return "/LIBPATH:" + foundation.PathWindowsPath(arg) }, libpaths...)
+	c.AddWithFunc(func(arg string) string { return "/LIBPATH:" + corepkg.PathWindowsPath(arg) }, libpaths...)
 }
 func (c *LinkerCmdline) Libs(libs []string) {
 	c.AddWithFunc(func(arg string) string { return arg }, libs...)
@@ -80,8 +82,8 @@ func (c *LinkerCmdline) Restore() {
 	}
 }
 
-func GenerateLinkerCmdline(flags LinkerFlags, libpaths []string, libs []string, objectFiles []string) *foundation.Arguments {
-	args := foundation.NewArguments(len(libpaths) + len(libs) + len(objectFiles) + 20)
+func GenerateLinkerCmdline(flags LinkerFlags, libpaths []string, libs []string, objectFiles []string) *corepkg.Arguments {
+	args := corepkg.NewArguments(len(libpaths) + len(libs) + len(objectFiles) + 20)
 
 	c := &LinkerCmdline{args: args}
 

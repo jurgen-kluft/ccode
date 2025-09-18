@@ -4,7 +4,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/jurgen-kluft/ccode/foundation"
+	corepkg "github.com/jurgen-kluft/ccode/core"
 )
 
 /*
@@ -123,7 +123,7 @@ func TestCppGeneratorStructs(t *testing.T) {
 		]
 	}`
 
-	decoder := foundation.NewJsonDecoder()
+	decoder := corepkg.NewJsonDecoder()
 	if !decoder.Begin(jsonData) {
 		t.Fatal("Failed to begin decoding JSON")
 	}

@@ -5,7 +5,7 @@ import (
 	"os"
 	"time"
 
-	"github.com/jurgen-kluft/ccode/foundation"
+	corepkg "github.com/jurgen-kluft/ccode/core"
 )
 
 // Clay App Arduino
@@ -79,47 +79,47 @@ func ClayAppMainArduino() {
 	case "generate-boards":
 		err = GenerateBoards()
 	case "version":
-		version := foundation.NewVersionInfo()
-		foundation.LogPrintf("Version: %s\n", version.Version)
+		version := corepkg.NewVersionInfo()
+		corepkg.LogPrintf("Version: %s\n", version.Version)
 	default:
 		UsageAppArduino()
 	}
 
 	if err != nil {
-		foundation.LogFatalf("Error: %v\n", err)
+		corepkg.LogFatalf("Error: %v\n", err)
 	}
 }
 
 func UsageAppArduino() {
-	foundation.LogPrintln("Usage: clay [command] [options]")
-	foundation.LogPrintln("Commands:")
-	foundation.LogPrintln("  build-info -p <name> -build <config> -arch <arch>")
-	foundation.LogPrintln("  build -p <name> -build <config> -board <board>")
-	foundation.LogPrintln("  clean -p <name> -build <config> -board <board>")
-	foundation.LogPrintln("  flash -p <name> -build <config> -board <board>")
-	foundation.LogPrintln("  list-libraries")
-	foundation.LogPrintln("  list-boards -b <name of board> -m <matches>")
-	foundation.LogPrintln("  list-flash-sizes -c <cpu> -b <name of board>")
-	foundation.LogPrintln("Options:")
-	foundation.LogPrintln("  name              Project name (if more than one) ")
-	foundation.LogPrintln("  config            Config name (debug, release, final) ")
-	foundation.LogPrintln("  board             Board name (e.g. esp32, c3, s3, xiao_esp32c3) ")
-	foundation.LogPrintln("  matches           Maximum number of boards to list")
-	foundation.LogPrintln("  cpu               CPU name for listing flash sizes")
-	foundation.LogPrintln("  --help            Show this help message")
-	foundation.LogPrintln("  --version         Show version information")
+	corepkg.LogPrintln("Usage: clay [command] [options]")
+	corepkg.LogPrintln("Commands:")
+	corepkg.LogPrintln("  build-info -p <name> -build <config> -arch <arch>")
+	corepkg.LogPrintln("  build -p <name> -build <config> -board <board>")
+	corepkg.LogPrintln("  clean -p <name> -build <config> -board <board>")
+	corepkg.LogPrintln("  flash -p <name> -build <config> -board <board>")
+	corepkg.LogPrintln("  list-libraries")
+	corepkg.LogPrintln("  list-boards -b <name of board> -m <matches>")
+	corepkg.LogPrintln("  list-flash-sizes -c <cpu> -b <name of board>")
+	corepkg.LogPrintln("Options:")
+	corepkg.LogPrintln("  name              Project name (if more than one) ")
+	corepkg.LogPrintln("  config            Config name (debug, release, final) ")
+	corepkg.LogPrintln("  board             Board name (e.g. esp32, c3, s3, xiao_esp32c3) ")
+	corepkg.LogPrintln("  matches           Maximum number of boards to list")
+	corepkg.LogPrintln("  cpu               CPU name for listing flash sizes")
+	corepkg.LogPrintln("  --help            Show this help message")
+	corepkg.LogPrintln("  --version         Show version information")
 
-	foundation.LogPrintln("Examples:")
-	foundation.LogPrintln("  clay build-info (generates buildinfo.h and buildinfo.cpp)")
-	foundation.LogPrintln("  clay build-info -build debug -arch esp32 -board esp32s3")
-	foundation.LogPrintln("  clay build")
-	foundation.LogPrintln("  clay build -build debug -arch esp32 -board esp32s3")
-	foundation.LogPrintln("  clay clean -build debug -arch esp32 -board esp32s3")
-	foundation.LogPrintln("  clay flash -build debug-dev -arch esp32 -board esp32s3")
-	foundation.LogPrintln("  clay list-libraries")
-	foundation.LogPrintln("  clay list-boards -b esp32 -m 5")
-	foundation.LogPrintln("  clay board-info -b xiao -m 2")
-	foundation.LogPrintln("  clay list-flash-sizes -c esp32 -b esp32")
+	corepkg.LogPrintln("Examples:")
+	corepkg.LogPrintln("  clay build-info (generates buildinfo.h and buildinfo.cpp)")
+	corepkg.LogPrintln("  clay build-info -build debug -arch esp32 -board esp32s3")
+	corepkg.LogPrintln("  clay build")
+	corepkg.LogPrintln("  clay build -build debug -arch esp32 -board esp32s3")
+	corepkg.LogPrintln("  clay clean -build debug -arch esp32 -board esp32s3")
+	corepkg.LogPrintln("  clay flash -build debug-dev -arch esp32 -board esp32s3")
+	corepkg.LogPrintln("  clay list-libraries")
+	corepkg.LogPrintln("  clay list-boards -b esp32 -m 5")
+	corepkg.LogPrintln("  clay board-info -b xiao -m 2")
+	corepkg.LogPrintln("  clay list-flash-sizes -c esp32 -b esp32")
 }
 
 func BuildInfo(projectName string, buildConfig *Config) error {
@@ -140,7 +140,7 @@ func BuildInfo(projectName string, buildConfig *Config) error {
 			}
 		}
 	}
-	foundation.LogPrintln("Ok, build info generated Ok")
+	corepkg.LogPrintln("Ok, build info generated Ok")
 	return nil
 }
 
@@ -166,22 +166,22 @@ func Flash(projectName string, buildConfig *Config) error {
 		}
 	}
 
-	cm := foundation.NewClosestMatch(projectNames, []int{2})
+	cm := corepkg.NewClosestMatch(projectNames, []int{2})
 	closest := cm.ClosestN(projectName, 1)
 
 	buildPath := GetBuildPath(buildConfig.GetSubDir())
 	for _, prj := range prjs {
 		if prj.IsExecutable && prj.Config.Matches(buildConfig) && prj.Name == closest[0] {
 
-			foundation.LogPrintf("Flashing project: %s, config: %s\n", prj.Name, prj.Config.ConfigString())
+			corepkg.LogPrintf("Flashing project: %s, config: %s\n", prj.Name, prj.Config.ConfigString())
 			startTime := time.Now()
 			{
 				if err := prj.Flash(buildConfig, buildPath); err != nil {
-					return foundation.LogErrorf(err, "Build failed")
+					return corepkg.LogErrorf(err, "Build failed")
 				}
 			}
-			foundation.LogPrintf("Flashing done ... (duration %s)\n", time.Since(startTime).Round(time.Second))
-			foundation.LogPrintln()
+			corepkg.LogPrintf("Flashing done ... (duration %s)\n", time.Since(startTime).Round(time.Second))
+			corepkg.LogPrintln()
 		}
 	}
 	return nil

@@ -9,7 +9,7 @@ import (
 
 	"github.com/jurgen-kluft/ccode/clay/toolchain/deptrackr"
 	"github.com/jurgen-kluft/ccode/clay/toolchain/msvc"
-	"github.com/jurgen-kluft/ccode/foundation"
+	corepkg "github.com/jurgen-kluft/ccode/core"
 )
 
 type WinMsdev struct {
@@ -28,12 +28,12 @@ type WinMsdev struct {
 type WinMsDevCompiler struct {
 	toolChain *WinMsdev             // The toolchain this compiler belongs to
 	config    *Config               // Build configuration
-	args      *foundation.Arguments // Arguments for the compiler
+	args      *corepkg.Arguments    // Arguments for the compiler
 	cmdline   *msvc.CompilerCmdLine // Cmdline for the compiler
 }
 
 func (m *WinMsdev) NewCompiler(config *Config) Compiler {
-	args := foundation.NewArguments(512)
+	args := corepkg.NewArguments(512)
 	return &WinMsDevCompiler{
 		toolChain: m,
 		config:    config,
@@ -106,8 +106,8 @@ func (cl *WinMsDevCompiler) Compile(sourceAbsFilepaths []string, objRelFilepaths
 	// And we do not want to call the compiler for each source file, but rather for each directory.
 	sourceFilesPerDir := make(map[string][]string)
 	for i, objFilepath := range objRelFilepaths {
-		objFilepath = foundation.PathWindowsPath(objFilepath)
-		objDirpath := foundation.PathDirname(objFilepath)
+		objFilepath = corepkg.PathWindowsPath(objFilepath)
+		objDirpath := corepkg.PathDirname(objFilepath)
 		srcFile := sourceAbsFilepaths[i]
 		if _, ok := sourceFilesPerDir[objDirpath]; !ok {
 			sourceFiles := make([]string, 0, len(sourceAbsFilepaths)-i)
@@ -124,10 +124,10 @@ func (cl *WinMsDevCompiler) Compile(sourceAbsFilepaths []string, objRelFilepaths
 		cl.cmdline.Restore() // Restore the command line arguments
 
 		for _, srcFile := range srcFiles {
-			foundation.LogInfof("Compiling (%s) %s\n", configStr, srcFile)
+			corepkg.LogInfof("Compiling (%s) %s\n", configStr, srcFile)
 		}
 
-		objDirpath = foundation.PathWindowsPath(objDirpath)
+		objDirpath = corepkg.PathWindowsPath(objDirpath)
 		cl.cmdline.OutDir(objDirpath)
 		cl.cmdline.GenerateDependencyFiles(objDirpath)
 		cl.cmdline.SourceFiles(srcFiles)
@@ -137,14 +137,14 @@ func (cl *WinMsDevCompiler) Compile(sourceAbsFilepaths []string, objRelFilepaths
 		compilerArgs := cl.args.Args
 		cmd := exec.Command(compilerPath, compilerArgs...)
 		cmd.Env = os.Environ()
-		cmd.Env = append(cmd.Env, "Path="+foundation.PathWindowsPath(cl.toolChain.Msvc.CompilerPath))
+		cmd.Env = append(cmd.Env, "Path="+corepkg.PathWindowsPath(cl.toolChain.Msvc.CompilerPath))
 		out, err := cmd.CombinedOutput()
 		if err != nil {
-			foundation.LogInfof("Compile failed, output:\n%s\n", string(out))
-			return foundation.LogErrorf(err, "Compiling failed")
+			corepkg.LogInfof("Compile failed, output:\n%s\n", string(out))
+			return corepkg.LogErrorf(err, "Compiling failed")
 		}
 		if len(out) > 0 {
-			foundation.LogInfof("Compile output:\n%s\n", string(out))
+			corepkg.LogInfof("Compile output:\n%s\n", string(out))
 		}
 	}
 
@@ -156,7 +156,7 @@ func (cl *WinMsDevCompiler) Compile(sourceAbsFilepaths []string, objRelFilepaths
 // Archiver
 
 func (m *WinMsdev) NewArchiver(a ArchiverType, config *Config) Archiver {
-	args := foundation.NewArguments(512)
+	args := corepkg.NewArguments(512)
 	return &WinMsDevArchiver{
 		toolChain: m,
 		config:    config,
@@ -168,13 +168,13 @@ func (m *WinMsdev) NewArchiver(a ArchiverType, config *Config) Archiver {
 type WinMsDevArchiver struct {
 	toolChain *WinMsdev             // The toolchain this archiver belongs to
 	config    *Config               // Build configuration
-	args      *foundation.Arguments // Arguments for the archiver
+	args      *corepkg.Arguments    // Arguments for the archiver
 	cmdline   *msvc.ArchiverCmdline // Cmdline for the archiver
 }
 
 func (a *WinMsDevArchiver) LibFilepath(_filepath string) string {
-	filename := foundation.PathFilename(_filepath, true)
-	dirpath := foundation.PathDirname(_filepath)
+	filename := corepkg.PathFilename(_filepath, true)
+	dirpath := corepkg.PathDirname(_filepath)
 	return filepath.Join(dirpath, filename+".lib")
 }
 
@@ -193,16 +193,16 @@ func (a *WinMsDevArchiver) Archive(inputObjectFilepaths []string, outputArchiveF
 	archiverPath := filepath.Join(a.toolChain.Msvc.ArchiverPath, a.toolChain.Msvc.ArchiverBin)
 	cmd := exec.Command(archiverPath, archiverArgs...)
 	cmd.Env = os.Environ()
-	cmd.Env = append(cmd.Env, "PATH="+foundation.PathWindowsPath(a.toolChain.Msvc.ArchiverPath))
+	cmd.Env = append(cmd.Env, "PATH="+corepkg.PathWindowsPath(a.toolChain.Msvc.ArchiverPath))
 
-	foundation.LogInfof("Archiving (%s) %s\n", a.config.Config.AsString(), outputArchiveFilepath)
+	corepkg.LogInfof("Archiving (%s) %s\n", a.config.Config.AsString(), outputArchiveFilepath)
 	out, err := cmd.CombinedOutput()
 	if err != nil {
-		foundation.LogInfof("Archive failed, output:\n%s\n", string(out))
-		return foundation.LogErrorf(err, "Archiving failed")
+		corepkg.LogInfof("Archive failed, output:\n%s\n", string(out))
+		return corepkg.LogErrorf(err, "Archiving failed")
 	}
 	if len(out) > 0 {
-		foundation.LogInfof("Archive output:\n%s\n", string(out))
+		corepkg.LogInfof("Archive output:\n%s\n", string(out))
 	}
 
 	return nil
@@ -213,7 +213,7 @@ func (a *WinMsDevArchiver) Archive(inputObjectFilepaths []string, outputArchiveF
 // Linker
 
 func (ms *WinMsdev) NewLinker(config *Config) Linker {
-	args := foundation.NewArguments(512)
+	args := corepkg.NewArguments(512)
 	return &WinMsDevLinker{
 		toolChain: ms,
 		config:    config,
@@ -223,10 +223,10 @@ func (ms *WinMsdev) NewLinker(config *Config) Linker {
 }
 
 type WinMsDevLinker struct {
-	toolChain *WinMsdev             // The toolchain this archiver belongs to
-	config    *Config               // Build configuration
-	args      *foundation.Arguments // Arguments for the linker
-	cmdline   *msvc.LinkerCmdline   // Cmdline for the linker
+	toolChain *WinMsdev           // The toolchain this archiver belongs to
+	config    *Config             // Build configuration
+	args      *corepkg.Arguments  // Arguments for the linker
+	cmdline   *msvc.LinkerCmdline // Cmdline for the linker
 }
 
 func (l *WinMsDevLinker) LinkedFilepath(filepath string) string {
@@ -241,14 +241,14 @@ func (l *WinMsDevLinker) SetupArgs(libraryPaths []string, libraryFiles []string)
 
 func (l *WinMsDevLinker) Link(inputArchiveAbsFilepaths []string, outputAppRelFilepath string) error {
 
-	outputAppRelFilepath = foundation.PathWindowsPath(outputAppRelFilepath)
+	outputAppRelFilepath = corepkg.PathWindowsPath(outputAppRelFilepath)
 
 	l.cmdline.Restore()
 
 	l.cmdline.NoLogo()
 
 	l.cmdline.Out(outputAppRelFilepath)
-	l.cmdline.GenerateMapfile(foundation.FileChangeExtension(outputAppRelFilepath, ".map"))
+	l.cmdline.GenerateMapfile(corepkg.FileChangeExtension(outputAppRelFilepath, ".map"))
 
 	l.cmdline.LibPaths(l.toolChain.Msvc.Libs)
 
@@ -300,7 +300,7 @@ func (l *WinMsDevLinker) Link(inputArchiveAbsFilepaths []string, outputAppRelFil
 		// the process is running.
 
 		envVars = os.Environ()
-		envVars = append(envVars, "Path="+foundation.PathWindowsPath(l.toolChain.Msvc.LinkerPath))
+		envVars = append(envVars, "Path="+corepkg.PathWindowsPath(l.toolChain.Msvc.LinkerPath))
 
 		handleStdout := func(line string) {
 			// TODO Analyze the line, if it is a warning or error, print it to stderr
@@ -314,18 +314,18 @@ func (l *WinMsDevLinker) Link(inputArchiveAbsFilepaths []string, outputAppRelFil
 		return cmd.ExecCmd(linkerPath, handleStdout, handleStderr, envVars, linkerArgs...)
 	*/
 
-	foundation.LogInfof("Linking (%s) %s\n", l.config.Config.AsString(), outputAppRelFilepath)
+	corepkg.LogInfof("Linking (%s) %s\n", l.config.Config.AsString(), outputAppRelFilepath)
 
 	cmd := exec.Command(linkerPath, linkerArgs...)
 	cmd.Env = os.Environ()
-	cmd.Env = append(cmd.Env, "Path="+foundation.PathWindowsPath(l.toolChain.Msvc.LinkerPath))
+	cmd.Env = append(cmd.Env, "Path="+corepkg.PathWindowsPath(l.toolChain.Msvc.LinkerPath))
 
 	out, err := cmd.CombinedOutput()
 	if err != nil {
-		foundation.LogInfof("Linking failed, output:\n%s\n", string(out))
+		corepkg.LogInfof("Linking failed, output:\n%s\n", string(out))
 	}
 	if len(out) > 0 {
-		foundation.LogInfof("Linking output:\n%s\n", string(out))
+		corepkg.LogInfof("Linking output:\n%s\n", string(out))
 	}
 
 	return nil

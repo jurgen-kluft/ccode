@@ -1,6 +1,8 @@
 package clang
 
-import "github.com/jurgen-kluft/ccode/foundation"
+import (
+	corepkg "github.com/jurgen-kluft/ccode/core"
+)
 
 type LinkerFlags uint64
 
@@ -25,11 +27,11 @@ func (f LinkerFlags) WhenConsole() bool {
 }
 
 type LinkerCmdline struct {
-	args   *foundation.Arguments
+	args   *corepkg.Arguments
 	length int
 }
 
-func NewLinkerCmdline(args *foundation.Arguments) *LinkerCmdline {
+func NewLinkerCmdline(args *corepkg.Arguments) *LinkerCmdline {
 	return &LinkerCmdline{args: args, length: 0}
 }
 
@@ -66,8 +68,8 @@ func (c *LinkerCmdline) Out(outputFilepath string)      { c.args.Add("-o", outpu
 func (c *LinkerCmdline) Save()                          { c.length = c.args.Len() }
 func (c *LinkerCmdline) Restore()                       { c.args.Args = c.args.Args[:c.length] }
 
-func GenerateLinkerCmdline(flags LinkerFlags, libpaths []string, libs []string, objectFiles []string) *foundation.Arguments {
-	args := foundation.NewArguments(len(libpaths) + len(libs) + len(objectFiles) + 20)
+func GenerateLinkerCmdline(flags LinkerFlags, libpaths []string, libs []string, objectFiles []string) *corepkg.Arguments {
+	args := corepkg.NewArguments(len(libpaths) + len(libs) + len(objectFiles) + 20)
 
 	c := &LinkerCmdline{args: args}
 

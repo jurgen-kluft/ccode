@@ -5,8 +5,8 @@ import (
 	"runtime"
 	"strings"
 
+	corepkg "github.com/jurgen-kluft/ccode/core"
 	"github.com/jurgen-kluft/ccode/dev"
-	"github.com/jurgen-kluft/ccode/foundation"
 )
 
 type TundraGenerator struct {
@@ -28,7 +28,7 @@ func (g *TundraGenerator) Generate() {
 }
 
 func (g *TundraGenerator) generateUnitsLua(ws *Workspace) {
-	units := foundation.NewLineWriter(foundation.IndentModeTabs)
+	units := corepkg.NewLineWriter(corepkg.IndentModeTabs)
 
 	units.WriteLine(`require "tundra.syntax.glob"`)
 	units.WriteLine(`require "tundra.path"`)
@@ -73,7 +73,7 @@ func (g *TundraGenerator) generateUnitsLua(ws *Workspace) {
 	units.WriteToFile(filepath.Join(ws.GenerateAbsPath, "units.lua"))
 }
 
-func (g *TundraGenerator) writeUnit(units *foundation.LineWriter, p *Project, isProgram bool) {
+func (g *TundraGenerator) writeUnit(units *corepkg.LineWriter, p *Project, isProgram bool) {
 	units.WriteILine("+", "Name = ", `"`, p.Name, `",`)
 	units.WriteILine("+", "Env = {")
 
@@ -203,7 +203,7 @@ func (g *TundraGenerator) writeUnit(units *foundation.LineWriter, p *Project, is
 }
 
 func (g *TundraGenerator) generateTundraLua(ws *Workspace) {
-	tundra := foundation.NewLineWriter(foundation.IndentModeTabs)
+	tundra := corepkg.NewLineWriter(corepkg.IndentModeTabs)
 	tundra.WriteLine(`local native = require('tundra.native')`)
 	tundra.WriteLine(``)
 	tundra.WriteLine(`-----------------------------------------------------------------------------------------------------------------------`)

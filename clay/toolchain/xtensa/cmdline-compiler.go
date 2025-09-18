@@ -3,7 +3,7 @@ package xtensa
 import (
 	"runtime"
 
-	"github.com/jurgen-kluft/ccode/foundation"
+	corepkg "github.com/jurgen-kluft/ccode/core"
 )
 
 type CompilerFlags uint64
@@ -24,13 +24,13 @@ func (c CompilerFlags) IsC() bool {
 }
 
 type CompilerCmdLine struct {
-	args           *foundation.Arguments
+	args           *corepkg.Arguments
 	flags          CompilerFlags // Build configuration
 	arduinoSdkPath string
 	espMcu         string
 }
 
-func NewCompilerContext(flags CompilerFlags, args *foundation.Arguments) *CompilerCmdLine {
+func NewCompilerContext(flags CompilerFlags, args *corepkg.Arguments) *CompilerCmdLine {
 	return &CompilerCmdLine{
 		args:  args,
 		flags: flags,
@@ -86,8 +86,8 @@ func (c *CompilerCmdLine) Includes(includes []string) {
 	c.args.AddWithPrefix("-I", includes...)
 }
 
-func GenerateCompilerCmdline(flags CompilerFlags, includes []string, defines []string, sourceFiles []string, objectFiles []string) *foundation.Arguments {
-	args := foundation.NewArguments(64)
+func GenerateCompilerCmdline(flags CompilerFlags, includes []string, defines []string, sourceFiles []string, objectFiles []string) *corepkg.Arguments {
+	args := corepkg.NewArguments(64)
 
 	c := NewCompilerContext(flags, args)
 	c.CompileOnly()

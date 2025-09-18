@@ -11,7 +11,7 @@ import (
 	"slices"
 	"unsafe"
 
-	"github.com/jurgen-kluft/ccode/foundation"
+	corepkg "github.com/jurgen-kluft/ccode/core"
 )
 
 // Golang prototype for a dependency tracker database, the core is the hash shard structure.
@@ -40,33 +40,33 @@ const (
 
 type trackr struct {
 	hasher               hash.Hash
-	readonly             bool                   // If true, the database is read-only, we cannot add items
-	scratchBuffer        *foundation.BinaryBlob // A temporary byte buffer for hashing and other operations, not saved to disk
-	storageFilepath      string                 // Filepath where we store the database file
-	signature            string                 // max 32 characters signature, e.g. ".d deptracker v1.0.0"
-	hashSize             int32                  // Size of the hash, this is 20 bytes for SHA1
-	itemState            []State                // Hash, this is the state of the item that is modified during a query
-	ItemIdHash           []byte                 // Hash, this is the ID of the item (filepath, label (e.g. 'MSVC C++ compiler cmd-line arguments))
-	ItemChangeHash       []byte                 // Hash, this identifies the 'change' (modification-time, file-size, file-content, command-line arguments, string, etc..)
-	ItemIdFlags          []uint8                //
-	ItemChangeFlags      []uint8                //
-	ItemDepsStart        []int32                // Item, start of dependencies
-	ItemDepsCount        []int32                // Item, count of dependencies
-	ItemIdDataOffset     []int32                // data for Id (-1 means no data)
-	ItemIdDataSize       []int32                // (size=0 means no data)
-	ItemExtraDataOffset  []int32                // extra data for item
-	ItemExtraDataSize    []uint8                // (size=0 means no data)
-	ItemChangeDataOffset []int32                // data for Change (-1 means no data)
-	ItemChangeDataSize   []uint8                // (size=0 means no data)
-	Deps                 []int32                // Array for each item to list their dependencies, this is a flat array of item indices
-	Data                 []byte                 // Here any data (id, change, extra) is stored, this is a flat array of bytes
-	N                    int32                  // how many bits we take from the hash to index into the shards (0-15)
-	S                    int32                  // size of a shard, this is the number of items per shard, default is 512
-	ShardOffsets         []int32                // This is an array of offsets into the Shards array, each offset corresponds to a shard, 0 means the shard doesn't exist yet
-	ShardSizes           []int16                // This is an array of sizes of each shard, 0 means the shard is empty
-	DirtyFlags           []uint8                // A bit per shard, indicates if the shard is dirty (unsorted) and needs to be sorted (excluded from load/save)
-	Shards               []int32                // An array of shards, a shard is a region of item-indices
-	EmptyShard           []int32                // A shard initialized to a size of S and full of NillIndex
+	readonly             bool                // If true, the database is read-only, we cannot add items
+	scratchBuffer        *corepkg.BinaryBlob // A temporary byte buffer for hashing and other operations, not saved to disk
+	storageFilepath      string              // Filepath where we store the database file
+	signature            string              // max 32 characters signature, e.g. ".d deptracker v1.0.0"
+	hashSize             int32               // Size of the hash, this is 20 bytes for SHA1
+	itemState            []State             // Hash, this is the state of the item that is modified during a query
+	ItemIdHash           []byte              // Hash, this is the ID of the item (filepath, label (e.g. 'MSVC C++ compiler cmd-line arguments))
+	ItemChangeHash       []byte              // Hash, this identifies the 'change' (modification-time, file-size, file-content, command-line arguments, string, etc..)
+	ItemIdFlags          []uint8             //
+	ItemChangeFlags      []uint8             //
+	ItemDepsStart        []int32             // Item, start of dependencies
+	ItemDepsCount        []int32             // Item, count of dependencies
+	ItemIdDataOffset     []int32             // data for Id (-1 means no data)
+	ItemIdDataSize       []int32             // (size=0 means no data)
+	ItemExtraDataOffset  []int32             // extra data for item
+	ItemExtraDataSize    []uint8             // (size=0 means no data)
+	ItemChangeDataOffset []int32             // data for Change (-1 means no data)
+	ItemChangeDataSize   []uint8             // (size=0 means no data)
+	Deps                 []int32             // Array for each item to list their dependencies, this is a flat array of item indices
+	Data                 []byte              // Here any data (id, change, extra) is stored, this is a flat array of bytes
+	N                    int32               // how many bits we take from the hash to index into the shards (0-15)
+	S                    int32               // size of a shard, this is the number of items per shard, default is 512
+	ShardOffsets         []int32             // This is an array of offsets into the Shards array, each offset corresponds to a shard, 0 means the shard doesn't exist yet
+	ShardSizes           []int16             // This is an array of sizes of each shard, 0 means the shard is empty
+	DirtyFlags           []uint8             // A bit per shard, indicates if the shard is dirty (unsorted) and needs to be sorted (excluded from load/save)
+	Shards               []int32             // An array of shards, a shard is a region of item-indices
+	EmptyShard           []int32             // A shard initialized to a size of S and full of NillIndex
 }
 
 func constructTrackr(storageFilepath string, signature string, numItems int, dataSize int) *trackr {
@@ -77,7 +77,7 @@ func constructTrackr(storageFilepath string, signature string, numItems int, dat
 	d := &trackr{
 		hasher:               sha1.New(),                        // Create a new SHA1 hasher
 		readonly:             false,                             //
-		scratchBuffer:        foundation.NewBinaryBlob(256),     // A temporary byte buffer for hashing and other operations, not saved to disk
+		scratchBuffer:        corepkg.NewBinaryBlob(256),        // A temporary byte buffer for hashing and other operations, not saved to disk
 		storageFilepath:      storageFilepath,                   //
 		signature:            signature,                         // copy the signature from the source
 		hashSize:             hs,                                //
@@ -197,7 +197,7 @@ func (d *trackr) writeArray(signature string, byteArray []byte, compress bool, f
 	d.scratchBuffer.WriteInt(0)                          // Reserved
 	d.scratchBuffer.WriteInt(0)                          // Reserved
 	d.scratchBuffer.WriteBytes(signatureHash[(20 - 8):]) // Last 8 bytes of the signature hash
-	if err := foundation.FileWrite(f, d.scratchBuffer.Data()); err != nil {
+	if err := corepkg.FileWrite(f, d.scratchBuffer.Data()); err != nil {
 		return err
 	}
 
@@ -209,10 +209,10 @@ func (d *trackr) writeArray(signature string, byteArray []byte, compress bool, f
 
 func (d *trackr) readArray(signature string, f *os.File) (byteArray []byte, err error) {
 	headerSize := 32
-	if header, err := foundation.FileRead(f, headerSize); err != nil {
+	if header, err := corepkg.FileRead(f, headerSize); err != nil {
 		return nil, err
 	} else {
-		d.scratchBuffer = foundation.BinaryBlobFromData(header)
+		d.scratchBuffer = corepkg.BinaryBlobFromData(header)
 	}
 
 	signatureHash := d.getHashOfSignature(signature)
@@ -400,7 +400,7 @@ func (d *trackr) save() error {
 	d.scratchBuffer.WriteInt32(d.S)                // Size of a shard
 	d.scratchBuffer.WriteBytes(signatureHash[10:]) // Last 10 bytes of the signature hash
 
-	if err := foundation.FileWrite(dbFile, d.scratchBuffer.Data()); err != nil {
+	if err := corepkg.FileWrite(dbFile, d.scratchBuffer.Data()); err != nil {
 		return err
 	}
 
@@ -541,7 +541,7 @@ func loadTrackr(storageFilepath string, signature string) *trackr {
 
 	// Read the header
 	//if err := d.scratchBuffer.ReadFromFile(headerSize, dbFile); err != nil {
-	if header, err := foundation.FileRead(dbFile, headerSize); err != nil {
+	if header, err := corepkg.FileRead(dbFile, headerSize); err != nil {
 		return newDefaultTracker(storageFilepath, signature)
 	} else {
 		d.scratchBuffer.ResetCursor()

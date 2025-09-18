@@ -6,7 +6,7 @@ import (
 	"slices"
 	"strings"
 
-	"github.com/jurgen-kluft/ccode/foundation"
+	corepkg "github.com/jurgen-kluft/ccode/core"
 )
 
 type WindowsSDK struct {
@@ -42,7 +42,7 @@ func FindWindowsSDK(winAppPlatform WinAppPlatform) (*WindowsSDK, error) {
 	//   HKLM\SOFTWARE             (ignored)
 	//   HKCU\SOFTWARE             (ignored)
 	winsdkKey := `SOFTWARE\Wow6432Node\Microsoft\Microsoft SDKs\Windows\\v10.0`
-	winsdkDir, err := foundation.QueryRegistryForStringValue(foundation.RegistryKeyLocalMachine, winsdkKey, "InstallationFolder")
+	winsdkDir, err := corepkg.QueryRegistryForStringValue(corepkg.RegistryKeyLocalMachine, winsdkKey, "InstallationFolder")
 	if err != nil {
 		return nil, err
 	}
@@ -55,7 +55,7 @@ func FindWindowsSDK(winAppPlatform WinAppPlatform) (*WindowsSDK, error) {
 		checkFile = "Windows.h"
 	}
 
-	dirs, err := foundation.DirList(filepath.Join(winsdkDir, "Include"))
+	dirs, err := corepkg.DirList(filepath.Join(winsdkDir, "Include"))
 	if err != nil {
 		return nil, fmt.Errorf("failed to list Windows SDK include directory: %v", err)
 	}
@@ -63,7 +63,7 @@ func FindWindowsSDK(winAppPlatform WinAppPlatform) (*WindowsSDK, error) {
 	for _, winsdkVersion := range dirs {
 		if strings.HasPrefix(winsdkVersion, "10.") {
 			testPath := filepath.Join(winsdkDir, "Include", winsdkVersion, "um", checkFile)
-			if foundation.FileExists(testPath) {
+			if corepkg.FileExists(testPath) {
 				winsdkVersions = append(winsdkVersions, winsdkVersion)
 			}
 		}

@@ -1,6 +1,8 @@
 package clang
 
-import "github.com/jurgen-kluft/ccode/foundation"
+import (
+	corepkg "github.com/jurgen-kluft/ccode/core"
+)
 
 type CompilerFlags uint64
 
@@ -32,11 +34,11 @@ func (c CompilerFlags) IsC() bool {
 }
 
 type CompilerCmdLine struct {
-	args   *foundation.Arguments
+	args   *corepkg.Arguments
 	length int
 }
 
-func NewCompilerCmdline(args *foundation.Arguments) *CompilerCmdLine {
+func NewCompilerCmdline(args *corepkg.Arguments) *CompilerCmdLine {
 	return &CompilerCmdLine{
 		args:   args,
 		length: 0,
@@ -77,8 +79,8 @@ func (c *CompilerCmdLine) SourceFile(sourceFile string) { c.Add(sourceFile) }
 func (c *CompilerCmdLine) Save()                        { c.length = c.args.Len() }
 func (c *CompilerCmdLine) Restore()                     { c.args.Args = c.args.Args[:c.length] }
 
-func GenerateCompilerCmdline(flags CompilerFlags, includes []string, defines []string, sourceFiles []string, objectFiles []string) *foundation.Arguments {
-	args := foundation.NewArguments(len(sourceFiles) + len(objectFiles) + 20)
+func GenerateCompilerCmdline(flags CompilerFlags, includes []string, defines []string, sourceFiles []string, objectFiles []string) *corepkg.Arguments {
+	args := corepkg.NewArguments(len(sourceFiles) + len(objectFiles) + 20)
 
 	c := NewCompilerCmdline(args)
 

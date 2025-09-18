@@ -1,13 +1,15 @@
 package msvc
 
-import "github.com/jurgen-kluft/ccode/foundation"
+import (
+	corepkg "github.com/jurgen-kluft/ccode/core"
+)
 
 type ArchiverCmdline struct {
-	args   *foundation.Arguments
+	args   *corepkg.Arguments
 	length int
 }
 
-func NewArchiverCmdline(args *foundation.Arguments) *ArchiverCmdline {
+func NewArchiverCmdline(args *corepkg.Arguments) *ArchiverCmdline {
 	return &ArchiverCmdline{
 		args:   args,
 		length: 0,
@@ -30,7 +32,7 @@ func (c *ArchiverCmdline) Out(outputArchiveFilepath string) {
 	c.AddWithPrefix("/OUT:", outputArchiveFilepath)
 }
 func (c *ArchiverCmdline) ObjectFiles(objs []string) {
-	c.AddWithFunc(func(arg string) string { return foundation.PathWindowsPath(arg) }, objs...)
+	c.AddWithFunc(func(arg string) string { return corepkg.PathWindowsPath(arg) }, objs...)
 }
 
 func (c *ArchiverCmdline) Save() {
@@ -42,8 +44,8 @@ func (c *ArchiverCmdline) Restore() {
 	}
 }
 
-func GenerateArchiverCmdline(inputObjectFilepaths []string, outputArchiveFilepath string) *foundation.Arguments {
-	args := foundation.NewArguments(len(inputObjectFilepaths) + 8)
+func GenerateArchiverCmdline(inputObjectFilepaths []string, outputArchiveFilepath string) *corepkg.Arguments {
+	args := corepkg.NewArguments(len(inputObjectFilepaths) + 8)
 
 	ac := NewArchiverCmdline(args)
 

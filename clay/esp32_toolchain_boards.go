@@ -8,7 +8,8 @@ import (
 	"strings"
 
 	"github.com/jurgen-kluft/ccode/clay/toolchain"
-	"github.com/jurgen-kluft/ccode/foundation"
+
+	corepkg "github.com/jurgen-kluft/ccode/core"
 )
 
 // opName: Any of the following:
@@ -104,10 +105,10 @@ func PrintAllFlashSizes(esp32Toolchain *Esp32Toolchain, cpuName string, boardNam
 		}
 
 		// Print the header
-		foundation.LogPrintf("%-*s   %s\n", column1MaxLength, "----------", "-----------")
-		foundation.LogPrintf("%-*s | %s\n", column1MaxLength, "Flash Size", "Description")
+		corepkg.LogPrintf("%-*s   %s\n", column1MaxLength, "----------", "-----------")
+		corepkg.LogPrintf("%-*s | %s\n", column1MaxLength, "Flash Size", "Description")
 		for i := 0; i < len(column1); i++ {
-			foundation.LogPrintf("%-*s | %s\n", column1MaxLength, column1[i], column2[i])
+			corepkg.LogPrintf("%-*s | %s\n", column1MaxLength, column1[i], column2[i])
 		}
 	}
 	return nil
@@ -124,16 +125,16 @@ func PrintAllBoardInfos(esp32Toolchain *Esp32Toolchain, boardName string, max in
 		names = append(names, board.Name)
 	}
 
-	cm := foundation.NewClosestMatch(names, []int{2})
+	cm := corepkg.NewClosestMatch(names, []int{2})
 	closest := cm.ClosestN(boardName, max)
 	if len(closest) > 0 {
 		for _, match := range closest {
 			if board := esp32Toolchain.GetBoardByName(match); board != nil {
-				foundation.LogPrintf("----------------------- " + board.Name + " -----------------------\n")
-				foundation.LogPrintf("Board: %s\n", board.Name)
-				foundation.LogPrintf("Description: %s\n", board.Description)
-				foundation.LogPrint(board.Vars.String())
-				foundation.LogPrintf("\n")
+				corepkg.LogPrintf("----------------------- " + board.Name + " -----------------------\n")
+				corepkg.LogPrintf("Board: %s\n", board.Name)
+				corepkg.LogPrintf("Description: %s\n", board.Description)
+				corepkg.LogPrint(board.Vars.String())
+				corepkg.LogPrintf("\n")
 			}
 		}
 	}
@@ -157,7 +158,7 @@ func GenerateAllBoards(esp32Toolchain *Esp32Toolchain) error {
 	}
 	sort.Strings(boardList)
 
-	sb := foundation.NewStringBuilder()
+	sb := corepkg.NewStringBuilder()
 	for _, boardName := range boardList {
 		board := esp32Toolchain.GetBoardByName(boardName)
 		if board != nil {
@@ -193,7 +194,7 @@ func LoadBoards(esp32Toolchain *Esp32Toolchain) error {
 
 	file, err := os.Open("boards.txt")
 	if err != nil {
-		return foundation.LogError(err, "Failed to open boards.txt")
+		return corepkg.LogError(err, "Failed to open boards.txt")
 	}
 	defer file.Close()
 
@@ -265,7 +266,7 @@ func PrintAllMatchingBoards(esp32Toolchain *Esp32Toolchain, fuzzy string, max in
 		names = append(names, board.Name)
 	}
 
-	cm := foundation.NewClosestMatch(names, []int{2})
+	cm := corepkg.NewClosestMatch(names, []int{2})
 	closest := cm.ClosestN(fuzzy, max)
 	if len(closest) > 0 {
 
@@ -282,7 +283,7 @@ func PrintAllMatchingBoards(esp32Toolchain *Esp32Toolchain, fuzzy string, max in
 			}
 		}
 		for _, match := range closest {
-			foundation.LogPrintf("%-*s %s\n", longestName, match, boardMap[match])
+			corepkg.LogPrintf("%-*s %s\n", longestName, match, boardMap[match])
 		}
 	}
 
@@ -293,7 +294,7 @@ func PrintAllMatchingBoards(esp32Toolchain *Esp32Toolchain, fuzzy string, max in
 		for _, board := range esp32Toolchain.ListOfBoards {
 			descriptions = append(descriptions, board.Description)
 		}
-		cm = foundation.NewClosestMatch(descriptions, []int{2})
+		cm = corepkg.NewClosestMatch(descriptions, []int{2})
 		closest = cm.ClosestN(fuzzy, max-len(closest))
 		if len(closest) > 0 {
 
@@ -312,7 +313,7 @@ func PrintAllMatchingBoards(esp32Toolchain *Esp32Toolchain, fuzzy string, max in
 			}
 			for _, match := range closest {
 				boardName := boardMap[match]
-				foundation.LogPrintf("%-*s %s\n", longestName, boardName, match)
+				corepkg.LogPrintf("%-*s %s\n", longestName, boardName, match)
 			}
 
 		}

@@ -13,11 +13,12 @@ import (
 	"strings"
 
 	"github.com/jurgen-kluft/ccode/clay/toolchain/deptrackr"
-	"github.com/jurgen-kluft/ccode/foundation"
+
+	corepkg "github.com/jurgen-kluft/ccode/core"
 )
 
 type ArduinoEsp32 struct {
-	Vars        *foundation.Vars
+	Vars        *corepkg.Vars
 	ProjectName string // The name of the project, used for output files
 }
 
@@ -30,8 +31,8 @@ type ToolchainArduinoEsp32Compiler struct {
 	config          *Config // Configuration for the compiler, e.g., debug or release
 	cCompilerPath   string
 	cppCompilerPath string
-	cCompilerArgs   *foundation.Arguments
-	cppCompilerArgs *foundation.Arguments
+	cCompilerArgs   *corepkg.Arguments
+	cppCompilerArgs *corepkg.Arguments
 }
 
 func (t *ArduinoEsp32) NewCompiler(config *Config) Compiler {
@@ -40,8 +41,8 @@ func (t *ArduinoEsp32) NewCompiler(config *Config) Compiler {
 		config:          config,
 		cCompilerPath:   t.Vars.GetFirstOrEmpty("c.compiler"),
 		cppCompilerPath: t.Vars.GetFirstOrEmpty("cpp.compiler"),
-		cCompilerArgs:   foundation.NewArguments(64),
-		cppCompilerArgs: foundation.NewArguments(64),
+		cCompilerArgs:   corepkg.NewArguments(64),
+		cppCompilerArgs: corepkg.NewArguments(64),
 	}
 }
 
@@ -215,17 +216,17 @@ func (cl *ToolchainArduinoEsp32Compiler) Compile(sourceAbsFilepaths []string, ob
 		args = append(args, "-o")
 		args = append(args, objRelFilepath)
 
-		foundation.LogInfof("Compiling (%s) %s\n", cl.config.Config.AsString(), filepath.Base(sourceAbsFilepath))
+		corepkg.LogInfof("Compiling (%s) %s\n", cl.config.Config.AsString(), filepath.Base(sourceAbsFilepath))
 
 		cmd := exec.Command(compilerPath, args...)
 		out, err := cmd.CombinedOutput()
 
 		if err != nil {
-			foundation.LogInfof("Compile failed, output:\n%s\n", string(out))
-			return foundation.LogErrorf(err, "Compiling failed")
+			corepkg.LogInfof("Compile failed, output:\n%s\n", string(out))
+			return corepkg.LogErrorf(err, "Compiling failed")
 		}
 		if len(out) > 0 {
-			foundation.LogInfof("Compile output:\n%s\n", string(out))
+			corepkg.LogInfof("Compile output:\n%s\n", string(out))
 		}
 	}
 
@@ -240,7 +241,7 @@ type ToolchainArduinoEsp32Archiver struct {
 	toolChain    *ArduinoEsp32
 	config       *Config
 	archiverPath string
-	archiverArgs *foundation.Arguments
+	archiverArgs *corepkg.Arguments
 }
 
 func (t *ArduinoEsp32) NewArchiver(a ArchiverType, config *Config) Archiver {
@@ -248,7 +249,7 @@ func (t *ArduinoEsp32) NewArchiver(a ArchiverType, config *Config) Archiver {
 		toolChain:    t,
 		config:       config,
 		archiverPath: t.Vars.GetFirstOrEmpty("archiver"),
-		archiverArgs: foundation.NewArguments(16),
+		archiverArgs: corepkg.NewArguments(16),
 	}
 }
 
@@ -272,16 +273,16 @@ func (a *ToolchainArduinoEsp32Archiver) Archive(inputObjectFilepaths []string, o
 	// {input-object-filepaths}
 	a.archiverArgs.Add(inputObjectFilepaths...)
 
-	foundation.LogInfof("Archiving %s\n", outputArchiveFilepath)
+	corepkg.LogInfof("Archiving %s\n", outputArchiveFilepath)
 
 	cmd := exec.Command(a.archiverPath, a.archiverArgs.Args...)
 	out, err := cmd.CombinedOutput()
 
 	if err != nil {
-		return foundation.LogErrorf(err, "Archiving failed")
+		return corepkg.LogErrorf(err, "Archiving failed")
 	}
 	if len(out) > 0 {
-		foundation.LogInfof("Archive output:\n%s\n", string(out))
+		corepkg.LogInfof("Archive output:\n%s\n", string(out))
 	}
 
 	return nil
@@ -295,7 +296,7 @@ type ToolchainArduinoEsp32Linker struct {
 	toolChain  *ArduinoEsp32
 	config     *Config
 	linkerPath string
-	linkerArgs *foundation.Arguments
+	linkerArgs *corepkg.Arguments
 }
 
 func (t *ArduinoEsp32) NewLinker(config *Config) Linker {
@@ -303,7 +304,7 @@ func (t *ArduinoEsp32) NewLinker(config *Config) Linker {
 		toolChain:  t,
 		config:     config,
 		linkerPath: t.Vars.GetFirstOrEmpty("linker"),
-		linkerArgs: foundation.NewArguments(512),
+		linkerArgs: corepkg.NewArguments(512),
 	}
 }
 
@@ -370,7 +371,7 @@ func (l *ToolchainArduinoEsp32Linker) Link(inputArchiveAbsFilepaths []string, ou
 		linkerArgs.Args[0] = "-Wl,--Map=" + outputMapFilepath
 	}
 
-	foundation.LogInfof("Linking '%s'...\n", outputAppRelFilepathNoExt)
+	corepkg.LogInfof("Linking '%s'...\n", outputAppRelFilepathNoExt)
 	cmd := exec.Command(linker, linkerArgs.Args...)
 	out, err := cmd.CombinedOutput()
 
@@ -381,11 +382,11 @@ func (l *ToolchainArduinoEsp32Linker) Link(inputArchiveAbsFilepaths []string, ou
 	}
 
 	if err != nil {
-		foundation.LogInfof("Link failed, output:\n%s\n", string(out))
-		return foundation.LogErrorf(err, "Linking failed")
+		corepkg.LogInfof("Link failed, output:\n%s\n", string(out))
+		return corepkg.LogErrorf(err, "Linking failed")
 	}
 	if len(out) > 0 {
-		foundation.LogInfof("Link output:\n%s\n", string(out))
+		corepkg.LogInfof("Link output:\n%s\n", string(out))
 	}
 
 	return nil
@@ -400,22 +401,22 @@ type ToolchainArduinoEsp32Burner struct {
 	config                               *Config              // Configuration for the burner, e.g., debug or release
 	dependencyTracker                    deptrackr.FileTrackr // Dependency tracker for the burner
 	hasher                               hash.Hash            // Hasher for generating digests of arguments
-	genImageBinToolArgs                  *foundation.Arguments
+	genImageBinToolArgs                  *corepkg.Arguments
 	genImageBinToolArgsHash              []byte   // Hash of the arguments for the image bin tool
 	genImageBinToolOutputFilepath        string   // The output file for the image bin
 	genImageBinToolInputFilepaths        []string // The input files for the image bin
 	genImageBinToolPath                  string
-	genImagePartitionsToolArgs           *foundation.Arguments
+	genImagePartitionsToolArgs           *corepkg.Arguments
 	genImagePartitionsToolArgsHash       []byte   // Hash of the arguments for the image partitions tool
 	genImagePartitionsToolOutputFilepath string   // The output file for the image partitions
 	genImagePartitionsToolInputFilepaths []string // The input files for the image partitions
 	genImagePartitionsToolPath           string
-	genBootloaderToolArgs                *foundation.Arguments
+	genBootloaderToolArgs                *corepkg.Arguments
 	genBootloaderToolArgsHash            []byte   // Hash of the arguments for the bootloader tool
 	genBootloaderToolOutputFilepath      string   // The output file for the bootloader
 	genBootloaderToolInputFilepaths      []string // The input files for the bootloader
 	genBootloaderToolPath                string
-	flashToolArgs                        *foundation.Arguments
+	flashToolArgs                        *corepkg.Arguments
 	flashToolPath                        string
 }
 
@@ -425,22 +426,22 @@ func (t *ArduinoEsp32) NewBurner(config *Config) Burner {
 		config:                               config,
 		dependencyTracker:                    nil,
 		hasher:                               sha1.New(),
-		genImageBinToolArgs:                  foundation.NewArguments(64),
+		genImageBinToolArgs:                  corepkg.NewArguments(64),
 		genImageBinToolArgsHash:              nil, // Will be set later
 		genImageBinToolOutputFilepath:        "",
 		genImageBinToolInputFilepaths:        []string{},
 		genImageBinToolPath:                  t.Vars.GetFirstOrEmpty("burner.generate-image-bin"),
-		genImagePartitionsToolArgs:           foundation.NewArguments(64),
+		genImagePartitionsToolArgs:           corepkg.NewArguments(64),
 		genImagePartitionsToolArgsHash:       nil, // Will be set later
 		genImagePartitionsToolOutputFilepath: "",
 		genImagePartitionsToolInputFilepaths: []string{},
 		genImagePartitionsToolPath:           t.Vars.GetFirstOrEmpty("burner.generate-partitions-bin"),
-		genBootloaderToolArgs:                foundation.NewArguments(64),
+		genBootloaderToolArgs:                corepkg.NewArguments(64),
 		genBootloaderToolArgsHash:            nil, // Will be set later
 		genBootloaderToolOutputFilepath:      "",
 		genBootloaderToolInputFilepaths:      []string{},
 		genBootloaderToolPath:                t.Vars.GetFirstOrEmpty("burner.generate-bootloader"),
-		flashToolArgs:                        foundation.NewArguments(64),
+		flashToolArgs:                        corepkg.NewArguments(64),
 		flashToolPath:                        t.Vars.GetFirstOrEmpty("burner.flash"),
 	}
 }
@@ -460,12 +461,23 @@ func (b *ToolchainArduinoEsp32Burner) SetupBuild(buildPath string) {
 	projectPartitionsBinFilepath := filepath.Join(buildPath, b.toolChain.ProjectName+".partitions.bin")
 	projectBootloaderBinFilepath := filepath.Join(buildPath, b.toolChain.ProjectName+".bootloader.bin")
 
+	flashMode := b.toolChain.Vars.GetFirstOrEmpty("build.flash_mode")
+	flashFreq := b.toolChain.Vars.GetFirstOrEmpty("build.flash_freq")
+	flashSize := b.toolChain.Vars.GetFirstOrEmpty("build.flash_size")
+
+	// The XIAO_ESP32C3 board is configured as "qio" flash mode, 80MHz flash frequency and 4MB flash size.
+	// However, the flash that is on the board can only be successfully flashed when using "dio" flash mode.
+	if b.toolChain.Vars.GetFirstOrEmpty("build.mcu") == "esp32c3" && b.toolChain.Vars.GetFirstOrEmpty("build.variant") == "XIAO_ESP32C3" {
+		corepkg.LogWarnf("Overriding flash mode to 'dio' for XIAO_ESP32C3 board\n")
+		flashMode = "dio"
+	}
+
 	b.genImageBinToolArgs.Clear()
 	b.genImageBinToolArgs.Add("--chip", b.toolChain.Vars.GetFirstOrEmpty("build.mcu"))
 	b.genImageBinToolArgs.Add("elf2image")
-	b.genImageBinToolArgs.Add("--flash_mode", b.toolChain.Vars.GetFirstOrEmpty("build.flash_type"))
-	b.genImageBinToolArgs.Add("--flash_freq", b.toolChain.Vars.GetFirstOrEmpty("build.flash_freq"))
-	b.genImageBinToolArgs.Add("--flash_size", b.toolChain.Vars.GetFirstOrEmpty("build.flash_size"))
+	b.genImageBinToolArgs.Add("--flash_mode", flashMode)
+	b.genImageBinToolArgs.Add("--flash_freq", flashFreq)
+	b.genImageBinToolArgs.Add("--flash_size", flashSize)
 	b.genImageBinToolArgs.Add("--elf-sha256-offset", b.toolChain.Vars.GetFirstOrEmpty("elf-sha256-offset"))
 	b.genImageBinToolArgs.Add("-o", projectBinFilepath)
 	b.genImageBinToolArgs.Add(projectElfFilepath)
@@ -479,9 +491,9 @@ func (b *ToolchainArduinoEsp32Burner) SetupBuild(buildPath string) {
 	b.genBootloaderToolArgs.Clear()
 	b.genBootloaderToolArgs.Add("--chip", b.toolChain.Vars.GetFirstOrEmpty("build.mcu"))
 	b.genBootloaderToolArgs.Add("elf2image")
-	b.genBootloaderToolArgs.Add("--flash_mode", b.toolChain.Vars.GetFirstOrEmpty("build.flash_type"))
-	b.genBootloaderToolArgs.Add("--flash_freq", b.toolChain.Vars.GetFirstOrEmpty("build.flash_freq"))
-	b.genBootloaderToolArgs.Add("--flash_size", b.toolChain.Vars.GetFirstOrEmpty("build.flash_size"))
+	b.genBootloaderToolArgs.Add("--flash_mode", flashMode)
+	b.genBootloaderToolArgs.Add("--flash_freq", flashFreq)
+	b.genBootloaderToolArgs.Add("--flash_size", flashSize)
 	b.genBootloaderToolArgs.Add("-o", projectBootloaderBinFilepath)
 	sdkBootLoaderElfPath, _ := b.toolChain.Vars.GetFirst("burner.sdk.bootloader.elf.path")
 	b.genBootloaderToolArgs.Add(sdkBootLoaderElfPath)
@@ -514,13 +526,13 @@ func (b *ToolchainArduinoEsp32Burner) Build() error {
 		args := b.genImagePartitionsToolArgs.Args
 
 		cmd := exec.Command(img, args...)
-		foundation.LogInfof("Creating image partitions '%s' ...\n", b.toolChain.ProjectName+".partitions.bin")
+		corepkg.LogInfof("Creating image partitions '%s' ...\n", b.toolChain.ProjectName+".partitions.bin")
 		out, err := cmd.CombinedOutput()
 		if err != nil {
-			return foundation.LogErrorf(err, "Creating image partitions failed")
+			return corepkg.LogErrorf(err, "Creating image partitions failed")
 		}
 		if len(out) > 0 {
-			foundation.LogInfof("Image partitions output:\n%s\n", string(out))
+			corepkg.LogInfof("Image partitions output:\n%s\n", string(out))
 		}
 		fmt.Println()
 
@@ -535,13 +547,16 @@ func (b *ToolchainArduinoEsp32Burner) Build() error {
 		args := b.genImageBinToolArgs.Args
 
 		cmd := exec.Command(imgPath, args...)
-		foundation.LogInfof("Generating image '%s'\n", b.toolChain.ProjectName+".bin")
+		corepkg.LogInfof("Generating image '%s'\n", b.toolChain.ProjectName+".bin")
 		out, err := cmd.CombinedOutput()
 		if err != nil {
-			return foundation.LogErrorf(err, "Image generation failed")
+			if len(out) > 0 {
+				corepkg.LogInfof("Image generation output:\n%s\n", string(out))
+			}
+			return corepkg.LogErrorf(err, "Image generation failed")
 		}
 		if len(out) > 0 {
-			foundation.LogInfof("Image generation output:\n%s\n", string(out))
+			corepkg.LogInfof("Image generation output:\n%s\n", string(out))
 		}
 		fmt.Println()
 
@@ -556,14 +571,14 @@ func (b *ToolchainArduinoEsp32Burner) Build() error {
 		args := b.genBootloaderToolArgs.Args
 
 		cmd := exec.Command(imgPath, args...)
-		foundation.LogInfof("Generating bootloader '%s'\n", b.toolChain.ProjectName+".bootloader.bin")
+		corepkg.LogInfof("Generating bootloader '%s'\n", b.toolChain.ProjectName+".bootloader.bin")
 		out, err := cmd.CombinedOutput()
 		if err != nil {
-			foundation.LogInfof("Bootloader generation failed, output:\n%s\n", string(out))
-			return foundation.LogErrorf(err, "Bootloader generation failed")
+			corepkg.LogInfof("Bootloader generation failed, output:\n%s\n", string(out))
+			return corepkg.LogErrorf(err, "Bootloader generation failed")
 		}
 		if len(out) > 0 {
-			foundation.LogInfof("Bootloader generation output:\n%s\n", string(out))
+			corepkg.LogInfof("Bootloader generation output:\n%s\n", string(out))
 		}
 		fmt.Println()
 
@@ -594,11 +609,11 @@ func (b *ToolchainArduinoEsp32Burner) SetupBurn(buildPath string) error {
 	b.flashToolArgs.Add("--flash_size", "keep")
 
 	bootApp0BinFilePath, _ := b.toolChain.Vars.GetFirst("burner.bootapp0.bin.filepath")
-	if !foundation.FileExists(bootApp0BinFilePath) {
-		return foundation.LogErrorf(os.ErrNotExist, "Boot app0 bin file '%s' does not exist", bootApp0BinFilePath)
+	if !corepkg.FileExists(bootApp0BinFilePath) {
+		return corepkg.LogErrorf(os.ErrNotExist, "Boot app0 bin file '%s' does not exist", bootApp0BinFilePath)
 	}
 
-	b.flashToolArgs.Add(b.toolChain.Vars.GetFirstOrEmpty("esp32.build.bootloader_addr"))
+	b.flashToolArgs.Add(b.toolChain.Vars.GetFirstOrEmpty("build.bootloader_addr"))
 	b.flashToolArgs.Add(b.genBootloaderToolOutputFilepath)
 	b.flashToolArgs.Add(b.toolChain.Vars.GetFirstOrEmpty("burner.flash.partitions.bin.offset"))
 	b.flashToolArgs.Add(b.genImagePartitionsToolOutputFilepath)
@@ -611,51 +626,54 @@ func (b *ToolchainArduinoEsp32Burner) SetupBurn(buildPath string) error {
 }
 
 func (b *ToolchainArduinoEsp32Burner) Burn() error {
-	if !foundation.FileExists(b.genBootloaderToolOutputFilepath) {
-		return foundation.LogErrorf(os.ErrNotExist, "Cannot burn, bootloader bin file '%s' doesn't exist", b.genBootloaderToolOutputFilepath)
+	if !corepkg.FileExists(b.genBootloaderToolOutputFilepath) {
+		return corepkg.LogErrorf(os.ErrNotExist, "Cannot burn, bootloader bin file '%s' doesn't exist", b.genBootloaderToolOutputFilepath)
 	}
-	if !foundation.FileExists(b.genImagePartitionsToolOutputFilepath) {
-		return foundation.LogErrorf(os.ErrNotExist, "Cannot burn, partitions bin file '%s' doesn't exist", b.genImagePartitionsToolOutputFilepath)
+	if !corepkg.FileExists(b.genImagePartitionsToolOutputFilepath) {
+		return corepkg.LogErrorf(os.ErrNotExist, "Cannot burn, partitions bin file '%s' doesn't exist", b.genImagePartitionsToolOutputFilepath)
 	}
-	if !foundation.FileExists(b.genImageBinToolOutputFilepath) {
-		return foundation.LogErrorf(os.ErrNotExist, "Cannot burn, application bin file '%s' doesn't exist", b.genImageBinToolOutputFilepath)
+	if !corepkg.FileExists(b.genImageBinToolOutputFilepath) {
+		return corepkg.LogErrorf(os.ErrNotExist, "Cannot burn, application bin file '%s' doesn't exist", b.genImageBinToolOutputFilepath)
 	}
 
 	flashToolPath := b.flashToolPath
 	flashToolArgs := b.flashToolArgs.Args
 
-	foundation.LogInfof("Flashing '%s'...\n", b.toolChain.ProjectName+".bin")
+	corepkg.LogInfof("Flashing '%s'...\n", b.toolChain.ProjectName+".bin")
 
 	flashToolCmd := exec.Command(flashToolPath, flashToolArgs...)
 
 	// out, err := flashToolCmd.CombinedOutput()
 	// if err != nil {
-	// 	return foundation.LogErrorf("Flashing failed with %s\n", err)
+	// 	if len(out) > 0 {
+	// 		corepkg.LogInfof("Flashing output:\n%s\n", string(out))
+	// 	}
+	// 	return corepkg.LogErrorf(err, "Flashing failed with %s\n")
 	// }
 	// if len(out) > 0 {
-	// 	foundation.LogInfof("Flashing output:\n%s\n", string(out))
+	// 	corepkg.LogInfof("Flashing output:\n%s\n", string(out))
 	// }
 
 	pipe, _ := flashToolCmd.StdoutPipe()
 
 	if err := flashToolCmd.Start(); err != nil {
-		return foundation.LogErrorf(err, "Flashing failed")
+		return corepkg.LogErrorf(err, "Flashing failed")
 	}
 
 	reader := bufio.NewReader(pipe)
 	line, err := reader.ReadString('\n')
 	for err == nil {
-		foundation.LogPrint(line)
+		corepkg.LogPrint(line)
 		line, err = reader.ReadString('\n')
 		if err == io.EOF {
 			err = nil
 			break
 		}
 	}
-	foundation.LogPrintln()
+	corepkg.LogPrintln()
 
 	if err != nil {
-		return foundation.LogErrorf(err, "Flashing failed")
+		return corepkg.LogErrorf(err, "Flashing failed")
 	}
 
 	return nil
@@ -673,7 +691,7 @@ type Esp32Board struct {
 	Description string            // The description of the board
 	SdkPath     string            // The path to the ESP32 SDK
 	FlashSizes  map[string]string // The list of flash sizes
-	Vars        *foundation.Vars
+	Vars        *corepkg.Vars
 }
 
 func NewBoard(name string, description string) *Esp32Board {
@@ -681,7 +699,7 @@ func NewBoard(name string, description string) *Esp32Board {
 		Name:        name,
 		Description: description,
 		FlashSizes:  make(map[string]string),
-		Vars:        foundation.NewVars(),
+		Vars:        corepkg.NewVars(),
 	}
 }
 
@@ -694,9 +712,17 @@ func NewArduinoEsp32(espBoard *Esp32Board, projectName string, partitionFiles []
 		value []string
 	}
 
+	hostOS := "macosx"
+	if runtime.GOOS == "linux" {
+		hostOS = "linux"
+	} else if runtime.GOOS == "windows" {
+		hostOS = "windows"
+	}
+
 	vars := []item{
-		{key: "runtime.os", value: []string{runtime.GOOS}},
+		{key: "runtime.os", value: []string{hostOS}},
 		{key: "build.fqbn", value: []string{"generic"}},
+		{key: "upload.speed", value: []string{"921600"}},
 
 		{key: "project.name", value: []string{projectName}},
 		{key: "esp.sdk.path", value: []string{espBoard.SdkPath}},
@@ -740,7 +766,6 @@ func NewArduinoEsp32(espBoard *Esp32Board, projectName string, partitionFiles []
 
 		{key: "elf-sha256-offset", value: []string{`0xb0`}},
 		{key: "burner.bootapp0.bin.filepath", value: []string{`{esp.sdk.path}/tools/partitions/boot_app0.bin`}},
-		{key: "esp32.build.bootloader_addr", value: []string{`0x1000`}},
 		{key: "burner.flash.partitions.bin.offset", value: []string{`0x8000`}},
 		{key: "burner.flash.bootapp0.bin.offset", value: []string{`0xe000`}},
 		{key: "burner.flash.application.bin.offset", value: []string{`0x10000`}},
@@ -764,7 +789,7 @@ func NewArduinoEsp32(espBoard *Esp32Board, projectName string, partitionFiles []
 
 	t := &ArduinoEsp32{
 		ProjectName: projectName,
-		Vars:        foundation.NewVarsCustom(foundation.VarsFormatCurlyBraces),
+		Vars:        corepkg.NewVarsCustom(corepkg.VarsFormatCurlyBraces),
 	}
 
 	for _, kv := range vars {
@@ -777,17 +802,15 @@ func NewArduinoEsp32(espBoard *Esp32Board, projectName string, partitionFiles []
 	//     xtensa-esp32 partitions file
 	var partitionFile string
 	for _, pf := range partitionFiles {
-		if strings.Contains(strings.ToLower(filepath.Base(pf)), espMcu) && strings.HasSuffix(strings.ToLower(pf), ".csv") {
+		if strings.Compare(strings.ToLower(filepath.Base(pf)), espMcu) == 0 && strings.HasSuffix(strings.ToLower(pf), ".csv") {
 			partitionFile = pf
 			break
 		}
 	}
 	if len(partitionFile) == 0 {
-		vars = append(vars, item{key: "burner.flash.partitions.csv.filepath", value: []string{`{esp.sdk.path}/tools/partitions/default.csv`}})
-	} else {
-		//foundation.LogInfof("Using partition file: %s\n", partitionFile)
-		vars = append(vars, item{key: "burner.flash.partitions.csv.filepath", value: []string{partitionFile}})
+		partitionFile = `{esp.sdk.path}/tools/partitions/default.csv`
 	}
+	t.Vars.Set("burner.flash.partitions.csv.filepath", partitionFile)
 
 	// #----------------------------------------------------------------------------------
 	//     xtensa-esp32 build properties

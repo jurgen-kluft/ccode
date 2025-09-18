@@ -1,6 +1,8 @@
 package denv
 
-import "github.com/jurgen-kluft/ccode/foundation"
+import (
+	corepkg "github.com/jurgen-kluft/ccode/core"
+)
 
 type ProjectGroup struct {
 	Path     string
@@ -8,7 +10,7 @@ type ProjectGroup struct {
 	Projects []*Project
 	Parent   *ProjectGroup
 	MsDev    struct {
-		UUID foundation.UUID
+		UUID corepkg.UUID
 	}
 }
 
@@ -48,7 +50,7 @@ func (d *ProjectGroups) Add(p *Project) *ProjectGroup {
 }
 
 func (d *ProjectGroups) GetOrAddParent(path string) *ProjectGroup {
-	parent, _ := foundation.PathUp(path)
+	parent, _ := corepkg.PathUp(path)
 	if len(parent) == 0 || parent == "." {
 		return d.Root
 	}

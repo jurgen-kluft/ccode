@@ -3,13 +3,13 @@ package embedded
 import (
 	"strconv"
 
-	"github.com/jurgen-kluft/ccode/foundation"
+	corepkg "github.com/jurgen-kluft/ccode/core"
 )
 
 type featureFlags struct {
-	foundation.BitFlags
+	corepkg.BitFlags
 }
-type featureFlag = foundation.Flag
+type featureFlag = corepkg.Flag
 
 const (
 	featureFlagNone              featureFlag = 0
@@ -28,12 +28,12 @@ var featureFlagDecl = map[string]featureFlag{
 
 func newFeatureFlags() *featureFlags {
 	flags := &featureFlags{
-		BitFlags: foundation.NewBitFlags(featureFlagBoolsAsBitset, &featureFlagDecl),
+		BitFlags: corepkg.NewBitFlags(featureFlagBoolsAsBitset, &featureFlagDecl),
 	}
 	return flags
 }
 
-func (f *featureFlags) decodeJSON(decoder *foundation.JsonDecoder) error {
+func (f *featureFlags) decodeJSON(decoder *corepkg.JsonDecoder) error {
 	return f.BitFlags.DecodeJSON(decoder)
 }
 

@@ -5,10 +5,10 @@ import (
 	"runtime"
 	"strings"
 
+	corepkg "github.com/jurgen-kluft/ccode/core"
 	"github.com/jurgen-kluft/ccode/denv"
 	"github.com/jurgen-kluft/ccode/dev"
 	"github.com/jurgen-kluft/ccode/embedded"
-	"github.com/jurgen-kluft/ccode/foundation"
 )
 
 // Init will initialize ccode before anything else is run
@@ -28,7 +28,7 @@ var (
 )
 
 func Init() bool {
-	foundation.SetLogger(foundation.NewStandardLogger(foundation.LevelError))
+	corepkg.SetLogger(corepkg.NewStandardLogger(corepkg.LevelError))
 
 	flag.StringVar(&cdev, "dev", "", "the build system to generate for (vs2022, tundra, make, cmake, xcode, clay)")
 	flag.StringVar(&carch, "arch", "", "the architecture to target (x64, arm64, amd64, 386, esp32, esp32c3, esp32s3)")
@@ -57,19 +57,19 @@ func Init() bool {
 		}
 	}
 
-	foundation.LogPrintln("ccode, a tool to generate C/C++ workspace and project files")
+	corepkg.LogPrintln("ccode, a tool to generate C/C++ workspace and project files")
 
 	if denv.NewDevEnum(cdev) == denv.DevInvalid {
-		foundation.LogPrintln()
-		foundation.LogPrintln("Error, wrong parameter for '-dev', '", cdev, "' is not recognized")
-		foundation.LogPrintln()
-		foundation.LogPrintln("Examples:")
-		foundation.LogPrintln("    -> Usage: go run cbase.go -dev=vs2022/vs2019/vs2015")
-		foundation.LogPrintln("    -> Usage: go run cbase.go -dev=tundra")
-		foundation.LogPrintln("    -> Usage: go run cbase.go -dev=make")
-		foundation.LogPrintln("    -> Usage: go run cbase.go -dev=xcode")
-		foundation.LogPrintln("    -> Usage: go run cbase.go -dev=clay")
-		foundation.LogPrintln("    -> Usage: go run cbase.go -arch=esp32 / esp32s3")
+		corepkg.LogPrintln()
+		corepkg.LogPrintln("Error, wrong parameter for '-dev', '", cdev, "' is not recognized")
+		corepkg.LogPrintln()
+		corepkg.LogPrintln("Examples:")
+		corepkg.LogPrintln("    -> Usage: go run cbase.go -dev=vs2022/vs2019/vs2015")
+		corepkg.LogPrintln("    -> Usage: go run cbase.go -dev=tundra")
+		corepkg.LogPrintln("    -> Usage: go run cbase.go -dev=make")
+		corepkg.LogPrintln("    -> Usage: go run cbase.go -dev=xcode")
+		corepkg.LogPrintln("    -> Usage: go run cbase.go -dev=clay")
+		corepkg.LogPrintln("    -> Usage: go run cbase.go -arch=esp32 / esp32s3")
 		return false
 	}
 

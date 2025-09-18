@@ -5,8 +5,8 @@ import (
 	"path/filepath"
 	"strings"
 
+	corepkg "github.com/jurgen-kluft/ccode/core"
 	"github.com/jurgen-kluft/ccode/dev"
-	"github.com/jurgen-kluft/ccode/foundation"
 )
 
 // DevProject is a structure that holds all the information that defines a project in an IDE
@@ -444,7 +444,7 @@ func (p *DevProjectList) Get(name string) (*DevProject, bool) {
 
 func (p *DevProjectList) CollectByWildcard(name string, list *DevProjectList) {
 	for _, p := range p.Values {
-		if foundation.PathMatchWildcard(p.Name, name, true) {
+		if corepkg.PathMatchWildcard(p.Name, name, true) {
 			list.Add(p)
 		}
 	}

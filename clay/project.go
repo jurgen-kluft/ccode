@@ -7,19 +7,20 @@ import (
 	"time"
 
 	"github.com/jurgen-kluft/ccode/clay/toolchain"
-	"github.com/jurgen-kluft/ccode/foundation"
+
+	corepkg "github.com/jurgen-kluft/ccode/core"
 )
 
-type IncludeMap = foundation.ValueSet
+type IncludeMap = corepkg.ValueSet
 
 func NewIncludeMap(size int) *IncludeMap {
-	return foundation.NewValueSet2(size)
+	return corepkg.NewValueSet2(size)
 }
 
-type DefineMap = foundation.ValueSet
+type DefineMap = corepkg.ValueSet
 
 func NewDefineMap(size int) *DefineMap {
-	return foundation.NewValueSet2(size)
+	return corepkg.NewValueSet2(size)
 }
 
 // Project represents a C/C++ project that can be built using the Clay build system.
@@ -87,7 +88,7 @@ func (p *Project) SetToolchain(config *Config, board *toolchain.Esp32Board) (err
 	} else if targetOS == "mac" || targetOS == "macos" || targetOS == "darwin" {
 		p.Toolchain, err = toolchain.NewDarwinClang(runtime.GOARCH, p.Frameworks)
 	} else {
-		err = foundation.LogErrorf(os.ErrNotExist, "error, %s as a build target on %s is not supported", targetOS, runtime.GOOS)
+		err = corepkg.LogErrorf(os.ErrNotExist, "error, %s as a build target on %s is not supported", targetOS, runtime.GOOS)
 	}
 	return err
 }
@@ -124,7 +125,7 @@ func (p *Project) Build(buildConfig *Config, buildPath string) (outOfDate int, e
 	for _, src := range p.SourceFiles {
 		srcObjRelPath := filepath.Join(projectBuildPath, compiler.ObjFilepath(src.SrcRelPath))
 		if !projectDepFileTrackr.QueryItem(srcObjRelPath) {
-			foundation.DirMake(filepath.Dir(srcObjRelPath))
+			corepkg.DirMake(filepath.Dir(srcObjRelPath))
 			srcFilesOutOfDate = append(srcFilesOutOfDate, src)
 		} else {
 			srcFilesUpToDate = append(srcFilesUpToDate, src)
@@ -141,7 +142,7 @@ func (p *Project) Build(buildConfig *Config, buildPath string) (outOfDate int, e
 	buildStartTime := time.Now()
 	outOfDate = len(srcFilesOutOfDate)
 	if outOfDate > 0 {
-		foundation.LogInfof("Building project: %s, config: %s\n", p.Name, p.Config.String())
+		corepkg.LogInfof("Building project: %s, config: %s\n", p.Name, p.Config.String())
 		buildStartTime = time.Now()
 
 		// Give the compiler the array of out-of-date source files (input) and their object files (output)
@@ -173,7 +174,7 @@ func (p *Project) Build(buildConfig *Config, buildPath string) (outOfDate int, e
 
 		if outOfDate > 0 || !projectDepFileTrackr.QueryItem(executableOutputFilepath) {
 			if outOfDate == 0 {
-				foundation.LogInfof("Linking project: %s, config: %s\n", p.Name, p.Config.String())
+				corepkg.LogInfof("Linking project: %s, config: %s\n", p.Name, p.Config.String())
 				buildStartTime = time.Now()
 				outOfDate += 1
 			}
@@ -205,7 +206,7 @@ func (p *Project) Build(buildConfig *Config, buildPath string) (outOfDate int, e
 		archiveOutputFilepath := p.GetOutputFilepath(buildPath, staticArchiver.LibFilepath(p.Name))
 		if outOfDate > 0 || !projectDepFileTrackr.QueryItem(archiveOutputFilepath) {
 			if outOfDate == 0 {
-				foundation.LogInfof("Archiving project: %s, config: %s\n", p.Name, p.Config.String())
+				corepkg.LogInfof("Archiving project: %s, config: %s\n", p.Name, p.Config.String())
 				buildStartTime = time.Now()
 				outOfDate += 1
 			}
@@ -233,7 +234,7 @@ func (p *Project) Build(buildConfig *Config, buildPath string) (outOfDate int, e
 	}
 
 	if outOfDate > 0 {
-		foundation.LogInfof("Building done ... (duration %s)\n", time.Since(buildStartTime).Round(time.Second))
+		corepkg.LogInfof("Building done ... (duration %s)\n", time.Since(buildStartTime).Round(time.Second))
 	}
 
 	return outOfDate, nil
@@ -285,5 +286,5 @@ func (p *Project) Flash(buildConfig *Config, buildPath string) error {
 // 		}
 // 	}
 
-// 	foundation.FileEnumerate(srcPath, handleDir, handleFile)
+// 	corepkg.FileEnumerate(srcPath, handleDir, handleFile)
 // }

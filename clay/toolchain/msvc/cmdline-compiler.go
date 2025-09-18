@@ -3,7 +3,7 @@ package msvc
 import (
 	"strconv"
 
-	"github.com/jurgen-kluft/ccode/foundation"
+	corepkg "github.com/jurgen-kluft/ccode/core"
 )
 
 type CompilerFlags uint64
@@ -36,11 +36,11 @@ func (c CompilerFlags) IsC() bool {
 }
 
 type CompilerCmdLine struct {
-	args   *foundation.Arguments
+	args   *corepkg.Arguments
 	length int
 }
 
-func NewCompilerCmdLine(args *foundation.Arguments) *CompilerCmdLine {
+func NewCompilerCmdLine(args *corepkg.Arguments) *CompilerCmdLine {
 	return &CompilerCmdLine{
 		args: args,
 	}
@@ -99,7 +99,7 @@ func (c *CompilerCmdLine) Defines(defines []string) {
 		c.args.Add("/D", define)
 	}
 
-}                                                                                                 // Define constants or enable/disable features in your code.
+}                                                           // Define constants or enable/disable features in your code.
 func (c *CompilerCmdLine) OutDir(dirpath string)            { c.args.Add("/Fo" + dirpath + `\`) } // Set the output directory for object files.
 func (c *CompilerCmdLine) SourceFile(sourceFile string)     { c.args.Add(sourceFile) }            // This is  a C++ source file that should be compiled.
 func (c *CompilerCmdLine) SourceFiles(sourceFiles []string) { c.args.Add(sourceFiles...) }        // These are the C++ source files that should be compiled.
@@ -110,8 +110,8 @@ func (c *CompilerCmdLine) Restore() {
 	}
 }
 
-func GenerateCompilerCmdline(flags CompilerFlags, outputPath string, includes []string, defines []string, sourceFiles []string, objectFiles []string) *foundation.Arguments {
-	args := foundation.NewArguments(len(sourceFiles) + len(objectFiles) + 20)
+func GenerateCompilerCmdline(flags CompilerFlags, outputPath string, includes []string, defines []string, sourceFiles []string, objectFiles []string) *corepkg.Arguments {
+	args := corepkg.NewArguments(len(sourceFiles) + len(objectFiles) + 20)
 
 	c := NewCompilerCmdLine(args)
 

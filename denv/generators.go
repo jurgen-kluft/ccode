@@ -6,8 +6,8 @@ import (
 	"path/filepath"
 	"strings"
 
+	corepkg "github.com/jurgen-kluft/ccode/core"
 	"github.com/jurgen-kluft/ccode/dev"
-	"github.com/jurgen-kluft/ccode/foundation"
 )
 
 // ----------------------------------------------------------------------------------------------
@@ -72,7 +72,7 @@ type ExclusionFilter struct {
 }
 
 func (f *ExclusionFilter) IsExcluded(filepath string) bool {
-	parts := foundation.PathSplitRelativeFilePath(filepath, true)
+	parts := corepkg.PathSplitRelativeFilePath(filepath, true)
 	for i := 0; i < len(parts)-1; i++ {
 		p := strings.ToLower(parts[i])
 		if f.Filter(p) {

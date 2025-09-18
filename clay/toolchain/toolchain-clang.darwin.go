@@ -7,7 +7,7 @@ import (
 
 	"github.com/jurgen-kluft/ccode/clay/toolchain/clang"
 	"github.com/jurgen-kluft/ccode/clay/toolchain/deptrackr"
-	"github.com/jurgen-kluft/ccode/foundation"
+	corepkg "github.com/jurgen-kluft/ccode/core"
 )
 
 type DarwinClang struct {
@@ -26,12 +26,12 @@ type DarwinClang struct {
 type ToolchainDarwinClangCompiler struct {
 	toolChain *DarwinClang
 	config    *Config
-	args      *foundation.Arguments
+	args      *corepkg.Arguments
 	cmdline   *clang.CompilerCmdLine
 }
 
 func (t *DarwinClang) NewCompiler(config *Config) Compiler {
-	args := foundation.NewArguments(512)
+	args := corepkg.NewArguments(512)
 	return &ToolchainDarwinClangCompiler{
 		toolChain: t,
 		config:    config,
@@ -107,14 +107,14 @@ func (cl *ToolchainDarwinClangCompiler) Compile(sourceAbsFilepaths []string, obj
 		compilerArgs := cl.args.Args
 		cmd := exec.Command(compilerPath, compilerArgs...)
 
-		foundation.LogInfof("Compiling (%s) %s\n", cl.config.Config.AsString(), filepath.Base(sourceAbsFilepath))
+		corepkg.LogInfof("Compiling (%s) %s\n", cl.config.Config.AsString(), filepath.Base(sourceAbsFilepath))
 		out, err := cmd.CombinedOutput()
 		if err != nil {
-			foundation.LogInfof("Compile failed, output:\n%s\n", string(out))
-			return foundation.LogErrorf(err, "Compiling failed")
+			corepkg.LogInfof("Compile failed, output:\n%s\n", string(out))
+			return corepkg.LogErrorf(err, "Compiling failed")
 		}
 		if len(out) > 0 {
-			foundation.LogInfof("Compile output:\n%s\n", string(out))
+			corepkg.LogInfof("Compile output:\n%s\n", string(out))
 		}
 	}
 
@@ -128,19 +128,19 @@ func (cl *ToolchainDarwinClangCompiler) Compile(sourceAbsFilepaths []string, obj
 type ToolchainDarwinClangStaticArchiver struct {
 	toolChain *DarwinClang
 	config    *Config
-	args      *foundation.Arguments
+	args      *corepkg.Arguments
 	cmdline   *clang.ArchiverCmdline
 }
 
 type ToolchainDarwinClangDynamicArchiver struct {
 	toolChain *DarwinClang
 	config    *Config
-	args      *foundation.Arguments
+	args      *corepkg.Arguments
 	cmdline   *clang.ArchiverCmdline
 }
 
 func (t *DarwinClang) NewArchiver(at ArchiverType, config *Config) Archiver {
-	args := foundation.NewArguments(512)
+	args := corepkg.NewArguments(512)
 	cmdline := clang.NewArchiverCmdline(args)
 	switch at {
 	case ArchiverTypeStatic:
@@ -152,8 +152,8 @@ func (t *DarwinClang) NewArchiver(at ArchiverType, config *Config) Archiver {
 }
 
 func (t *ToolchainDarwinClangStaticArchiver) LibFilepath(_filepath string) string {
-	filename := foundation.PathFilename(_filepath, true)
-	dirpath := foundation.PathDirname(_filepath)
+	filename := corepkg.PathFilename(_filepath, true)
+	dirpath := corepkg.PathDirname(_filepath)
 	return filepath.Join(dirpath, "lib"+filename+".a") // The file extension for the archive on Darwin is typically ".a"
 }
 
@@ -174,15 +174,15 @@ func (t *ToolchainDarwinClangStaticArchiver) Archive(inputObjectFilepaths []stri
 	out, err := cmd.CombinedOutput()
 
 	if err != nil {
-		return foundation.LogErrorf(err, "Archiving failed: ", string(out))
+		return corepkg.LogErrorf(err, "Archiving failed: ", string(out))
 	}
 
 	return nil
 }
 
 func (t *ToolchainDarwinClangDynamicArchiver) LibFilepath(_filepath string) string {
-	filename := foundation.PathFilename(_filepath, true)
-	dirpath := foundation.PathDirname(_filepath)
+	filename := corepkg.PathFilename(_filepath, true)
+	dirpath := corepkg.PathDirname(_filepath)
 	return filepath.Join(dirpath, "lib"+filename+".dylib")
 }
 
@@ -203,10 +203,10 @@ func (t *ToolchainDarwinClangDynamicArchiver) Archive(inputObjectFilepaths []str
 	out, err := cmd.CombinedOutput()
 
 	if err != nil {
-		return foundation.LogErrorf(err, "Archiving failed")
+		return corepkg.LogErrorf(err, "Archiving failed")
 	}
 	if len(out) > 0 {
-		foundation.LogInfof("Archive output:\n%s\n", string(out))
+		corepkg.LogInfof("Archive output:\n%s\n", string(out))
 	}
 
 	return nil
@@ -219,12 +219,12 @@ func (t *ToolchainDarwinClangDynamicArchiver) Archive(inputObjectFilepaths []str
 type ToolchainDarwinClangLinker struct {
 	toolChain *DarwinClang
 	config    *Config
-	args      *foundation.Arguments
+	args      *corepkg.Arguments
 	cmdline   *clang.LinkerCmdline
 }
 
 func (l *DarwinClang) NewLinker(config *Config) Linker {
-	args := foundation.NewArguments(512)
+	args := corepkg.NewArguments(512)
 	return &ToolchainDarwinClangLinker{
 		toolChain: l,
 		config:    config,
@@ -280,11 +280,11 @@ func (l *ToolchainDarwinClangLinker) Link(inputArchiveAbsFilepaths []string, out
 	out, err := cmd.CombinedOutput()
 
 	if err != nil {
-		foundation.LogInff("Link failed, output:\n%s\n", string(out))
-		return foundation.LogError(err, "Linking failed")
+		corepkg.LogInff("Link failed, output:\n%s\n", string(out))
+		return corepkg.LogError(err, "Linking failed")
 	}
 	if len(out) > 0 {
-		foundation.LogInfof("Link output:\n%s\n", string(out))
+		corepkg.LogInfof("Link output:\n%s\n", string(out))
 	}
 
 	return nil

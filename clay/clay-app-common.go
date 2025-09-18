@@ -10,7 +10,7 @@ import (
 	"strings"
 
 	"github.com/jurgen-kluft/ccode/clay/toolchain"
-	"github.com/jurgen-kluft/ccode/foundation"
+	corepkg "github.com/jurgen-kluft/ccode/core"
 )
 
 const (
@@ -93,14 +93,14 @@ func ParseProjectNameAndConfig() (string, *Config) {
 	configFilePath := "clay.json"
 	loadedConfig := ClayConfig{}
 	{
-		if foundation.FileExists(configFilePath) {
+		if corepkg.FileExists(configFilePath) {
 			data, err := os.ReadFile(configFilePath)
 			if err != nil {
-				foundation.LogFatalf("Failed to read config file", configFilePath, err)
+				corepkg.LogFatalf("Failed to read config file", configFilePath, err)
 			}
 			err = json.Unmarshal(data, &loadedConfig)
 			if err != nil {
-				foundation.LogFatalf("Failed to parse config file", configFilePath, err)
+				corepkg.LogFatalf("Failed to parse config file", configFilePath, err)
 			}
 		}
 	}
@@ -184,19 +184,19 @@ func ParseProjectNameAndConfig() (string, *Config) {
 	if clayConfig.Equal(loadedConfig) == false {
 		jsonContent, err := json.MarshalIndent(clayConfig, "", "  ")
 		if err != nil {
-			foundation.LogFatalf("Failed to marshal config file", configFilePath, err)
+			corepkg.LogFatalf("Failed to marshal config file", configFilePath, err)
 		}
 		if err := os.WriteFile(configFilePath, jsonContent, 0644); err != nil {
-			foundation.LogFatalf("Failed to write config file", configFilePath, err)
+			corepkg.LogFatalf("Failed to write config file", configFilePath, err)
 		}
 	}
 
-	foundation.LogInfof("Project: %s\n", clayConfig.ProjectName)
-	foundation.LogInfof("Os: %s\n", clayConfig.TargetOs)
-	foundation.LogInfof("Arch: %s\n", clayConfig.TargetArch)
-	foundation.LogInfof("Build: %s\n", clayConfig.TargetBuild)
+	corepkg.LogInfof("Project: %s\n", clayConfig.ProjectName)
+	corepkg.LogInfof("Os: %s\n", clayConfig.TargetOs)
+	corepkg.LogInfof("Arch: %s\n", clayConfig.TargetArch)
+	corepkg.LogInfof("Build: %s\n", clayConfig.TargetBuild)
 	if len(clayConfig.TargetBoard) > 0 {
-		foundation.LogInfof("Board: %s\n", clayConfig.TargetBoard)
+		corepkg.LogInfof("Board: %s\n", clayConfig.TargetBoard)
 	}
 
 	return clayConfig.ProjectName, NewConfig(clayConfig.TargetOs, clayConfig.TargetArch, clayConfig.TargetBuild)
@@ -242,9 +242,9 @@ func Build(projectName string, targetConfig *Config) (err error) {
 		}
 	}
 	if outOfDate == 0 && noMatchConfigs < len(prjs) {
-		foundation.LogPrintln("Nothing to build, everything is up to date")
+		corepkg.LogPrintln("Nothing to build, everything is up to date")
 	} else if noMatchConfigs >= len(prjs) {
-		foundation.LogError(fmt.Errorf("!"), "No matching project configurations found")
+		corepkg.LogError(fmt.Errorf("!"), "No matching project configurations found")
 	}
 	return err
 }
@@ -258,14 +258,14 @@ func Clean(projectName string, buildConfig *Config) error {
 		if prj.Config.Matches(buildConfig) {
 
 			projectBuildPath := prj.GetBuildPath(buildPath)
-			foundation.LogPrintln("Clean " + projectBuildPath)
+			corepkg.LogPrintln("Clean " + projectBuildPath)
 
 			if err := os.RemoveAll(projectBuildPath + "/"); err != nil {
-				return foundation.LogError(err, "Failed to remove build directory")
+				return corepkg.LogError(err, "Failed to remove build directory")
 			}
 
 			if err := os.MkdirAll(projectBuildPath+"/", os.ModePerm); err != nil {
-				return foundation.LogError(err, "Failed to create build directory")
+				return corepkg.LogError(err, "Failed to create build directory")
 			}
 		}
 	}
@@ -290,15 +290,15 @@ func ListLibraries() error {
 
 	for _, prj := range prjs {
 		if i, ok := nameToIndex[prj.Name]; ok {
-			foundation.LogPrintf("Project: %s\n", prj.Name)
-			foundation.LogPrintf("  Configs: %s\n", configs[i])
+			corepkg.LogPrintf("Project: %s\n", prj.Name)
+			corepkg.LogPrintf("  Configs: %s\n", configs[i])
 			if len(prj.Dependencies) > 0 {
-				foundation.LogPrint("  Libraries:\n")
+				corepkg.LogPrint("  Libraries:\n")
 				for _, dep := range prj.Dependencies {
-					foundation.LogPrintf("  - %s\n", dep.Name)
+					corepkg.LogPrintf("  - %s\n", dep.Name)
 				}
 			}
-			foundation.LogPrintln()
+			corepkg.LogPrintln()
 
 			// Remove the entry from the map to avoid duplicates
 			delete(nameToIndex, prj.Name)
@@ -315,7 +315,7 @@ func AddBuildInfoAsCppLibrary(prj *Project, cfg *Config) {
 	buildPath := prj.GetBuildPath(cfg.GetSubDir())
 	hdrFilepath := filepath.Join(prj.GetBuildPath(buildPath), name+".h")
 	srcFilepath := filepath.Join(prj.GetBuildPath(buildPath), name+".cpp")
-	if foundation.FileExists(hdrFilepath) && foundation.FileExists(srcFilepath) {
+	if corepkg.FileExists(hdrFilepath) && corepkg.FileExists(srcFilepath) {
 		library := NewLibraryProject(name, prj.Config)
 
 		library.Defines = NewDefineMap(1)

@@ -1,6 +1,8 @@
 package xtensa
 
-import "github.com/jurgen-kluft/ccode/foundation"
+import (
+	corepkg "github.com/jurgen-kluft/ccode/core"
+)
 
 type LinkerFlags uint64
 
@@ -25,7 +27,7 @@ func (f LinkerFlags) WhenConsole() bool {
 }
 
 type LinkerCmdLine struct {
-	args           *foundation.Arguments
+	args           *corepkg.Arguments
 	flags          LinkerFlags // Build configuration
 	arduinoSdkPath string
 }
@@ -77,8 +79,8 @@ func (c *LinkerCmdLine) Out(outputAppRelFilepathNoExt string) {
 	c.args.Add("-o", outputAppRelFilepathNoExt)
 }
 
-func GenerateLinkerCmdline(flags LinkerFlags, arduinoSdkPath string, libpaths []string, libs []string, objectFiles []string, outputAppRelFilepathNoExt string) *foundation.Arguments {
-	args := foundation.NewArguments(len(libpaths) + len(libs) + len(objectFiles) + 20)
+func GenerateLinkerCmdline(flags LinkerFlags, arduinoSdkPath string, libpaths []string, libs []string, objectFiles []string, outputAppRelFilepathNoExt string) *corepkg.Arguments {
+	args := corepkg.NewArguments(len(libpaths) + len(libs) + len(objectFiles) + 20)
 
 	c := &LinkerCmdLine{args: args, flags: flags, arduinoSdkPath: arduinoSdkPath}
 

@@ -7,7 +7,8 @@ import (
 	"strings"
 
 	"github.com/jurgen-kluft/ccode/clay/toolchain"
-	"github.com/jurgen-kluft/ccode/foundation"
+
+	corepkg "github.com/jurgen-kluft/ccode/core"
 )
 
 //
@@ -113,7 +114,7 @@ func NewEsp32Tool(name string) *Esp32Tool {
 type Esp32Platform struct {
 	Name                    string                // The name of the platform
 	Version                 string                // The version of the platform
-	Vars                    *foundation.Vars      // A map of variables, e.g. 'runtime.os' or 'build.path'
+	Vars                    *corepkg.Vars         // A map of variables, e.g. 'runtime.os' or 'build.path'
 	CCompilerCmd            string                // C compiler command ('recipe.c.o.pattern')
 	CCompilerCmdLine        string                //
 	CCompilerArgs           []string              // The arguments for the C compiler
@@ -151,7 +152,7 @@ func NewPlatform() *Esp32Platform {
 	return &Esp32Platform{
 		Name:                    "",
 		Version:                 "",
-		Vars:                    foundation.NewVars(),
+		Vars:                    corepkg.NewVars(),
 		CCompilerCmd:            "",
 		CCompilerCmdLine:        "",
 		CCompilerArgs:           make([]string, 0),
@@ -210,10 +211,10 @@ func NewEsp32Toolchain() *Esp32Toolchain {
 }
 
 func (t *Esp32Toolchain) PrintInfo() {
-	foundation.LogPrintf("Toolchain: %s, version: %s\n", t.Name, t.Version)
-	foundation.LogPrintf("SDK Path: %s\n", t.SdkPath)
-	foundation.LogPrintf("Number of boards: %d\n", len(t.ListOfBoards))
-	foundation.LogPrintf("Platform: %s, version: %s\n", t.Platform.Name, t.Platform.Version)
+	corepkg.LogPrintf("Toolchain: %s, version: %s\n", t.Name, t.Version)
+	corepkg.LogPrintf("SDK Path: %s\n", t.SdkPath)
+	corepkg.LogPrintf("Number of boards: %d\n", len(t.ListOfBoards))
+	corepkg.LogPrintf("Platform: %s, version: %s\n", t.Platform.Name, t.Platform.Version)
 }
 
 func (t *Esp32Toolchain) GetBoardByName(name string) *toolchain.Esp32Board {
@@ -243,7 +244,7 @@ func ParseEsp32Toolchain(toolchain *Esp32Toolchain) error {
 	return nil
 }
 
-func ResolveString(variable string, vars *foundation.Vars) string {
+func ResolveString(variable string, vars *corepkg.Vars) string {
 	type pair struct {
 		from int
 		to   int
@@ -274,7 +275,7 @@ func ResolveString(variable string, vars *foundation.Vars) string {
 		// See if we have an invalid pair, if so just return
 		for _, p := range list {
 			if p.to == -1 {
-				foundation.LogWarningf("Invalid variable pair in string: %s\n", variable)
+				corepkg.LogWarningf("Invalid variable pair in string: %s\n", variable)
 				return variable // Return the original string if we have an invalid pair
 			}
 		}
@@ -335,7 +336,7 @@ func RemoveEmptyEntries(list []string) []string {
 	return list
 }
 
-func ResolveStringList(variableList []string, vars *foundation.Vars) []string {
+func ResolveStringList(variableList []string, vars *corepkg.Vars) []string {
 	for i, variable := range variableList {
 		variableList[i] = ResolveString(variable, vars)
 	}
@@ -387,14 +388,14 @@ func SplitCmdLineIntoArgs(cmdline string, removeEmptyEntries bool) []string {
 
 func (t *Esp32Toolchain) ResolveVariables(board string) error {
 
-	globalVars := foundation.NewVars()
+	globalVars := corepkg.NewVars()
 	globalVars.Set("runtime.os", runtime.GOOS)
 	globalVars.Set("runtime.platform.path", t.SdkPath)
 	globalVars.Set("runtime.ide.version", t.Platform.Version)
 	globalVars.Set("build.path", "build")
 
 	if boardIndex, boardExists := t.NameToIndex[board]; !boardExists {
-		return foundation.LogErrorf(os.ErrInvalid, "Invalid board name: %s", board)
+		return corepkg.LogErrorf(os.ErrInvalid, "Invalid board name: %s", board)
 	} else {
 		board := t.ListOfBoards[boardIndex]
 		for i, k := range board.Vars.Keys {
@@ -402,7 +403,7 @@ func (t *Esp32Toolchain) ResolveVariables(board string) error {
 		}
 	}
 
-	//varResolver := foundation.NewVarResolver()
+	//varResolver := corepkg.NewVarResolver()
 
 	// for i, _ := range t.Platform.Vars.Keys {
 	// 	v := t.Platform.Vars.Values[i]
