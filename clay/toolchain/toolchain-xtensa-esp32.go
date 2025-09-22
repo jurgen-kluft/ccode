@@ -467,7 +467,7 @@ func (b *ToolchainArduinoEsp32Burner) SetupBuild(buildPath string) {
 
 	// The XIAO_ESP32C3 board is configured as "qio" flash mode, 80MHz flash frequency and 4MB flash size.
 	// However, the flash that is on the board can only be successfully flashed when using "dio" flash mode.
-	if b.toolChain.Vars.GetFirstOrEmpty("build.mcu") == "esp32c3" && b.toolChain.Vars.GetFirstOrEmpty("build.variant") == "XIAO_ESP32C3" {
+	if b.toolChain.Vars.GetFirstOrEmpty("build.mcu") == "esp32c3" {
 		corepkg.LogWarnf("Overriding flash mode to 'dio' for XIAO_ESP32C3 board\n")
 		flashMode = "dio"
 	}
