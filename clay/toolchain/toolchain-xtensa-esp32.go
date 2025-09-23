@@ -216,17 +216,17 @@ func (cl *ToolchainArduinoEsp32Compiler) Compile(sourceAbsFilepaths []string, ob
 		args = append(args, "-o")
 		args = append(args, objRelFilepath)
 
-		corepkg.LogInfof("Compiling (%s) %s\n", cl.config.Config.AsString(), filepath.Base(sourceAbsFilepath))
+		corepkg.LogInfof("Compiling (%s) %s", cl.config.Config.AsString(), filepath.Base(sourceAbsFilepath))
 
 		cmd := exec.Command(compilerPath, args...)
 		out, err := cmd.CombinedOutput()
 
 		if err != nil {
-			corepkg.LogInfof("Compile failed, output:\n%s\n", string(out))
+			corepkg.LogInfof("Compile failed, output:\n%s", string(out))
 			return corepkg.LogErrorf(err, "Compiling failed")
 		}
 		if len(out) > 0 {
-			corepkg.LogInfof("Compile output:\n%s\n", string(out))
+			corepkg.LogInfof("Compile output:\n%s", string(out))
 		}
 	}
 
@@ -273,7 +273,7 @@ func (a *ToolchainArduinoEsp32Archiver) Archive(inputObjectFilepaths []string, o
 	// {input-object-filepaths}
 	a.archiverArgs.Add(inputObjectFilepaths...)
 
-	corepkg.LogInfof("Archiving %s\n", outputArchiveFilepath)
+	corepkg.LogInfof("Archiving %s", outputArchiveFilepath)
 
 	cmd := exec.Command(a.archiverPath, a.archiverArgs.Args...)
 	out, err := cmd.CombinedOutput()
@@ -282,7 +282,7 @@ func (a *ToolchainArduinoEsp32Archiver) Archive(inputObjectFilepaths []string, o
 		return corepkg.LogErrorf(err, "Archiving failed")
 	}
 	if len(out) > 0 {
-		corepkg.LogInfof("Archive output:\n%s\n", string(out))
+		corepkg.LogInfof("Archive output:\n%s", string(out))
 	}
 
 	return nil
@@ -371,7 +371,7 @@ func (l *ToolchainArduinoEsp32Linker) Link(inputArchiveAbsFilepaths []string, ou
 		linkerArgs.Args[0] = "-Wl,--Map=" + outputMapFilepath
 	}
 
-	corepkg.LogInfof("Linking '%s'...\n", outputAppRelFilepathNoExt)
+	corepkg.LogInfof("Linking '%s'...", outputAppRelFilepathNoExt)
 	cmd := exec.Command(linker, linkerArgs.Args...)
 	out, err := cmd.CombinedOutput()
 
@@ -382,11 +382,11 @@ func (l *ToolchainArduinoEsp32Linker) Link(inputArchiveAbsFilepaths []string, ou
 	}
 
 	if err != nil {
-		corepkg.LogInfof("Link failed, output:\n%s\n", string(out))
+		corepkg.LogInfof("Link failed, output:\n%s", string(out))
 		return corepkg.LogErrorf(err, "Linking failed")
 	}
 	if len(out) > 0 {
-		corepkg.LogInfof("Link output:\n%s\n", string(out))
+		corepkg.LogInfof("Link output:\n%s", string(out))
 	}
 
 	return nil
@@ -468,7 +468,7 @@ func (b *ToolchainArduinoEsp32Burner) SetupBuild(buildPath string) {
 	// The XIAO_ESP32C3 board is configured as "qio" flash mode, 80MHz flash frequency and 4MB flash size.
 	// However, the flash that is on the board can only be successfully flashed when using "dio" flash mode.
 	if b.toolChain.Vars.GetFirstOrEmpty("build.mcu") == "esp32c3" {
-		corepkg.LogWarnf("Overriding flash mode to 'dio' for XIAO_ESP32C3 board\n")
+		corepkg.LogWarnf("Overriding flash mode to 'dio' for XIAO_ESP32C3 board")
 		flashMode = "dio"
 	}
 
@@ -526,13 +526,13 @@ func (b *ToolchainArduinoEsp32Burner) Build() error {
 		args := b.genImagePartitionsToolArgs.Args
 
 		cmd := exec.Command(img, args...)
-		corepkg.LogInfof("Creating image partitions '%s' ...\n", b.toolChain.ProjectName+".partitions.bin")
+		corepkg.LogInfof("Creating image partitions '%s' ...", b.toolChain.ProjectName+".partitions.bin")
 		out, err := cmd.CombinedOutput()
 		if err != nil {
 			return corepkg.LogErrorf(err, "Creating image partitions failed")
 		}
 		if len(out) > 0 {
-			corepkg.LogInfof("Image partitions output:\n%s\n", string(out))
+			corepkg.LogInfof("Image partitions output:\n%s", string(out))
 		}
 		fmt.Println()
 
@@ -547,16 +547,16 @@ func (b *ToolchainArduinoEsp32Burner) Build() error {
 		args := b.genImageBinToolArgs.Args
 
 		cmd := exec.Command(imgPath, args...)
-		corepkg.LogInfof("Generating image '%s'\n", b.toolChain.ProjectName+".bin")
+		corepkg.LogInfof("Generating image '%s'", b.toolChain.ProjectName+".bin")
 		out, err := cmd.CombinedOutput()
 		if err != nil {
 			if len(out) > 0 {
-				corepkg.LogInfof("Image generation output:\n%s\n", string(out))
+				corepkg.LogInfof("Image generation output:\n%s", string(out))
 			}
 			return corepkg.LogErrorf(err, "Image generation failed")
 		}
 		if len(out) > 0 {
-			corepkg.LogInfof("Image generation output:\n%s\n", string(out))
+			corepkg.LogInfof("Image generation output:\n%s", string(out))
 		}
 		fmt.Println()
 
@@ -571,14 +571,14 @@ func (b *ToolchainArduinoEsp32Burner) Build() error {
 		args := b.genBootloaderToolArgs.Args
 
 		cmd := exec.Command(imgPath, args...)
-		corepkg.LogInfof("Generating bootloader '%s'\n", b.toolChain.ProjectName+".bootloader.bin")
+		corepkg.LogInfof("Generating bootloader '%s'", b.toolChain.ProjectName+".bootloader.bin")
 		out, err := cmd.CombinedOutput()
 		if err != nil {
-			corepkg.LogInfof("Bootloader generation failed, output:\n%s\n", string(out))
+			corepkg.LogInfof("Bootloader generation failed, output:\n%s", string(out))
 			return corepkg.LogErrorf(err, "Bootloader generation failed")
 		}
 		if len(out) > 0 {
-			corepkg.LogInfof("Bootloader generation output:\n%s\n", string(out))
+			corepkg.LogInfof("Bootloader generation output:\n%s", string(out))
 		}
 		fmt.Println()
 
@@ -639,19 +639,19 @@ func (b *ToolchainArduinoEsp32Burner) Burn() error {
 	flashToolPath := b.flashToolPath
 	flashToolArgs := b.flashToolArgs.Args
 
-	corepkg.LogInfof("Flashing '%s'...\n", b.toolChain.ProjectName+".bin")
+	corepkg.LogInfof("Flashing '%s'...", b.toolChain.ProjectName+".bin")
 
 	flashToolCmd := exec.Command(flashToolPath, flashToolArgs...)
 
 	// out, err := flashToolCmd.CombinedOutput()
 	// if err != nil {
 	// 	if len(out) > 0 {
-	// 		corepkg.LogInfof("Flashing output:\n%s\n", string(out))
+	// 		corepkg.LogInfof("Flashing output:\n%s", string(out))
 	// 	}
-	// 	return corepkg.LogErrorf(err, "Flashing failed with %s\n")
+	// 	return corepkg.LogErrorf(err, "Flashing failed with %s")
 	// }
 	// if len(out) > 0 {
-	// 	corepkg.LogInfof("Flashing output:\n%s\n", string(out))
+	// 	corepkg.LogInfof("Flashing output:\n%s", string(out))
 	// }
 
 	pipe, _ := flashToolCmd.StdoutPipe()
@@ -663,14 +663,13 @@ func (b *ToolchainArduinoEsp32Burner) Burn() error {
 	reader := bufio.NewReader(pipe)
 	line, err := reader.ReadString('\n')
 	for err == nil {
-		corepkg.LogPrint(line)
+		corepkg.LogInfo(line)
 		line, err = reader.ReadString('\n')
 		if err == io.EOF {
 			err = nil
 			break
 		}
 	}
-	corepkg.LogPrintln()
 
 	if err != nil {
 		return corepkg.LogErrorf(err, "Flashing failed")
@@ -710,6 +709,10 @@ func NewArduinoEsp32(espBoard *Esp32Board, projectName string, partitionFiles []
 	type item struct {
 		key   string
 		value []string
+	}
+
+	if espBoard == nil {
+		return nil, fmt.Errorf("ESP32 board configuration is nil")
 	}
 
 	hostOS := "macosx"

@@ -211,10 +211,10 @@ func NewEsp32Toolchain() *Esp32Toolchain {
 }
 
 func (t *Esp32Toolchain) PrintInfo() {
-	corepkg.LogPrintf("Toolchain: %s, version: %s\n", t.Name, t.Version)
-	corepkg.LogPrintf("SDK Path: %s\n", t.SdkPath)
-	corepkg.LogPrintf("Number of boards: %d\n", len(t.ListOfBoards))
-	corepkg.LogPrintf("Platform: %s, version: %s\n", t.Platform.Name, t.Platform.Version)
+	corepkg.LogInfof("Toolchain: %s, version: %s", t.Name, t.Version)
+	corepkg.LogInfof("SDK Path: %s", t.SdkPath)
+	corepkg.LogInfof("Number of boards: %d", len(t.ListOfBoards))
+	corepkg.LogInfof("Platform: %s, version: %s", t.Platform.Name, t.Platform.Version)
 }
 
 func (t *Esp32Toolchain) GetBoardByName(name string) *toolchain.Esp32Board {

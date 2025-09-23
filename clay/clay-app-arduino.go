@@ -80,46 +80,46 @@ func ClayAppMainArduino() {
 		err = GenerateBoards()
 	case "version":
 		version := corepkg.NewVersionInfo()
-		corepkg.LogPrintf("Version: %s\n", version.Version)
+		corepkg.LogInff("Version: %s", version.Version)
 	default:
 		UsageAppArduino()
 	}
 
 	if err != nil {
-		corepkg.LogFatalf("Error: %v\n", err)
+		corepkg.LogFatalf("Error: %v", err)
 	}
 }
 
 func UsageAppArduino() {
-	corepkg.LogPrintln("Usage: clay [command] [options]")
-	corepkg.LogPrintln("Commands:")
-	corepkg.LogPrintln("  build-info -p <name> -build <config> -arch <arch>")
-	corepkg.LogPrintln("  build -p <name> -build <config> -board <board>")
-	corepkg.LogPrintln("  clean -p <name> -build <config> -board <board>")
-	corepkg.LogPrintln("  flash -p <name> -build <config> -board <board>")
-	corepkg.LogPrintln("  list-libraries")
-	corepkg.LogPrintln("  list-boards -b <name of board> -m <matches>")
-	corepkg.LogPrintln("  list-flash-sizes -c <cpu> -b <name of board>")
-	corepkg.LogPrintln("Options:")
-	corepkg.LogPrintln("  name              Project name (if more than one) ")
-	corepkg.LogPrintln("  config            Config name (debug, release, final) ")
-	corepkg.LogPrintln("  board             Board name (e.g. esp32, c3, s3, xiao_esp32c3) ")
-	corepkg.LogPrintln("  matches           Maximum number of boards to list")
-	corepkg.LogPrintln("  cpu               CPU name for listing flash sizes")
-	corepkg.LogPrintln("  --help            Show this help message")
-	corepkg.LogPrintln("  --version         Show version information")
+	corepkg.LogInfo("Usage: clay [command] [options]")
+	corepkg.LogInfo("Commands:")
+	corepkg.LogInfo("  build-info -p <name> -build <config> -arch <arch>")
+	corepkg.LogInfo("  build -p <name> -build <config> -board <board>")
+	corepkg.LogInfo("  clean -p <name> -build <config> -board <board>")
+	corepkg.LogInfo("  flash -p <name> -build <config> -board <board>")
+	corepkg.LogInfo("  list-libraries")
+	corepkg.LogInfo("  list-boards -b <name of board> -m <matches>")
+	corepkg.LogInfo("  list-flash-sizes -c <cpu> -b <name of board>")
+	corepkg.LogInfo("Options:")
+	corepkg.LogInfo("  name              Project name (if more than one) ")
+	corepkg.LogInfo("  config            Config name (debug, release, final) ")
+	corepkg.LogInfo("  board             Board name (e.g. esp32, c3, s3, xiao_esp32c3) ")
+	corepkg.LogInfo("  matches           Maximum number of boards to list")
+	corepkg.LogInfo("  cpu               CPU name for listing flash sizes")
+	corepkg.LogInfo("  --help            Show this help message")
+	corepkg.LogInfo("  --version         Show version information")
 
-	corepkg.LogPrintln("Examples:")
-	corepkg.LogPrintln("  clay build-info (generates buildinfo.h and buildinfo.cpp)")
-	corepkg.LogPrintln("  clay build-info -build debug -arch esp32 -board esp32s3")
-	corepkg.LogPrintln("  clay build")
-	corepkg.LogPrintln("  clay build -build debug -arch esp32 -board esp32s3")
-	corepkg.LogPrintln("  clay clean -build debug -arch esp32 -board esp32s3")
-	corepkg.LogPrintln("  clay flash -build debug-dev -arch esp32 -board esp32s3")
-	corepkg.LogPrintln("  clay list-libraries")
-	corepkg.LogPrintln("  clay list-boards -b esp32 -m 5")
-	corepkg.LogPrintln("  clay board-info -b xiao -m 2")
-	corepkg.LogPrintln("  clay list-flash-sizes -c esp32 -b esp32")
+	corepkg.LogInfo("Examples:")
+	corepkg.LogInfo("  clay build-info (generates buildinfo.h and buildinfo.cpp)")
+	corepkg.LogInfo("  clay build-info -build debug -arch esp32 -board esp32s3")
+	corepkg.LogInfo("  clay build")
+	corepkg.LogInfo("  clay build -build debug -arch esp32 -board esp32s3")
+	corepkg.LogInfo("  clay clean -build debug -arch esp32 -board esp32s3")
+	corepkg.LogInfo("  clay flash -build debug-dev -arch esp32 -board esp32s3")
+	corepkg.LogInfo("  clay list-libraries")
+	corepkg.LogInfo("  clay list-boards -b esp32 -m 5")
+	corepkg.LogInfo("  clay board-info -b xiao -m 2")
+	corepkg.LogInfo("  clay list-flash-sizes -c esp32 -b esp32")
 }
 
 func BuildInfo(projectName string, buildConfig *Config) error {
@@ -140,7 +140,7 @@ func BuildInfo(projectName string, buildConfig *Config) error {
 			}
 		}
 	}
-	corepkg.LogPrintln("Ok, build info generated Ok")
+	corepkg.LogInfo("Ok, build info generated Ok")
 	return nil
 }
 
@@ -173,15 +173,15 @@ func Flash(projectName string, buildConfig *Config) error {
 	for _, prj := range prjs {
 		if prj.IsExecutable && prj.Config.Matches(buildConfig) && prj.Name == closest[0] {
 
-			corepkg.LogPrintf("Flashing project: %s, config: %s\n", prj.Name, prj.Config.ConfigString())
+			corepkg.LogInff("Flashing project: %s, config: %s", prj.Name, prj.Config.ConfigString())
 			startTime := time.Now()
 			{
 				if err := prj.Flash(buildConfig, buildPath); err != nil {
 					return corepkg.LogErrorf(err, "Build failed")
 				}
 			}
-			corepkg.LogPrintf("Flashing done ... (duration %s)\n", time.Since(startTime).Round(time.Second))
-			corepkg.LogPrintln()
+			corepkg.LogInff("Flashing done ... (duration %s)", time.Since(startTime).Round(time.Second))
+			corepkg.LogInfo()
 		}
 	}
 	return nil

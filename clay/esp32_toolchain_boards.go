@@ -105,10 +105,10 @@ func PrintAllFlashSizes(esp32Toolchain *Esp32Toolchain, cpuName string, boardNam
 		}
 
 		// Print the header
-		corepkg.LogPrintf("%-*s   %s\n", column1MaxLength, "----------", "-----------")
-		corepkg.LogPrintf("%-*s | %s\n", column1MaxLength, "Flash Size", "Description")
+		corepkg.LogInfof("%-*s   %s\n", column1MaxLength, "----------", "-----------")
+		corepkg.LogInfof("%-*s | %s\n", column1MaxLength, "Flash Size", "Description")
 		for i := 0; i < len(column1); i++ {
-			corepkg.LogPrintf("%-*s | %s\n", column1MaxLength, column1[i], column2[i])
+			corepkg.LogInfof("%-*s | %s\n", column1MaxLength, column1[i], column2[i])
 		}
 	}
 	return nil
@@ -130,11 +130,11 @@ func PrintAllBoardInfos(esp32Toolchain *Esp32Toolchain, boardName string, max in
 	if len(closest) > 0 {
 		for _, match := range closest {
 			if board := esp32Toolchain.GetBoardByName(match); board != nil {
-				corepkg.LogPrintf("----------------------- " + board.Name + " -----------------------\n")
-				corepkg.LogPrintf("Board: %s\n", board.Name)
-				corepkg.LogPrintf("Description: %s\n", board.Description)
-				corepkg.LogPrint(board.Vars.String())
-				corepkg.LogPrintf("\n")
+				corepkg.LogInfo("----------------------- " + board.Name + " -----------------------")
+				corepkg.LogInfof("Board: %s", board.Name)
+				corepkg.LogInfof("Description: %s", board.Description)
+				corepkg.LogInfo(board.Vars.String())
+				corepkg.LogInfo()
 			}
 		}
 	}
@@ -283,7 +283,7 @@ func PrintAllMatchingBoards(esp32Toolchain *Esp32Toolchain, fuzzy string, max in
 			}
 		}
 		for _, match := range closest {
-			corepkg.LogPrintf("%-*s %s\n", longestName, match, boardMap[match])
+			corepkg.LogInfof("%-*s %s\n", longestName, match, boardMap[match])
 		}
 	}
 
@@ -313,7 +313,7 @@ func PrintAllMatchingBoards(esp32Toolchain *Esp32Toolchain, fuzzy string, max in
 			}
 			for _, match := range closest {
 				boardName := boardMap[match]
-				corepkg.LogPrintf("%-*s %s\n", longestName, boardName, match)
+				corepkg.LogInfof("%-*s %s\n", longestName, boardName, match)
 			}
 
 		}

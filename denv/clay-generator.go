@@ -40,7 +40,7 @@ func (g *ClayGenerator) Generate() error {
 	appDir := g.TargetAbsPath
 	corepkg.DirMake(appDir)
 
-	corepkg.LogPrintlnf("Generating clay project files in '%s' for target %s", corepkg.PathGetRelativeTo(appDir, currentDir), g.BuildTarget)
+	corepkg.LogInfof("Generating clay project files in '%s' for target %s", corepkg.PathGetRelativeTo(appDir, currentDir), g.BuildTarget)
 
 	out := corepkg.NewLineWriter(corepkg.IndentModeSpaces)
 	g.generateMain(out)
@@ -68,10 +68,10 @@ func (g *ClayGenerator) Generate() error {
 		if out, err := cmd.CombinedOutput(); err != nil {
 			return fmt.Errorf("Error running go build: %v\nOutput: %s", err, out)
 		}
-		corepkg.LogPrintlnf("You can now use the clay command in the build directory")
-		corepkg.LogPrintlnf("    %s", corepkg.PathGetRelativeTo(g.TargetAbsPath, currentDir))
-		corepkg.LogPrintlnf("Execute 'cd %s' to change to the build directory", corepkg.PathGetRelativeTo(g.TargetAbsPath, currentDir))
-		corepkg.LogPrintlnf("In there, run './clay help' for more information.")
+		corepkg.LogInfo("You can now use the clay command in the build directory")
+		corepkg.LogInfo("    ", corepkg.PathGetRelativeTo(g.TargetAbsPath, currentDir))
+		corepkg.LogInfof("Execute 'cd %s' to change to the build directory", corepkg.PathGetRelativeTo(g.TargetAbsPath, currentDir))
+		corepkg.LogInfo("In there, run './clay help' for more information.")
 	}
 	return nil
 }

@@ -555,8 +555,8 @@ func WriteEmbedded() {
 				arrayName := fileNameWithoutExtension(filename)
 				inFilename := path
 				outFilename := filepath.Join(root_dir, subdir, arrayName+".cpp")
-				corepkg.LogPrintf("input: %s", inFilename)
-				corepkg.LogPrintf("output: %s", outFilename)
+				corepkg.LogInfof("input: %s", inFilename)
+				corepkg.LogInfof("output: %s", outFilename)
 
 				var inFile *os.File
 				inFile, err = os.Open(inFilename)

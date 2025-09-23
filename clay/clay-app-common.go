@@ -191,12 +191,12 @@ func ParseProjectNameAndConfig() (string, *Config) {
 		}
 	}
 
-	corepkg.LogInfof("Project: %s\n", clayConfig.ProjectName)
-	corepkg.LogInfof("Os: %s\n", clayConfig.TargetOs)
-	corepkg.LogInfof("Arch: %s\n", clayConfig.TargetArch)
-	corepkg.LogInfof("Build: %s\n", clayConfig.TargetBuild)
+	corepkg.LogInfof("Project: %s", clayConfig.ProjectName)
+	corepkg.LogInfof("Os: %s", clayConfig.TargetOs)
+	corepkg.LogInfof("Arch: %s", clayConfig.TargetArch)
+	corepkg.LogInfof("Build: %s", clayConfig.TargetBuild)
 	if len(clayConfig.TargetBoard) > 0 {
-		corepkg.LogInfof("Board: %s\n", clayConfig.TargetBoard)
+		corepkg.LogInfof("Board: %s", clayConfig.TargetBoard)
 	}
 
 	return clayConfig.ProjectName, NewConfig(clayConfig.TargetOs, clayConfig.TargetArch, clayConfig.TargetBuild)
@@ -242,7 +242,7 @@ func Build(projectName string, targetConfig *Config) (err error) {
 		}
 	}
 	if outOfDate == 0 && noMatchConfigs < len(prjs) {
-		corepkg.LogPrintln("Nothing to build, everything is up to date")
+		corepkg.LogInfo("Nothing to build, everything is up to date")
 	} else if noMatchConfigs >= len(prjs) {
 		corepkg.LogError(fmt.Errorf("!"), "No matching project configurations found")
 	}
@@ -258,7 +258,7 @@ func Clean(projectName string, buildConfig *Config) error {
 		if prj.Config.Matches(buildConfig) {
 
 			projectBuildPath := prj.GetBuildPath(buildPath)
-			corepkg.LogPrintln("Clean " + projectBuildPath)
+			corepkg.LogInfo("Clean " + projectBuildPath)
 
 			if err := os.RemoveAll(projectBuildPath + "/"); err != nil {
 				return corepkg.LogError(err, "Failed to remove build directory")
@@ -290,15 +290,15 @@ func ListLibraries() error {
 
 	for _, prj := range prjs {
 		if i, ok := nameToIndex[prj.Name]; ok {
-			corepkg.LogPrintf("Project: %s\n", prj.Name)
-			corepkg.LogPrintf("  Configs: %s\n", configs[i])
+			corepkg.LogInfo("Project: %s", prj.Name)
+			corepkg.LogInfo("  Configs: %s", configs[i])
 			if len(prj.Dependencies) > 0 {
-				corepkg.LogPrint("  Libraries:\n")
+				corepkg.LogInfo("  Libraries:")
 				for _, dep := range prj.Dependencies {
-					corepkg.LogPrintf("  - %s\n", dep.Name)
+					corepkg.LogInfo("  - %s", dep.Name)
 				}
 			}
-			corepkg.LogPrintln()
+			corepkg.LogInfo()
 
 			// Remove the entry from the map to avoid duplicates
 			delete(nameToIndex, prj.Name)

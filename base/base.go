@@ -57,19 +57,19 @@ func Init() bool {
 		}
 	}
 
-	corepkg.LogPrintln("ccode, a tool to generate C/C++ workspace and project files")
+	corepkg.LogInfo("ccode, a tool to generate C/C++ workspace and project files")
 
 	if denv.NewDevEnum(cdev) == denv.DevInvalid {
-		corepkg.LogPrintln()
-		corepkg.LogPrintln("Error, wrong parameter for '-dev', '", cdev, "' is not recognized")
-		corepkg.LogPrintln()
-		corepkg.LogPrintln("Examples:")
-		corepkg.LogPrintln("    -> Usage: go run cbase.go -dev=vs2022/vs2019/vs2015")
-		corepkg.LogPrintln("    -> Usage: go run cbase.go -dev=tundra")
-		corepkg.LogPrintln("    -> Usage: go run cbase.go -dev=make")
-		corepkg.LogPrintln("    -> Usage: go run cbase.go -dev=xcode")
-		corepkg.LogPrintln("    -> Usage: go run cbase.go -dev=clay")
-		corepkg.LogPrintln("    -> Usage: go run cbase.go -arch=esp32 / esp32s3")
+		corepkg.LogInfo()
+		corepkg.LogInfo("Error, wrong parameter for '-dev', '", cdev, "' is not recognized")
+		corepkg.LogInfo()
+		corepkg.LogInfo("Examples:")
+		corepkg.LogInfo("    -> Usage: go run cbase.go -dev=vs2022/vs2019/vs2015")
+		corepkg.LogInfo("    -> Usage: go run cbase.go -dev=tundra")
+		corepkg.LogInfo("    -> Usage: go run cbase.go -dev=make")
+		corepkg.LogInfo("    -> Usage: go run cbase.go -dev=xcode")
+		corepkg.LogInfo("    -> Usage: go run cbase.go -dev=clay")
+		corepkg.LogInfo("    -> Usage: go run cbase.go -arch=esp32 / esp32s3")
 		return false
 	}
 
