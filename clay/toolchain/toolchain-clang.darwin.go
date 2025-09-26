@@ -107,14 +107,14 @@ func (cl *ToolchainDarwinClangCompiler) Compile(sourceAbsFilepaths []string, obj
 		compilerArgs := cl.args.Args
 		cmd := exec.Command(compilerPath, compilerArgs...)
 
-		corepkg.LogInfof("Compiling (%s) %s\n", cl.config.Config.AsString(), filepath.Base(sourceAbsFilepath))
+		corepkg.LogInfof("Compiling (%s) %s", cl.config.Config.AsString(), filepath.Base(sourceAbsFilepath))
 		out, err := cmd.CombinedOutput()
 		if err != nil {
-			corepkg.LogInfof("Compile failed, output:\n%s\n", string(out))
+			corepkg.LogInfof("Compile failed, output:\n%s", string(out))
 			return corepkg.LogErrorf(err, "Compiling failed")
 		}
 		if len(out) > 0 {
-			corepkg.LogInfof("Compile output:\n%s\n", string(out))
+			corepkg.LogInfof("Compile output:\n%s", string(out))
 		}
 	}
 
@@ -206,7 +206,7 @@ func (t *ToolchainDarwinClangDynamicArchiver) Archive(inputObjectFilepaths []str
 		return corepkg.LogErrorf(err, "Archiving failed")
 	}
 	if len(out) > 0 {
-		corepkg.LogInfof("Archive output:\n%s\n", string(out))
+		corepkg.LogInfof("Archive output:\n%s", string(out))
 	}
 
 	return nil
@@ -280,11 +280,11 @@ func (l *ToolchainDarwinClangLinker) Link(inputArchiveAbsFilepaths []string, out
 	out, err := cmd.CombinedOutput()
 
 	if err != nil {
-		corepkg.LogInff("Link failed, output:\n%s\n", string(out))
+		corepkg.LogInff("Link failed, output:\n%s", string(out))
 		return corepkg.LogError(err, "Linking failed")
 	}
 	if len(out) > 0 {
-		corepkg.LogInfof("Link output:\n%s\n", string(out))
+		corepkg.LogInfof("Link output:\n%s", string(out))
 	}
 
 	return nil
