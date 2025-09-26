@@ -663,6 +663,7 @@ func (b *ToolchainArduinoEsp32Burner) Burn() error {
 	reader := bufio.NewReader(pipe)
 	line, err := reader.ReadString('\n')
 	for err == nil {
+		line = strings.TrimRight(line, "\n")
 		corepkg.LogInfo(line)
 		line, err = reader.ReadString('\n')
 		if err == io.EOF {
