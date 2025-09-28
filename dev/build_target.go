@@ -1,6 +1,9 @@
 package dev
 
-import "runtime"
+import (
+	"runtime"
+	"strings"
+)
 
 // BuildTarget defines:
 // - The target OS (Windows, Mac, Linux, iOS, Arduino)
@@ -31,6 +34,7 @@ const (
 	BuildTargetArchArm32   BuildTargetArch = (1 << 2)
 	BuildTargetArchArm64   BuildTargetArch = (1 << 3)
 	BuildTargetArchEsp32   BuildTargetArch = (1 << 4)
+	BuildTargetArchEsp8266 BuildTargetArch = (1 << 5)
 )
 
 func (arch BuildTargetArch) String() string {
@@ -56,6 +60,10 @@ func (arch BuildTargetArch) String() string {
 		full = full + sep + "esp32"
 		sep = "|"
 	}
+	if arch&BuildTargetArchEsp8266 != 0 {
+		full = full + sep + "esp8266"
+		sep = "|"
+	}
 	return full
 }
 
@@ -74,6 +82,7 @@ var BuildTargetLinuxArm32 = BuildTarget{Targets: [BuildTargetOsCount]BuildTarget
 var BuildTargetLinuxArm64 = BuildTarget{Targets: [BuildTargetOsCount]BuildTargetArch{BuildTargetArchNone, BuildTargetArchNone, BuildTargetArchArm64, BuildTargetArchNone, BuildTargetArchNone}}
 var BuildTargetAppleiOS = BuildTarget{Targets: [BuildTargetOsCount]BuildTargetArch{BuildTargetArchNone, BuildTargetArchNone, BuildTargetArchNone, BuildTargetArchArm64, BuildTargetArchNone}}
 var BuildTargetArduinoEsp32 = BuildTarget{Targets: [BuildTargetOsCount]BuildTargetArch{BuildTargetArchNone, BuildTargetArchNone, BuildTargetArchNone, BuildTargetArchNone, BuildTargetArchEsp32}}
+var BuildTargetArduinoEsp8266 = BuildTarget{Targets: [BuildTargetOsCount]BuildTargetArch{BuildTargetArchNone, BuildTargetArchNone, BuildTargetArchNone, BuildTargetArchNone, BuildTargetArchEsp8266}}
 
 var BuildTargetsAll = BuildTarget{Targets: [BuildTargetOsCount]BuildTargetArch{
 	BuildTargetArchX86 | BuildTargetArchX64,
@@ -96,7 +105,7 @@ var BuildTargetsArduino = BuildTarget{Targets: [BuildTargetOsCount]BuildTargetAr
 	BuildTargetArchNone,
 	BuildTargetArchNone,
 	BuildTargetArchNone,
-	BuildTargetArchEsp32,
+	BuildTargetArchEsp32 | BuildTargetArchEsp8266,
 }}
 
 var EmptyBuildTarget = BuildTarget{Targets: [BuildTargetOsCount]BuildTargetArch{
@@ -121,6 +130,7 @@ func SetBuildTarget(os string, arch string) BuildTarget {
 
 	if os == "arduino" {
 		CurrentBuildTarget.Targets[BuildTargetOsArduino] |= BuildTargetArchEsp32
+		CurrentBuildTarget.Targets[BuildTargetOsArduino] |= BuildTargetArchEsp8266
 	} else if os == "windows" {
 		if arch == "x86" {
 			CurrentBuildTarget.Targets[BuildTargetOsWindows] |= BuildTargetArchX86
@@ -259,6 +269,11 @@ func (pt BuildTarget) Esp32() bool {
 	return pt.Targets[BuildTargetOsArduino]&BuildTargetArchEsp32 == BuildTargetArchEsp32
 }
 
+// We know that only Arduino OS can have ESP8266 architecture
+func (pt BuildTarget) Esp8266() bool {
+	return pt.Targets[BuildTargetOsArduino]&BuildTargetArchEsp8266 == BuildTargetArchEsp8266
+}
+
 func (pt BuildTarget) OSAsString() string {
 	switch {
 	case pt.Windows():
@@ -288,27 +303,18 @@ func (pt BuildTarget) ArchAsString() string {
 		return "arm32"
 	case pt.Esp32():
 		return "esp32"
+	case pt.Esp8266():
+		return "esp8266"
 	default:
 		return "unknown"
 	}
 }
 
 func (pt BuildTarget) ArchAsUcString() string {
-	switch {
-	case pt.X64():
-		return "X64"
-	case pt.X86():
-		return "X86"
-	case pt.Arm64():
-		return "ARM64"
-	case pt.Arm32():
-		return "ARM32"
-	case pt.Esp32():
-		return "ESP32"
-	default:
-		return "UNKNOWN"
-	}
+	arch := pt.ArchAsString()
+	return strings.ToUpper(arch)
 }
+
 func (pt BuildTarget) String() string {
 	var full string
 	for i := 0; i < int(BuildTargetOsCount); i++ {
@@ -341,6 +347,9 @@ func BuildTargetFromString(os string, arch string) BuildTarget {
 	// Set the build target based on the provided os and arch
 	switch os {
 	case "arduino":
+		if arch == "esp8266" {
+			return BuildTargetArduinoEsp8266
+		}
 		return BuildTargetArduinoEsp32
 	case "windows":
 		if arch == "x86" {

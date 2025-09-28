@@ -43,7 +43,7 @@ func (c *Config) GetCppDefines() []string {
 	defines := []string{}
 
 	if c.Target.Arduino() {
-		defines = append(defines, "TARGET_ESP32")
+		defines = append(defines, "TARGET_ARDUINO")
 	} else if c.Target.Linux() {
 		defines = append(defines, "TARGET_LINUX")
 	} else if c.Target.Windows() {
@@ -62,6 +62,8 @@ func (c *Config) GetCppDefines() []string {
 		defines = append(defines, "TARGET_ARCH_X64")
 	} else if c.Target.Esp32() {
 		defines = append(defines, "TARGET_ARCH_ESP32")
+	} else if c.Target.Esp8266() {
+		defines = append(defines, "TARGET_ARCH_ESP8266")
 	}
 
 	if c.Config.IsDebug() {

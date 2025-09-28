@@ -3,6 +3,7 @@ package clay
 import (
 	"bufio"
 	"os"
+	"path/filepath"
 	"runtime"
 	"strings"
 
@@ -76,170 +77,461 @@ import (
 // A 'new' board is recognized by a line looking like this:
 //   xxxxxxx.name=ESP32 Wrover Module
 
-type Esp32ToolFunction struct {
-	Function string              // e.g. upload, program, erase, bootloader
-	Cmd      string              // .pattern
-	CmdLine  string              //
-	Args     []string            // .pattern_args
-	Vars     map[string][]string // A map of variables, e.g. 'upload.protocol=serial' or 'upload.params.verbose='
+type EspressifToolFunction struct {
+	Function string        // e.g. upload, program, erase, bootloader
+	Cmd      string        // .pattern
+	CmdLine  string        //
+	Args     []string      // .pattern_args
+	Vars     *corepkg.Vars // A map of variables, e.g. 'upload.protocol=serial' or 'upload.params.verbose='
 }
 
-func NewEsp32ToolFunction(function string) *Esp32ToolFunction {
+func decodeJsonEspressifToolFunction(decoder *corepkg.JsonDecoder) *EspressifToolFunction {
+	function := ""
+	cmd := ""
+	cmdline := ""
+	args := make([]string, 0, 10)
+	vars := corepkg.NewVars()
+	fields := map[string]corepkg.JsonDecode{
+		"function": func(decoder *corepkg.JsonDecoder) { function = decoder.DecodeString() },
+		"cmd":      func(decoder *corepkg.JsonDecoder) { cmd = decoder.DecodeString() },
+		"cmdline":  func(decoder *corepkg.JsonDecoder) { cmdline = decoder.DecodeString() },
+		"args":     func(decoder *corepkg.JsonDecoder) { args = decoder.DecodeStringArray() },
+		"vars":     func(decoder *corepkg.JsonDecoder) { vars.DecodeJson(decoder) },
+	}
+	decoder.Decode(fields)
+	return &EspressifToolFunction{
+		Function: function,
+		Cmd:      cmd,
+		CmdLine:  cmdline,
+		Args:     args,
+		Vars:     vars,
+	}
+}
 
-	return &Esp32ToolFunction{
+func encodeJsonEspressifToolFunction(encoder *corepkg.JsonEncoder, key string, object *EspressifToolFunction) {
+	encoder.BeginObject(key)
+	{
+		encoder.WriteField("function", object.Function)
+		encoder.WriteField("cmd", object.Cmd)
+		encoder.WriteField("cmdline", object.CmdLine)
+		if len(object.Args) > 0 {
+			encoder.BeginArray("args")
+			{
+				for _, arg := range object.Args {
+					encoder.WriteArrayElement(arg)
+				}
+			}
+			encoder.EndArray()
+		}
+
+		object.Vars.EncodeJson("vars", encoder)
+	}
+	encoder.EndObject()
+}
+func NewEsp32ToolFunction(function string) *EspressifToolFunction {
+	return &EspressifToolFunction{
 		Function: function,
 		Cmd:      "",
 		Args:     make([]string, 0),
-		Vars:     make(map[string][]string),
+		Vars:     corepkg.NewVars(),
 	}
 }
 
 // The following tools are taken:
 // - esptool_py
 // - esp_ota
-type Esp32Tool struct {
+type EspressifTool struct {
 	Name      string
-	Vars      map[string]string             // A map of variables, e.g. 'runtime.os' or 'build.path'
-	Functions map[string]*Esp32ToolFunction // The list of functions for the tool, e.g. upload, program, erase, bootloader
+	Vars      *corepkg.Vars                     // A map of variables, e.g. 'runtime.os' or 'build.path'
+	Functions map[string]*EspressifToolFunction // The list of functions for the tool, e.g. upload, program, erase, bootloader
 }
 
-func NewEsp32Tool(name string) *Esp32Tool {
-	return &Esp32Tool{
+func decodeJsonDecodeJsonEspressifTool(decoder *corepkg.JsonDecoder) *EspressifTool {
+	name := ""
+	vars := corepkg.NewVars()
+	funcs := make(map[string]*EspressifToolFunction)
+
+	fields := map[string]corepkg.JsonDecode{
+		"name": func(decoder *corepkg.JsonDecoder) { name = decoder.DecodeString() },
+		"vars": func(decoder *corepkg.JsonDecoder) { vars.DecodeJson(decoder) },
+		"functions": func(decoder *corepkg.JsonDecoder) {
+			for !decoder.ReadUntilArrayEnd() {
+				function := decodeJsonEspressifToolFunction(decoder)
+				funcs[function.Function] = function
+			}
+		},
+	}
+	decoder.Decode(fields)
+	return &EspressifTool{
 		Name:      name,
-		Vars:      make(map[string]string),
-		Functions: make(map[string]*Esp32ToolFunction),
+		Vars:      vars,
+		Functions: funcs,
 	}
 }
 
-type Esp32Platform struct {
-	Name                    string                // The name of the platform
-	Version                 string                // The version of the platform
-	Vars                    *corepkg.Vars         // A map of variables, e.g. 'runtime.os' or 'build.path'
-	CCompilerCmd            string                // C compiler command ('recipe.c.o.pattern')
-	CCompilerCmdLine        string                //
-	CCompilerArgs           []string              // The arguments for the C compiler
-	CppCompilerCmd          string                // C++ compiler command ('recipe.cpp.o.pattern')
-	CppCompilerCmdLine      string                // C++ compiler command ('recipe.cpp.o.pattern')
-	CppCompilerArgs         []string              // The arguments for the C++ compiler
-	AssemblerCmd            string                // S Assembler command ('recipe.S.o.pattern')
-	AssemblerCmdLine        string                // S Assembler command ('recipe.S.o.pattern')
-	AssemblerArgs           []string              // The arguments for the assembler
-	ArchiverCmd             string                // Archiver command ('recipe.ar.pattern')
-	ArchiverCmdLine         string                // Archiver command ('recipe.ar.pattern')
-	ArchiverArgs            []string              // The arguments for the archiver
-	LinkerCmd               string                // Linker command ('recipe.c.combine.pattern')
-	LinkerCmdLine           string                // Linker command ('recipe.c.combine.pattern')
-	LinkerArgs              []string              // The arguments for the linker
-	CreatePartitionsCmd     string                // CreatePartitions command ('recipe.objcopy.partitions.bin.pattern')
-	CreatePartitionsCmdLine string                // CreatePartitions command ('recipe.objcopy.partitions.bin.pattern')
-	CreatePartitionsArgs    []string              // The arguments for the create partitions command
-	CreateBinCmd            string                // CreateBin command ('recipe.objcopy.bin.pattern')
-	CreateBinCmdLine        string                // CreateBin command ('recipe.objcopy.bin.pattern')
-	CreateBinArgs           []string              // The arguments for the create bin command
-	CreatBootloaderCmd      string                // CreateBootloader command ('recipe.hooks.prebuild.4.pattern')
-	CreatBootloaderCmdLine  string                // CreateBootloader command ('recipe.hooks.prebuild.4.pattern')
-	CreatBootloaderArgs     []string              // The arguments for the create bootloader command
-	CreateMergedBinCmd      string                // CreateMergedBin command ('recipe.hooks.objcopy.postobjcopy.3.pattern')
-	CreateMergedBinCmdLine  string                // CreateMergedBin command ('recipe.hooks.objcopy.postobjcopy.3.pattern')
-	CreateMergedBinArgs     []string              // The arguments for the create merged bin command
-	ComputeSizeCmd          string                // ComputeSize command ('recipe.size.pattern')
-	ComputeSizeCmdLine      string                // ComputeSize command ('recipe.size.pattern')
-	ComputeSizeArgs         []string              // The arguments for the compute size command
-	Tools                   map[string]*Esp32Tool // The list of tools (only 'tools.esptool_py' and 'esp_ota' for now)
+func encodeJsonEspressifTool(encoder *corepkg.JsonEncoder, key string, object *EspressifTool) {
+	encoder.BeginObject(key)
+	{
+		encoder.WriteField("name", object.Name)
+		object.Vars.EncodeJson("vars", encoder)
+		if len(object.Functions) > 0 {
+			encoder.BeginArray("functions")
+			{
+				for _, arg := range object.Functions {
+					encodeJsonEspressifToolFunction(encoder, "", arg)
+				}
+			}
+			encoder.EndArray()
+		}
+	}
+	encoder.EndObject()
 }
 
-func NewPlatform() *Esp32Platform {
-	return &Esp32Platform{
-		Name:                    "",
-		Version:                 "",
-		Vars:                    corepkg.NewVars(),
-		CCompilerCmd:            "",
-		CCompilerCmdLine:        "",
-		CCompilerArgs:           make([]string, 0),
-		CppCompilerCmd:          "",
-		CppCompilerCmdLine:      "",
-		CppCompilerArgs:         make([]string, 0),
-		AssemblerCmd:            "",
-		AssemblerCmdLine:        "",
-		AssemblerArgs:           make([]string, 0),
-		ArchiverCmd:             "",
-		ArchiverCmdLine:         "",
-		ArchiverArgs:            make([]string, 0),
-		LinkerCmd:               "",
-		LinkerCmdLine:           "",
-		LinkerArgs:              make([]string, 0),
-		CreatePartitionsCmd:     "",
-		CreatePartitionsCmdLine: "",
-		CreatePartitionsArgs:    make([]string, 0),
-		CreateBinCmd:            "",
-		CreateBinCmdLine:        "",
-		CreateBinArgs:           make([]string, 0),
-		CreateMergedBinCmd:      "",
-		CreateMergedBinCmdLine:  "",
-		CreateMergedBinArgs:     make([]string, 0),
-		ComputeSizeCmd:          "",
-		ComputeSizeCmdLine:      "",
-		ComputeSizeArgs:         make([]string, 0),
-		Tools:                   make(map[string]*Esp32Tool),
+func NewEsp32Tool(name string) *EspressifTool {
+	return &EspressifTool{
+		Name:      name,
+		Vars:      corepkg.NewVars(),
+		Functions: make(map[string]*EspressifToolFunction),
 	}
 }
 
-type Esp32Toolchain struct {
-	Name         string                  `json:"name,omitempty"`    // The name of the toolchain
-	Version      string                  `json:"version,omitempty"` // The version of the toolchain
-	SdkPath      string                  `json:"sdkpath,omitempty"` // The path to the SDK
-	ListOfBoards []*toolchain.Esp32Board `json:"boards,omitempty"`  // The list of boards
-	NameToIndex  map[string]int          `json:"mapping,omitempty"` // A map of board names to their index in the boards slice
-	Platform     *Esp32Platform          // The platform
+type EspressifPlatformRecipe struct {
+	Name    string
+	Cmd     string   // e.g. C compiler command ('recipe.c.o.pattern')
+	Args    []string // e.g. C compiler arguments
+	Defines []string // e.g. C compiler defines
 }
 
-func NewEsp32Toolchain() *Esp32Toolchain {
-	espSdkPath := "/Users/obnosis5/sdk/arduino/esp32"
-	if env := os.Getenv("ESP_SDK"); env != "" {
-		espSdkPath = env
+func decodeJsonEspressifPlatformRecipe(decoder *corepkg.JsonDecoder) *EspressifPlatformRecipe {
+	recipe := newEspressifPlatformRecipe()
+	fields := map[string]corepkg.JsonDecode{
+		"name":    func(decoder *corepkg.JsonDecoder) { recipe.Name = decoder.DecodeString() },
+		"cmd":     func(decoder *corepkg.JsonDecoder) { recipe.Cmd = decoder.DecodeString() },
+		"args":    func(decoder *corepkg.JsonDecoder) { recipe.Args = decoder.DecodeStringArray() },
+		"defines": func(decoder *corepkg.JsonDecoder) { recipe.Defines = decoder.DecodeStringArray() },
+	}
+	decoder.Decode(fields)
+	return recipe
+}
+
+func encodeJsonEspressifPlatformRecipe(encoder *corepkg.JsonEncoder, key string, object *EspressifPlatformRecipe) {
+	encoder.BeginObject(key)
+	{
+		encoder.WriteField("name", object.Name)
+		encoder.WriteField("cmd", object.Cmd)
+		if len(object.Args) > 0 {
+			encoder.BeginArray("args")
+			{
+				for _, arg := range object.Args {
+					encoder.WriteArrayElement(arg)
+				}
+			}
+			encoder.EndArray()
+		}
+		if len(object.Defines) > 0 {
+			encoder.BeginArray("defines")
+			{
+				for _, define := range object.Defines {
+					encoder.WriteArrayElement(define)
+				}
+			}
+			encoder.EndArray()
+		}
+	}
+	encoder.EndObject()
+}
+
+func newEspressifPlatformRecipe() *EspressifPlatformRecipe {
+	return &EspressifPlatformRecipe{
+		Name:    "",
+		Cmd:     "",
+		Args:    make([]string, 0),
+		Defines: make([]string, 0),
+	}
+}
+
+func (b *EspressifPlatformRecipe) Resolve(globalVars *corepkg.Vars) {
+	b.Cmd = ResolveString(b.Cmd, globalVars)
+	for i, a := range b.Args {
+		b.Args[i] = ResolveString(a, globalVars)
+	}
+}
+
+func (b *EspressifPlatformRecipe) Process() {
+	args := b.Args
+	b.Args = make([]string, 0, len(b.Args))
+	b.Defines = make([]string, 0, 10)
+	for i := 0; i < len(args); i++ {
+		arg := args[i]
+		if strings.HasPrefix(arg, "-D") {
+			define := strings.TrimPrefix(arg, "-D")
+			if len(b.Defines) == 0 {
+				b.Args = append(b.Args, "{defines}")
+			}
+			b.Defines = append(b.Defines, define)
+		} else {
+			b.Args = append(b.Args, arg)
+		}
+	}
+}
+
+type EspressifPlatform struct {
+	Name    string                              // The name of the platform
+	Version string                              // The version of the platform
+	Vars    *corepkg.Vars                       // A map of variables, e.g. 'runtime.os' or 'build.path'
+	Recipes map[string]*EspressifPlatformRecipe // The recipes
+	Tools   map[string]*EspressifTool           // The list of tools (only 'tools.esptool_py' and 'esp_ota' for now)
+}
+
+func decodeJsonEspressifPlatform(decoder *corepkg.JsonDecoder) *EspressifPlatform {
+	platform := NewPlatform()
+
+	fields := map[string]corepkg.JsonDecode{
+		"name":    func(decoder *corepkg.JsonDecoder) { platform.Name = decoder.DecodeString() },
+		"version": func(decoder *corepkg.JsonDecoder) { platform.Version = decoder.DecodeString() },
+		"vars": func(decoder *corepkg.JsonDecoder) {
+			platform.Vars.DecodeJson(decoder)
+		},
+		"recipes": func(decoder *corepkg.JsonDecoder) {
+			for !decoder.ReadUntilArrayEnd() {
+				recipe := decodeJsonEspressifPlatformRecipe(decoder)
+				platform.Recipes[recipe.Name] = recipe
+			}
+		},
+		"tools": func(decoder *corepkg.JsonDecoder) {
+			for !decoder.ReadUntilArrayEnd() {
+				tool := decodeJsonDecodeJsonEspressifTool(decoder)
+				platform.Tools[tool.Name] = tool
+			}
+		},
+	}
+	decoder.Decode(fields)
+	return platform
+}
+
+func encodeJsonEspressifPlatform(encoder *corepkg.JsonEncoder, key string, object *EspressifPlatform) {
+	if object == nil {
+		return
 	}
 
-	toolchain := &Esp32Toolchain{
+	encoder.BeginObject(key)
+	{
+		encoder.WriteField("name", object.Name)
+		encoder.WriteField("version", object.Version)
+		object.Vars.EncodeJson("vars", encoder)
+
+		// We write the map as an array, since the objects contain the map key
+		if len(object.Recipes) > 0 {
+			encoder.BeginArray("recipes")
+			{
+				for _, v := range object.Recipes {
+					encodeJsonEspressifPlatformRecipe(encoder, "", v)
+				}
+			}
+			encoder.EndArray()
+		}
+
+		// We write the map as an array, since the objects contain the map key
+		if len(object.Tools) > 0 {
+			encoder.BeginArray("tools")
+			{
+				for _, v := range object.Tools {
+					encodeJsonEspressifTool(encoder, "", v)
+				}
+			}
+			encoder.EndArray()
+		}
+	}
+	encoder.EndObject()
+}
+
+func NewPlatform() *EspressifPlatform {
+	platform := &EspressifPlatform{
+		Name:    "",
+		Version: "",
+		Vars:    corepkg.NewVars(),
+		Recipes: make(map[string]*EspressifPlatformRecipe),
+		Tools:   make(map[string]*EspressifTool),
+	}
+
+	return platform
+}
+
+type EspressifToolchain struct {
+	Name         string                      `json:"name,omitempty"`    // The name of the toolchain
+	Version      string                      `json:"version,omitempty"` // The version of the toolchain
+	SdkPath      string                      `json:"sdkpath,omitempty"` // The path to the SDK
+	ListOfBoards []*toolchain.EspressifBoard `json:"boards,omitempty"`  // The list of boards
+	NameToIndex  map[string]int              `json:"mapping,omitempty"` // A map of board names to their index in the boards slice
+	Platform     *EspressifPlatform          // The platform
+}
+
+/*
+Name        string            // The name of the board
+Description string            // The description of the board
+SdkPath     string            // The path to the ESP32 or ESP8266 SDK
+FlashSizes  map[string]string // The list of flash sizes
+Vars        *corepkg.Vars
+*/
+func decodeJsonEspressifBoard(decoder *corepkg.JsonDecoder) *toolchain.EspressifBoard {
+	var name string
+	var descr string
+	var sdk string
+
+	flashSizes := make(map[string]string)
+	vars := corepkg.NewVars()
+
+	fields := map[string]corepkg.JsonDecode{
+		"name":  func(decoder *corepkg.JsonDecoder) { name = decoder.DecodeString() },
+		"descr": func(decoder *corepkg.JsonDecoder) { descr = decoder.DecodeString() },
+		"sdk":   func(decoder *corepkg.JsonDecoder) { sdk = decoder.DecodeString() },
+		"flashsizes": func(decoder *corepkg.JsonDecoder) {
+			for !decoder.ReadUntilObjectEnd() {
+				key := decoder.DecodeField()
+				value := decoder.DecodeString()
+				flashSizes[key] = value
+			}
+		},
+		"vars": func(decoder *corepkg.JsonDecoder) {
+			vars.DecodeJson(decoder)
+		},
+	}
+	decoder.Decode(fields)
+
+	board := toolchain.NewEspressifBoard(name, descr)
+	board.SdkPath = sdk
+	board.FlashSizes = flashSizes
+	board.Vars = vars
+	return board
+}
+
+func decodeJsonEspressifToolchain(toolchain *EspressifToolchain, decoder *corepkg.JsonDecoder) error {
+	fields := map[string]corepkg.JsonDecode{
+		"name":    func(decoder *corepkg.JsonDecoder) { toolchain.Name = decoder.DecodeString() },
+		"version": func(decoder *corepkg.JsonDecoder) { toolchain.Version = decoder.DecodeString() },
+		"sdk":     func(decoder *corepkg.JsonDecoder) { toolchain.SdkPath = decoder.DecodeString() },
+		"boards": func(decoder *corepkg.JsonDecoder) {
+			for !decoder.ReadUntilArrayEnd() {
+				board := decodeJsonEspressifBoard(decoder)
+				toolchain.ListOfBoards = append(toolchain.ListOfBoards, board)
+			}
+		},
+		"platform": func(decoder *corepkg.JsonDecoder) {
+			toolchain.Platform = decodeJsonEspressifPlatform(decoder)
+		},
+	}
+	return decoder.Decode(fields)
+}
+
+func encodeJsonEspressifBoard(encoder *corepkg.JsonEncoder, object *toolchain.EspressifBoard) {
+	if object == nil {
+		return
+	}
+	encoder.BeginObject("")
+	{
+		encoder.WriteField("name", object.Name)
+		encoder.WriteField("descr", object.Description)
+		encoder.WriteField("sdk", object.SdkPath)
+		encoder.BeginMap("flashsizes")
+		{
+			for k, v := range object.FlashSizes {
+				encoder.WriteMapElement(k, v)
+			}
+		}
+		encoder.EndMap()
+		object.Vars.EncodeJson("vars", encoder)
+	}
+	encoder.EndObject()
+}
+
+func encodeJsonEspressifToolchain(encoder *corepkg.JsonEncoder, key string, object *EspressifToolchain) {
+	if object == nil {
+		return
+	}
+
+	encoder.BeginObject(key)
+	{
+		encoder.WriteField("name", object.Name)
+		encoder.WriteField("version", object.Version)
+		encoder.WriteField("sdk", object.SdkPath)
+		{
+			if len(object.ListOfBoards) > 0 {
+				encoder.BeginArray("boards")
+				for _, item := range object.ListOfBoards {
+					encodeJsonEspressifBoard(encoder, item)
+				}
+				encoder.EndArray()
+			}
+		}
+
+		encodeJsonEspressifPlatform(encoder, "platform", object.Platform)
+	}
+	encoder.EndObject()
+}
+
+func NewEsp32Toolchain() *EspressifToolchain {
+	espSdkPath := toolchain.ArduinoEspSdkPath("esp32")
+	toolchain := &EspressifToolchain{
 		Name:         "Espressif ESP32 Arduino",
 		Version:      "3.2.0",
 		SdkPath:      espSdkPath,
-		ListOfBoards: make([]*toolchain.Esp32Board, 0, 350),
+		ListOfBoards: make([]*toolchain.EspressifBoard, 0, 350),
 		NameToIndex:  make(map[string]int),
 		Platform:     NewPlatform(),
 	}
 	return toolchain
 }
 
-func (t *Esp32Toolchain) PrintInfo() {
+func NewEsp8266Toolchain() *EspressifToolchain {
+	espSdkPath := toolchain.ArduinoEspSdkPath("esp8266")
+	toolchain := &EspressifToolchain{
+		Name:         "Espressif ESP8266 Arduino",
+		Version:      "3.2.0",
+		SdkPath:      espSdkPath,
+		ListOfBoards: make([]*toolchain.EspressifBoard, 0, 350),
+		NameToIndex:  make(map[string]int),
+		Platform:     NewPlatform(),
+	}
+	return toolchain
+}
+
+func (t *EspressifToolchain) PrintInfo() {
 	corepkg.LogInfof("Toolchain: %s, version: %s", t.Name, t.Version)
 	corepkg.LogInfof("SDK Path: %s", t.SdkPath)
 	corepkg.LogInfof("Number of boards: %d", len(t.ListOfBoards))
 	corepkg.LogInfof("Platform: %s, version: %s", t.Platform.Name, t.Platform.Version)
 }
 
-func (t *Esp32Toolchain) GetBoardByName(name string) *toolchain.Esp32Board {
+func (t *EspressifToolchain) GetBoardByName(name string) *toolchain.EspressifBoard {
 	if index, ok := t.NameToIndex[strings.ToLower(name)]; ok {
 		return t.ListOfBoards[index]
 	}
 	return nil
 }
 
-func ParseEsp32Toolchain(toolchain *Esp32Toolchain) error {
-
-	boardsFile := toolchain.SdkPath + "/boards.txt"
-	platformFile := toolchain.SdkPath + "/platform.txt"
+func ParseToolchainFiles(toolchain *EspressifToolchain) error {
+	boardsFilepath := filepath.Join(toolchain.SdkPath, "boards.txt")
+	platformFilepath := filepath.Join(toolchain.SdkPath, "platform.txt")
 
 	// Read the boards.txt file
-	err := toolchain.ParseEsp32Boards(boardsFile)
+	err := toolchain.ParseBoardsFile(boardsFilepath)
 	if err != nil {
 		return err
 	}
 
 	// Read the platform.txt file
-	err = toolchain.ParseEsp32Platform(platformFile)
+	err = toolchain.ParsePlatformFile(platformFilepath)
 	if err != nil {
 		return err
 	}
+
+	// Process all the recipes
+	for _, recipe := range toolchain.Platform.Recipes {
+		recipe.Process()
+	}
+
+	// Print basic info of the things just parsed
+	toolchain.PrintInfo()
 
 	return nil
 }
@@ -386,7 +678,7 @@ func SplitCmdLineIntoArgs(cmdline string, removeEmptyEntries bool) []string {
 	return args
 }
 
-func (t *Esp32Toolchain) ResolveVariables(board string) error {
+func (t *EspressifToolchain) ResolveVariables(board string) error {
 
 	globalVars := corepkg.NewVars()
 	globalVars.Set("runtime.os", runtime.GOOS)
@@ -429,45 +721,9 @@ func (t *Esp32Toolchain) ResolveVariables(board string) error {
 	// }
 
 	// For platform we can resolve some of the variables that are local to the platform
-	t.Platform.CCompilerCmd = ResolveString(t.Platform.CCompilerCmd, globalVars)
-	t.Platform.CCompilerCmdLine = ResolveString(t.Platform.CCompilerCmdLine, globalVars)
-	t.Platform.CCompilerArgs = SplitCmdLineIntoArgs(t.Platform.CCompilerCmdLine, true)
-
-	t.Platform.CppCompilerCmd = ResolveString(t.Platform.CppCompilerCmd, globalVars)
-	t.Platform.CppCompilerCmdLine = ResolveString(t.Platform.CppCompilerCmdLine, globalVars)
-	t.Platform.CppCompilerArgs = SplitCmdLineIntoArgs(t.Platform.CppCompilerCmdLine, true)
-
-	t.Platform.AssemblerCmd = ResolveString(t.Platform.AssemblerCmd, globalVars)
-	t.Platform.AssemblerCmdLine = ResolveString(t.Platform.AssemblerCmdLine, globalVars)
-	t.Platform.AssemblerArgs = SplitCmdLineIntoArgs(t.Platform.AssemblerCmdLine, true)
-
-	t.Platform.ArchiverCmd = ResolveString(t.Platform.ArchiverCmd, globalVars)
-	t.Platform.ArchiverCmdLine = ResolveString(t.Platform.ArchiverCmdLine, globalVars)
-	t.Platform.ArchiverArgs = SplitCmdLineIntoArgs(t.Platform.ArchiverCmdLine, true)
-
-	t.Platform.LinkerCmd = ResolveString(t.Platform.LinkerCmd, globalVars)
-	t.Platform.LinkerCmdLine = ResolveString(t.Platform.LinkerCmdLine, globalVars)
-	t.Platform.LinkerArgs = SplitCmdLineIntoArgs(t.Platform.LinkerCmdLine, true)
-
-	t.Platform.CreatePartitionsCmd = ResolveString(t.Platform.CreatePartitionsCmd, globalVars)
-	t.Platform.CreatePartitionsCmdLine = ResolveString(t.Platform.CreatePartitionsCmdLine, globalVars)
-	t.Platform.CreatePartitionsArgs = SplitCmdLineIntoArgs(t.Platform.CreatePartitionsCmdLine, true)
-
-	t.Platform.CreateBinCmd = ResolveString(t.Platform.CreateBinCmd, globalVars)
-	t.Platform.CreateBinCmdLine = ResolveString(t.Platform.CreateBinCmdLine, globalVars)
-	t.Platform.CreateBinArgs = SplitCmdLineIntoArgs(t.Platform.CreateBinCmdLine, true)
-
-	t.Platform.CreatBootloaderCmd = ResolveString(t.Platform.CreatBootloaderCmd, globalVars)
-	t.Platform.CreatBootloaderCmdLine = ResolveString(t.Platform.CreatBootloaderCmdLine, globalVars)
-	t.Platform.CreatBootloaderArgs = SplitCmdLineIntoArgs(t.Platform.CreatBootloaderCmdLine, true)
-
-	t.Platform.CreateMergedBinCmd = ResolveString(t.Platform.CreateMergedBinCmd, globalVars)
-	t.Platform.CreateMergedBinCmdLine = ResolveString(t.Platform.CreateMergedBinCmdLine, globalVars)
-	t.Platform.CreateMergedBinArgs = SplitCmdLineIntoArgs(t.Platform.CreateMergedBinCmdLine, true)
-
-	t.Platform.ComputeSizeCmd = ResolveString(t.Platform.ComputeSizeCmd, globalVars)
-	t.Platform.ComputeSizeCmdLine = ResolveString(t.Platform.ComputeSizeCmdLine, globalVars)
-	t.Platform.ComputeSizeArgs = SplitCmdLineIntoArgs(t.Platform.ComputeSizeCmdLine, true)
+	for _, recipe := range t.Platform.Recipes {
+		recipe.Resolve(globalVars)
+	}
 
 	// For tools we can resolve some of the variables that are local to the tool
 	for _, tool := range t.Platform.Tools {
@@ -481,14 +737,14 @@ func (t *Esp32Toolchain) ResolveVariables(board string) error {
 	return nil
 }
 
-func (t *Esp32Toolchain) ParseEsp32Boards(boardsFile string) error {
+func (t *EspressifToolchain) ParseBoardsFile(boardsFile string) error {
 	file, err := os.OpenFile(boardsFile, os.O_RDONLY, 0644)
 	if err != nil {
 		return err
 	}
 	defer file.Close()
 
-	var currentBoard *toolchain.Esp32Board
+	var currentBoard *toolchain.EspressifBoard
 
 	scanner := bufio.NewScanner(file)
 	for scanner.Scan() {
@@ -514,7 +770,8 @@ func (t *Esp32Toolchain) ParseEsp32Boards(boardsFile string) error {
 			if currentBoard != nil {
 				t.ListOfBoards = append(t.ListOfBoards, currentBoard)
 			}
-			currentBoard = toolchain.NewBoard(keyParts[0], value)
+			currentBoard = toolchain.NewEspressifBoard(keyParts[0], value)
+			currentBoard.SdkPath = t.SdkPath
 			continue
 		}
 
@@ -544,16 +801,16 @@ func (t *Esp32Toolchain) ParseEsp32Boards(boardsFile string) error {
 	return nil
 }
 
-func ParseCmdAndArgs(cmd string) (string, string) {
+func ParseCmdAndArgs(cmd string) (string, []string) {
 	// The arguments follow the first "cmd" part, also the arguments need to be split by ' '
-	args := strings.SplitN(cmd, " ", 2)
+	args := strings.SplitN(cmd, " ", -1)
 	cmd = strings.TrimFunc(args[0], func(r rune) bool {
 		return r == '"' || r == '\'' || r == ' '
 	})
 	if len(args) > 1 {
-		return cmd, args[1]
+		return cmd, args[1:]
 	}
-	return cmd, ""
+	return cmd, []string{}
 }
 
 func ParseArgs(args string) []string {
@@ -567,15 +824,16 @@ func ParseArgs(args string) []string {
 	return argsList
 }
 
-func (t *Esp32Toolchain) ParseEsp32Platform(platformFile string) error {
+func (t *EspressifToolchain) ParsePlatformFile(platformFile string) error {
 	file, err := os.OpenFile(platformFile, os.O_RDONLY, 0644)
 	if err != nil {
 		return err
 	}
 	defer file.Close()
 
-	t.Platform.CreatBootloaderCmd = `"{tools.esptool_py.path}\{tools.esptool_py.cmd}" {recipe.hooks.prebuild.4.pattern_args} "{build.path}\{build.project_name}.bootloader.bin" "{compiler.sdk.path}\bin\bootloader_{build.boot}_{build.boot_freq}.elf"`
-	t.Platform.CreatBootloaderCmd, t.Platform.CreatBootloaderCmdLine = ParseCmdAndArgs(t.Platform.CreatBootloaderCmd)
+	//createBootloader := t.Platform.Recipes["recipe.hooks.prebuild.4"]
+	//createBootloader.Cmd = `"{tools.esptool_py.path}\{tools.esptool_py.cmd}" {recipe.hooks.prebuild.4.pattern_args} "{build.path}\{build.project_name}.bootloader.bin" "{compiler.sdk.path}\bin\bootloader_{build.boot}_{build.boot_freq}.elf"`
+	//createBootloader.Cmd, createBootloader.CmdLine = ParseCmdAndArgs(createBootloader.Cmd)
 
 	scanner := bufio.NewScanner(file)
 	for scanner.Scan() {
@@ -594,6 +852,7 @@ func (t *Esp32Toolchain) ParseEsp32Platform(platformFile string) error {
 		keyAndValue := strings.SplitN(line, "=", 2)
 		key := keyAndValue[0]
 		value := keyAndValue[1]
+		key = strings.ToLower(key)
 		keyParts := strings.Split(key, ".")
 
 		if len(keyParts) == 1 && keyParts[0] == "name" {
@@ -607,64 +866,32 @@ func (t *Esp32Toolchain) ParseEsp32Platform(platformFile string) error {
 		}
 
 		if keyParts[len(keyParts)-1] == "windows" {
-			// Ignored for now
 			if runtime.GOOS != "windows" {
 				continue
 			}
-			// key = strings.TrimSuffix(key, ".windows")
-			// keyParts = keyParts[:len(keyParts)-1]
+			key = strings.TrimSuffix(key, ".windows")
+			keyParts = keyParts[:len(keyParts)-1]
 		}
 
 		ignoreAsPlatformVar := false
 
 		if len(keyParts) >= 3 && keyParts[0] == "recipe" {
 			ignoreAsPlatformVar = true
-			if strings.Compare(key, "recipe.c.o.pattern") == 0 {
-				t.Platform.CCompilerCmd = value
-				t.Platform.CCompilerCmd, t.Platform.CCompilerCmdLine = ParseCmdAndArgs(t.Platform.CCompilerCmd)
-				continue
+
+			var ok bool
+			var recipe *EspressifPlatformRecipe
+			if recipe, ok = t.Platform.Recipes[key]; ok {
+				recipe.Name = key
+				recipe.Cmd = value
+				recipe.Cmd, recipe.Args = ParseCmdAndArgs(recipe.Cmd)
+			} else {
+				recipe = newEspressifPlatformRecipe()
+				recipe.Name = key
+				recipe.Cmd = value
+				recipe.Cmd, recipe.Args = ParseCmdAndArgs(recipe.Cmd)
+				t.Platform.Recipes[recipe.Name] = recipe
 			}
-			if strings.Compare(key, "recipe.cpp.o.pattern") == 0 {
-				t.Platform.CppCompilerCmd = value
-				t.Platform.CppCompilerCmd, t.Platform.CppCompilerCmdLine = ParseCmdAndArgs(t.Platform.CppCompilerCmd)
-				continue
-			}
-			if strings.Compare(key, "recipe.S.o.pattern") == 0 {
-				t.Platform.AssemblerCmd = value
-				t.Platform.AssemblerCmd, t.Platform.AssemblerCmdLine = ParseCmdAndArgs(t.Platform.AssemblerCmd)
-				continue
-			}
-			if strings.Compare(key, "recipe.ar.pattern") == 0 {
-				t.Platform.ArchiverCmd = value
-				t.Platform.ArchiverCmd, t.Platform.ArchiverCmdLine = ParseCmdAndArgs(t.Platform.ArchiverCmd)
-				continue
-			}
-			if strings.Compare(key, "recipe.c.combine.pattern") == 0 {
-				t.Platform.LinkerCmd = value
-				t.Platform.LinkerCmd, t.Platform.LinkerCmdLine = ParseCmdAndArgs(t.Platform.LinkerCmd)
-				continue
-			}
-			if strings.Compare(key, "recipe.objcopy.partitions.bin.pattern") == 0 {
-				t.Platform.CreatePartitionsCmd = value
-				t.Platform.CreatePartitionsCmd, t.Platform.CreatePartitionsCmdLine = ParseCmdAndArgs(t.Platform.CreatePartitionsCmd)
-				continue
-			}
-			if strings.Compare(key, "recipe.objcopy.bin.pattern") == 0 {
-				t.Platform.CreateBinCmd = value
-				t.Platform.CreateBinCmd, t.Platform.CreateBinCmdLine = ParseCmdAndArgs(t.Platform.CreateBinCmd)
-				continue
-			}
-			if strings.Compare(key, "recipe.hooks.objcopy.postobjcopy.3.pattern") == 0 {
-				t.Platform.CreateMergedBinCmd = value
-				t.Platform.CreateMergedBinCmd, t.Platform.CreateMergedBinCmdLine = ParseCmdAndArgs(t.Platform.CreateMergedBinCmd)
-				continue
-			}
-			if strings.Compare(key, "recipe.size.pattern") == 0 {
-				t.Platform.ComputeSizeCmd = value
-				t.Platform.ComputeSizeCmd, t.Platform.ComputeSizeCmdLine = ParseCmdAndArgs(t.Platform.ComputeSizeCmd)
-				continue
-			}
-			ignoreAsPlatformVar = false
+
 		} else if keyParts[0] == "tools" && (keyParts[1] == "esptool_py" || keyParts[1] == "esp_ota" || keyParts[1] == "gen_esp32part" || keyParts[1] == "gen_insights_pkg") {
 
 			toolName := keyParts[1] // e.g. 'esptool_py' or 'esp_ota'
@@ -677,7 +904,7 @@ func (t *Esp32Toolchain) ParseEsp32Platform(platformFile string) error {
 			}
 
 			if keyParts[2] == "path" || keyParts[2] == "cmd" {
-				tool.Vars[keyParts[2]] = value
+				tool.Vars.Set(keyParts[2], value)
 			} else {
 				isFunction := keyParts[2] == "upload" || keyParts[2] == "program" || keyParts[2] == "erase" || keyParts[2] == "bootloader"
 				if isFunction {
@@ -691,26 +918,17 @@ func (t *Esp32Toolchain) ParseEsp32Platform(platformFile string) error {
 					}
 					// Now we can set the variable based on the toolVar
 					if keyParts[len(keyParts)-1] == "pattern" {
-						function.Cmd, function.CmdLine = ParseCmdAndArgs(value)
+						function.Cmd, function.Args = ParseCmdAndArgs(value)
 					} else if keyParts[len(keyParts)-1] == "pattern_args" {
 						function.Args = append(function.Args, ParseArgs(value)...)
-						function.Vars[strings.Join(keyParts[2:], ".")] = function.Args
+						//function.Vars[strings.Join(keyParts[2:], ".")] = function.Args
+						function.Vars.Set(strings.Join(keyParts[3:], "."), value)
 					} else {
-						function.Vars[strings.Join(keyParts[2:], ".")] = []string{value}
+						//function.Vars[strings.Join(keyParts[2:], ".")] = []string{value}
+						function.Vars.Set(strings.Join(keyParts[3:], "."), value)
 					}
 				} else {
 
-				}
-			}
-		} else {
-			if len(keyParts) >= 2 && keyParts[0] == "build" {
-				// Any 'build.xxx.yyy' variable is set on all boards
-				ignoreAsPlatformVar = true
-				buildVar := strings.Join(keyParts, ".")
-				for _, board := range t.ListOfBoards {
-					if !board.Vars.Has(buildVar) {
-						board.Vars.Set(buildVar, value)
-					}
 				}
 			}
 		}

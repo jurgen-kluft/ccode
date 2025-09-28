@@ -260,9 +260,22 @@ func SetupCppLibProjectForDesktop(pkg *Package, name string) *DevProject {
 	return project
 }
 
-func SetupCppLibProjectForArduino(pkg *Package, name string) *DevProject {
-	// Arduino Esp32
+// Arduino Esp32
+func SetupCppLibProjectForArduinoEsp32(pkg *Package, name string) *DevProject {
 	project := SetupDefaultCppLibProject(pkg, "library_"+name, "main", dev.BuildTargetArduinoEsp32)
+	project.Configs = append(project.Configs, NewDevConfig(dev.BuildTypeStaticLibrary, dev.NewDebugDevConfig()))
+	project.Configs = append(project.Configs, NewDevConfig(dev.BuildTypeStaticLibrary, dev.NewReleaseDevConfig()))
+	project.Supported = dev.BuildTargetsArduino
+	for _, cfg := range project.Configs {
+		configureProjectCompilerDefines(cfg)
+		cfg.IncludeDirs = append(cfg.IncludeDirs, dev.PinnedPath{Root: pkg.WorkspacePath(), Base: pkg.RepoName, Sub: "source/main/include"})
+	}
+	return project
+}
+
+// Arduino Esp8266
+func SetupCppLibProjectForArduinoEsp8266(pkg *Package, name string) *DevProject {
+	project := SetupDefaultCppLibProject(pkg, "library_"+name, "main", dev.BuildTargetArduinoEsp8266)
 	project.Configs = append(project.Configs, NewDevConfig(dev.BuildTypeStaticLibrary, dev.NewDebugDevConfig()))
 	project.Configs = append(project.Configs, NewDevConfig(dev.BuildTypeStaticLibrary, dev.NewReleaseDevConfig()))
 	project.Supported = dev.BuildTargetsArduino

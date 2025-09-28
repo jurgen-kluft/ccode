@@ -31,12 +31,12 @@ func Init() bool {
 	corepkg.SetLogger(corepkg.NewStandardLogger(corepkg.LevelError))
 
 	flag.StringVar(&cdev, "dev", "", "the build system to generate for (vs2022, tundra, make, cmake, xcode, clay)")
-	flag.StringVar(&carch, "arch", "", "the architecture to target (x64, arm64, amd64, 386, esp32, esp32c3, esp32s3)")
+	flag.StringVar(&carch, "arch", "", "the architecture to target (x64, arm64, amd64, 386, esp32, esp32c3, esp32s3, esp8266)")
 	flag.BoolVar(&cverbose, "verbose", false, "verbose output")
 	flag.Parse()
 
 	// If architecture is targetting esp32
-	if strings.HasPrefix(carch, "esp32") {
+	if strings.HasPrefix(carch, "esp32") || strings.HasPrefix(carch, "esp8266") {
 		cdev = "clay"
 		cos = "arduino"
 	}
@@ -69,7 +69,7 @@ func Init() bool {
 		corepkg.LogInfo("    -> Usage: go run cbase.go -dev=make")
 		corepkg.LogInfo("    -> Usage: go run cbase.go -dev=xcode")
 		corepkg.LogInfo("    -> Usage: go run cbase.go -dev=clay")
-		corepkg.LogInfo("    -> Usage: go run cbase.go -arch=esp32 / esp32s3")
+		corepkg.LogInfo("    -> Usage: go run cbase.go -arch=esp32 / esp32s3 / esp32c3 / esp8266")
 		return false
 	}
 

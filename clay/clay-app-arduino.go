@@ -5,31 +5,42 @@ import (
 	"os"
 	"time"
 
+	"github.com/jurgen-kluft/ccode/clay/toolchain"
 	corepkg "github.com/jurgen-kluft/ccode/core"
 )
 
 // Clay App Arduino
-//    <project>: name of a project (if you have more than one project)
-//    <config>: debug, release (default), final
-//    <arch>: esp32 (default), esp32s3
-//    <cpuName>: esp32 (default), esp32s3
 //
-//    Commands:
-//    - build -arch <arch> -p <project> -build <config>
-//    - build-info -arch <arch> -p <project> -build <config>
-//    - clean -arch <arch> -p <project> -build <config>
-//    - flash -arch <arch> -p <project> -build <config>
-//    - list-libraries
-//    - list-boards <arch>
-//    - list-flash-sizes -c <cpuName> -arch <arch>
+//	<project>: name of a project (if you have more than one project)
+//	<config>: debug, release (default), final
+//	<arch>: esp32 (default), esp32s3
+//	<cpuName>: esp32 (default), esp32s3
+//
+//	Commands:
+//	- build -arch <arch> -p <project> -build <config>
+//	- build-info -arch <arch> -p <project> -build <config>
+//	- clean -arch <arch> -p <project> -build <config>
+//	- flash -arch <arch> -p <project> -build <config>
+//	- list-libraries
+//	- list-boards <arch>
+//	- list-flash-sizes -c <cpuName> -arch <arch>
 
-func ParseBoardNameAndMax() (string, int) {
+func ParseArch() string {
+	var arch string
+	flag.StringVar(&arch, "arch", "esp32", "Board name (esp32, esp32s3)")
+	flag.Parse()
+	return arch
+}
+
+func ParseArchBoardNameAndMax() (string, string, int) {
+	var arch string
 	var boardName string
 	var matches int
-	flag.StringVar(&boardName, "b", "esp32", "Board name (esp32, esp32s3)")
-	flag.IntVar(&matches, "m", 10, "Maximum number of boards to list")
+	flag.StringVar(&arch, "arch", "esp32", "Board name (esp32, esp32s3)")
+	flag.StringVar(&boardName, "board", "esp32", "Board name (esp32, esp32s3)")
+	flag.IntVar(&matches, "max", 10, "Maximum number of boards to list")
 	flag.Parse()
-	return boardName, matches
+	return arch, boardName, matches
 }
 
 func ParsePortAndBaud() (string, int) {
@@ -41,13 +52,13 @@ func ParsePortAndBaud() (string, int) {
 	return port, baud
 }
 
-func ParseCpuAndBoardName() (string, string) {
-	var cpu string
+func ParseArchAndBoardName() (string, string) {
+	var arch string
 	var boardName string
-	flag.StringVar(&cpu, "c", "esp32", "CPU name (esp32, esp32s3)")
-	flag.StringVar(&boardName, "b", "esp32", "Board name (esp32, esp32s3)")
+	flag.StringVar(&arch, "arch", "esp32", "architecture (esp32 or esp8266)")
+	flag.StringVar(&boardName, "board", "esp32", "Board name (esp32, esp32s3, generic)")
 	flag.Parse()
-	return cpu, boardName
+	return arch, boardName
 }
 
 func ClayAppMainArduino() {
@@ -71,13 +82,13 @@ func ClayAppMainArduino() {
 	case "list-libraries":
 		err = ListLibraries()
 	case "list-boards":
-		err = ListBoards(ParseBoardNameAndMax())
+		err = ListBoards(ParseArchBoardNameAndMax())
 	case "list-flash-sizes":
-		err = ListFlashSizes(ParseCpuAndBoardName())
+		err = ListFlashSizes(ParseArchAndBoardName())
 	case "board-info":
-		err = PrintBoardInfo(ParseBoardNameAndMax())
+		err = PrintBoardInfo(ParseArchBoardNameAndMax())
 	case "generate-boards":
-		err = GenerateBoards()
+		err = GenerateBoards(ParseArch())
 	case "version":
 		version := corepkg.NewVersionInfo()
 		corepkg.LogInff("Version: %s", version.Version)
@@ -93,40 +104,37 @@ func ClayAppMainArduino() {
 func UsageAppArduino() {
 	corepkg.LogInfo("Usage: clay [command] [options]")
 	corepkg.LogInfo("Commands:")
-	corepkg.LogInfo("  build-info -p <name> -build <config> -arch <arch>")
-	corepkg.LogInfo("  build -p <name> -build <config> -board <board>")
-	corepkg.LogInfo("  clean -p <name> -build <config> -board <board>")
-	corepkg.LogInfo("  flash -p <name> -build <config> -board <board>")
+	corepkg.LogInfo("  build-info -p <name> --build <config> --arch <arch>")
+	corepkg.LogInfo("  build -p <name> --arch <arch> --build <config> --board <board>")
+	corepkg.LogInfo("  clean -p <name> --arch <arch> --build <config> --board <board>")
+	corepkg.LogInfo("  flash -p <name> --arch <arch> --build <config> --board <board>")
 	corepkg.LogInfo("  list-libraries")
-	corepkg.LogInfo("  list-boards -b <name of board> -m <matches>")
-	corepkg.LogInfo("  list-flash-sizes -c <cpu> -b <name of board>")
+	corepkg.LogInfo("  list-boards --arch <arch> --board <name of board> --max <matches>")
+	corepkg.LogInfo("  list-flash-sizes --arch <arch> --board <name of board>")
 	corepkg.LogInfo("Options:")
 	corepkg.LogInfo("  name              Project name (if more than one) ")
 	corepkg.LogInfo("  config            Config name (debug, release, final) ")
 	corepkg.LogInfo("  board             Board name (e.g. esp32, c3, s3, xiao_esp32c3) ")
 	corepkg.LogInfo("  matches           Maximum number of boards to list")
-	corepkg.LogInfo("  cpu               CPU name for listing flash sizes")
+	corepkg.LogInfo("  arch              Architecture for listing flash sizes (esp32 or esp8266)")
 	corepkg.LogInfo("  --help            Show this help message")
 	corepkg.LogInfo("  --version         Show version information")
 
 	corepkg.LogInfo("Examples:")
 	corepkg.LogInfo("  clay build-info (generates buildinfo.h and buildinfo.cpp)")
-	corepkg.LogInfo("  clay build-info -build debug -arch esp32 -board esp32s3")
+	corepkg.LogInfo("  clay build-info --build debug --arch esp32 --board esp32s3")
 	corepkg.LogInfo("  clay build")
-	corepkg.LogInfo("  clay build -build debug -arch esp32 -board esp32s3")
-	corepkg.LogInfo("  clay clean -build debug -arch esp32 -board esp32s3")
-	corepkg.LogInfo("  clay flash -build debug-dev -arch esp32 -board esp32s3")
+	corepkg.LogInfo("  clay build --build debug --arch esp32 --board esp32s3")
+	corepkg.LogInfo("  clay clean --build debug --arch esp32 --board esp32s3")
+	corepkg.LogInfo("  clay flash --build debug-dev --arch esp32 --board esp32s3")
 	corepkg.LogInfo("  clay list-libraries")
-	corepkg.LogInfo("  clay list-boards -b esp32 -m 5")
-	corepkg.LogInfo("  clay board-info -b xiao -m 2")
-	corepkg.LogInfo("  clay list-flash-sizes -c esp32 -b esp32")
+	corepkg.LogInfo("  clay list-boards --arch <arch> --board esp32 --max 5")
+	corepkg.LogInfo("  clay board-info --arch <arch> --board xiao --max 2")
+	corepkg.LogInfo("  clay list-flash-sizes --arch <arch> --board esp32")
 }
 
 func BuildInfo(projectName string, buildConfig *Config) error {
-	EspSdkPath := "/Users/obnosis5/sdk/arduino/esp32"
-	if env := os.Getenv("ESP_SDK"); env != "" {
-		EspSdkPath = env
-	}
+	espSdkPath := toolchain.ArduinoEspSdkPath(buildConfig.Target.ArchAsString())
 
 	prjs := ClayAppCreateProjectsFunc()
 	for _, prj := range prjs {
@@ -134,7 +142,7 @@ func BuildInfo(projectName string, buildConfig *Config) error {
 			if prj.Config.Matches(buildConfig) {
 				buildPath := prj.GetBuildPath(GetBuildPath(buildConfig.GetSubDir()))
 				appPath, _ := os.Getwd()
-				if err := GenerateBuildInfo(buildPath, appPath, EspSdkPath, BuildInfoFilenameWithoutExt); err != nil {
+				if err := GenerateBuildInfo(buildPath, appPath, espSdkPath, BuildInfoFilenameWithoutExt); err != nil {
 					return err
 				}
 			}
@@ -145,18 +153,26 @@ func BuildInfo(projectName string, buildConfig *Config) error {
 }
 
 func Flash(projectName string, buildConfig *Config) error {
-
-	esp32Toolchain := NewEsp32Toolchain()
-	err := LoadBoards(esp32Toolchain)
-	if err != nil {
-		return err
+	var board *toolchain.EspressifBoard
+	if buildConfig.Target.Esp32() {
+		esp32Toolchain := NewEsp32Toolchain()
+		if err := LoadToolchainJson(esp32Toolchain, "esp32.json"); err != nil {
+			return err
+		}
+		board = esp32Toolchain.GetBoardByName(clayConfig.TargetBoard)
+	} else if buildConfig.Target.Esp8266() {
+		esp8266Toolchain := NewEsp8266Toolchain()
+		if err := LoadToolchainJson(esp8266Toolchain, "esp8266.platform"); err != nil {
+			return err
+		}
+		board = esp8266Toolchain.GetBoardByName(clayConfig.TargetBoard)
 	}
 
-	board := esp32Toolchain.GetBoardByName(clayConfig.TargetBoard)
+	buildPath := GetBuildPath(buildConfig.GetSubDir())
 
 	prjs := ClayAppCreateProjectsFunc()
 	for _, prj := range prjs {
-		prj.SetToolchain(buildConfig, board)
+		prj.SetToolchain(buildConfig, buildPath, board)
 	}
 
 	projectNames := []string{}
@@ -169,7 +185,6 @@ func Flash(projectName string, buildConfig *Config) error {
 	cm := corepkg.NewClosestMatch(projectNames, []int{2})
 	closest := cm.ClosestN(projectName, 1)
 
-	buildPath := GetBuildPath(buildConfig.GetSubDir())
 	for _, prj := range prjs {
 		if prj.IsExecutable && prj.Config.Matches(buildConfig) && prj.Name == closest[0] {
 
@@ -192,40 +207,74 @@ func SerialMonitor(port string, baud int) error {
 	return nil
 }
 
-func ListBoards(boardName string, matches int) error {
+func ListBoards(arch string, boardName string, matches int) error {
 	if matches <= 0 {
 		matches = 10
 	}
-	esp32Toolchain := NewEsp32Toolchain()
-	if err := ParseEsp32Toolchain(esp32Toolchain); err != nil {
-		return err
+	if arch == "esp32" {
+		esp32Toolchain := NewEsp32Toolchain()
+		if err := ParseToolchainFiles(esp32Toolchain); err != nil {
+			return err
+		}
+		return PrintAllMatchingBoards(esp32Toolchain, boardName, matches)
+	} else if arch == "esp8266" {
+		esp8266Toolchain := NewEsp8266Toolchain()
+		if err := ParseToolchainFiles(esp8266Toolchain); err != nil {
+			return err
+		}
+		return PrintAllMatchingBoards(esp8266Toolchain, boardName, matches)
 	}
-	return PrintAllMatchingBoards(esp32Toolchain, boardName, matches)
+
+	return corepkg.LogErrorf(nil, "Unsupported architecture: %s", clayConfig.TargetArch)
 }
 
-func GenerateBoards() error {
-	esp32Toolchain := NewEsp32Toolchain()
-	if err := ParseEsp32Toolchain(esp32Toolchain); err != nil {
-		return err
+func GenerateBoards(arch string) error {
+	if arch == "esp32" {
+		esp32Toolchain := NewEsp32Toolchain()
+		if err := ParseToolchainFiles(esp32Toolchain); err != nil {
+			return err
+		}
+		if err := GenerateToolchainJson(esp32Toolchain, "esp32.json"); err != nil {
+			return err
+		}
+	} else if arch == "esp8266" {
+		esp8266Toolchain := NewEsp8266Toolchain()
+		if err := ParseToolchainFiles(esp8266Toolchain); err != nil {
+			return err
+		}
+		if err := GenerateToolchainJson(esp8266Toolchain, "esp8266.json"); err != nil {
+			return err
+		}
 	}
-	return GenerateAllBoards(esp32Toolchain)
+
+	return corepkg.LogErrorf(nil, "Unsupported architecture: %s", clayConfig.TargetArch)
 }
 
-func PrintBoardInfo(boardName string, matches int) error {
+func PrintBoardInfo(arch string, boardName string, matches int) error {
 	if matches <= 0 {
 		matches = 10
 	}
-	esp32Toolchain := NewEsp32Toolchain()
-	if err := ParseEsp32Toolchain(esp32Toolchain); err != nil {
-		return err
+	if arch == "esp32" {
+		esp32Toolchain := NewEsp32Toolchain()
+		if err := ParseToolchainFiles(esp32Toolchain); err != nil {
+			return err
+		}
+		return PrintAllBoardInfos(esp32Toolchain, boardName, matches)
+	} else if arch == "esp8266" {
+		esp8266Toolchain := NewEsp8266Toolchain()
+		if err := ParseToolchainFiles(esp8266Toolchain); err != nil {
+			return err
+		}
+		return PrintAllBoardInfos(esp8266Toolchain, boardName, matches)
 	}
-	return PrintAllBoardInfos(esp32Toolchain, boardName, matches)
+
+	return corepkg.LogErrorf(nil, "Unsupported architecture: %s", clayConfig.TargetArch)
 }
 
-func ListFlashSizes(cpuName string, boardName string) error {
+func ListFlashSizes(arch string, boardName string) error {
 	esp32Toolchain := NewEsp32Toolchain()
-	if err := ParseEsp32Toolchain(esp32Toolchain); err != nil {
+	if err := ParseToolchainFiles(esp32Toolchain); err != nil {
 		return err
 	}
-	return PrintAllFlashSizes(esp32Toolchain, cpuName, boardName)
+	return PrintAllFlashSizes(esp32Toolchain, arch, boardName)
 }

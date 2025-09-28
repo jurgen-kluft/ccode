@@ -75,7 +75,7 @@ func BuildDesktop(projectName string, buildConfig *Config) error {
 
 	prjs := ClayAppCreateProjectsFunc()
 	for _, prj := range prjs {
-		prj.SetToolchain(buildConfig, nil)
+		prj.SetToolchain(buildConfig, buildPath, nil)
 	}
 
 	var outOfDate int

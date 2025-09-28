@@ -79,12 +79,14 @@ func (p *Project) GetBuildPath(buildPath string) string {
 	return filepath.Join(buildPath, p.Name)
 }
 
-func (p *Project) SetToolchain(config *Config, board *toolchain.Esp32Board) (err error) {
-	targetOS := config.Target.OSAsString()
-	if targetOS == "arduino" {
-		p.Toolchain, err = toolchain.NewArduinoEsp32(board, p.Name, p.PartitionFiles)
+func (p *Project) SetToolchain(buildConfig *Config, buildPath string, board *toolchain.EspressifBoard) (err error) {
+	targetOS := buildConfig.Target.OSAsString()
+	if targetOS == "arduino" && buildConfig.Target.Esp32() {
+		p.Toolchain, err = toolchain.NewArduinoEsp32Toolchain(board, p.Name, p.PartitionFiles)
+	} else if targetOS == "arduino" && buildConfig.Target.Esp8266() {
+		p.Toolchain, err = toolchain.NewArduinoEsp8266Toolchain(board, p.Name, p.GetBuildPath(buildPath))
 	} else if targetOS == "windows" {
-		p.Toolchain, err = toolchain.NewWinMsdev(config.Target.ArchAsString(), "Desktop")
+		p.Toolchain, err = toolchain.NewWinMsdev(buildConfig.Target.ArchAsString(), "Desktop")
 	} else if targetOS == "mac" || targetOS == "macos" || targetOS == "darwin" {
 		p.Toolchain, err = toolchain.NewDarwinClang(runtime.GOARCH, p.Frameworks)
 	} else {
