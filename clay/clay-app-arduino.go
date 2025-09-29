@@ -153,19 +153,21 @@ func BuildInfo(projectName string, buildConfig *Config) error {
 }
 
 func Flash(projectName string, buildConfig *Config) error {
-	var board *toolchain.EspressifBoard
+	var board *EspressifBoard
 	if buildConfig.Target.Esp32() {
 		esp32Toolchain := NewEsp32Toolchain()
 		if err := LoadToolchainJson(esp32Toolchain, "esp32.json"); err != nil {
 			return err
 		}
 		board = esp32Toolchain.GetBoardByName(clayConfig.TargetBoard)
+		esp32Toolchain.ResolveVariables(board, GetBuildPath(buildConfig.GetSubDir()))
 	} else if buildConfig.Target.Esp8266() {
 		esp8266Toolchain := NewEsp8266Toolchain()
 		if err := LoadToolchainJson(esp8266Toolchain, "esp8266.platform"); err != nil {
 			return err
 		}
 		board = esp8266Toolchain.GetBoardByName(clayConfig.TargetBoard)
+		esp8266Toolchain.ResolveVariables(board, GetBuildPath(buildConfig.GetSubDir()))
 	}
 
 	buildPath := GetBuildPath(buildConfig.GetSubDir())

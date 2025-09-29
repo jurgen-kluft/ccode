@@ -4,15 +4,19 @@
 package main
 
 import (
+	"fmt"
 	"runtime"
 
 	"github.com/jurgen-kluft/ccode/clay"
+	"github.com/jurgen-kluft/ccode/dev"
 )
 
 func CreateProjects() []*clay.Project {
 	arch := runtime.GOARCH
 	projectName := "test_project"
-	projectConfig := clay.NewConfig("macos", arch, "debug-dev")
+	buildTargetStr := fmt.Sprintf("%s(%s)", "macos", arch)
+	projectTarget := dev.BuildTargetFromString(buildTargetStr)
+	projectConfig := clay.NewConfig(projectTarget, "debug-dev")
 	project := clay.NewExecutableProject(projectName, projectConfig)
 	clay.AddBuildInfoAsCppLibrary(project, projectConfig)
 	AddLibraries(project)

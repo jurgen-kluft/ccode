@@ -14,12 +14,13 @@ import (
 type BuildTargetOs uint8
 
 const (
-	BuildTargetOsWindows BuildTargetOs = 0
-	BuildTargetOsMac     BuildTargetOs = 1
-	BuildTargetOsLinux   BuildTargetOs = 2
-	BuildTargetOsiOS     BuildTargetOs = 3
-	BuildTargetOsArduino BuildTargetOs = 4
-	BuildTargetOsCount   BuildTargetOs = 5
+	BuildTargetOsEmpty   BuildTargetOs = 0
+	BuildTargetOsWindows BuildTargetOs = 1
+	BuildTargetOsMac     BuildTargetOs = 2
+	BuildTargetOsLinux   BuildTargetOs = 3
+	BuildTargetOsiOS     BuildTargetOs = 4
+	BuildTargetOsArduino BuildTargetOs = 5
+	BuildTargetOsCount   BuildTargetOs = 6
 )
 
 // BuildTargetArch indicates the target architecture
@@ -72,27 +73,106 @@ type BuildTarget struct {
 	Targets [BuildTargetOsCount]BuildTargetArch
 }
 
-var BuildTargetWindowsX86 = BuildTarget{Targets: [BuildTargetOsCount]BuildTargetArch{BuildTargetArchX86, BuildTargetArchNone, BuildTargetArchNone, BuildTargetArchNone, BuildTargetArchNone}}
-var BuildTargetWindowsX64 = BuildTarget{Targets: [BuildTargetOsCount]BuildTargetArch{BuildTargetArchX64, BuildTargetArchNone, BuildTargetArchNone, BuildTargetArchNone, BuildTargetArchNone}}
-var BuildTargetMacX64 = BuildTarget{Targets: [BuildTargetOsCount]BuildTargetArch{BuildTargetArchNone, BuildTargetArchX64, BuildTargetArchNone, BuildTargetArchNone, BuildTargetArchNone}}
-var BuildTargetMacArm64 = BuildTarget{Targets: [BuildTargetOsCount]BuildTargetArch{BuildTargetArchNone, BuildTargetArchArm64, BuildTargetArchNone, BuildTargetArchNone, BuildTargetArchNone}}
-var BuildTargetLinuxX86 = BuildTarget{Targets: [BuildTargetOsCount]BuildTargetArch{BuildTargetArchNone, BuildTargetArchNone, BuildTargetArchX86, BuildTargetArchNone, BuildTargetArchNone}}
-var BuildTargetLinuxX64 = BuildTarget{Targets: [BuildTargetOsCount]BuildTargetArch{BuildTargetArchNone, BuildTargetArchNone, BuildTargetArchX64, BuildTargetArchNone, BuildTargetArchNone}}
-var BuildTargetLinuxArm32 = BuildTarget{Targets: [BuildTargetOsCount]BuildTargetArch{BuildTargetArchNone, BuildTargetArchNone, BuildTargetArchArm32, BuildTargetArchNone, BuildTargetArchNone}}
-var BuildTargetLinuxArm64 = BuildTarget{Targets: [BuildTargetOsCount]BuildTargetArch{BuildTargetArchNone, BuildTargetArchNone, BuildTargetArchArm64, BuildTargetArchNone, BuildTargetArchNone}}
-var BuildTargetAppleiOS = BuildTarget{Targets: [BuildTargetOsCount]BuildTargetArch{BuildTargetArchNone, BuildTargetArchNone, BuildTargetArchNone, BuildTargetArchArm64, BuildTargetArchNone}}
-var BuildTargetArduinoEsp32 = BuildTarget{Targets: [BuildTargetOsCount]BuildTargetArch{BuildTargetArchNone, BuildTargetArchNone, BuildTargetArchNone, BuildTargetArchNone, BuildTargetArchEsp32}}
-var BuildTargetArduinoEsp8266 = BuildTarget{Targets: [BuildTargetOsCount]BuildTargetArch{BuildTargetArchNone, BuildTargetArchNone, BuildTargetArchNone, BuildTargetArchNone, BuildTargetArchEsp8266}}
+var BuildTargetWindowsX86 = BuildTarget{Targets: [BuildTargetOsCount]BuildTargetArch{
+	BuildTargetArchNone,
+	BuildTargetArchX86,
+	BuildTargetArchNone,
+	BuildTargetArchNone,
+	BuildTargetArchNone,
+	BuildTargetArchNone,
+}}
+var BuildTargetWindowsX64 = BuildTarget{Targets: [BuildTargetOsCount]BuildTargetArch{
+	BuildTargetArchNone,
+	BuildTargetArchX64,
+	BuildTargetArchNone,
+	BuildTargetArchNone,
+	BuildTargetArchNone,
+	BuildTargetArchNone,
+}}
+var BuildTargetMacX64 = BuildTarget{Targets: [BuildTargetOsCount]BuildTargetArch{
+	BuildTargetArchNone,
+	BuildTargetArchNone,
+	BuildTargetArchX64,
+	BuildTargetArchNone,
+	BuildTargetArchNone,
+	BuildTargetArchNone,
+}}
+var BuildTargetMacArm64 = BuildTarget{Targets: [BuildTargetOsCount]BuildTargetArch{
+	BuildTargetArchNone,
+	BuildTargetArchNone,
+	BuildTargetArchArm64,
+	BuildTargetArchNone,
+	BuildTargetArchNone,
+	BuildTargetArchNone,
+}}
+var BuildTargetLinuxX86 = BuildTarget{Targets: [BuildTargetOsCount]BuildTargetArch{
+	BuildTargetArchNone,
+	BuildTargetArchNone,
+	BuildTargetArchNone,
+	BuildTargetArchX86,
+	BuildTargetArchNone,
+	BuildTargetArchNone,
+}}
+var BuildTargetLinuxX64 = BuildTarget{Targets: [BuildTargetOsCount]BuildTargetArch{
+	BuildTargetArchNone,
+	BuildTargetArchNone,
+	BuildTargetArchNone,
+	BuildTargetArchX64,
+	BuildTargetArchNone,
+	BuildTargetArchNone,
+}}
+var BuildTargetLinuxArm32 = BuildTarget{Targets: [BuildTargetOsCount]BuildTargetArch{
+	BuildTargetArchNone,
+	BuildTargetArchNone,
+	BuildTargetArchNone,
+	BuildTargetArchArm32,
+	BuildTargetArchNone,
+	BuildTargetArchNone,
+}}
+var BuildTargetLinuxArm64 = BuildTarget{Targets: [BuildTargetOsCount]BuildTargetArch{
+	BuildTargetArchNone,
+	BuildTargetArchNone,
+	BuildTargetArchNone,
+	BuildTargetArchArm64,
+	BuildTargetArchNone,
+	BuildTargetArchNone,
+}}
+var BuildTargetAppleiOS = BuildTarget{Targets: [BuildTargetOsCount]BuildTargetArch{
+	BuildTargetArchNone,
+	BuildTargetArchNone,
+	BuildTargetArchNone,
+	BuildTargetArchNone,
+	BuildTargetArchArm64,
+	BuildTargetArchNone,
+}}
+var BuildTargetArduinoEsp32 = BuildTarget{Targets: [BuildTargetOsCount]BuildTargetArch{
+	BuildTargetArchNone,
+	BuildTargetArchNone,
+	BuildTargetArchNone,
+	BuildTargetArchNone,
+	BuildTargetArchNone,
+	BuildTargetArchEsp32,
+}}
+var BuildTargetArduinoEsp8266 = BuildTarget{Targets: [BuildTargetOsCount]BuildTargetArch{
+	BuildTargetArchNone,
+	BuildTargetArchNone,
+	BuildTargetArchNone,
+	BuildTargetArchNone,
+	BuildTargetArchNone,
+	BuildTargetArchEsp8266,
+}}
 
 var BuildTargetsAll = BuildTarget{Targets: [BuildTargetOsCount]BuildTargetArch{
+	BuildTargetArchNone,
 	BuildTargetArchX86 | BuildTargetArchX64,
 	BuildTargetArchX64 | BuildTargetArchArm64,
 	BuildTargetArchX86 | BuildTargetArchX64 | BuildTargetArchArm32 | BuildTargetArchArm64,
 	BuildTargetArchArm64,
-	BuildTargetArchEsp32,
+	BuildTargetArchEsp32 | BuildTargetArchEsp8266,
 }}
 
 var BuildTargetsDesktop = BuildTarget{Targets: [BuildTargetOsCount]BuildTargetArch{
+	BuildTargetArchNone,
 	BuildTargetArchX86 | BuildTargetArchX64,
 	BuildTargetArchX64 | BuildTargetArchArm64,
 	BuildTargetArchX86 | BuildTargetArchX64 | BuildTargetArchArm32 | BuildTargetArchArm64,
@@ -101,6 +181,7 @@ var BuildTargetsDesktop = BuildTarget{Targets: [BuildTargetOsCount]BuildTargetAr
 }}
 
 var BuildTargetsArduino = BuildTarget{Targets: [BuildTargetOsCount]BuildTargetArch{
+	BuildTargetArchNone,
 	BuildTargetArchNone,
 	BuildTargetArchNone,
 	BuildTargetArchNone,
@@ -114,9 +195,11 @@ var EmptyBuildTarget = BuildTarget{Targets: [BuildTargetOsCount]BuildTargetArch{
 	BuildTargetArchNone,
 	BuildTargetArchNone,
 	BuildTargetArchNone,
+	BuildTargetArchNone,
 }}
 
 var CurrentBuildTarget = BuildTarget{Targets: [BuildTargetOsCount]BuildTargetArch{
+	BuildTargetArchNone,
 	BuildTargetArchNone,
 	BuildTargetArchNone,
 	BuildTargetArchNone,
@@ -158,36 +241,51 @@ func GetBuildTarget() BuildTarget {
 	return CurrentBuildTarget
 }
 
-func GetBuildTargetTargettingHost() BuildTarget {
-	// Just looking at the host OS and arch
-	b := EmptyBuildTarget
-	if runtime.GOOS == "windows" {
-		switch runtime.GOARCH {
-		case "amd64", "x64":
-			b = BuildTargetWindowsX64
-		case "x86":
-			b = BuildTargetWindowsX86
-		}
-	} else if runtime.GOOS == "darwin" {
-		switch runtime.GOARCH {
-		case "amd64", "x64":
-			b = BuildTargetMacX64
-		case "arm64":
-			b = BuildTargetMacArm64
-		}
-	} else if runtime.GOOS == "linux" {
-		switch runtime.GOARCH {
-		case "amd64", "x64":
-			b = BuildTargetLinuxX64
-		case "arm64":
-			b = BuildTargetLinuxArm64
-		case "x86":
-			b = BuildTargetLinuxX86
-		case "arm":
-			b = BuildTargetLinuxArm32
-		}
+func GetBuildTargetArchFromString(arch string) (b BuildTargetArch) {
+	b = BuildTargetArchNone
+	switch arch {
+	case "amd64", "x64":
+		b = BuildTargetArchX64
+	case "x86":
+		b = BuildTargetArchX86
+	case "arm32":
+		b = BuildTargetArchArm32
+	case "arm64":
+		b = BuildTargetArchArm64
+	case "esp32":
+		b = BuildTargetArchEsp32
+	case "esp8266":
+		b = BuildTargetArchEsp8266
 	}
 	return b
+}
+
+func GetBuildTargetOsFromString(os string) BuildTargetOs {
+	switch os {
+	case "windows":
+		return BuildTargetOsWindows
+	case "darwin", "mac":
+		return BuildTargetOsMac
+	case "linux":
+		return BuildTargetOsLinux
+	case "ios":
+		return BuildTargetOsiOS
+	case "arduino":
+		return BuildTargetOsArduino
+	}
+	return BuildTargetOsEmpty
+}
+
+func GetBuildTargetFromOsArch(os string, arch string) BuildTarget {
+	bos := GetBuildTargetOsFromString(os)
+	barch := GetBuildTargetArchFromString(arch)
+	b := EmptyBuildTarget
+	b.Targets[bos] = barch
+	return b
+}
+
+func GetBuildTargetTargettingHost() BuildTarget {
+	return GetBuildTargetFromOsArch(runtime.GOOS, runtime.GOARCH)
 }
 
 func (pt BuildTarget) IsEqual(other BuildTarget) bool {
@@ -197,6 +295,15 @@ func (pt BuildTarget) IsEqual(other BuildTarget) bool {
 		}
 	}
 	return true
+}
+
+func (bt BuildTarget) HasOverlap(target BuildTarget) bool {
+	for i := 0; i < len(bt.Targets); i++ {
+		if (bt.Targets[i] & target.Targets[i]) != 0 {
+			return true
+		}
+	}
+	return false
 }
 
 func (bt BuildTarget) Contains(target BuildTarget) bool {
@@ -343,35 +450,27 @@ func (pt BuildTarget) String() string {
 	return full
 }
 
-func BuildTargetFromString(os string, arch string) BuildTarget {
-	// Set the build target based on the provided os and arch
-	switch os {
-	case "arduino":
-		if arch == "esp8266" {
-			return BuildTargetArduinoEsp8266
+func BuildTargetFromString(s string) BuildTarget {
+	b := EmptyBuildTarget
+	parts := strings.Split(s, ",")
+	for _, part := range parts {
+		part = strings.TrimSpace(part)
+		if part != "" {
+			openIdx := strings.Index(part, "(")
+			closeIdx := strings.Index(part, ")")
+			if openIdx > 0 && closeIdx > openIdx {
+				os := strings.TrimSpace(part[0:openIdx])
+				archStr := strings.TrimSpace(part[openIdx+1 : closeIdx])
+				var arch BuildTargetArch
+				archParts := strings.Split(archStr, "|")
+				for _, archPart := range archParts {
+					archPart = strings.TrimSpace(archPart)
+					arch |= GetBuildTargetArchFromString(archPart)
+				}
+				b.Targets[GetBuildTargetOsFromString(os)] = arch
+			}
 		}
-		return BuildTargetArduinoEsp32
-	case "windows":
-		if arch == "x86" {
-			return BuildTargetWindowsX86
-		}
-		return BuildTargetWindowsX64
-	case "darwin":
-		if arch == "x64" {
-			return BuildTargetMacX64
-		}
-		return BuildTargetMacArm64
-	case "linux":
-		if arch == "arm64" {
-			return BuildTargetLinuxArm64
-		} else if arch == "arm32" {
-			return BuildTargetLinuxArm32
-		} else if arch == "x86" {
-			return BuildTargetLinuxX86
-		}
-		return BuildTargetLinuxX64
-	default:
-		break
 	}
-	return EmptyBuildTarget
+
+	return b
 }

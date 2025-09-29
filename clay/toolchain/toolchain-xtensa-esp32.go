@@ -686,23 +686,6 @@ func (t *ArduinoEsp32Toolchain) NewDependencyTracker(dirpath string) deptrackr.F
 	return deptrackr.LoadDepFileTrackr(filepath.Join(dirpath, "deptrackr"))
 }
 
-type EspressifBoard struct {
-	Name        string            // The name of the board
-	Description string            // The description of the board
-	SdkPath     string            // The path to the ESP32 or ESP8266 SDK
-	FlashSizes  map[string]string // The list of flash sizes
-	Vars        *corepkg.Vars
-}
-
-func NewEspressifBoard(name string, description string) *EspressifBoard {
-	return &EspressifBoard{
-		Name:        name,
-		Description: description,
-		FlashSizes:  make(map[string]string),
-		Vars:        corepkg.NewVars(),
-	}
-}
-
 // --------------------------------------------------------------------------------------------------
 // --------------------------------------------------------------------------------------------------
 func ArduinoEspSdkPath(arch string) string {
@@ -726,14 +709,10 @@ func ArduinoEspSdkPath(arch string) string {
 // --------------------------------------------------------------------------------------------------
 // --------------------------------------------------------------------------------------------------
 // Toolchain for ESP32 on Arduino
-func NewArduinoEsp32Toolchain(espBoard *EspressifBoard, projectName string, partitionFiles []string) (*ArduinoEsp32Toolchain, error) {
+func NewArduinoEsp32Toolchain(espBoardVars *corepkg.Vars, projectName string, partitionFiles []string) *ArduinoEsp32Toolchain {
 	type item struct {
 		key   string
 		value []string
-	}
-
-	if espBoard == nil {
-		return nil, fmt.Errorf("ESP32 board configuration is nil")
 	}
 
 	hostOS := "macosx"
@@ -749,7 +728,7 @@ func NewArduinoEsp32Toolchain(espBoard *EspressifBoard, projectName string, part
 		{key: "upload.speed", value: []string{"921600"}},
 
 		{key: "project.name", value: []string{projectName}},
-		{key: "esp.sdk.path", value: []string{espBoard.SdkPath}},
+		{key: "esp.sdk.path", value: []string{`{runtime}`}},
 		{key: "esp.arduino.sdk.path", value: []string{`{esp.sdk.path}/tools/esp32-arduino-libs/{build.mcu}`}},
 
 		{key: "c.compiler.generate.mapfile", value: []string{"-MMD"}},
@@ -806,14 +785,14 @@ func NewArduinoEsp32Toolchain(espBoard *EspressifBoard, projectName string, part
 	}
 
 	// Add the board specific variables
-	for i, key := range espBoard.Vars.Keys {
-		values := espBoard.Vars.Values[i]
+	for i, key := range espBoardVars.Keys {
+		values := espBoardVars.Values[i]
 		vars = append(vars, item{key: key, value: values})
 	}
 
 	t := &ArduinoEsp32Toolchain{
 		ProjectName: projectName,
-		Vars:        corepkg.NewVarsCustom(corepkg.VarsFormatCurlyBraces),
+		Vars:        corepkg.NewVars(corepkg.VarsFormatCurlyBraces),
 	}
 
 	for _, kv := range vars {
@@ -892,5 +871,6 @@ func NewArduinoEsp32Toolchain(espBoard *EspressifBoard, projectName string, part
 	t.Vars.Append("linker.system.library.paths", "{esp.arduino.sdk.path}/{build.memory_type}")
 
 	t.Vars.Resolve()
-	return t, nil
+
+	return t
 }

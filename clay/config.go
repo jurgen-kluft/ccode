@@ -9,12 +9,11 @@ type Config struct {
 	Target dev.BuildTarget
 }
 
-func NewConfig(os, cpu string, config string) *Config {
+func NewConfig(supported dev.BuildTarget, config string) *Config {
 	buildConfig := dev.BuildConfigFromString(config)
-	buildTarget := dev.BuildTargetFromString(os, cpu)
 	return &Config{
 		Config: buildConfig,
-		Target: buildTarget,
+		Target: supported,
 	}
 }
 

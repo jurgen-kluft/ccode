@@ -2,6 +2,7 @@ package clay
 
 import (
 	"bufio"
+	"fmt"
 	"os"
 	"path/filepath"
 	"runtime"
@@ -90,7 +91,7 @@ func decodeJsonEspressifToolFunction(decoder *corepkg.JsonDecoder) *EspressifToo
 	cmd := ""
 	cmdline := ""
 	args := make([]string, 0, 10)
-	vars := corepkg.NewVars()
+	vars := corepkg.NewVars(corepkg.VarsFormatCurlyBraces)
 	fields := map[string]corepkg.JsonDecode{
 		"function": func(decoder *corepkg.JsonDecoder) { function = decoder.DecodeString() },
 		"cmd":      func(decoder *corepkg.JsonDecoder) { cmd = decoder.DecodeString() },
@@ -98,7 +99,10 @@ func decodeJsonEspressifToolFunction(decoder *corepkg.JsonDecoder) *EspressifToo
 		"args":     func(decoder *corepkg.JsonDecoder) { args = decoder.DecodeStringArray() },
 		"vars":     func(decoder *corepkg.JsonDecoder) { vars.DecodeJson(decoder) },
 	}
-	decoder.Decode(fields)
+	if err := decoder.Decode(fields); err != nil {
+		corepkg.LogErrorf(err, "error decoding Espressif tool function: %s", err.Error())
+	}
+
 	return &EspressifToolFunction{
 		Function: function,
 		Cmd:      cmd,
@@ -128,12 +132,12 @@ func encodeJsonEspressifToolFunction(encoder *corepkg.JsonEncoder, key string, o
 	}
 	encoder.EndObject()
 }
-func NewEsp32ToolFunction(function string) *EspressifToolFunction {
+func newEspressifToolFunction(function string) *EspressifToolFunction {
 	return &EspressifToolFunction{
 		Function: function,
 		Cmd:      "",
 		Args:     make([]string, 0),
-		Vars:     corepkg.NewVars(),
+		Vars:     corepkg.NewVars(corepkg.VarsFormatCurlyBraces),
 	}
 }
 
@@ -148,20 +152,23 @@ type EspressifTool struct {
 
 func decodeJsonDecodeJsonEspressifTool(decoder *corepkg.JsonDecoder) *EspressifTool {
 	name := ""
-	vars := corepkg.NewVars()
+	vars := corepkg.NewVars(corepkg.VarsFormatCurlyBraces)
 	funcs := make(map[string]*EspressifToolFunction)
 
 	fields := map[string]corepkg.JsonDecode{
 		"name": func(decoder *corepkg.JsonDecoder) { name = decoder.DecodeString() },
 		"vars": func(decoder *corepkg.JsonDecoder) { vars.DecodeJson(decoder) },
 		"functions": func(decoder *corepkg.JsonDecoder) {
-			for !decoder.ReadUntilArrayEnd() {
+			decoder.DecodeArray(func(decoder *corepkg.JsonDecoder) {
 				function := decodeJsonEspressifToolFunction(decoder)
 				funcs[function.Function] = function
-			}
+			})
 		},
 	}
-	decoder.Decode(fields)
+	if err := decoder.Decode(fields); err != nil {
+		corepkg.LogErrorf(err, "error decoding Espressif tool: %s", err.Error())
+	}
+
 	return &EspressifTool{
 		Name:      name,
 		Vars:      vars,
@@ -190,27 +197,25 @@ func encodeJsonEspressifTool(encoder *corepkg.JsonEncoder, key string, object *E
 func NewEsp32Tool(name string) *EspressifTool {
 	return &EspressifTool{
 		Name:      name,
-		Vars:      corepkg.NewVars(),
+		Vars:      corepkg.NewVars(corepkg.VarsFormatCurlyBraces),
 		Functions: make(map[string]*EspressifToolFunction),
 	}
 }
 
 type EspressifPlatformRecipe struct {
-	Name    string
-	Cmd     string   // e.g. C compiler command ('recipe.c.o.pattern')
-	Args    []string // e.g. C compiler arguments
-	Defines []string // e.g. C compiler defines
+	Name string
+	Cmd  string // e.g. C compiler command ('recipe.c.o.pattern')
 }
 
 func decodeJsonEspressifPlatformRecipe(decoder *corepkg.JsonDecoder) *EspressifPlatformRecipe {
 	recipe := newEspressifPlatformRecipe()
 	fields := map[string]corepkg.JsonDecode{
-		"name":    func(decoder *corepkg.JsonDecoder) { recipe.Name = decoder.DecodeString() },
-		"cmd":     func(decoder *corepkg.JsonDecoder) { recipe.Cmd = decoder.DecodeString() },
-		"args":    func(decoder *corepkg.JsonDecoder) { recipe.Args = decoder.DecodeStringArray() },
-		"defines": func(decoder *corepkg.JsonDecoder) { recipe.Defines = decoder.DecodeStringArray() },
+		"name": func(decoder *corepkg.JsonDecoder) { recipe.Name = decoder.DecodeString() },
+		"cmd":  func(decoder *corepkg.JsonDecoder) { recipe.Cmd = decoder.DecodeString() },
 	}
-	decoder.Decode(fields)
+	if err := decoder.Decode(fields); err != nil {
+		corepkg.LogErrorf(err, "error decoding Espressif platform recipe: %s", err.Error())
+	}
 	return recipe
 }
 
@@ -219,60 +224,19 @@ func encodeJsonEspressifPlatformRecipe(encoder *corepkg.JsonEncoder, key string,
 	{
 		encoder.WriteField("name", object.Name)
 		encoder.WriteField("cmd", object.Cmd)
-		if len(object.Args) > 0 {
-			encoder.BeginArray("args")
-			{
-				for _, arg := range object.Args {
-					encoder.WriteArrayElement(arg)
-				}
-			}
-			encoder.EndArray()
-		}
-		if len(object.Defines) > 0 {
-			encoder.BeginArray("defines")
-			{
-				for _, define := range object.Defines {
-					encoder.WriteArrayElement(define)
-				}
-			}
-			encoder.EndArray()
-		}
 	}
 	encoder.EndObject()
 }
 
 func newEspressifPlatformRecipe() *EspressifPlatformRecipe {
 	return &EspressifPlatformRecipe{
-		Name:    "",
-		Cmd:     "",
-		Args:    make([]string, 0),
-		Defines: make([]string, 0),
+		Name: "",
+		Cmd:  "",
 	}
 }
 
-func (b *EspressifPlatformRecipe) Resolve(globalVars *corepkg.Vars) {
-	b.Cmd = ResolveString(b.Cmd, globalVars)
-	for i, a := range b.Args {
-		b.Args[i] = ResolveString(a, globalVars)
-	}
-}
-
-func (b *EspressifPlatformRecipe) Process() {
-	args := b.Args
-	b.Args = make([]string, 0, len(b.Args))
-	b.Defines = make([]string, 0, 10)
-	for i := 0; i < len(args); i++ {
-		arg := args[i]
-		if strings.HasPrefix(arg, "-D") {
-			define := strings.TrimPrefix(arg, "-D")
-			if len(b.Defines) == 0 {
-				b.Args = append(b.Args, "{defines}")
-			}
-			b.Defines = append(b.Defines, define)
-		} else {
-			b.Args = append(b.Args, arg)
-		}
-	}
+func (b *EspressifPlatformRecipe) Resolve(boardVars *corepkg.Vars) {
+	b.Cmd = ResolveString(b.Cmd, boardVars)
 }
 
 type EspressifPlatform struct {
@@ -289,23 +253,23 @@ func decodeJsonEspressifPlatform(decoder *corepkg.JsonDecoder) *EspressifPlatfor
 	fields := map[string]corepkg.JsonDecode{
 		"name":    func(decoder *corepkg.JsonDecoder) { platform.Name = decoder.DecodeString() },
 		"version": func(decoder *corepkg.JsonDecoder) { platform.Version = decoder.DecodeString() },
-		"vars": func(decoder *corepkg.JsonDecoder) {
-			platform.Vars.DecodeJson(decoder)
-		},
+		"vars":    func(decoder *corepkg.JsonDecoder) { platform.Vars.DecodeJson(decoder) },
 		"recipes": func(decoder *corepkg.JsonDecoder) {
-			for !decoder.ReadUntilArrayEnd() {
+			decoder.DecodeArray(func(decoder *corepkg.JsonDecoder) {
 				recipe := decodeJsonEspressifPlatformRecipe(decoder)
 				platform.Recipes[recipe.Name] = recipe
-			}
+			})
 		},
 		"tools": func(decoder *corepkg.JsonDecoder) {
-			for !decoder.ReadUntilArrayEnd() {
+			decoder.DecodeArray(func(decoder *corepkg.JsonDecoder) {
 				tool := decodeJsonDecodeJsonEspressifTool(decoder)
 				platform.Tools[tool.Name] = tool
-			}
+			})
 		},
 	}
-	decoder.Decode(fields)
+	if err := decoder.Decode(fields); err != nil {
+		corepkg.LogErrorf(err, "error decoding Espressif platform: %s", err.Error())
+	}
 	return platform
 }
 
@@ -349,7 +313,7 @@ func NewPlatform() *EspressifPlatform {
 	platform := &EspressifPlatform{
 		Name:    "",
 		Version: "",
-		Vars:    corepkg.NewVars(),
+		Vars:    corepkg.NewVars(corepkg.VarsFormatCurlyBraces),
 		Recipes: make(map[string]*EspressifPlatformRecipe),
 		Tools:   make(map[string]*EspressifTool),
 	}
@@ -357,73 +321,249 @@ func NewPlatform() *EspressifPlatform {
 	return platform
 }
 
-type EspressifToolchain struct {
-	Name         string                      `json:"name,omitempty"`    // The name of the toolchain
-	Version      string                      `json:"version,omitempty"` // The version of the toolchain
-	SdkPath      string                      `json:"sdkpath,omitempty"` // The path to the SDK
-	ListOfBoards []*toolchain.EspressifBoard `json:"boards,omitempty"`  // The list of boards
-	NameToIndex  map[string]int              `json:"mapping,omitempty"` // A map of board names to their index in the boards slice
-	Platform     *EspressifPlatform          // The platform
+type EspressifBoardMenuSubEntry struct {
+	Name   string
+	Title  string
+	Keys   []string
+	Values []string
 }
 
-/*
-Name        string            // The name of the board
-Description string            // The description of the board
-SdkPath     string            // The path to the ESP32 or ESP8266 SDK
-FlashSizes  map[string]string // The list of flash sizes
-Vars        *corepkg.Vars
-*/
-func decodeJsonEspressifBoard(decoder *corepkg.JsonDecoder) *toolchain.EspressifBoard {
-	var name string
-	var descr string
-	var sdk string
+func newEspressifBoardMenuSubEntry(name string) *EspressifBoardMenuSubEntry {
+	return &EspressifBoardMenuSubEntry{
+		Name:   name,
+		Title:  "",
+		Keys:   make([]string, 0, 10),
+		Values: make([]string, 0, 10),
+	}
+}
 
-	flashSizes := make(map[string]string)
-	vars := corepkg.NewVars()
+func encodeJsonEspressifBoardMenuSubEntry(encoder *corepkg.JsonEncoder, key string, object *EspressifBoardMenuSubEntry) {
+	if object == nil {
+		return
+	}
 
+	encoder.BeginObject(key)
+	{
+		encoder.WriteField("name", object.Name)
+		encoder.WriteField("title", object.Title)
+		if len(object.Keys) > 0 {
+			encoder.BeginArray("keys")
+			{
+				for _, key := range object.Keys {
+					encoder.WriteArrayElement(key)
+				}
+			}
+			encoder.EndArray()
+		}
+		if len(object.Values) > 0 {
+			encoder.BeginArray("values")
+			{
+				for _, value := range object.Values {
+					encoder.WriteArrayElement(value)
+				}
+			}
+			encoder.EndArray()
+		}
+	}
+	encoder.EndObject()
+}
+
+func decodeJsonEspressifBoardMenuSubEntry(decoder *corepkg.JsonDecoder) *EspressifBoardMenuSubEntry {
+	name := ""
+	title := ""
+	keys := make([]string, 0, 10)
+	values := make([]string, 0, 10)
 	fields := map[string]corepkg.JsonDecode{
 		"name":  func(decoder *corepkg.JsonDecoder) { name = decoder.DecodeString() },
-		"descr": func(decoder *corepkg.JsonDecoder) { descr = decoder.DecodeString() },
-		"sdk":   func(decoder *corepkg.JsonDecoder) { sdk = decoder.DecodeString() },
-		"flashsizes": func(decoder *corepkg.JsonDecoder) {
-			for !decoder.ReadUntilObjectEnd() {
-				key := decoder.DecodeField()
-				value := decoder.DecodeString()
-				flashSizes[key] = value
-			}
-		},
-		"vars": func(decoder *corepkg.JsonDecoder) {
-			vars.DecodeJson(decoder)
+		"title": func(decoder *corepkg.JsonDecoder) { title = decoder.DecodeString() },
+		"keys":  func(decoder *corepkg.JsonDecoder) { keys = decoder.DecodeStringArray() },
+		"values": func(decoder *corepkg.JsonDecoder) {
+			values = decoder.DecodeStringArray()
 		},
 	}
-	decoder.Decode(fields)
-
-	board := toolchain.NewEspressifBoard(name, descr)
-	board.SdkPath = sdk
-	board.FlashSizes = flashSizes
-	board.Vars = vars
-	return board
+	if err := decoder.Decode(fields); err != nil {
+		corepkg.LogErrorf(err, "error decoding Espressif board menu sub entry: %s", err.Error())
+	}
+	return &EspressifBoardMenuSubEntry{
+		Name:   name,
+		Title:  title,
+		Keys:   keys,
+		Values: values,
+	}
 }
 
-func decodeJsonEspressifToolchain(toolchain *EspressifToolchain, decoder *corepkg.JsonDecoder) error {
+type EspressifBoardMenuEntry struct {
+	Name       string // ssl, mmu, FlashFreq, ...
+	Current    *EspressifBoardMenuSubEntry
+	SubEntries []*EspressifBoardMenuSubEntry
+}
+
+func newEspressifBoardMenuEntry(name string) *EspressifBoardMenuEntry {
+	return &EspressifBoardMenuEntry{
+		Name:       name,
+		SubEntries: make([]*EspressifBoardMenuSubEntry, 0),
+	}
+}
+
+func encodeJsonEspressifBoardMenuEntry(encoder *corepkg.JsonEncoder, key string, object *EspressifBoardMenuEntry) {
+	if object == nil {
+		return
+	}
+	encoder.BeginObject(key)
+	{
+		encoder.WriteField("name", object.Name)
+		if len(object.SubEntries) > 0 {
+			encoder.BeginArray("entries")
+			{
+				for _, entry := range object.SubEntries {
+					encodeJsonEspressifBoardMenuSubEntry(encoder, "", entry)
+				}
+			}
+			encoder.EndArray()
+		}
+	}
+	encoder.EndObject()
+}
+
+func decodeJsonEspressifBoardMenuEntry(decoder *corepkg.JsonDecoder) *EspressifBoardMenuEntry {
+	var name string
+	var entries []*EspressifBoardMenuSubEntry
 	fields := map[string]corepkg.JsonDecode{
-		"name":    func(decoder *corepkg.JsonDecoder) { toolchain.Name = decoder.DecodeString() },
-		"version": func(decoder *corepkg.JsonDecoder) { toolchain.Version = decoder.DecodeString() },
-		"sdk":     func(decoder *corepkg.JsonDecoder) { toolchain.SdkPath = decoder.DecodeString() },
-		"boards": func(decoder *corepkg.JsonDecoder) {
-			for !decoder.ReadUntilArrayEnd() {
-				board := decodeJsonEspressifBoard(decoder)
-				toolchain.ListOfBoards = append(toolchain.ListOfBoards, board)
-			}
-		},
-		"platform": func(decoder *corepkg.JsonDecoder) {
-			toolchain.Platform = decodeJsonEspressifPlatform(decoder)
+		"name": func(decoder *corepkg.JsonDecoder) { name = decoder.DecodeString() },
+		"entries": func(decoder *corepkg.JsonDecoder) {
+			decoder.DecodeArray(func(decoder *corepkg.JsonDecoder) {
+				entry := decodeJsonEspressifBoardMenuSubEntry(decoder)
+				entries = append(entries, entry)
+			})
 		},
 	}
-	return decoder.Decode(fields)
+	if err := decoder.Decode(fields); err != nil {
+		corepkg.LogErrorf(err, "error decoding Espressif board menu entry: %s", err.Error())
+	}
+	return &EspressifBoardMenuEntry{
+		Name:       name,
+		Current:    nil,
+		SubEntries: entries,
+	}
 }
 
-func encodeJsonEspressifBoard(encoder *corepkg.JsonEncoder, object *toolchain.EspressifBoard) {
+func (e *EspressifBoardMenuEntry) Parse(entryItem string, key string, value string) {
+	if e.Current == nil || e.Current.Name != entryItem {
+		e.Current = newEspressifBoardMenuSubEntry(entryItem)
+		e.SubEntries = append(e.SubEntries, e.Current)
+	}
+	if len(key) == 0 {
+		e.Current.Title = value
+	} else {
+		e.Current.Keys = append(e.Current.Keys, key)
+		e.Current.Values = append(e.Current.Values, value)
+	}
+}
+
+func (m *EspressifBoardMenuEntry) RegisterVars(vars *corepkg.Vars) {
+	if len(m.SubEntries) > 0 {
+		keys := m.SubEntries[0].Keys
+		values := m.SubEntries[0].Values
+		for i, k := range keys {
+			vars.Set(k, values[i])
+		}
+	}
+}
+
+type EspressifBoardMenu struct {
+	Current *EspressifBoardMenuEntry
+	Entries []*EspressifBoardMenuEntry
+}
+
+func newEspressifBoardMenu() *EspressifBoardMenu {
+	return &EspressifBoardMenu{
+		Current: nil,
+		Entries: make([]*EspressifBoardMenuEntry, 0),
+	}
+}
+
+func encodeJsonEspressifBoardMenu(encoder *corepkg.JsonEncoder, key string, object *EspressifBoardMenu) {
+	if object == nil {
+		return
+	}
+
+	encoder.BeginObject(key)
+	{
+		if len(object.Entries) > 0 {
+			encoder.BeginArray("entries")
+			{
+				for _, entry := range object.Entries {
+					encodeJsonEspressifBoardMenuEntry(encoder, "", entry)
+				}
+			}
+			encoder.EndArray()
+		}
+	}
+	encoder.EndObject()
+}
+
+func decodeJsonEspressifBoardMenu(decoder *corepkg.JsonDecoder) *EspressifBoardMenu {
+	entries := make([]*EspressifBoardMenuEntry, 0)
+	fields := map[string]corepkg.JsonDecode{
+		"entries": func(decoder *corepkg.JsonDecoder) {
+			decoder.DecodeArray(func(decoder *corepkg.JsonDecoder) {
+				entry := decodeJsonEspressifBoardMenuEntry(decoder)
+				entries = append(entries, entry)
+			})
+		},
+	}
+	if err := decoder.Decode(fields); err != nil {
+		corepkg.LogErrorf(err, "error decoding Espressif board menu: %s", err.Error())
+	}
+	return &EspressifBoardMenu{
+		Current: nil,
+		Entries: entries,
+	}
+}
+
+func (m *EspressifBoardMenu) Parse(entry string, subEntry string, key string, value string) {
+	if m.Current == nil || m.Current.Name != entry {
+		m.Current = newEspressifBoardMenuEntry(entry)
+		m.Entries = append(m.Entries, m.Current)
+	}
+	m.Current.Parse(subEntry, key, value)
+}
+
+func (m *EspressifBoardMenu) RegisterVars(vars *corepkg.Vars) {
+	// For each menu entry, we register the first variables
+	for _, e := range m.Entries {
+		e.RegisterVars(vars)
+	}
+}
+
+type EspressifBoard struct {
+	Name        string              // The name of the board
+	Description string              // The description of the board
+	SdkPath     string              // The path to the ESP32 or ESP8266 SDK
+	Menu        *EspressifBoardMenu // Menu options for the board
+	Vars        *corepkg.Vars       // Variables for the board
+}
+
+func newEspressifBoard(name string, description string) *EspressifBoard {
+	return &EspressifBoard{
+		Name:        name,
+		Description: description,
+		SdkPath:     "",
+		Menu:        newEspressifBoardMenu(),
+		Vars:        corepkg.NewVars(corepkg.VarsFormatCurlyBraces),
+	}
+}
+
+type EspressifToolchain struct {
+	Name             string             // The name of the toolchain
+	Version          string             // The version of the toolchain
+	SdkPath          string             // The path to the SDK
+	ListOfBoards     []*EspressifBoard  // The list of boards
+	Platform         *EspressifPlatform // The platform
+	BoardNameToIndex map[string]int     // A map of board names to their index in the boards slice
+}
+
+func encodeJsonEspressifBoard(encoder *corepkg.JsonEncoder, object *EspressifBoard) {
 	if object == nil {
 		return
 	}
@@ -432,16 +572,64 @@ func encodeJsonEspressifBoard(encoder *corepkg.JsonEncoder, object *toolchain.Es
 		encoder.WriteField("name", object.Name)
 		encoder.WriteField("descr", object.Description)
 		encoder.WriteField("sdk", object.SdkPath)
-		encoder.BeginMap("flashsizes")
-		{
-			for k, v := range object.FlashSizes {
-				encoder.WriteMapElement(k, v)
-			}
-		}
-		encoder.EndMap()
+		encodeJsonEspressifBoardMenu(encoder, "menu", object.Menu)
 		object.Vars.EncodeJson("vars", encoder)
 	}
 	encoder.EndObject()
+}
+
+func decodeJsonEspressifBoard(decoder *corepkg.JsonDecoder) *EspressifBoard {
+	var name string
+	var descr string
+	var sdk string
+	var menu *EspressifBoardMenu
+	vars := corepkg.NewVars(corepkg.VarsFormatCurlyBraces)
+
+	fields := map[string]corepkg.JsonDecode{
+		"name":  func(decoder *corepkg.JsonDecoder) { name = decoder.DecodeString() },
+		"descr": func(decoder *corepkg.JsonDecoder) { descr = decoder.DecodeString() },
+		"sdk":   func(decoder *corepkg.JsonDecoder) { sdk = decoder.DecodeString() },
+		"menu":  func(decoder *corepkg.JsonDecoder) { menu = decodeJsonEspressifBoardMenu(decoder) },
+		"vars":  func(decoder *corepkg.JsonDecoder) { vars.DecodeJson(decoder) },
+	}
+	if err := decoder.Decode(fields); err != nil {
+		corepkg.LogErrorf(err, "error decoding Espressif board: %s", err.Error())
+	}
+
+	return &EspressifBoard{
+		Name:        name,
+		Description: descr,
+		SdkPath:     sdk,
+		Menu:        menu,
+		Vars:        vars,
+	}
+}
+
+func decodeJsonEspressifToolchain(toolchain *EspressifToolchain, decoder *corepkg.JsonDecoder) error {
+	fields := map[string]corepkg.JsonDecode{
+		"name":    func(decoder *corepkg.JsonDecoder) { toolchain.Name = decoder.DecodeString() },
+		"version": func(decoder *corepkg.JsonDecoder) { toolchain.Version = decoder.DecodeString() },
+		"sdk":     func(decoder *corepkg.JsonDecoder) { toolchain.SdkPath = decoder.DecodeString() },
+		"boards": func(decoder *corepkg.JsonDecoder) {
+			decoder.DecodeArray(func(decoder *corepkg.JsonDecoder) {
+				board := decodeJsonEspressifBoard(decoder)
+				toolchain.ListOfBoards = append(toolchain.ListOfBoards, board)
+			})
+		},
+		"platform": func(decoder *corepkg.JsonDecoder) {
+			toolchain.Platform = decodeJsonEspressifPlatform(decoder)
+		},
+	}
+	if err := decoder.Decode(fields); err != nil {
+		corepkg.LogErrorf(err, "error decoding Espressif toolchain: %s", err.Error())
+	}
+
+	// Construct the BoardNameToIndex map
+	for i, board := range toolchain.ListOfBoards {
+		toolchain.BoardNameToIndex[strings.ToLower(board.Name)] = i
+	}
+
+	return nil
 }
 
 func encodeJsonEspressifToolchain(encoder *corepkg.JsonEncoder, key string, object *EspressifToolchain) {
@@ -472,12 +660,12 @@ func encodeJsonEspressifToolchain(encoder *corepkg.JsonEncoder, key string, obje
 func NewEsp32Toolchain() *EspressifToolchain {
 	espSdkPath := toolchain.ArduinoEspSdkPath("esp32")
 	toolchain := &EspressifToolchain{
-		Name:         "Espressif ESP32 Arduino",
-		Version:      "3.2.0",
-		SdkPath:      espSdkPath,
-		ListOfBoards: make([]*toolchain.EspressifBoard, 0, 350),
-		NameToIndex:  make(map[string]int),
-		Platform:     NewPlatform(),
+		Name:             "Espressif ESP32 Arduino",
+		Version:          "3.2.0",
+		SdkPath:          espSdkPath,
+		ListOfBoards:     make([]*EspressifBoard, 0, 350),
+		BoardNameToIndex: make(map[string]int),
+		Platform:         NewPlatform(),
 	}
 	return toolchain
 }
@@ -485,12 +673,12 @@ func NewEsp32Toolchain() *EspressifToolchain {
 func NewEsp8266Toolchain() *EspressifToolchain {
 	espSdkPath := toolchain.ArduinoEspSdkPath("esp8266")
 	toolchain := &EspressifToolchain{
-		Name:         "Espressif ESP8266 Arduino",
-		Version:      "3.2.0",
-		SdkPath:      espSdkPath,
-		ListOfBoards: make([]*toolchain.EspressifBoard, 0, 350),
-		NameToIndex:  make(map[string]int),
-		Platform:     NewPlatform(),
+		Name:             "Espressif ESP8266 Arduino",
+		Version:          "3.2.0",
+		SdkPath:          espSdkPath,
+		ListOfBoards:     make([]*EspressifBoard, 0, 350),
+		BoardNameToIndex: make(map[string]int),
+		Platform:         NewPlatform(),
 	}
 	return toolchain
 }
@@ -502,8 +690,8 @@ func (t *EspressifToolchain) PrintInfo() {
 	corepkg.LogInfof("Platform: %s, version: %s", t.Platform.Name, t.Platform.Version)
 }
 
-func (t *EspressifToolchain) GetBoardByName(name string) *toolchain.EspressifBoard {
-	if index, ok := t.NameToIndex[strings.ToLower(name)]; ok {
+func (t *EspressifToolchain) GetBoardByName(name string) *EspressifBoard {
+	if index, ok := t.BoardNameToIndex[strings.ToLower(name)]; ok {
 		return t.ListOfBoards[index]
 	}
 	return nil
@@ -525,11 +713,6 @@ func ParseToolchainFiles(toolchain *EspressifToolchain) error {
 		return err
 	}
 
-	// Process all the recipes
-	for _, recipe := range toolchain.Platform.Recipes {
-		recipe.Process()
-	}
-
 	// Print basic info of the things just parsed
 	toolchain.PrintInfo()
 
@@ -547,11 +730,12 @@ func ResolveString(variable string, vars *corepkg.Vars) string {
 		stack := make([]int16, 0, 4)
 		list := make([]pair, 0)
 		for i, c := range variable {
-			if c == '{' {
+			switch c {
+			case '{':
 				current := int16(len(list))
 				stack = append(stack, current)
 				list = append(list, pair{from: i, to: -1})
-			} else if c == '}' {
+			case '}':
 				if len(list) > 0 {
 					current := stack[len(stack)-1]
 					list[current].to = i
@@ -678,52 +862,27 @@ func SplitCmdLineIntoArgs(cmdline string, removeEmptyEntries bool) []string {
 	return args
 }
 
-func (t *EspressifToolchain) ResolveVariables(board string) error {
+func (t *EspressifToolchain) ResolveVariables(board *EspressifBoard, buildPath string) error {
 
-	globalVars := corepkg.NewVars()
-	globalVars.Set("runtime.os", runtime.GOOS)
-	globalVars.Set("runtime.platform.path", t.SdkPath)
-	globalVars.Set("runtime.ide.version", t.Platform.Version)
-	globalVars.Set("build.path", "build")
+	boardVars := corepkg.NewVars(corepkg.VarsFormatCurlyBraces)
+	boardVars.Set("runtime.os", runtime.GOOS)
+	boardVars.Set("runtime.platform.path", t.SdkPath)
+	boardVars.Set("runtime.ide.version", "10607")
+	boardVars.Set("build.path", buildPath)
+	boardVars.Set("build.arch", "esp8266")
+	boardVars.Set("build.extra_includes", "{runtime.platform.path}/variants/"+board.Name)
 
-	if boardIndex, boardExists := t.NameToIndex[board]; !boardExists {
-		return corepkg.LogErrorf(os.ErrInvalid, "Invalid board name: %s", board)
-	} else {
-		board := t.ListOfBoards[boardIndex]
-		for i, k := range board.Vars.Keys {
-			globalVars.Set(k, board.Vars.Values[i]...)
-		}
-	}
-
-	//varResolver := corepkg.NewVarResolver()
-
-	// for i, _ := range t.Platform.Vars.Keys {
-	// 	v := t.Platform.Vars.Values[i]
-	// 	for i, _ := range v {
-	// 		result := varResolver.Resolve(v[i], globalVars)
-	// 		t.Platform.Vars.Values[i] = append(t.Platform.Vars.Values[i], result...)
-	// 	}
-	// }
-
-	//globalVars. .Join(t.Platform.Vars)
-	t.Platform.Vars.Resolve()
-	globalVars.Merge(t.Platform.Vars)
-	globalVars.Resolve()
-	t.Platform.Vars.Merge(globalVars)
-	t.Platform.Vars.Resolve()
-
-	// for i, _ := range globalVars.Keys {
-	// 	v := globalVars.Values[i]
-	// 	for i, _ := range v {
-	// 		result := varResolver.Resolve(v[i], globalVars)
-	// 		globalVars.Values[i] = append(globalVars.Values[i], result...)
-	// 	}
-	// }
-
-	// For platform we can resolve some of the variables that are local to the platform
+	// Add all recipes to the board
 	for _, recipe := range t.Platform.Recipes {
-		recipe.Resolve(globalVars)
+		boardVars.Set(recipe.Name, recipe.Cmd)
 	}
+
+	boardVars.Join(board.Vars)
+	board.Menu.RegisterVars(boardVars)
+	boardVars.Join(t.Platform.Vars)
+	boardVars.ResolveFinal()
+
+	fmt.Print(boardVars.String())
 
 	// For tools we can resolve some of the variables that are local to the tool
 	for _, tool := range t.Platform.Tools {
@@ -734,6 +893,8 @@ func (t *EspressifToolchain) ResolveVariables(board string) error {
 			function.Args = ResolveStringList(function.Args, t.Platform.Vars)
 		}
 	}
+
+	board.Vars = boardVars
 	return nil
 }
 
@@ -744,7 +905,9 @@ func (t *EspressifToolchain) ParseBoardsFile(boardsFile string) error {
 	}
 	defer file.Close()
 
-	var currentBoard *toolchain.EspressifBoard
+	var currentBoard *EspressifBoard
+
+	menuTitles := make(map[string]string, 40)
 
 	scanner := bufio.NewScanner(file)
 	for scanner.Scan() {
@@ -753,10 +916,6 @@ func (t *EspressifToolchain) ParseBoardsFile(boardsFile string) error {
 
 		// Skip empty lines and comments
 		if line == "" || strings.HasPrefix(line, "#") {
-			continue
-		}
-		// Skip lines that start with 'menu.'
-		if strings.HasPrefix(line, "menu.") {
 			continue
 		}
 
@@ -770,22 +929,28 @@ func (t *EspressifToolchain) ParseBoardsFile(boardsFile string) error {
 			if currentBoard != nil {
 				t.ListOfBoards = append(t.ListOfBoards, currentBoard)
 			}
-			currentBoard = toolchain.NewEspressifBoard(keyParts[0], value)
+			currentBoard = newEspressifBoard(keyParts[0], value)
 			currentBoard.SdkPath = t.SdkPath
 			continue
 		}
 
-		if currentBoard != nil {
-			if keyParts[0] == currentBoard.Name && keyParts[1] == "menu" {
-				if strings.EqualFold(keyParts[2], "flashsize") {
-					flashsize := strings.Join(keyParts[3:], ".")
-					currentBoard.FlashSizes[flashsize] = value
-				}
-			} else {
-				key = strings.TrimPrefix(key, currentBoard.Name)
-				key = strings.TrimPrefix(key, ".") // Remove the leading dot if present
-				currentBoard.Vars.Set(key, value)
+		if keyParts[0] == "menu" {
+			if len(keyParts) == 2 {
+				// This is a menu title, e.g. 'menu.baud=Upload Speed'
+				menuTitles[strings.ToLower(keyParts[1])] = value
 			}
+		} else if keyParts[1] == "menu" {
+			if len(keyParts) >= 4 {
+				if len(keyParts) == 4 {
+					currentBoard.Menu.Parse(keyParts[2], keyParts[3], "", value)
+				} else {
+					currentBoard.Menu.Parse(keyParts[2], keyParts[3], strings.Join(keyParts[4:], "."), value)
+				}
+			}
+		} else {
+			key = strings.TrimPrefix(key, currentBoard.Name)
+			key = strings.TrimPrefix(key, ".") // Remove the leading dot if present
+			currentBoard.Vars.Set(key, value)
 		}
 	}
 
@@ -795,13 +960,13 @@ func (t *EspressifToolchain) ParseBoardsFile(boardsFile string) error {
 
 	// Create a map of board names to their index in the boards slice
 	for i, board := range t.ListOfBoards {
-		t.NameToIndex[strings.ToLower(board.Name)] = i
+		t.BoardNameToIndex[strings.ToLower(board.Name)] = i
 	}
 
 	return nil
 }
 
-func ParseCmdAndArgs(cmd string) (string, []string) {
+func parseCmdAndArgs(cmd string) (string, []string) {
 	// The arguments follow the first "cmd" part, also the arguments need to be split by ' '
 	args := strings.SplitN(cmd, " ", -1)
 	cmd = strings.TrimFunc(args[0], func(r rune) bool {
@@ -813,7 +978,7 @@ func ParseCmdAndArgs(cmd string) (string, []string) {
 	return cmd, []string{}
 }
 
-func ParseArgs(args string) []string {
+func parseArgs(args string) []string {
 	// The arguments follow the first "cmd" part, also the arguments need to be split by ' '
 	argsList := strings.Split(args, " ")
 	for i := 0; i < len(argsList); i++ {
@@ -883,18 +1048,15 @@ func (t *EspressifToolchain) ParsePlatformFile(platformFile string) error {
 			if recipe, ok = t.Platform.Recipes[key]; ok {
 				recipe.Name = key
 				recipe.Cmd = value
-				recipe.Cmd, recipe.Args = ParseCmdAndArgs(recipe.Cmd)
 			} else {
 				recipe = newEspressifPlatformRecipe()
 				recipe.Name = key
 				recipe.Cmd = value
-				recipe.Cmd, recipe.Args = ParseCmdAndArgs(recipe.Cmd)
 				t.Platform.Recipes[recipe.Name] = recipe
 			}
 
-		} else if keyParts[0] == "tools" && (keyParts[1] == "esptool_py" || keyParts[1] == "esp_ota" || keyParts[1] == "gen_esp32part" || keyParts[1] == "gen_insights_pkg") {
-
-			toolName := keyParts[1] // e.g. 'esptool_py' or 'esp_ota'
+		} else if keyParts[0] == "tools" {
+			toolName := keyParts[1] // e.g. 'esptool', 'esptool_py', 'mkspiffs', 'mklittlefs'
 
 			// Check if the tool already exists
 			tool, exists := t.Platform.Tools[toolName]
@@ -904,6 +1066,7 @@ func (t *EspressifToolchain) ParsePlatformFile(platformFile string) error {
 			}
 
 			if keyParts[2] == "path" || keyParts[2] == "cmd" {
+				// TODO still can have '.windows'
 				tool.Vars.Set(keyParts[2], value)
 			} else {
 				isFunction := keyParts[2] == "upload" || keyParts[2] == "program" || keyParts[2] == "erase" || keyParts[2] == "bootloader"
@@ -913,14 +1076,14 @@ func (t *EspressifToolchain) ParsePlatformFile(platformFile string) error {
 					// Check if the function already exists
 					function, exists := tool.Functions[toolFunction]
 					if !exists {
-						function = NewEsp32ToolFunction(toolFunction)
+						function = newEspressifToolFunction(toolFunction)
 						tool.Functions[toolFunction] = function
 					}
 					// Now we can set the variable based on the toolVar
 					if keyParts[len(keyParts)-1] == "pattern" {
-						function.Cmd, function.Args = ParseCmdAndArgs(value)
+						function.Cmd, function.Args = parseCmdAndArgs(value)
 					} else if keyParts[len(keyParts)-1] == "pattern_args" {
-						function.Args = append(function.Args, ParseArgs(value)...)
+						function.Args = append(function.Args, parseArgs(value)...)
 						//function.Vars[strings.Join(keyParts[2:], ".")] = function.Args
 						function.Vars.Set(strings.Join(keyParts[3:], "."), value)
 					} else {

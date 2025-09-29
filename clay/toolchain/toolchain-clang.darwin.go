@@ -308,13 +308,6 @@ func (t *DarwinClang) NewDependencyTracker(dirpath string) deptrackr.FileTrackr 
 // --------------------------------------------------------------------------------------------------
 // --------------------------------------------------------------------------------------------------
 // Toolchain for Clang on MacOS
-const (
-	archtype_arm    string = "arm"    // ARM: arm, armv.*, xscale
-	archtype_arm64  string = "arm64"  // ARM: arm, armv.*, xscale
-	archtype_x86    string = "x86"    // X86: i[3-9]86
-	archtype_x86_64 string = "x86_64" // X86-64: amd64, x86_64
-)
-
 func NewDarwinClang(arch string, frameworks []string) (t *DarwinClang, err error) {
 	var cCompilerPath string
 	if cCompilerPath, err = exec.LookPath("clang"); err != nil {

@@ -156,11 +156,9 @@ func decodeCppEnum(decoder *corepkg.JsonDecoder, ce *cppEnum) {
 		"members":   func(decoder *corepkg.JsonDecoder) { ce.members = decoder.DecodeStringArray() },
 		"generate": func(decoder *corepkg.JsonDecoder) {
 			ce.generate = make([]enumGenerate, 0, 4)
-			i := 0
-			for !decoder.ReadUntilArrayEnd() {
+			decoder.DecodeArray(func(decoder *corepkg.JsonDecoder) {
 				ce.generate = append(ce.generate, enumGenerate(decoder.DecodeString()))
-				i++
-			}
+			})
 		},
 	}
 	decoder.Decode(fields)
@@ -194,10 +192,10 @@ func decodeCppStruct(decoder *corepkg.JsonDecoder, cs *cppStruct) {
 		"features":     func(decoder *corepkg.JsonDecoder) { cs.features = decodeFeatureFlags(decoder, newFeatureFlags()) },
 		"members": func(decoder *corepkg.JsonDecoder) {
 			cs.members = make([]cppStructMember, 0, 4)
-			for !decoder.ReadUntilArrayEnd() {
+			decoder.DecodeArray(func(decoder *corepkg.JsonDecoder) {
 				cs.members = append(cs.members, newCppStructMember())
 				decodeCppStructMember(decoder, &cs.members[len(cs.members)-1])
-			}
+			})
 		},
 	}
 	decoder.Decode(fields)
@@ -224,17 +222,17 @@ func (r *cppCodeGenerator) decodeJSON(decoder *corepkg.JsonDecoder) error {
 		"bitset_size":  bitsetSize,
 		"enums": func(decoder *corepkg.JsonDecoder) {
 			r.cppEnum = make([]cppEnum, 0, 4)
-			for !decoder.ReadUntilArrayEnd() {
+			decoder.DecodeArray(func(decoder *corepkg.JsonDecoder) {
 				r.cppEnum = append(r.cppEnum, newCppEnum())
 				decodeCppEnum(decoder, &r.cppEnum[len(r.cppEnum)-1])
-			}
+			})
 		},
 		"structs": func(decoder *corepkg.JsonDecoder) {
 			r.cppStruct = make([]cppStruct, 0, 4)
-			for !decoder.ReadUntilArrayEnd() {
+			decoder.DecodeArray(func(decoder *corepkg.JsonDecoder) {
 				r.cppStruct = append(r.cppStruct, newCppStruct())
 				decodeCppStruct(decoder, &r.cppStruct[len(r.cppStruct)-1])
-			}
+			})
 		},
 	}
 	return decoder.Decode(fields)

@@ -97,13 +97,9 @@ func (g *ClayGenerator) generateMain(out *corepkg.LineWriter) {
 }
 
 func (g *ClayGenerator) generateProjectFile(out *corepkg.LineWriter) {
-
-	os := g.BuildTarget.OSAsString()
-	arch := g.BuildTarget.ArchAsString()
-
 	count := 0
 	for _, prj := range g.Workspace.ProjectList.Values {
-		if prj.SupportedTargets.Contains(g.BuildTarget) {
+		if prj.SupportedTargets.HasOverlap(g.BuildTarget) {
 			count += len(prj.Resolved.Configs.Values)
 		}
 	}
@@ -113,7 +109,7 @@ func (g *ClayGenerator) generateProjectFile(out *corepkg.LineWriter) {
 
 	index := 0
 	for _, prj := range g.Workspace.ProjectList.Values {
-		if prj.SupportedTargets.Contains(g.BuildTarget) {
+		if prj.SupportedTargets.HasOverlap(g.BuildTarget) {
 			for _, prjCfg := range prj.Resolved.Configs.Values {
 				configName := prjCfg.BuildConfig.AsString()
 				projectId := strings.ReplaceAll(prj.Name+"_"+configName, "-", "_")
@@ -138,7 +134,7 @@ func (g *ClayGenerator) generateProjectFile(out *corepkg.LineWriter) {
 
 	index = 0
 	for _, prj := range g.Workspace.ProjectList.Values {
-		if prj.SupportedTargets.Contains(g.BuildTarget) {
+		if prj.SupportedTargets.HasOverlap(g.BuildTarget) {
 
 			// Get the version info for this project
 			depVersionInfo := corepkg.NewGitVersionInfo(prj.ProjectAbsPath)
@@ -152,7 +148,8 @@ func (g *ClayGenerator) generateProjectFile(out *corepkg.LineWriter) {
 				out.WriteILine("", "{")
 				out.WriteILine("+", "configName := ", `"`, configName, `"`)
 				out.WriteILine("+", "projectName := ", `"`, prj.Name, `"`)
-				out.WriteILine("+", `projectConfig := clay.NewConfig("`+os+`", "`, arch, `", configName)`)
+				out.WriteILine("+", "supportedTargets := clay.BuildTargetFromString(", `"`, prj.SupportedTargets.String(), `")`)
+				out.WriteILine("+", `projectConfig := clay.NewConfig(supportedTargets, configName)`)
 				if prj.BuildType.IsExecutable() {
 					out.WriteILine("+", "project := clay.NewExecutableProject(projectName, projectConfig)")
 				} else {

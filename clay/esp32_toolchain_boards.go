@@ -6,8 +6,6 @@ import (
 	"os"
 	"sort"
 
-	"github.com/jurgen-kluft/ccode/clay/toolchain"
-
 	corepkg "github.com/jurgen-kluft/ccode/core"
 )
 
@@ -36,17 +34,14 @@ func BoardsOperation(espressifToolchain *EspressifToolchain, cpuName string, boa
 		result := espressifToolchain.ListOfBoards[0].Name
 		result = result[0:1]
 	} else if opName == "check" {
-		if i, ok := espressifToolchain.NameToIndex[boardName]; ok {
+		if i, ok := espressifToolchain.BoardNameToIndex[boardName]; ok {
 			result = []string{espressifToolchain.ListOfBoards[i].Name}
 		} else {
 			return []string{}, fmt.Errorf("Board %s not found in toolchain\n", boardName)
 		}
 	} else if opName == "first_flash" {
-		if i, ok := espressifToolchain.NameToIndex[boardName]; ok {
-			for flashKey, flashValue := range espressifToolchain.ListOfBoards[i].FlashSizes {
-				result = append(result, fmt.Sprintf("%s %s", flashKey, flashValue))
-				break
-			}
+		if _, ok := espressifToolchain.BoardNameToIndex[boardName]; ok {
+			// TODO, iterate over the menu entries to find the first flash size
 		} else {
 			return []string{}, fmt.Errorf("Board %s not found in toolchain\n", boardName)
 		}
@@ -75,24 +70,22 @@ func PrintAllFlashSizes(espressifToolchain *EspressifToolchain, arch string, boa
 	// }
 
 	// Get the parsed board
-	var board *toolchain.EspressifBoard
-	if i, ok := espressifToolchain.NameToIndex[boardName]; ok {
-		board = espressifToolchain.ListOfBoards[i]
+	//var board *EspressifBoard
+	if _, ok := espressifToolchain.BoardNameToIndex[boardName]; ok {
+		//board = espressifToolchain.ListOfBoards[i]
 
 		column1 := make([]string, 0)
 		column2 := make([]string, 0)
 
 		// Get the flash sizes
-		for flashKey := range board.FlashSizes {
-			column1 = append(column1, flashKey)
-		}
+		// Iterate over the board menu entries to find the flash sizes
 
 		// Sort the keys, column1
 		sort.Strings(column1)
 
 		// Now get the values
 		for _, flashKey := range column1 {
-			flashValue := board.FlashSizes[flashKey]
+			flashValue := flashKey
 			column2 = append(column2, flashValue)
 		}
 
@@ -148,6 +141,7 @@ func GenerateToolchainJson(espressifToolchain *EspressifToolchain, outputFilenam
 	defer file.Close()
 
 	jsonEncoder := corepkg.NewJsonEncoder("    ")
+	jsonEncoder.HintOutputSize(4 * 1024 * 1024)
 	jsonEncoder.Begin()
 	encodeJsonEspressifToolchain(jsonEncoder, "", espressifToolchain)
 	json := jsonEncoder.End()
@@ -179,7 +173,11 @@ func LoadToolchainJson(espressifToolchain *EspressifToolchain, inputFilename str
 
 	jsonDecoder := corepkg.NewJsonDecoder()
 	jsonDecoder.Begin(string(buffer))
-	return decodeJsonEspressifToolchain(espressifToolchain, jsonDecoder)
+	if err := decodeJsonEspressifToolchain(espressifToolchain, jsonDecoder); err != nil {
+		return err
+	}
+
+	return nil
 }
 
 func PrintAllMatchingBoards(espressifToolchain *EspressifToolchain, fuzzy string, max int) error {
