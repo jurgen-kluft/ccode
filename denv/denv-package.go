@@ -157,7 +157,17 @@ func (p *Package) GetMainApp() []*DevProject {
 	return p.MainApps
 }
 
-func (p *Package) EncodeJson(encoder *corepkg.JsonEncoder, key string) {
+func (p *Package) SaveJson(filepath string) error {
+	encoder := corepkg.NewJsonEncoder("    ")
+	encoder.Begin()
+	{
+		p.encodeJson(encoder, "")
+	}
+	json := encoder.End()
+	return corepkg.FileOpenWriteClose(filepath, []byte(json))
+}
+
+func (p *Package) encodeJson(encoder *corepkg.JsonEncoder, key string) {
 	encoder.BeginObject(key)
 	{
 		encoder.WriteField("root_path", p.RootPath)
@@ -167,9 +177,9 @@ func (p *Package) EncodeJson(encoder *corepkg.JsonEncoder, key string) {
 		if len(p.Packages) > 0 {
 			encoder.BeginArray("packages")
 			for _, pkg := range p.Packages {
-				pkg.EncodeJson(encoder, pkg.RepoName)
+				pkg.encodeJson(encoder, "")
 			}
-			encoder.EndObject()
+			encoder.EndArray()
 		}
 
 		if len(p.MainApps) > 0 {

@@ -82,8 +82,7 @@ func Init() bool {
 // Generate is the main function that requires 'arguments' to then generate
 // workspace and project files for a specified IDE.
 func Generate(pkg *denv.Package) {
-	buildTarget := denv.GetBuildTarget()
-	generator := ide_generators.NewGenerator(cdev, buildTarget, cverbose)
+	generator := ide_generators.NewGenerator(cdev, denv.GetBuildTarget(), cverbose)
 	generator.Generate(pkg)
 }
 
@@ -104,8 +103,9 @@ func GenerateClangFormat() {
 }
 
 func GenerateFiles(pkg *denv.Package) {
-
 	GenerateGitIgnore()
+
+	pkg.SaveJson("target/package.json")
 
 	// Analyze the package to see if unittesting has dependencies on:
 	// - ccore

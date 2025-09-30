@@ -211,7 +211,7 @@ func (p *DevProject) EncodeJson(encoder *corepkg.JsonEncoder, key string) {
 		encoder.WriteField("dir_name", p.DirName)
 		encoder.WriteField("build_type", p.BuildType.String())
 		encoder.WriteField("build_targets", p.BuildTargets.String())
-		encoder.WriteField("", p.EnvVars)
+
 		if len(p.EnvVars) > 0 {
 			encoder.BeginMap("env_vars")
 			{
@@ -221,6 +221,7 @@ func (p *DevProject) EncodeJson(encoder *corepkg.JsonEncoder, key string) {
 			}
 			encoder.EndMap()
 		}
+
 		if len(p.SourceDirs) > 0 {
 			encoder.BeginArray("source_dirs")
 			for _, dir := range p.SourceDirs {
@@ -228,6 +229,7 @@ func (p *DevProject) EncodeJson(encoder *corepkg.JsonEncoder, key string) {
 			}
 			encoder.EndArray()
 		}
+
 		if len(p.Configs) > 0 {
 			encoder.BeginArray("configs")
 			for _, cfg := range p.Configs {
@@ -235,6 +237,7 @@ func (p *DevProject) EncodeJson(encoder *corepkg.JsonEncoder, key string) {
 			}
 			encoder.EndArray()
 		}
+
 		if !p.Dependencies.IsEmpty() {
 			encoder.BeginArray("dependencies")
 			for _, dep := range p.Dependencies.Values {

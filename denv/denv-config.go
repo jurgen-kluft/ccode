@@ -29,30 +29,31 @@ func (c *DevConfig) EncodeJson(encoder *corepkg.JsonEncoder, key string) {
 	{
 		encoder.WriteField("build_type", c.BuildType.String())
 		encoder.WriteField("build_config", c.BuildConfig.String())
-		encoder.WriteField("include_dirs", c.IncludeDirs)
-		{
-			if len(c.IncludeDirs) > 0 {
-				encoder.BeginArray("")
-				for _, dir := range c.IncludeDirs {
-					dir.EncodeJson(encoder, "")
-				}
-				encoder.EndArray()
+
+		if len(c.IncludeDirs) > 0 {
+			encoder.BeginArray("include_dirs")
+			for _, dir := range c.IncludeDirs {
+				dir.EncodeJson(encoder, "")
 			}
+			encoder.EndArray()
 		}
-		encoder.WriteField("defines", c.Defines)
-		{
-			c.Defines.EncodeJson(encoder, "")
-		}
-		encoder.WriteField("libs", c.Libs)
-		{
-			if len(c.Libs) > 0 {
-				encoder.BeginArray("")
-				for _, lib := range c.Libs {
-					lib.EncodeJson(encoder, "")
-				}
-				encoder.EndArray()
+
+		if len(c.Defines.Values) > 0 {
+			encoder.BeginArray("defines")
+			for _, define := range c.Defines.Values {
+				encoder.WriteArrayElement(define)
 			}
+			encoder.EndArray()
 		}
+
+		if len(c.Libs) > 0 {
+			encoder.BeginArray("libs")
+			for _, lib := range c.Libs {
+				lib.EncodeJson(encoder, "")
+			}
+			encoder.EndArray()
+		}
+
 	}
 	encoder.EndObject()
 }
@@ -73,7 +74,10 @@ func DecodeJsonDevConfig(decoder *corepkg.JsonDecoder) *DevConfig {
 				includeDirs = append(includeDirs, DecodeJsonPinnedPath(decoder, ""))
 			})
 		},
-		"defines": func(decoder *corepkg.JsonDecoder) { defines = corepkg.DecodeJsonValueSet(decoder) },
+		"defines": func(decoder *corepkg.JsonDecoder) {
+			definesStringArray := decoder.DecodeStringArray()
+			defines.AddMany(definesStringArray...)
+		},
 		"libs": func(decoder *corepkg.JsonDecoder) {
 			libs = make([]PinnedFilepath, 0)
 			decoder.DecodeArray(func(decoder *corepkg.JsonDecoder) {
