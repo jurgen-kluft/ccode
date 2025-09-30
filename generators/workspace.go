@@ -75,7 +75,7 @@ func (cat CppAdvancedType) ToString() string {
 	}
 	return ""
 }
-func (cat CppAdvancedType) Tundra(d denv.DevEnum, t denv.BuildTarget) string {
+func (cat CppAdvancedType) Tundra(d DevEnum, t denv.BuildTarget) string {
 	if d.IsVisualStudio() && cat.IsEnabled() {
 		return "/arch:" + cat.ToString()
 	} else if d.CompilerIsClang() || d.CompilerIsGcc() {
@@ -116,7 +116,7 @@ func (cat CppAdvancedType) VisualStudio() string {
 // -----------------------------------------------------------------------------------------------------
 
 type WorkspaceConfig struct {
-	Dev                denv.DevEnum        // The development environment (tundra, make, xcode, vs2022, espmake)
+	Dev                DevEnum             // The development environment (tundra, make, xcode, vs2022, espmake)
 	BuildTarget        denv.BuildTarget    // The build target (windows, linux, macos, etc.)
 	BuildTargetOs      denv.BuildTargetOs  // The build target (windows, linux, macos, etc.)
 	GenerateAbsPath    string              // The directory where the workspace and project files will be generated
@@ -134,7 +134,7 @@ type WorkspaceConfig struct {
 	LibTargetSuffix string
 }
 
-func NewWorkspaceConfig(_dev denv.DevEnum, _buildTargetOs denv.BuildTargetOs, workspacePath string, projectName string) *WorkspaceConfig {
+func NewWorkspaceConfig(_dev DevEnum, _buildTargetOs denv.BuildTargetOs, workspacePath string, projectName string) *WorkspaceConfig {
 	wsc := &WorkspaceConfig{}
 	wsc.Dev = _dev
 	wsc.BuildTargetOs = _buildTargetOs
@@ -203,7 +203,7 @@ func (ws *Workspace) NewProject2(prj *denv.DevProject, settings *ProjectSettings
 	return p
 }
 
-func (ws *Workspace) Resolve(dev denv.DevEnum) error {
+func (ws *Workspace) Resolve(dev DevEnum) error {
 	if ws.StartupProject == nil {
 		if startupProject, ok := ws.ProjectList.Get(ws.Config.StartupProject); ok {
 			ws.StartupProject = startupProject

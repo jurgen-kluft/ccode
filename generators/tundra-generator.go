@@ -86,7 +86,7 @@ func (g *TundraGenerator) writeUnit(units *corepkg.LineWriter, p *Project, isPro
 		//    },
 		units.WriteILine("++", "LIBPATH = {")
 		for _, cfg := range p.Resolved.Configs.Values {
-			linkDirs, _, _ := p.BuildLibraryInformation(denv.DevTundra, cfg, p.Workspace.GenerateAbsPath)
+			linkDirs, _, _ := p.BuildLibraryInformation(DevTundra, cfg, p.Workspace.GenerateAbsPath)
 			for _, linkDir := range linkDirs.Values {
 				units.WriteILine("+++", `{"`, linkDir, `", `, `Config = "`, cfg.BuildConfig.Tundra(), `"},`)
 			}
@@ -180,7 +180,7 @@ func (g *TundraGenerator) writeUnit(units *corepkg.LineWriter, p *Project, isPro
 
 		units.WriteILine("+", "Libs = {")
 		for _, cfg := range p.Resolved.Configs.Values {
-			_, _, linkLibs := p.BuildLibraryInformation(denv.DevTundra, cfg, p.Workspace.GenerateAbsPath)
+			_, _, linkLibs := p.BuildLibraryInformation(DevTundra, cfg, p.Workspace.GenerateAbsPath)
 			for _, lib := range linkLibs.Values {
 				lib = strings.Replace(lib, "\\", "/", -1)
 				units.WriteILine("++", `{"`, lib, `"`, `, Config = "`, cfg.BuildConfig.Tundra(), `"},`)

@@ -14,8 +14,8 @@ type DevProject struct {
 	Name         string
 	DirName      string
 	BuildType    BuildType
-	Supported    BuildTarget
-	Vars         map[string]string
+	BuildTargets BuildTarget
+	EnvVars      map[string]string
 	SourceDirs   []PinnedGlobPath
 	Configs      []*DevConfig
 	Dependencies *DevProjectList
@@ -27,8 +27,8 @@ func NewProject(pkg *Package, name string, dirname string) *DevProject {
 		Name:         name,
 		DirName:      dirname,
 		BuildType:    BuildTypeUnknown,
-		Supported:    EmptyBuildTarget,
-		Vars:         make(map[string]string),
+		BuildTargets: EmptyBuildTarget,
+		EnvVars:      make(map[string]string),
 		Configs:      []*DevConfig{},
 		Dependencies: NewDevProjectList(),
 	}
@@ -37,7 +37,7 @@ func NewProject(pkg *Package, name string, dirname string) *DevProject {
 func (prj *DevProject) AddEnvironmentVariable(ev string) {
 	// Environment variable should exist
 	if value, ok := os.LookupEnv(ev); ok {
-		prj.Vars[strings.ToLower(ev)] = value
+		prj.EnvVars[strings.ToLower(ev)] = value
 	}
 }
 
@@ -56,7 +56,7 @@ func (prj *DevProject) ResolveEnvironmentVariables(str string) string {
 			break
 		}
 
-		if value, ok := prj.Vars[strings.ToLower(str[start+1:end])]; ok {
+		if value, ok := prj.EnvVars[strings.ToLower(str[start+1:end])]; ok {
 			str = strings.ReplaceAll(str, str[start:end+1], value)
 			end = start
 			continue
@@ -204,6 +204,48 @@ func (prj *DevProject) AddSharedSource(name string) {
 	}
 }
 
+func (p *DevProject) EncodeJson(encoder *corepkg.JsonEncoder, key string) {
+	encoder.BeginObject(key)
+	{
+		encoder.WriteField("name", p.Name)
+		encoder.WriteField("dir_name", p.DirName)
+		encoder.WriteField("build_type", p.BuildType.String())
+		encoder.WriteField("build_targets", p.BuildTargets.String())
+		encoder.WriteField("", p.EnvVars)
+		if len(p.EnvVars) > 0 {
+			encoder.BeginMap("env_vars")
+			{
+				for k, v := range p.EnvVars {
+					encoder.WriteMapElement(k, v)
+				}
+			}
+			encoder.EndMap()
+		}
+		if len(p.SourceDirs) > 0 {
+			encoder.BeginArray("source_dirs")
+			for _, dir := range p.SourceDirs {
+				dir.EncodeJson(encoder, "")
+			}
+			encoder.EndArray()
+		}
+		if len(p.Configs) > 0 {
+			encoder.BeginArray("configs")
+			for _, cfg := range p.Configs {
+				cfg.EncodeJson(encoder, "")
+			}
+			encoder.EndArray()
+		}
+		if !p.Dependencies.IsEmpty() {
+			encoder.BeginArray("dependencies")
+			for _, dep := range p.Dependencies.Values {
+				encoder.WriteArrayElement(dep.Name)
+			}
+			encoder.EndArray()
+		}
+	}
+	encoder.EndObject()
+}
+
 // SetupDefaultCppLibProject returns a default C++ library project, since such a project can be used by
 // an application as well as an unittest we need to add the appropriate configurations.
 // Example:
@@ -223,9 +265,13 @@ func SetupDefaultCppLibProject(pkg *Package, name string, dir string, buildTarge
 func SetupCppLibProject(pkg *Package, name string) *DevProject {
 	// Windows, Mac and Linux, build for the Host platform
 	project := SetupDefaultCppLibProject(pkg, "library_"+name, "main", GetBuildTarget())
+
+	// TODO we should create all possible configuration, not just debug-dev/release-dev
 	project.Configs = append(project.Configs, NewDevConfig(BuildTypeStaticLibrary, NewDebugDevConfig()))
 	project.Configs = append(project.Configs, NewDevConfig(BuildTypeStaticLibrary, NewReleaseDevConfig()))
-	project.Supported = BuildTargetsAll
+
+	project.BuildTargets = BuildTargetsAll
+
 	for _, cfg := range project.Configs {
 		configureProjectCompilerDefines(cfg)
 		cfg.IncludeDirs = append(cfg.IncludeDirs, PinnedPath{Root: pkg.WorkspacePath(), Base: pkg.RepoName, Sub: "source/main/include"})
@@ -236,9 +282,13 @@ func SetupCppLibProject(pkg *Package, name string) *DevProject {
 func SetupCppTestLibProject(pkg *Package, name string) *DevProject {
 	// Windows, Mac and Linux, build for the Host platform
 	project := SetupDefaultCppLibProject(pkg, "unittest_library_"+name, "main", GetBuildTarget())
+
+	// TODO we should create all possible configuration, not just debug-dev/release-dev
 	project.Configs = append(project.Configs, NewDevConfig(BuildTypeStaticLibrary, NewDebugDevTestConfig()))
 	project.Configs = append(project.Configs, NewDevConfig(BuildTypeStaticLibrary, NewReleaseDevTestConfig()))
-	project.Supported = BuildTargetsDesktop
+
+	project.BuildTargets = BuildTargetsDesktop
+
 	for _, cfg := range project.Configs {
 		configureProjectCompilerDefines(cfg)
 		cfg.IncludeDirs = append(cfg.IncludeDirs, PinnedPath{Root: pkg.WorkspacePath(), Base: pkg.RepoName, Sub: "source/main/include"})
@@ -249,9 +299,13 @@ func SetupCppTestLibProject(pkg *Package, name string) *DevProject {
 func SetupCppLibProjectForDesktop(pkg *Package, name string) *DevProject {
 	// Windows, Mac and Linux, build for the Host platform
 	project := SetupDefaultCppLibProject(pkg, "library_"+name, "main", GetBuildTarget())
+
+	// TODO we should create all possible configuration, not just debug-dev/release-dev
 	project.Configs = append(project.Configs, NewDevConfig(BuildTypeStaticLibrary, NewDebugDevConfig()))
 	project.Configs = append(project.Configs, NewDevConfig(BuildTypeStaticLibrary, NewReleaseDevConfig()))
-	project.Supported = BuildTargetsDesktop
+
+	project.BuildTargets = BuildTargetsDesktop
+
 	for _, cfg := range project.Configs {
 		configureProjectCompilerDefines(cfg)
 		cfg.IncludeDirs = append(cfg.IncludeDirs, PinnedPath{Root: pkg.WorkspacePath(), Base: pkg.RepoName, Sub: "source/main/include"})
@@ -262,9 +316,13 @@ func SetupCppLibProjectForDesktop(pkg *Package, name string) *DevProject {
 // Arduino Esp32
 func SetupCppLibProjectForArduinoEsp32(pkg *Package, name string) *DevProject {
 	project := SetupDefaultCppLibProject(pkg, "library_"+name, "main", BuildTargetArduinoEsp32)
+
+	// TODO we should create all possible configuration, not just debug-dev/release-dev
 	project.Configs = append(project.Configs, NewDevConfig(BuildTypeStaticLibrary, NewDebugDevConfig()))
 	project.Configs = append(project.Configs, NewDevConfig(BuildTypeStaticLibrary, NewReleaseDevConfig()))
-	project.Supported = BuildTargetArduinoEsp32
+
+	project.BuildTargets = BuildTargetArduinoEsp32
+
 	for _, cfg := range project.Configs {
 		configureProjectCompilerDefines(cfg)
 		cfg.IncludeDirs = append(cfg.IncludeDirs, PinnedPath{Root: pkg.WorkspacePath(), Base: pkg.RepoName, Sub: "source/main/include"})
@@ -275,9 +333,12 @@ func SetupCppLibProjectForArduinoEsp32(pkg *Package, name string) *DevProject {
 // Arduino Esp8266
 func SetupCppLibProjectForArduinoEsp8266(pkg *Package, name string) *DevProject {
 	project := SetupDefaultCppLibProject(pkg, "library_"+name, "main", BuildTargetArduinoEsp8266)
+
+	// TODO we should create all possible configuration, not just debug-dev/release-dev
 	project.Configs = append(project.Configs, NewDevConfig(BuildTypeStaticLibrary, NewDebugDevConfig()))
 	project.Configs = append(project.Configs, NewDevConfig(BuildTypeStaticLibrary, NewReleaseDevConfig()))
-	project.Supported = BuildTargetArduinoEsp8266
+
+	project.BuildTargets = BuildTargetArduinoEsp8266
 	for _, cfg := range project.Configs {
 		configureProjectCompilerDefines(cfg)
 		cfg.IncludeDirs = append(cfg.IncludeDirs, PinnedPath{Root: pkg.WorkspacePath(), Base: pkg.RepoName, Sub: "source/main/include"})
@@ -288,9 +349,12 @@ func SetupCppLibProjectForArduinoEsp8266(pkg *Package, name string) *DevProject 
 func SetupDefaultCppTestProject(pkg *Package, name string, buildTarget BuildTarget) *DevProject {
 	project := NewProject(pkg, name, "test")
 	project.BuildType = BuildTypeUnittest
-	project.Supported = BuildTargetsDesktop
+	project.BuildTargets = BuildTargetsDesktop
+
+	// TODO we should create all possible configuration, not just debug-dev/release-dev
 	project.Configs = append(project.Configs, NewDevConfig(BuildTypeUnittest, NewDebugDevTestConfig()))
 	project.Configs = append(project.Configs, NewDevConfig(BuildTypeUnittest, NewReleaseDevTestConfig()))
+
 	project.Dependencies = NewDevProjectList()
 
 	project.SourceDirs = append(project.SourceDirs, PinnedGlobPath{Path: PinnedPath{Root: pkg.WorkspacePath(), Base: pkg.RepoName, Sub: "source/test/cpp"}, Glob: "**/*.c"})
@@ -308,7 +372,7 @@ func SetupDefaultCppTestProject(pkg *Package, name string, buildTarget BuildTarg
 func SetupCppTestProject(pkg *Package, name string) *DevProject {
 	// Windows, Mac and Linux, build for the Host platform
 	project := SetupDefaultCppTestProject(pkg, "unittest_"+name, GetBuildTarget())
-	project.Supported = BuildTargetsDesktop
+	project.BuildTargets = BuildTargetsDesktop
 	return project
 }
 
@@ -319,7 +383,8 @@ func SetupCppTestProject(pkg *Package, name string) *DevProject {
 func SetupDefaultCppCliProject(pkg *Package, name string, buildTarget BuildTarget) *DevProject {
 	project := NewProject(pkg, name, "cli")
 	project.BuildType = BuildTypeCli
-	project.Supported = BuildTargetsDesktop
+	project.BuildTargets = BuildTargetsDesktop
+	// TODO we should create all possible configuration, not just debug-dev/release-dev
 	project.Configs = append(project.Configs, NewDevConfig(BuildTypeCli, NewDebugDevConfig()))
 	project.Configs = append(project.Configs, NewDevConfig(BuildTypeCli, NewReleaseDevConfig()))
 	project.Dependencies = NewDevProjectList()
@@ -342,7 +407,7 @@ func SetupDefaultCppCliProject(pkg *Package, name string, buildTarget BuildTarge
 func SetupDefaultCppAppProject(pkg *Package, name string, dirname string, buildTarget BuildTarget) *DevProject {
 	project := NewProject(pkg, name, dirname)
 	project.BuildType = BuildTypeApplication
-	project.Supported = BuildTargetsDesktop
+	project.BuildTargets = BuildTargetsDesktop
 	project.Configs = append(project.Configs, NewDevConfig(BuildTypeApplication, NewDebugDevConfig()))
 	project.Configs = append(project.Configs, NewDevConfig(BuildTypeApplication, NewReleaseDevConfig()))
 	project.Dependencies = NewDevProjectList()
@@ -361,14 +426,14 @@ func SetupDefaultCppAppProject(pkg *Package, name string, dirname string, buildT
 func SetupCppAppProject(pkg *Package, name string, dirname string) *DevProject {
 	// Windows, Mac and Linux, build for the Host platform
 	project := SetupDefaultCppAppProject(pkg, "app_"+name, dirname, GetBuildTarget())
-	project.Supported = BuildTargetsAll
+	project.BuildTargets = BuildTargetsAll
 	return project
 }
 
 func SetupCppAppProjectForDesktop(pkg *Package, name string, dirname string) *DevProject {
 	// Windows, Mac and Linux, build for the Host platform
 	project := SetupDefaultCppAppProject(pkg, "app_"+name, dirname, GetBuildTarget())
-	project.Supported = BuildTargetsDesktop
+	project.BuildTargets = BuildTargetsDesktop
 	return project
 }
 
@@ -376,7 +441,7 @@ func SetupCppAppProjectForArduino(pkg *Package, name string, dirname string) *De
 	// Arduino project
 	project := SetupDefaultCppAppProject(pkg, "app_"+name, dirname, BuildTargetArduinoEsp32)
 	project.SourceDirs = append(project.SourceDirs, PinnedGlobPath{Path: PinnedPath{Root: pkg.WorkspacePath(), Base: pkg.RepoName, Sub: "source/" + dirname + "/partitions"}, Glob: "**/*.csv"})
-	project.Supported = BuildTargetsArduino
+	project.BuildTargets = BuildTargetsArduino
 	return project
 }
 

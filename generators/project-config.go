@@ -80,7 +80,7 @@ type Config struct {
 	GenerateAbsPath   string               // The path where generated files are stored
 	ToolSet           string               // String identifying the toolset to use, e.g. "v142", "v143", "clang12", "gcc10", "gcc11", "gcc12", "gcc13"
 	RuntimeLibrary    RuntimeLibraryType   // The runtime library to use
-	Dev               *denv.DevEnum        // The dev environment this config is part of
+	Dev               DevEnum              // The dev environment this config is part of
 	Project           *Project             // The project this config is part of
 	CppDefines        *corepkg.KeyValueSet // e.g. "DEBUG" "PROFILE"
 	CppFlags          *corepkg.KeyValueSet // e.g. "-g"
@@ -136,7 +136,7 @@ func NewConfig(buildTarget denv.BuildTarget, buildConfig denv.BuildConfig, p *Pr
 }
 
 func (c *Config) String() string {
-	return c.BuildConfig.AsString()
+	return c.BuildConfig.String()
 }
 
 // AddIncludeDir adds an include to the list of include directories

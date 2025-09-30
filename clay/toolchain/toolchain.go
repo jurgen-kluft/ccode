@@ -26,7 +26,7 @@ func (t *Config) IsProfile() bool     { return t.Config.IsProfile() }
 
 // GetDirname returns "os-arch-build-variant-mode"
 func (c *Config) GetDirname() string {
-	return c.Target.Os().String() + "-" + c.Target.Arch().String() + "-" + c.Config.AsString()
+	return c.Target.Os().String() + "-" + c.Target.Arch().String() + "-" + c.Config.String()
 }
 
 type Environment interface {

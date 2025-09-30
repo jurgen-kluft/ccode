@@ -20,7 +20,7 @@ func NewConfig(supported denv.BuildTarget, config string) *Config {
 // GetSubDir returns a subdirectory name based on the OS, CPU, Build type, and Variant.
 // Example: "linux-x86-release-dev" or "arduino-esp32-debug-prod".
 func (c *Config) GetSubDir() string {
-	return c.Target.Os().String() + "-" + c.Target.Arch().String() + "-" + c.Config.AsString()
+	return c.Target.Os().String() + "-" + c.Target.Arch().String() + "-" + c.Config.String()
 }
 
 func (c *Config) Matches(other *Config) bool {
@@ -31,11 +31,11 @@ func (c *Config) Matches(other *Config) bool {
 }
 
 func (c *Config) ConfigString() string {
-	return c.Config.AsString()
+	return c.Config.String()
 }
 
 func (c *Config) String() string {
-	return c.Target.Os().String() + "-" + c.Target.Arch().String() + "-" + c.Config.AsString()
+	return c.Target.Os().String() + "-" + c.Target.Arch().String() + "-" + c.Config.String()
 }
 
 func (c *Config) GetCppDefines() []string {

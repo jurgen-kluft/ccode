@@ -133,7 +133,7 @@ func (cl *ToolchainArduinoEsp8266Compiler) Compile(sourceAbsFilepaths []string, 
 		args = append(args, "-o")
 		args = append(args, objRelFilepath)
 
-		corepkg.LogInfof("Compiling (%s) %s", cl.config.Config.AsString(), filepath.Base(sourceAbsFilepath))
+		corepkg.LogInfof("Compiling (%s) %s", cl.config.Config.String(), filepath.Base(sourceAbsFilepath))
 
 		cmd := exec.Command(compilerPath, args...)
 		out, err := cmd.CombinedOutput()

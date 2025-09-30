@@ -43,6 +43,23 @@ func (t BuildType) IsExecutable() bool {
 	return t == BuildTypeApplication || t == BuildTypeCli || t == BuildTypeUnittest
 }
 
+func BuildTypeFromString(str string) BuildType {
+	switch strings.ToLower(str) {
+	case "application":
+		return BuildTypeApplication
+	case "cli":
+		return BuildTypeCli
+	case "unittest":
+		return BuildTypeUnittest
+	case "dynamic library":
+		return BuildTypeDynamicLibrary
+	case "static library":
+		return BuildTypeStaticLibrary
+	default:
+		return BuildTypeUnknown
+	}
+}
+
 func (t BuildType) String() string {
 	switch t {
 	case BuildTypeApplication:
@@ -214,7 +231,7 @@ func (t BuildConfig) VariantAsString() string {
 	return "unknown"
 }
 
-func (t BuildConfig) AsString() string {
+func (t BuildConfig) String() string {
 	str := t.BuildAsString() + "-" + t.VariantAsString()
 	if t.Mode == BuildModeTest {
 		return str + "-test"

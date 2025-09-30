@@ -5,9 +5,11 @@ import (
 	"path/filepath"
 	"slices"
 	"strings"
+
+	corepkg "github.com/jurgen-kluft/ccode/core"
 )
 
-// Package hold a defined set of 'Projects'
+// Package holds sets of 'Projects'
 type Package struct {
 	RootPath  string
 	RepoPath  string
@@ -153,4 +155,51 @@ func (p *Package) GetUnittest() []*DevProject {
 // GetMainApp returns the projects that are registered as a main application
 func (p *Package) GetMainApp() []*DevProject {
 	return p.MainApps
+}
+
+func (p *Package) EncodeJson(encoder *corepkg.JsonEncoder, key string) {
+	encoder.BeginObject(key)
+	{
+		encoder.WriteField("root_path", p.RootPath)
+		encoder.WriteField("repo_path", p.RepoPath)
+		encoder.WriteField("repo_name", p.RepoName)
+
+		if len(p.Packages) > 0 {
+			encoder.BeginArray("packages")
+			for _, pkg := range p.Packages {
+				pkg.EncodeJson(encoder, pkg.RepoName)
+			}
+			encoder.EndObject()
+		}
+
+		if len(p.MainApps) > 0 {
+			encoder.BeginArray("main_apps")
+			for _, prj := range p.MainApps {
+				prj.EncodeJson(encoder, "")
+			}
+			encoder.EndArray()
+		}
+		if len(p.MainLibs) > 0 {
+			encoder.BeginArray("main_libs")
+			for _, prj := range p.MainLibs {
+				prj.EncodeJson(encoder, "")
+			}
+			encoder.EndArray()
+		}
+		if len(p.Unittests) > 0 {
+			encoder.BeginArray("unittests")
+			for _, prj := range p.Unittests {
+				prj.EncodeJson(encoder, "")
+			}
+			encoder.EndArray()
+		}
+		if len(p.TestLibs) > 0 {
+			encoder.BeginArray("test_libs")
+			for _, prj := range p.TestLibs {
+				prj.EncodeJson(encoder, "")
+			}
+			encoder.EndArray()
+		}
+	}
+	encoder.EndObject()
 }

@@ -59,7 +59,7 @@ func Init() bool {
 
 	corepkg.LogInfo("ccode, a tool to generate C/C++ workspace and project files")
 
-	if denv.NewDevEnum(cdev) == denv.DevInvalid {
+	if ide_generators.NewDevEnum(cdev) == ide_generators.DevInvalid {
 		corepkg.LogInfo()
 		corepkg.LogInfo("Error, wrong parameter for '-dev', '", cdev, "' is not recognized")
 		corepkg.LogInfo()

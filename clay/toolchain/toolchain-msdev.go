@@ -119,7 +119,7 @@ func (cl *WinMsDevCompiler) Compile(sourceAbsFilepaths []string, objRelFilepaths
 	}
 
 	// Iterate over the source files per directory and compile them.
-	configStr := cl.config.Config.AsString()
+	configStr := cl.config.Config.String()
 	for objDirpath, srcFiles := range sourceFilesPerDir {
 		cl.cmdline.Restore() // Restore the command line arguments
 
@@ -195,7 +195,7 @@ func (a *WinMsDevArchiver) Archive(inputObjectFilepaths []string, outputArchiveF
 	cmd.Env = os.Environ()
 	cmd.Env = append(cmd.Env, "PATH="+corepkg.PathWindowsPath(a.toolChain.Msvc.ArchiverPath))
 
-	corepkg.LogInfof("Archiving (%s) %s\n", a.config.Config.AsString(), outputArchiveFilepath)
+	corepkg.LogInfof("Archiving (%s) %s\n", a.config.Config.String(), outputArchiveFilepath)
 	out, err := cmd.CombinedOutput()
 	if err != nil {
 		corepkg.LogInfof("Archive failed, output:\n%s\n", string(out))
@@ -314,7 +314,7 @@ func (l *WinMsDevLinker) Link(inputArchiveAbsFilepaths []string, outputAppRelFil
 		return cmd.ExecCmd(linkerPath, handleStdout, handleStderr, envVars, linkerArgs...)
 	*/
 
-	corepkg.LogInfof("Linking (%s) %s\n", l.config.Config.AsString(), outputAppRelFilepath)
+	corepkg.LogInfof("Linking (%s) %s\n", l.config.Config.String(), outputAppRelFilepath)
 
 	cmd := exec.Command(linkerPath, linkerArgs...)
 	cmd.Env = os.Environ()

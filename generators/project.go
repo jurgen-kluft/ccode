@@ -12,21 +12,21 @@ import (
 // -----------------------------------------------------------------------------------------------------
 
 type Project struct {
-	Workspace        *Workspace       // The workspace this project is part of
-	Name             string           // The name of the project
-	BuildType        denv.BuildType   // The build type of the project
-	SupportedTargets denv.BuildTarget // The targets that this project supports
-	ProjectAbsPath   string           // The path where the project is located on disk, under the workspace directory
-	GenerateAbsPath  string           // Where the project will be saved on disk
-	Group            *ProjectGroup    // Set when project is added into ProjectGroups
-	SrcFileGroups    []*FileEntryDict
-	ResFileGroups    []*FileEntryDict
-	VirtualFolders   *VirtualDirectories // For IDE generation, this is the path that is the root path of the virtual folder/file structure
-	PchCpp           *FileEntry
-	Settings         *ProjectSettings
-	ProjectFilename  string
-	ConfigsLocal     *ConfigList
-	Dependencies     *ProjectList
+	Workspace       *Workspace       // The workspace this project is part of
+	Name            string           // The name of the project
+	BuildType       denv.BuildType   // The build type of the project
+	BuildTargets    denv.BuildTarget // The targets that this project supports
+	ProjectAbsPath  string           // The path where the project is located on disk, under the workspace directory
+	GenerateAbsPath string           // Where the project will be saved on disk
+	Group           *ProjectGroup    // Set when project is added into ProjectGroups
+	SrcFileGroups   []*FileEntryDict
+	ResFileGroups   []*FileEntryDict
+	VirtualFolders  *VirtualDirectories // For IDE generation, this is the path that is the root path of the virtual folder/file structure
+	PchCpp          *FileEntry
+	Settings        *ProjectSettings
+	ProjectFilename string
+	ConfigsLocal    *ConfigList
+	Dependencies    *ProjectList
 
 	Resolved *ProjectResolved
 }
@@ -35,17 +35,17 @@ func newProject2(buildTarget denv.BuildTarget, prj *denv.DevProject, generateAbs
 	projectAbsPath := prj.Package.PackagePath()
 	p := &Project{
 		//Workspace:        ws,
-		Name:             prj.Name,
-		BuildType:        prj.BuildType,
-		SupportedTargets: prj.Supported,
-		ProjectAbsPath:   projectAbsPath,
-		GenerateAbsPath:  generateAbsPath,
-		Group:            nil,
-		SrcFileGroups:    []*FileEntryDict{NewFileEntryDict(projectAbsPath)},
-		ResFileGroups:    []*FileEntryDict{NewFileEntryDict(projectAbsPath)},
-		Settings:         settings,
-		ConfigsLocal:     NewConfigList(),
-		Dependencies:     NewProjectList(),
+		Name:            prj.Name,
+		BuildType:       prj.BuildType,
+		BuildTargets:    prj.BuildTargets,
+		ProjectAbsPath:  projectAbsPath,
+		GenerateAbsPath: generateAbsPath,
+		Group:           nil,
+		SrcFileGroups:   []*FileEntryDict{NewFileEntryDict(projectAbsPath)},
+		ResFileGroups:   []*FileEntryDict{NewFileEntryDict(projectAbsPath)},
+		Settings:        settings,
+		ConfigsLocal:    NewConfigList(),
+		Dependencies:    NewProjectList(),
 	}
 	p.VirtualFolders = NewVirtualFolders(p.ProjectAbsPath) // The path that is the root path of the virtual folder/file structure
 
@@ -179,7 +179,7 @@ func (p *ProjectResolved) InitXCodeConfig(prj *Project) {
 	p.GenDataXcode = gd
 }
 
-func (p *ProjectResolved) GenerateUUIDs(dev denv.DevEnum) {
+func (p *ProjectResolved) GenerateUUIDs(dev DevEnum) {
 	if dev.IsXCode() {
 		p.GenDataXcode.Uuid = corepkg.GenerateUUID()
 		p.GenDataXcode.TargetUuid = corepkg.GenerateUUID()
@@ -200,7 +200,7 @@ func (p *ProjectResolved) GenerateUUIDs(dev denv.DevEnum) {
 	p.GenDataMsDev.UUID = corepkg.GenerateUUID()
 }
 
-func (p *Project) Resolve(devEnum denv.DevEnum) error {
+func (p *Project) Resolve(devEnum DevEnum) error {
 	resolved := NewProjectResolved()
 
 	if p.BuildType.IsExecutable() {
@@ -313,7 +313,7 @@ func (p *Project) GlobFiles(path string, sub string, pattern string, isExcluded 
 // -----------------------------------------------------------------------------------------------------
 // -----------------------------------------------------------------------------------------------------
 
-func (p *Project) BuildLibraryInformation(devEnum denv.DevEnum, config *Config, workspaceGenerateAbsPath string) (linkDirs, linkFiles, linkLibs *corepkg.ValueSet) {
+func (p *Project) BuildLibraryInformation(devEnum DevEnum, config *Config, workspaceGenerateAbsPath string) (linkDirs, linkFiles, linkLibs *corepkg.ValueSet) {
 	linkDirs = corepkg.NewValueSet()
 	linkFiles = corepkg.NewValueSet()
 	linkLibs = corepkg.NewValueSet()

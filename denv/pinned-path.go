@@ -19,3 +19,13 @@ func (fp PinnedPath) String() string {
 func (fp PinnedPath) RelativeTo(root string) string {
 	return corepkg.PathGetRelativeTo(fp.String(), root)
 }
+
+func (fp PinnedPath) EncodeJson(encoder *corepkg.JsonEncoder, key string) {
+	encoder.BeginObject(key)
+	{
+		encoder.WriteField("root", fp.Root)
+		encoder.WriteField("base", fp.Base)
+		encoder.WriteField("sub", fp.Sub)
+	}
+	encoder.EndObject()
+}

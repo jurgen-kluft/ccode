@@ -23,3 +23,36 @@ func NewDevConfig(buildType BuildType, buildConfig BuildConfig) *DevConfig {
 
 	return config
 }
+
+func (c *DevConfig) EncodeJson(encoder *corepkg.JsonEncoder, key string) {
+	encoder.BeginObject(key)
+	{
+		encoder.WriteField("build_type", c.BuildType.String())
+		encoder.WriteField("build_config", c.BuildConfig.String())
+		encoder.WriteField("include_dirs", c.IncludeDirs)
+		{
+			if len(c.IncludeDirs) > 0 {
+				encoder.BeginArray("")
+				for _, dir := range c.IncludeDirs {
+					dir.EncodeJson(encoder, "")
+				}
+				encoder.EndArray()
+			}
+		}
+		encoder.WriteField("defines", c.Defines)
+		{
+			c.Defines.EncodeJson(encoder, "")
+		}
+		encoder.WriteField("libs", c.Libs)
+		{
+			if len(c.Libs) > 0 {
+				encoder.BeginArray("")
+				for _, lib := range c.Libs {
+					lib.EncodeJson(encoder, "")
+				}
+				encoder.EndArray()
+			}
+		}
+	}
+	encoder.EndObject()
+}

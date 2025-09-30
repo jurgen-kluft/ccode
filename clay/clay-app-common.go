@@ -304,9 +304,9 @@ func ListLibraries() error {
 		if idx, ok := nameToIndex[prj.Name]; !ok {
 			idx = len(configs)
 			nameToIndex[prj.Name] = idx
-			configs = append(configs, prj.Config.Config.AsString())
+			configs = append(configs, prj.Config.Config.String())
 		} else {
-			configs[idx] += ", " + prj.Config.Config.AsString()
+			configs[idx] += ", " + prj.Config.Config.String()
 		}
 	}
 

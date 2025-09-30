@@ -86,7 +86,7 @@ func (f *ExclusionFilter) IsExcluded(filepath string) bool {
 // IDE generator
 // ----------------------------------------------------------------------------------------------
 type Generator struct {
-	Dev             denv.DevEnum
+	Dev             DevEnum
 	BuildTarget     denv.BuildTarget
 	Verbose         bool
 	WorkspacePath   string // $(GOPATH)/src/github.com/user, absolute path
@@ -95,7 +95,7 @@ type Generator struct {
 
 func NewGenerator(dev string, buildTarget denv.BuildTarget, verbose bool) *Generator {
 	g := &Generator{}
-	g.Dev = denv.NewDevEnum(dev)
+	g.Dev = NewDevEnum(dev)
 	g.BuildTarget = buildTarget
 	g.Verbose = verbose
 	return g
@@ -111,19 +111,19 @@ func (g *Generator) Generate(pkg *denv.Package) {
 	}
 
 	switch g.Dev {
-	case denv.DevTundra:
+	case DevTundra:
 		gg := NewTundraGenerator(ws)
 		gg.Generate()
-	case denv.DevMake:
+	case DevMake:
 		gg := NewMakeGenerator2(ws)
 		err = gg.Generate()
-	case denv.DevXcode:
+	case DevXcode:
 		gg := NewXcodeGenerator(ws)
 		gg.Generate()
-	case denv.DevVs2015, denv.DevVs2017, denv.DevVs2019, denv.DevVs2022:
+	case DevVs2015, DevVs2017, DevVs2019, DevVs2022:
 		gg := NewMsDevGenerator(ws)
 		gg.Generate(g.BuildTarget)
-	case denv.DevClay:
+	case DevClay:
 		gg := NewClayGenerator(ws, g.Verbose)
 		err = gg.Generate()
 	}
@@ -133,7 +133,7 @@ func (g *Generator) Generate(pkg *denv.Package) {
 	}
 }
 
-func (g *Generator) GenerateWorkspace(_pkg *denv.Package, _dev denv.DevEnum, _buildTarget denv.BuildTarget) (*Workspace, error) {
+func (g *Generator) GenerateWorkspace(_pkg *denv.Package, _dev DevEnum, _buildTarget denv.BuildTarget) (*Workspace, error) {
 	g.WorkspacePath = filepath.Join(os.Getenv("GOPATH"), "src", _pkg.RepoPath)
 
 	mainApps := _pkg.GetMainApp()

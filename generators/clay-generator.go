@@ -99,7 +99,7 @@ func (g *ClayGenerator) generateMain(out *corepkg.LineWriter) {
 func (g *ClayGenerator) generateProjectFile(out *corepkg.LineWriter) {
 	count := 0
 	for _, prj := range g.Workspace.ProjectList.Values {
-		if prj.SupportedTargets.HasOverlap(g.BuildTarget) {
+		if prj.BuildTargets.HasOverlap(g.BuildTarget) {
 			count += len(prj.Resolved.Configs.Values)
 		}
 	}
@@ -109,9 +109,9 @@ func (g *ClayGenerator) generateProjectFile(out *corepkg.LineWriter) {
 
 	index := 0
 	for _, prj := range g.Workspace.ProjectList.Values {
-		if prj.SupportedTargets.HasOverlap(g.BuildTarget) {
+		if prj.BuildTargets.HasOverlap(g.BuildTarget) {
 			for _, prjCfg := range prj.Resolved.Configs.Values {
-				configName := prjCfg.BuildConfig.AsString()
+				configName := prjCfg.BuildConfig.String()
 				projectId := strings.ReplaceAll(prj.Name+"_"+configName, "-", "_")
 				projectIndexToId[index] = projectId
 				projectToIndex[projectId] = index
@@ -143,17 +143,17 @@ func (g *ClayGenerator) generateProjectFile(out *corepkg.LineWriter) {
 
 	index = 0
 	for _, prj := range g.Workspace.ProjectList.Values {
-		if prj.SupportedTargets.HasOverlap(g.BuildTarget) {
+		if prj.BuildTargets.HasOverlap(g.BuildTarget) {
 
 			//			projectBaseDir := prj.ProjectAbsPath
 
 			for _, prjCfg := range prj.Resolved.Configs.Values {
-				configName := prjCfg.BuildConfig.AsString()
+				configName := prjCfg.BuildConfig.String()
 
 				out.WriteILine("", "{")
 				out.WriteILine("+", "configName := ", `"`, configName, `"`)
 				out.WriteILine("+", "projectName := ", `"`, prj.Name, `"`)
-				out.WriteILine("+", "supportedTargets := clay.BuildTargetFromString(", `"`, prj.SupportedTargets.String(), `")`)
+				out.WriteILine("+", "supportedTargets := clay.BuildTargetFromString(", `"`, prj.BuildTargets.String(), `")`)
 				out.WriteILine("+", `projectConfig := clay.NewConfig(supportedTargets, configName)`)
 				if prj.BuildType.IsExecutable() {
 					out.WriteILine("+", "project := clay.NewExecutableProject(projectName, projectConfig)")
@@ -241,17 +241,17 @@ func (g *ClayGenerator) generateProjectFile(out *corepkg.LineWriter) {
 
 	out.WriteILine("", "// Setup Project Dependencies")
 	for _, prj := range g.Workspace.ProjectList.Values {
-		if prj.SupportedTargets.HasOverlap(g.BuildTarget) {
+		if prj.BuildTargets.HasOverlap(g.BuildTarget) {
 			for _, prjCfg := range prj.Resolved.Configs.Values {
 				if prj.Dependencies.Len() > 0 {
-					configName := prjCfg.BuildConfig.AsString()
+					configName := prjCfg.BuildConfig.String()
 					projectId := strings.ReplaceAll(prj.Name+"_"+configName, "-", "_")
 
 					out.WriteILine("", "{")
 					out.WriteILine("+", "project := projects[", projectId, "_id]")
 					out.WriteILine("+", `project.Dependencies = []*clay.Project{`)
 					for _, depProject := range prj.Dependencies.Values {
-						if depProject.SupportedTargets.HasOverlap(g.BuildTarget) {
+						if depProject.BuildTargets.HasOverlap(g.BuildTarget) {
 							depProjectId := strings.ReplaceAll(depProject.Name+"_"+configName, "-", "_")
 							out.WriteILine("++", "projects[", depProjectId, "_id],")
 						}
