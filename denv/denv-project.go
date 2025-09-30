@@ -565,20 +565,20 @@ func (p *DevProjectList) CollectByWildcard(name string, list *DevProjectList) {
 }
 
 func (p *DevProjectList) TopoSort() error {
-	var edges []Edge
+	var edges []corepkg.Edge
 
 	// Sort the projects by dependencies
 	for i, project := range p.Values {
 		if project.Dependencies.IsEmpty() {
-			edges = append(edges, Edge{Vertex(i), InvalidVertex})
+			edges = append(edges, corepkg.Edge{S: corepkg.Vertex(i), D: corepkg.InvalidVertex})
 		} else {
 			for _, dep := range project.Dependencies.Values {
-				edges = append(edges, Edge{S: Vertex(i), D: Vertex(p.Dict[dep.Name])})
+				edges = append(edges, corepkg.Edge{S: corepkg.Vertex(i), D: corepkg.Vertex(p.Dict[dep.Name])})
 			}
 		}
 	}
 
-	sorted, err := Toposort(edges)
+	sorted, err := corepkg.Toposort(edges)
 	if err != nil {
 		return err
 	}
