@@ -1,9 +1,11 @@
 package clay
 
 import (
+	"fmt"
 	"os"
 
 	corepkg "github.com/jurgen-kluft/ccode/core"
+	"github.com/jurgen-kluft/ccode/denv"
 )
 
 // Clay App Desktop
@@ -31,7 +33,7 @@ func ClayAppMainDesktop() {
 	case "clean":
 		err = Clean(ParseProjectNameAndConfig())
 	case "list-libraries":
-		err = ListLibraries()
+		err = ListLibraries(denv.BuildTargetFromString(fmt.Sprintf("%s(%s)", clayConfig.TargetOs, clayConfig.TargetArch)))
 	case "version":
 		version := corepkg.NewVersionInfo()
 		corepkg.LogInfof("Version: %s", version.Version)
@@ -67,23 +69,27 @@ func UsageDesktop() {
 	corepkg.LogInfo("  clay list-libraries")
 }
 
-func BuildDesktop(projectName string, buildConfig *Config) error {
+func BuildDesktop(projectName string, buildConfig denv.BuildConfig, buildTarget denv.BuildTarget) error {
 	// Note: We should be running this from the "target/{build target}" directory
 	// Create the build directory
-	buildPath := GetBuildPath(buildConfig.GetSubDir())
+	buildPath := GetBuildPath(GetBuildDirname(buildConfig, buildTarget))
 	os.MkdirAll(buildPath+"/", os.ModePerm)
 
-	prjs := ClayAppCreateProjectsFunc()
+	prjs, err := CreateProjects(buildTarget, buildConfig)
+	if err != nil {
+		return err
+	}
+
 	for _, prj := range prjs {
-		prj.SetToolchain(buildConfig, buildPath, nil)
+		prj.SetToolchain(buildConfig, buildTarget, buildPath, nil)
 	}
 
 	var outOfDate int
 
 	// Build the libraries first
 	for _, prj := range prjs {
-		if !prj.IsExecutable && prj.Config.Matches(buildConfig) {
-			if ood, err := prj.Build(buildConfig, buildPath); err != nil {
+		if !prj.IsExecutable() && prj.CanBuildFor(buildConfig, buildTarget) {
+			if ood, err := prj.Build(buildConfig, buildTarget, buildPath); err != nil {
 				return err
 			} else {
 				outOfDate += ood
@@ -93,10 +99,10 @@ func BuildDesktop(projectName string, buildConfig *Config) error {
 
 	// Now build the executables
 	for _, prj := range prjs {
-		if projectName == "" || projectName == prj.Name {
-			if prj.IsExecutable && prj.Config.Matches(buildConfig) {
-				AddBuildInfoAsCppLibrary(prj, buildConfig)
-				if ood, err := prj.Build(buildConfig, buildPath); err != nil {
+		if projectName == "" || projectName == prj.DevProject.Name {
+			if prj.IsExecutable() && prj.CanBuildFor(buildConfig, buildTarget) {
+				//AddBuildInfoAsCppLibrary(prj, buildConfig)
+				if ood, err := prj.Build(buildConfig, buildTarget, buildPath); err != nil {
 					return err
 				} else {
 					outOfDate += ood
@@ -112,20 +118,25 @@ func BuildDesktop(projectName string, buildConfig *Config) error {
 	return nil
 }
 
-func BuildInfoDesktop(projectName string, buildConfig *Config) error {
+func BuildInfoDesktop(projectName string, buildConfig denv.BuildConfig, buildTarget denv.BuildTarget) error {
 
 	// TODO what should this do for just desktop applications?
 	// Windows SDK version ?
 	// Mac SDK version ?
-	EspSdkPath := "/Users/obnosis5/sdk/arduino/esp32"
-	buildPath := GetBuildPath(buildConfig.GetSubDir())
+	sdkVersion := ""
 
-	prjs := ClayAppCreateProjectsFunc()
+	buildPath := GetBuildPath(GetBuildDirname(buildConfig, buildTarget))
+
+	prjs, err := CreateProjects(buildTarget, buildConfig)
+	if err != nil {
+		return err
+	}
+
 	for _, prj := range prjs {
-		if projectName == "" || projectName == prj.Name {
-			if prj.Config.Matches(buildConfig) {
+		if projectName == "" || projectName == prj.DevProject.Name {
+			if prj.CanBuildFor(buildConfig, buildTarget) {
 				appPath, _ := os.Getwd()
-				if err := GenerateBuildInfo(prj.GetBuildPath(buildPath), appPath, EspSdkPath, BuildInfoFilenameWithoutExt); err != nil {
+				if err := GenerateBuildInfo(prj.GetBuildPath(buildPath), appPath, sdkVersion, BuildInfoFilenameWithoutExt); err != nil {
 					return err
 				}
 			}

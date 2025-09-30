@@ -24,6 +24,14 @@ func NewDevConfig(buildType BuildType, buildConfig BuildConfig) *DevConfig {
 	return config
 }
 
+func (c *DevConfig) GetIncludeDirs() []string {
+	dirs := make([]string, 0, len(c.IncludeDirs))
+	for _, dir := range c.IncludeDirs {
+		dirs = append(dirs, dir.String())
+	}
+	return dirs
+}
+
 func (c *DevConfig) EncodeJson(encoder *corepkg.JsonEncoder, key string) {
 	encoder.BeginObject(key)
 	{

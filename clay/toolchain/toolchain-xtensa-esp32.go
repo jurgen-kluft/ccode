@@ -13,6 +13,7 @@ import (
 	"strings"
 
 	"github.com/jurgen-kluft/ccode/clay/toolchain/deptrackr"
+	"github.com/jurgen-kluft/ccode/denv"
 
 	corepkg "github.com/jurgen-kluft/ccode/core"
 )
@@ -28,17 +29,19 @@ type ArduinoEsp32Toolchain struct {
 
 type ToolchainArduinoEsp32Compiler struct {
 	toolChain       *ArduinoEsp32Toolchain
-	config          *Config // Configuration for the compiler, e.g., debug or release
+	buildConfig     denv.BuildConfig // Configuration for the compiler, e.g., debug or release
+	buildTarget     denv.BuildTarget
 	cCompilerPath   string
 	cppCompilerPath string
 	cCompilerArgs   *corepkg.Arguments
 	cppCompilerArgs *corepkg.Arguments
 }
 
-func (t *ArduinoEsp32Toolchain) NewCompiler(config *Config) Compiler {
+func (t *ArduinoEsp32Toolchain) NewCompiler(buildConfig denv.BuildConfig, buildTarget denv.BuildTarget) Compiler {
 	return &ToolchainArduinoEsp32Compiler{
 		toolChain:       t,
-		config:          config,
+		buildConfig:     buildConfig,
+		buildTarget:     buildTarget,
 		cCompilerPath:   t.Vars.GetFirstOrEmpty("c.compiler"),
 		cppCompilerPath: t.Vars.GetFirstOrEmpty("cpp.compiler"),
 		cCompilerArgs:   corepkg.NewArguments(64),
@@ -75,7 +78,7 @@ func (cl *ToolchainArduinoEsp32Compiler) SetupArgs(defines []string, includes []
 		}
 
 		// Optimization
-		if cl.config.Config.IsDebug() {
+		if cl.buildConfig.IsDebug() {
 			cl.cCompilerArgs.Add("-Os")
 		} else {
 			cl.cCompilerArgs.Add("-Og", "-g3")
@@ -89,7 +92,7 @@ func (cl *ToolchainArduinoEsp32Compiler) SetupArgs(defines []string, includes []
 		// Compiler user defines
 		cl.cCompilerArgs.AddWithPrefix("-D", defines...)
 		// Depending on Debug/Release/Final, we add CORE_DEBUG_LEVEL
-		if cl.config.Config.IsDebug() {
+		if cl.buildConfig.IsDebug() {
 			cl.cCompilerArgs.AddWithPrefix("-D", "CORE_DEBUG_LEVEL=1")
 		} else {
 			cl.cCompilerArgs.AddWithPrefix("-D", "CORE_DEBUG_LEVEL=0")
@@ -143,7 +146,7 @@ func (cl *ToolchainArduinoEsp32Compiler) SetupArgs(defines []string, includes []
 		}
 
 		// Optimization
-		if cl.config.Config.IsDebug() {
+		if cl.buildConfig.IsDebug() {
 			cl.cCompilerArgs.Add("-Os")
 		} else {
 			cl.cCompilerArgs.Add("-Og", "-g3")
@@ -158,7 +161,7 @@ func (cl *ToolchainArduinoEsp32Compiler) SetupArgs(defines []string, includes []
 		cl.cppCompilerArgs.AddWithPrefix("-D", defines...)
 
 		// Depending on Debug/Release/Final, we add CORE_DEBUG_LEVEL
-		if cl.config.Config.IsDebug() {
+		if cl.buildConfig.IsDebug() {
 			cl.cCompilerArgs.AddWithPrefix("-D", "CORE_DEBUG_LEVEL=1")
 		} else {
 			cl.cCompilerArgs.AddWithPrefix("-D", "CORE_DEBUG_LEVEL=0")
@@ -216,7 +219,7 @@ func (cl *ToolchainArduinoEsp32Compiler) Compile(sourceAbsFilepaths []string, ob
 		args = append(args, "-o")
 		args = append(args, objRelFilepath)
 
-		corepkg.LogInfof("Compiling (%s) %s", cl.config.Config.String(), filepath.Base(sourceAbsFilepath))
+		corepkg.LogInfof("Compiling (%s) %s", cl.buildConfig.String(), filepath.Base(sourceAbsFilepath))
 
 		cmd := exec.Command(compilerPath, args...)
 		out, err := cmd.CombinedOutput()
@@ -239,15 +242,17 @@ func (cl *ToolchainArduinoEsp32Compiler) Compile(sourceAbsFilepaths []string, ob
 
 type ToolchainArduinoEsp32Archiver struct {
 	toolChain    *ArduinoEsp32Toolchain
-	config       *Config
+	buildConfig  denv.BuildConfig
+	buildTarget  denv.BuildTarget
 	archiverPath string
 	archiverArgs *corepkg.Arguments
 }
 
-func (t *ArduinoEsp32Toolchain) NewArchiver(a ArchiverType, config *Config) Archiver {
+func (t *ArduinoEsp32Toolchain) NewArchiver(a ArchiverType, buildConfig denv.BuildConfig, buildTarget denv.BuildTarget) Archiver {
 	return &ToolchainArduinoEsp32Archiver{
 		toolChain:    t,
-		config:       config,
+		buildConfig:  buildConfig,
+		buildTarget:  buildTarget,
 		archiverPath: t.Vars.GetFirstOrEmpty("archiver"),
 		archiverArgs: corepkg.NewArguments(16),
 	}
@@ -293,18 +298,20 @@ func (a *ToolchainArduinoEsp32Archiver) Archive(inputObjectFilepaths []string, o
 // Linker
 
 type ToolchainArduinoEsp32Linker struct {
-	toolChain  *ArduinoEsp32Toolchain
-	config     *Config
-	linkerPath string
-	linkerArgs *corepkg.Arguments
+	toolChain   *ArduinoEsp32Toolchain
+	buildConfig denv.BuildConfig
+	buildTarget denv.BuildTarget
+	linkerPath  string
+	linkerArgs  *corepkg.Arguments
 }
 
-func (t *ArduinoEsp32Toolchain) NewLinker(config *Config) Linker {
+func (t *ArduinoEsp32Toolchain) NewLinker(buildConfig denv.BuildConfig, buildTarget denv.BuildTarget) Linker {
 	return &ToolchainArduinoEsp32Linker{
-		toolChain:  t,
-		config:     config,
-		linkerPath: t.Vars.GetFirstOrEmpty("linker"),
-		linkerArgs: corepkg.NewArguments(512),
+		toolChain:   t,
+		buildConfig: buildConfig,
+		buildTarget: buildTarget,
+		linkerPath:  t.Vars.GetFirstOrEmpty("linker"),
+		linkerArgs:  corepkg.NewArguments(512),
 	}
 }
 
@@ -398,7 +405,8 @@ func (l *ToolchainArduinoEsp32Linker) Link(inputArchiveAbsFilepaths []string, ou
 
 type ToolchainArduinoEsp32Burner struct {
 	toolChain                            *ArduinoEsp32Toolchain
-	config                               *Config              // Configuration for the burner, e.g., debug or release
+	buildConfig                          denv.BuildConfig
+	buildTarget                          denv.BuildTarget
 	dependencyTracker                    deptrackr.FileTrackr // Dependency tracker for the burner
 	hasher                               hash.Hash            // Hasher for generating digests of arguments
 	genImageBinToolArgs                  *corepkg.Arguments
@@ -420,10 +428,11 @@ type ToolchainArduinoEsp32Burner struct {
 	flashToolPath                        string
 }
 
-func (t *ArduinoEsp32Toolchain) NewBurner(config *Config) Burner {
+func (t *ArduinoEsp32Toolchain) NewBurner(buildConfig denv.BuildConfig, buildTarget denv.BuildTarget) Burner {
 	return &ToolchainArduinoEsp32Burner{
 		toolChain:                            t,
-		config:                               config,
+		buildConfig:                          buildConfig,
+		buildTarget:                          buildTarget,
 		dependencyTracker:                    nil,
 		hasher:                               sha1.New(),
 		genImageBinToolArgs:                  corepkg.NewArguments(64),
@@ -709,7 +718,7 @@ func ArduinoEspSdkPath(arch string) string {
 // --------------------------------------------------------------------------------------------------
 // --------------------------------------------------------------------------------------------------
 // Toolchain for ESP32 on Arduino
-func NewArduinoEsp32Toolchain(espBoardVars *corepkg.Vars, projectName string, partitionFiles []string) *ArduinoEsp32Toolchain {
+func NewArduinoEsp32Toolchain(espBoardVars *corepkg.Vars, projectName string) *ArduinoEsp32Toolchain {
 	type item struct {
 		key   string
 		value []string
@@ -803,17 +812,20 @@ func NewArduinoEsp32Toolchain(espBoardVars *corepkg.Vars, projectName string, pa
 
 	// #----------------------------------------------------------------------------------
 	//     xtensa-esp32 partitions file
-	var partitionFile string
-	for _, pf := range partitionFiles {
-		if strings.Compare(strings.ToLower(filepath.Base(pf)), espMcu) == 0 && strings.HasSuffix(strings.ToLower(pf), ".csv") {
-			partitionFile = pf
-			break
-		}
-	}
-	if len(partitionFile) == 0 {
-		partitionFile = `{esp.sdk.path}/tools/partitions/default.csv`
-	}
-	t.Vars.Set("burner.flash.partitions.csv.filepath", partitionFile)
+
+	// TODO
+
+	// var partitionFile string
+	// for _, pf := range partitionFiles {
+	// 	if strings.Compare(strings.ToLower(filepath.Base(pf)), espMcu) == 0 && strings.HasSuffix(strings.ToLower(pf), ".csv") {
+	// 		partitionFile = pf
+	// 		break
+	// 	}
+	// }
+	// if len(partitionFile) == 0 {
+	// 	partitionFile = `{esp.sdk.path}/tools/partitions/default.csv`
+	// }
+	// t.Vars.Set("burner.flash.partitions.csv.filepath", partitionFile)
 
 	// #----------------------------------------------------------------------------------
 	//     xtensa-esp32 build properties

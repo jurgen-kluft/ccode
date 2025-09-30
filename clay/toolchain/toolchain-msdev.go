@@ -10,6 +10,7 @@ import (
 	"github.com/jurgen-kluft/ccode/clay/toolchain/deptrackr"
 	"github.com/jurgen-kluft/ccode/clay/toolchain/msvc"
 	corepkg "github.com/jurgen-kluft/ccode/core"
+	"github.com/jurgen-kluft/ccode/denv"
 )
 
 type WinMsdev struct {
@@ -26,19 +27,21 @@ type WinMsdev struct {
 //
 
 type WinMsDevCompiler struct {
-	toolChain *WinMsdev             // The toolchain this compiler belongs to
-	config    *Config               // Build configuration
-	args      *corepkg.Arguments    // Arguments for the compiler
-	cmdline   *msvc.CompilerCmdLine // Cmdline for the compiler
+	toolChain   *WinMsdev // The toolchain this compiler belongs to
+	buildConfig denv.BuildConfig
+	buildTarget denv.BuildTarget
+	args        *corepkg.Arguments    // Arguments for the compiler
+	cmdline     *msvc.CompilerCmdLine // Cmdline for the compiler
 }
 
-func (m *WinMsdev) NewCompiler(config *Config) Compiler {
+func (m *WinMsdev) NewCompiler(buildConfig denv.BuildConfig, buildTarget denv.BuildTarget) Compiler {
 	args := corepkg.NewArguments(512)
 	return &WinMsDevCompiler{
-		toolChain: m,
-		config:    config,
-		args:      args,
-		cmdline:   msvc.NewCompilerCmdLine(args),
+		toolChain:   m,
+		buildConfig: buildConfig,
+		buildTarget: buildTarget,
+		args:        args,
+		cmdline:     msvc.NewCompilerCmdLine(args),
 	}
 }
 
@@ -63,13 +66,13 @@ func (cl *WinMsDevCompiler) SetupArgs(_defines []string, _includes []string) {
 
 	cl.cmdline.EnableStringPooling()
 
-	if cl.config.IsDebug() {
+	if cl.buildConfig.IsDebug() {
 		// Debug-specific arguments
 		cl.cmdline.DisableOptimizations()
 		cl.cmdline.GenerateDebugInfo()
 		cl.cmdline.DisableFramePointer()
 		cl.cmdline.UseMultithreadedDebugRuntime()
-	} else if cl.config.IsRelease() {
+	} else if cl.buildConfig.IsRelease() {
 		// Release-specific arguments
 		cl.cmdline.OptimizeForSize()
 		cl.cmdline.OptimizeForSpeed()
@@ -77,7 +80,7 @@ func (cl *WinMsDevCompiler) SetupArgs(_defines []string, _includes []string) {
 		cl.cmdline.EnableIntrinsicFunctions()
 		cl.cmdline.OmitFramePointer()
 		cl.cmdline.UseMultithreadedRuntime()
-	} else if cl.config.IsFinal() {
+	} else if cl.buildConfig.IsFinal() {
 		// Final-specific arguments
 		cl.cmdline.OptimizeForSize()
 		cl.cmdline.OptimizeForSpeed()
@@ -89,7 +92,7 @@ func (cl *WinMsDevCompiler) SetupArgs(_defines []string, _includes []string) {
 	}
 
 	// Test-specific arguments
-	if cl.config.IsTest() {
+	if cl.buildConfig.IsTest() {
 		cl.cmdline.EnableExceptionHandling()
 	}
 
@@ -119,7 +122,7 @@ func (cl *WinMsDevCompiler) Compile(sourceAbsFilepaths []string, objRelFilepaths
 	}
 
 	// Iterate over the source files per directory and compile them.
-	configStr := cl.config.Config.String()
+	configStr := cl.buildConfig.String()
 	for objDirpath, srcFiles := range sourceFilesPerDir {
 		cl.cmdline.Restore() // Restore the command line arguments
 
@@ -155,21 +158,23 @@ func (cl *WinMsDevCompiler) Compile(sourceAbsFilepaths []string, objRelFilepaths
 // --------------------------------------------------------------------------------------------------
 // Archiver
 
-func (m *WinMsdev) NewArchiver(a ArchiverType, config *Config) Archiver {
+func (m *WinMsdev) NewArchiver(a ArchiverType, buildConfig denv.BuildConfig, buildTarget denv.BuildTarget) Archiver {
 	args := corepkg.NewArguments(512)
 	return &WinMsDevArchiver{
-		toolChain: m,
-		config:    config,
-		args:      args,
-		cmdline:   msvc.NewArchiverCmdline(args),
+		toolChain:   m,
+		buildConfig: buildConfig,
+		buildTarget: buildTarget,
+		args:        args,
+		cmdline:     msvc.NewArchiverCmdline(args),
 	}
 }
 
 type WinMsDevArchiver struct {
-	toolChain *WinMsdev             // The toolchain this archiver belongs to
-	config    *Config               // Build configuration
-	args      *corepkg.Arguments    // Arguments for the archiver
-	cmdline   *msvc.ArchiverCmdline // Cmdline for the archiver
+	toolChain   *WinMsdev // The toolchain this archiver belongs to
+	buildConfig denv.BuildConfig
+	buildTarget denv.BuildTarget
+	args        *corepkg.Arguments    // Arguments for the archiver
+	cmdline     *msvc.ArchiverCmdline // Cmdline for the archiver
 }
 
 func (a *WinMsDevArchiver) LibFilepath(_filepath string) string {
@@ -195,7 +200,7 @@ func (a *WinMsDevArchiver) Archive(inputObjectFilepaths []string, outputArchiveF
 	cmd.Env = os.Environ()
 	cmd.Env = append(cmd.Env, "PATH="+corepkg.PathWindowsPath(a.toolChain.Msvc.ArchiverPath))
 
-	corepkg.LogInfof("Archiving (%s) %s\n", a.config.Config.String(), outputArchiveFilepath)
+	corepkg.LogInfof("Archiving (%s) %s\n", a.buildConfig.String(), outputArchiveFilepath)
 	out, err := cmd.CombinedOutput()
 	if err != nil {
 		corepkg.LogInfof("Archive failed, output:\n%s\n", string(out))
@@ -212,21 +217,23 @@ func (a *WinMsDevArchiver) Archive(inputObjectFilepaths []string, outputArchiveF
 // --------------------------------------------------------------------------------------------------
 // Linker
 
-func (ms *WinMsdev) NewLinker(config *Config) Linker {
+func (ms *WinMsdev) NewLinker(buildConfig denv.BuildConfig, buildTarget denv.BuildTarget) Linker {
 	args := corepkg.NewArguments(512)
 	return &WinMsDevLinker{
-		toolChain: ms,
-		config:    config,
-		args:      args,
-		cmdline:   msvc.NewLinkerCmdline(args),
+		toolChain:   ms,
+		buildConfig: buildConfig,
+		buildTarget: buildTarget,
+		args:        args,
+		cmdline:     msvc.NewLinkerCmdline(args),
 	}
 }
 
 type WinMsDevLinker struct {
-	toolChain *WinMsdev           // The toolchain this archiver belongs to
-	config    *Config             // Build configuration
-	args      *corepkg.Arguments  // Arguments for the linker
-	cmdline   *msvc.LinkerCmdline // Cmdline for the linker
+	toolChain   *WinMsdev // The toolchain this archiver belongs to
+	buildConfig denv.BuildConfig
+	buildTarget denv.BuildTarget
+	args        *corepkg.Arguments  // Arguments for the linker
+	cmdline     *msvc.LinkerCmdline // Cmdline for the linker
 }
 
 func (l *WinMsDevLinker) LinkedFilepath(filepath string) string {
@@ -271,14 +278,14 @@ func (l *WinMsDevLinker) Link(inputArchiveAbsFilepaths []string, outputAppRelFil
 	}
 	l.cmdline.Libs(systemLibraries)
 
-	if l.config.IsDebug() {
+	if l.buildConfig.IsDebug() {
 		l.cmdline.GenerateDebugInfo()
 	}
-	if l.config.IsRelease() || l.config.IsFinal() {
+	if l.buildConfig.IsRelease() || l.buildConfig.IsFinal() {
 		l.cmdline.OptimizeReferences()
 		l.cmdline.OptimizeIdenticalFolding()
 	}
-	if l.config.IsFinal() {
+	if l.buildConfig.IsFinal() {
 		l.cmdline.LinkTimeCodeGeneration()
 		l.cmdline.DisableIncrementalLinking()
 	}
@@ -314,7 +321,7 @@ func (l *WinMsDevLinker) Link(inputArchiveAbsFilepaths []string, outputAppRelFil
 		return cmd.ExecCmd(linkerPath, handleStdout, handleStderr, envVars, linkerArgs...)
 	*/
 
-	corepkg.LogInfof("Linking (%s) %s\n", l.config.Config.String(), outputAppRelFilepath)
+	corepkg.LogInfof("Linking (%s) %s\n", l.buildConfig.String(), outputAppRelFilepath)
 
 	cmd := exec.Command(linkerPath, linkerArgs...)
 	cmd.Env = os.Environ()
@@ -335,7 +342,7 @@ func (l *WinMsDevLinker) Link(inputArchiveAbsFilepaths []string, outputAppRelFil
 // --------------------------------------------------------------------------------------------------
 // Burner
 
-func (t *WinMsdev) NewBurner(config *Config) Burner {
+func (t *WinMsdev) NewBurner(buildConfig denv.BuildConfig, buildTarget denv.BuildTarget) Burner {
 	return &EmptyBurner{}
 }
 

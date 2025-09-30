@@ -198,7 +198,7 @@ func NewWorkspace(wsc *WorkspaceConfig) *Workspace {
 }
 
 func (ws *Workspace) NewProject2(prj *denv.DevProject, settings *ProjectSettings) *Project {
-	p := newProject2(ws.BuildTarget, prj, ws.GenerateAbsPath, settings)
+	p := newProject2(ws, ws.BuildTarget, prj, ws.GenerateAbsPath, settings)
 	ws.ProjectList.Add(p)
 	return p
 }

@@ -5,36 +5,17 @@ import (
 	"github.com/jurgen-kluft/ccode/denv"
 )
 
-type Config struct {
-	Config denv.BuildConfig
-	Target denv.BuildTarget
-}
-
-func NewConfig(config denv.BuildConfig, target denv.BuildTarget) *Config {
-	return &Config{
-		Config: config,
-		Target: target,
-	}
-}
-
-func (t *Config) IsDebug() bool       { return t.Config.IsDebug() }
-func (t *Config) IsRelease() bool     { return t.Config.IsRelease() }
-func (t *Config) IsDevelopment() bool { return t.Config.IsDevelopment() }
-func (t *Config) IsFinal() bool       { return t.Config.IsFinal() }
-func (t *Config) IsTest() bool        { return t.Config.IsTest() }
-func (t *Config) IsProfile() bool     { return t.Config.IsProfile() }
-
-// GetDirname returns "os-arch-build-variant-mode"
-func (c *Config) GetDirname() string {
-	return c.Target.Os().String() + "-" + c.Target.Arch().String() + "-" + c.Config.String()
+// GetBuildDirname returns "os-arch-build-variant-mode"
+func GetBuildDirname(config denv.BuildConfig, target denv.BuildTarget) string {
+	return target.Os().String() + "-" + target.Arch().String() + "-" + config.String()
 }
 
 type Environment interface {
-	NewCompiler(config *Config) Compiler
-	NewArchiver(a ArchiverType, config *Config) Archiver
-	NewLinker(config *Config) Linker
+	NewCompiler(config denv.BuildConfig, target denv.BuildTarget) Compiler
+	NewArchiver(a ArchiverType, config denv.BuildConfig, target denv.BuildTarget) Archiver
+	NewLinker(config denv.BuildConfig, target denv.BuildTarget) Linker
 	//NewInformer(config *Config) Informer  // List information about the executable
-	NewBurner(config *Config) Burner
+	NewBurner(config denv.BuildConfig, target denv.BuildTarget) Burner
 	NewDependencyTracker(dirpath string) deptrackr.FileTrackr
 }
 

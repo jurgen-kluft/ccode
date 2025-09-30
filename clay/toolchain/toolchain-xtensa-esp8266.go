@@ -12,6 +12,7 @@ import (
 	"strings"
 
 	"github.com/jurgen-kluft/ccode/clay/toolchain/deptrackr"
+	"github.com/jurgen-kluft/ccode/denv"
 
 	corepkg "github.com/jurgen-kluft/ccode/core"
 )
@@ -26,18 +27,21 @@ type ArduinoEsp8266Toolchain struct {
 // Compiler
 
 type ToolchainArduinoEsp8266Compiler struct {
-	toolChain       *ArduinoEsp8266Toolchain
-	config          *Config // Configuration for the compiler, e.g., debug or release
+	toolChain   *ArduinoEsp8266Toolchain
+	buildConfig denv.BuildConfig
+	buildTarget denv.BuildTarget
+	// Configuration for the compiler, e.g., debug or release
 	cCompilerPath   string
 	cppCompilerPath string
 	cCompilerArgs   *corepkg.Arguments
 	cppCompilerArgs *corepkg.Arguments
 }
 
-func (t *ArduinoEsp8266Toolchain) NewCompiler(config *Config) Compiler {
+func (t *ArduinoEsp8266Toolchain) NewCompiler(buildConfig denv.BuildConfig, buildTarget denv.BuildTarget) Compiler {
 	return &ToolchainArduinoEsp8266Compiler{
 		toolChain:       t,
-		config:          config,
+		buildConfig:     buildConfig,
+		buildTarget:     buildTarget,
 		cCompilerPath:   "",
 		cppCompilerPath: "",
 		cCompilerArgs:   corepkg.NewArguments(64),
@@ -133,7 +137,7 @@ func (cl *ToolchainArduinoEsp8266Compiler) Compile(sourceAbsFilepaths []string, 
 		args = append(args, "-o")
 		args = append(args, objRelFilepath)
 
-		corepkg.LogInfof("Compiling (%s) %s", cl.config.Config.String(), filepath.Base(sourceAbsFilepath))
+		corepkg.LogInfof("Compiling (%s) %s", cl.buildConfig.String(), filepath.Base(sourceAbsFilepath))
 
 		cmd := exec.Command(compilerPath, args...)
 		out, err := cmd.CombinedOutput()
@@ -156,15 +160,17 @@ func (cl *ToolchainArduinoEsp8266Compiler) Compile(sourceAbsFilepaths []string, 
 
 type ToolchainArduinoEsp8266Archiver struct {
 	toolChain    *ArduinoEsp8266Toolchain
-	config       *Config
+	buildConfig  denv.BuildConfig
+	buildTarget  denv.BuildTarget
 	archiverPath string
 	archiverArgs *corepkg.Arguments
 }
 
-func (t *ArduinoEsp8266Toolchain) NewArchiver(a ArchiverType, config *Config) Archiver {
+func (t *ArduinoEsp8266Toolchain) NewArchiver(a ArchiverType, buildConfig denv.BuildConfig, buildTarget denv.BuildTarget) Archiver {
 	return &ToolchainArduinoEsp8266Archiver{
 		toolChain:    t,
-		config:       config,
+		buildConfig:  buildConfig,
+		buildTarget:  buildTarget,
 		archiverPath: "",
 		archiverArgs: corepkg.NewArguments(16),
 	}
@@ -230,18 +236,20 @@ func (a *ToolchainArduinoEsp8266Archiver) Archive(inputObjectFilepaths []string,
 // Linker
 
 type ToolchainArduinoEsp8266Linker struct {
-	toolChain  *ArduinoEsp8266Toolchain
-	config     *Config
-	linkerPath string
-	linkerArgs *corepkg.Arguments
+	toolChain   *ArduinoEsp8266Toolchain
+	buildConfig denv.BuildConfig
+	buildTarget denv.BuildTarget
+	linkerPath  string
+	linkerArgs  *corepkg.Arguments
 }
 
-func (t *ArduinoEsp8266Toolchain) NewLinker(config *Config) Linker {
+func (t *ArduinoEsp8266Toolchain) NewLinker(buildConfig denv.BuildConfig, buildTarget denv.BuildTarget) Linker {
 	return &ToolchainArduinoEsp8266Linker{
-		toolChain:  t,
-		config:     config,
-		linkerPath: "",
-		linkerArgs: corepkg.NewArguments(512),
+		toolChain:   t,
+		buildConfig: buildConfig,
+		buildTarget: buildTarget,
+		linkerPath:  "",
+		linkerArgs:  corepkg.NewArguments(512),
 	}
 }
 
@@ -272,7 +280,8 @@ func (l *ToolchainArduinoEsp8266Linker) Link(inputArchiveAbsFilepaths []string, 
 
 type ToolchainArduinoEsp8266Burner struct {
 	toolChain                            *ArduinoEsp8266Toolchain
-	config                               *Config              // Configuration for the burner, e.g., debug or release
+	buildConfig                          denv.BuildConfig
+	buildTarget                          denv.BuildTarget
 	dependencyTracker                    deptrackr.FileTrackr // Dependency tracker for the burner
 	hasher                               hash.Hash            // Hasher for generating digests of arguments
 	genImageBinToolArgs                  *corepkg.Arguments
@@ -294,10 +303,11 @@ type ToolchainArduinoEsp8266Burner struct {
 	flashToolPath                        string
 }
 
-func (t *ArduinoEsp8266Toolchain) NewBurner(config *Config) Burner {
+func (t *ArduinoEsp8266Toolchain) NewBurner(buildConfig denv.BuildConfig, buildTarget denv.BuildTarget) Burner {
 	return &ToolchainArduinoEsp8266Burner{
 		toolChain:                            t,
-		config:                               config,
+		buildConfig:                          buildConfig,
+		buildTarget:                          buildTarget,
 		dependencyTracker:                    nil,
 		hasher:                               sha1.New(),
 		genImageBinToolArgs:                  corepkg.NewArguments(64),

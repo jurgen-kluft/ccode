@@ -167,6 +167,21 @@ func (p *Package) SaveJson(filepath string) error {
 	return corepkg.FileOpenWriteClose(filepath, []byte(json))
 }
 
+func LoadPackageFromJson(filepath string) (*Package, error) {
+	data, err := corepkg.FileOpenReadClose(filepath)
+	if err != nil {
+		return nil, err
+	}
+	decoder := corepkg.NewJsonDecoder()
+	var pkg *Package
+	decoder.Begin(string(data))
+	{
+		pkg = decodeJsonPackage(decoder)
+	}
+	decoder.End()
+	return pkg, nil
+}
+
 func (p *Package) encodeJson(encoder *corepkg.JsonEncoder, key string) {
 	encoder.BeginObject(key)
 	{
@@ -214,7 +229,7 @@ func (p *Package) encodeJson(encoder *corepkg.JsonEncoder, key string) {
 	encoder.EndObject()
 }
 
-func DecodeJsonPackage(decoder *corepkg.JsonDecoder) *Package {
+func decodeJsonPackage(decoder *corepkg.JsonDecoder) *Package {
 
 	pkg := &Package{
 		RootPath:  "",
@@ -234,7 +249,7 @@ func DecodeJsonPackage(decoder *corepkg.JsonDecoder) *Package {
 		"packages": func(decoder *corepkg.JsonDecoder) {
 			pkg.Packages = make(map[string]*Package)
 			decoder.DecodeArray(func(decoder *corepkg.JsonDecoder) {
-				pkg := DecodeJsonPackage(decoder)
+				pkg := decodeJsonPackage(decoder)
 				pkg.Packages[pkg.RepoName] = pkg
 			})
 		},

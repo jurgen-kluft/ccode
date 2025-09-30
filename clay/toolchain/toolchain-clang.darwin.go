@@ -8,6 +8,7 @@ import (
 	"github.com/jurgen-kluft/ccode/clay/toolchain/clang"
 	"github.com/jurgen-kluft/ccode/clay/toolchain/deptrackr"
 	corepkg "github.com/jurgen-kluft/ccode/core"
+	"github.com/jurgen-kluft/ccode/denv"
 )
 
 type DarwinClang struct {
@@ -24,19 +25,21 @@ type DarwinClang struct {
 // C/C++ Compiler
 
 type ToolchainDarwinClangCompiler struct {
-	toolChain *DarwinClang
-	config    *Config
-	args      *corepkg.Arguments
-	cmdline   *clang.CompilerCmdLine
+	toolChain   *DarwinClang
+	buildConfig denv.BuildConfig
+	buildTarget denv.BuildTarget
+	args        *corepkg.Arguments
+	cmdline     *clang.CompilerCmdLine
 }
 
-func (t *DarwinClang) NewCompiler(config *Config) Compiler {
+func (t *DarwinClang) NewCompiler(buildConfig denv.BuildConfig, buildTarget denv.BuildTarget) Compiler {
 	args := corepkg.NewArguments(512)
 	return &ToolchainDarwinClangCompiler{
-		toolChain: t,
-		config:    config,
-		args:      args,
-		cmdline:   clang.NewCompilerCmdline(args),
+		toolChain:   t,
+		buildConfig: buildConfig,
+		buildTarget: buildTarget,
+		args:        args,
+		cmdline:     clang.NewCompilerCmdline(args),
 	}
 }
 
@@ -53,17 +56,17 @@ func (cl *ToolchainDarwinClangCompiler) SetupArgs(_defines []string, _includes [
 	cl.cmdline.NoLogo()
 	cl.cmdline.WarningsAreErrors()
 
-	if cl.config.IsDebug() {
+	if cl.buildConfig.IsDebug() {
 		// Debug-specific arguments
 		cl.cmdline.DisableOptimizations()
 		cl.cmdline.GenerateDebugInfo()
 		cl.cmdline.DisableFramePointer()
-	} else if cl.config.IsRelease() {
+	} else if cl.buildConfig.IsRelease() {
 		// Release and Final specific arguments
 		cl.cmdline.OptimizeForSpeed()
 		cl.cmdline.EnableInlineExpansion()
 		cl.cmdline.EnableIntrinsicFunctions()
-	} else if cl.config.IsFinal() {
+	} else if cl.buildConfig.IsFinal() {
 		// Final-specific arguments
 		cl.cmdline.OptimizeHard()
 		cl.cmdline.EnableInlineExpansion()
@@ -72,7 +75,7 @@ func (cl *ToolchainDarwinClangCompiler) SetupArgs(_defines []string, _includes [
 	}
 
 	// Test-specific arguments
-	// if cl.config.IsTest() {
+	// if cl.buildConfig.IsTest() {
 	// 	cl.cmdline.EnableExceptionHandling()
 	// }
 
@@ -107,7 +110,7 @@ func (cl *ToolchainDarwinClangCompiler) Compile(sourceAbsFilepaths []string, obj
 		compilerArgs := cl.args.Args
 		cmd := exec.Command(compilerPath, compilerArgs...)
 
-		corepkg.LogInfof("Compiling (%s) %s", cl.config.Config.String(), filepath.Base(sourceAbsFilepath))
+		corepkg.LogInfof("Compiling (%s) %s", cl.buildConfig.String(), filepath.Base(sourceAbsFilepath))
 		out, err := cmd.CombinedOutput()
 		if err != nil {
 			corepkg.LogInfof("Compile failed, output:\n%s", string(out))
@@ -126,27 +129,29 @@ func (cl *ToolchainDarwinClangCompiler) Compile(sourceAbsFilepaths []string, obj
 // Archiver
 
 type ToolchainDarwinClangStaticArchiver struct {
-	toolChain *DarwinClang
-	config    *Config
-	args      *corepkg.Arguments
-	cmdline   *clang.ArchiverCmdline
+	toolChain   *DarwinClang
+	buildConfig denv.BuildConfig
+	buildTarget denv.BuildTarget
+	args        *corepkg.Arguments
+	cmdline     *clang.ArchiverCmdline
 }
 
 type ToolchainDarwinClangDynamicArchiver struct {
-	toolChain *DarwinClang
-	config    *Config
-	args      *corepkg.Arguments
-	cmdline   *clang.ArchiverCmdline
+	toolChain   *DarwinClang
+	buildConfig denv.BuildConfig
+	buildTarget denv.BuildTarget
+	args        *corepkg.Arguments
+	cmdline     *clang.ArchiverCmdline
 }
 
-func (t *DarwinClang) NewArchiver(at ArchiverType, config *Config) Archiver {
+func (t *DarwinClang) NewArchiver(at ArchiverType, buildConfig denv.BuildConfig, buildTarget denv.BuildTarget) Archiver {
 	args := corepkg.NewArguments(512)
 	cmdline := clang.NewArchiverCmdline(args)
 	switch at {
 	case ArchiverTypeStatic:
-		return &ToolchainDarwinClangStaticArchiver{toolChain: t, config: config, args: args, cmdline: cmdline}
+		return &ToolchainDarwinClangStaticArchiver{toolChain: t, buildConfig: buildConfig, buildTarget: buildTarget, args: args, cmdline: cmdline}
 	case ArchiverTypeDynamic:
-		return &ToolchainDarwinClangDynamicArchiver{toolChain: t, config: config, args: args, cmdline: cmdline}
+		return &ToolchainDarwinClangDynamicArchiver{toolChain: t, buildConfig: buildConfig, buildTarget: buildTarget, args: args, cmdline: cmdline}
 	}
 	return nil
 }
@@ -217,19 +222,21 @@ func (t *ToolchainDarwinClangDynamicArchiver) Archive(inputObjectFilepaths []str
 // Linker
 
 type ToolchainDarwinClangLinker struct {
-	toolChain *DarwinClang
-	config    *Config
-	args      *corepkg.Arguments
-	cmdline   *clang.LinkerCmdline
+	toolChain   *DarwinClang
+	buildConfig denv.BuildConfig
+	buildTarget denv.BuildTarget
+	args        *corepkg.Arguments
+	cmdline     *clang.LinkerCmdline
 }
 
-func (l *DarwinClang) NewLinker(config *Config) Linker {
+func (l *DarwinClang) NewLinker(buildConfig denv.BuildConfig, buildTarget denv.BuildTarget) Linker {
 	args := corepkg.NewArguments(512)
 	return &ToolchainDarwinClangLinker{
-		toolChain: l,
-		config:    config,
-		args:      args,
-		cmdline:   clang.NewLinkerCmdline(args),
+		toolChain:   l,
+		buildConfig: buildConfig,
+		buildTarget: buildTarget,
+		args:        args,
+		cmdline:     clang.NewLinkerCmdline(args),
 	}
 }
 
@@ -241,16 +248,16 @@ func (l *ToolchainDarwinClangLinker) SetupArgs(libraryPaths []string, libraryFil
 	l.cmdline.ErrorReportPrompt()
 	l.cmdline.NoLogo()
 
-	if l.config.IsDebug() {
+	if l.buildConfig.IsDebug() {
 		l.cmdline.GenerateDebugInfo()
 		l.cmdline.UseMultithreadedDebug()
 	}
-	if l.config.IsRelease() || l.config.IsFinal() {
+	if l.buildConfig.IsRelease() || l.buildConfig.IsFinal() {
 		l.cmdline.UseMultithreaded()
 		l.cmdline.OptimizeReferences()
 		l.cmdline.OptimizeIdenticalFolding()
 	}
-	if l.config.IsFinal() {
+	if l.buildConfig.IsFinal() {
 		l.cmdline.LinkTimeCodeGeneration()
 		l.cmdline.DisableIncrementalLinking()
 		l.cmdline.UseMultithreadedFinal()
@@ -294,7 +301,7 @@ func (l *ToolchainDarwinClangLinker) Link(inputArchiveAbsFilepaths []string, out
 // --------------------------------------------------------------------------------------------------
 // Burner
 
-func (t *DarwinClang) NewBurner(config *Config) Burner {
+func (t *DarwinClang) NewBurner(buildConfig denv.BuildConfig, buildTarget denv.BuildTarget) Burner {
 	return &EmptyBurner{}
 }
 

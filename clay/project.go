@@ -12,56 +12,34 @@ import (
 	corepkg "github.com/jurgen-kluft/ccode/core"
 )
 
-type IncludeMap = corepkg.ValueSet
-
-func NewIncludeMap(size int) *IncludeMap {
-	return corepkg.NewValueSet2(size)
-}
-
-type DefineMap = corepkg.ValueSet
-
-func NewDefineMap(size int) *DefineMap {
-	return corepkg.NewValueSet2(size)
-}
-
 // Project represents a C/C++ project that can be built using the Clay build system.
 // A project can be a library or an executable.
 type Project struct {
 	Toolchain      toolchain.Environment // Build environment for this project
-	IsExecutable   bool                  // Is this project an executable (true) or a library (false)
-	Name           string                // Name of the Library or Executable
-	Config         *Config               // Build configuration
-	Defines        *DefineMap            // Compiler defines (macros) for the library
-	IncludeDirs    *IncludeMap           // Include paths for the library (system)
+	DevProject     *denv.DevProject      // Development environment project (if any)
+	Config         []*denv.DevConfig     // Build configurations
 	SourceFiles    []SourceFile          // C/C++ Source files for the library
 	PartitionFiles []string              // Partition CSV files (for ESP32)
 	Dependencies   []*Project            // Libraries that this project depends on
 	Frameworks     []string              // Frameworks to link against (for macOS)
-	SourceDirs     []denv.PinnedGlobPath // Directories to glob source files from
 }
 
-func NewExecutableProject(name string, config *Config) *Project {
+func NewExecutableProject(devPrj *denv.DevProject, configs []*denv.DevConfig) *Project {
 	return &Project{
-		Name:           name,
-		Config:         config,
-		Toolchain:      nil, // Will be set later
-		IsExecutable:   true,
-		Defines:        nil,
-		IncludeDirs:    nil,
+		DevProject:     devPrj,
+		Config:         configs,
+		Toolchain:      nil,
 		SourceFiles:    nil,
 		PartitionFiles: nil,
 		Dependencies:   nil,
 	}
 }
 
-func NewLibraryProject(name string, config *Config) *Project {
+func NewLibraryProject(devPrj *denv.DevProject, configs []*denv.DevConfig) *Project {
 	return &Project{
-		Name:           name,
-		Config:         config,
+		DevProject:     devPrj,
+		Config:         configs,
 		Toolchain:      nil, // Will be set later
-		IsExecutable:   false,
-		Defines:        nil,
-		IncludeDirs:    nil,
 		SourceFiles:    nil,
 		PartitionFiles: nil,
 		Dependencies:   nil,
@@ -73,22 +51,38 @@ type SourceFile struct {
 	SrcRelPath string // Relative path of the source file (based on where it was globbed from)
 }
 
+func (p *Project) IsExecutable() bool {
+	return p.DevProject.BuildType.IsExecutable()
+}
+
 func (p *Project) GetOutputFilepath(buildPath, filename string) string {
-	return filepath.Join(buildPath, p.Name, filename)
+	return filepath.Join(buildPath, p.DevProject.Name, filename)
 }
 
 func (p *Project) GetBuildPath(buildPath string) string {
-	return filepath.Join(buildPath, p.Name)
+	return filepath.Join(buildPath, p.DevProject.Name)
 }
 
-func (p *Project) SetToolchain(buildConfig *Config, buildPath string, board *EspressifBoard) (err error) {
-	targetOS := buildConfig.Target.Os().String()
-	if targetOS == "arduino" && buildConfig.Target.Esp32() {
-		p.Toolchain = toolchain.NewArduinoEsp32Toolchain(board.Vars, p.Name, p.PartitionFiles)
-	} else if targetOS == "arduino" && buildConfig.Target.Esp8266() {
-		p.Toolchain = toolchain.NewArduinoEsp8266Toolchain(board.Vars, p.Name, p.GetBuildPath(buildPath))
+func (p *Project) CanBuildFor(buildConfig denv.BuildConfig, buildTarget denv.BuildTarget) bool {
+	if !p.DevProject.BuildTargets.HasOverlap(buildTarget) {
+		return false
+	}
+	for _, cfg := range p.Config {
+		if cfg.BuildConfig == buildConfig {
+			return true
+		}
+	}
+	return false
+}
+
+func (p *Project) SetToolchain(buildConfig denv.BuildConfig, buildTarget denv.BuildTarget, buildPath string, board *EspressifBoard) (err error) {
+	targetOS := buildTarget.Os().String()
+	if targetOS == "arduino" && buildTarget.Esp32() {
+		p.Toolchain = toolchain.NewArduinoEsp32Toolchain(board.Vars, p.DevProject.Name)
+	} else if targetOS == "arduino" && buildTarget.Esp8266() {
+		p.Toolchain = toolchain.NewArduinoEsp8266Toolchain(board.Vars, p.DevProject.Name, p.GetBuildPath(buildPath))
 	} else if targetOS == "windows" {
-		p.Toolchain, err = toolchain.NewWinMsdev(buildConfig.Target.Arch().String(), "Desktop")
+		p.Toolchain, err = toolchain.NewWinMsdev(buildTarget.Arch().String(), "Desktop")
 	} else if targetOS == "mac" || targetOS == "macos" || targetOS == "darwin" {
 		p.Toolchain, err = toolchain.NewDarwinClang(runtime.GOARCH, p.Frameworks)
 	} else {
@@ -115,14 +109,20 @@ func (p *Project) AddLibrary(lib *Project) {
 	p.Dependencies = append(p.Dependencies, lib)
 }
 
-func CopyConfig(config *Config) *toolchain.Config {
-	return toolchain.NewConfig(config.Config, config.Target)
+func (p *Project) GetConfig(buildConfig denv.BuildConfig) *denv.DevConfig {
+	for _, cfg := range p.Config {
+		if cfg.BuildConfig == buildConfig {
+			return cfg
+		}
+	}
+	return nil
 }
 
-func (p *Project) Build(buildConfig *Config, buildPath string) (outOfDate int, err error) {
+func (p *Project) Build(buildConfig denv.BuildConfig, buildTarget denv.BuildTarget, buildPath string) (outOfDate int, err error) {
+	config := p.GetConfig(buildConfig)
 
-	compiler := p.Toolchain.NewCompiler(CopyConfig(buildConfig))
-	compiler.SetupArgs(p.Defines.Values, p.IncludeDirs.Values)
+	compiler := p.Toolchain.NewCompiler(buildConfig, buildTarget)
+	compiler.SetupArgs(config.Defines.Values, config.GetIncludeDirs())
 
 	projectBuildPath := p.GetBuildPath(buildPath)
 	projectDepFileTrackr := p.Toolchain.NewDependencyTracker(projectBuildPath)
@@ -149,7 +149,7 @@ func (p *Project) Build(buildConfig *Config, buildPath string) (outOfDate int, e
 	buildStartTime := time.Now()
 	outOfDate = len(srcFilesOutOfDate)
 	if outOfDate > 0 {
-		corepkg.LogInfof("Building project: %s, config: %s\n", p.Name, p.Config.String())
+		corepkg.LogInfof("Building project: %s, config: %s\n", p.DevProject.Name, config.BuildConfig.String())
 		buildStartTime = time.Now()
 
 		// Give the compiler the array of out-of-date source files (input) and their object files (output)
@@ -171,17 +171,17 @@ func (p *Project) Build(buildConfig *Config, buildPath string) (outOfDate int, e
 		}
 	}
 
-	staticArchiver := p.Toolchain.NewArchiver(toolchain.ArchiverTypeStatic, CopyConfig(buildConfig))
+	staticArchiver := p.Toolchain.NewArchiver(toolchain.ArchiverTypeStatic, buildConfig, buildTarget)
 
-	if p.IsExecutable {
-		linker := p.Toolchain.NewLinker(CopyConfig(buildConfig))
+	if p.IsExecutable() {
+		linker := p.Toolchain.NewLinker(buildConfig, buildTarget)
 		linker.SetupArgs([]string{}, []string{})
 
-		executableOutputFilepath := p.GetOutputFilepath(buildPath, linker.LinkedFilepath(p.Name))
+		executableOutputFilepath := p.GetOutputFilepath(buildPath, linker.LinkedFilepath(p.DevProject.Name))
 
 		if outOfDate > 0 || !projectDepFileTrackr.QueryItem(executableOutputFilepath) {
 			if outOfDate == 0 {
-				corepkg.LogInfof("Linking project: %s, config: %s\n", p.Name, p.Config.String())
+				corepkg.LogInfof("Linking project: %s, config: %s\n", p.DevProject.Name, buildConfig.String())
 				buildStartTime = time.Now()
 				outOfDate += 1
 			}
@@ -192,13 +192,15 @@ func (p *Project) Build(buildConfig *Config, buildPath string) (outOfDate int, e
 				srcObjRelPath := filepath.Join(projectBuildPath, compiler.ObjFilepath(src.SrcRelPath))
 				archivesToLink = append(archivesToLink, srcObjRelPath)
 			}
+
 			// Project archive dependencies (only those matching the build config)
 			for _, dep := range p.Dependencies {
-				if dep.Config.Matches(buildConfig) {
-					libAbsFilepath := dep.GetOutputFilepath(buildPath, staticArchiver.LibFilepath(dep.Name))
+				if dep.CanBuildFor(buildConfig, buildTarget) {
+					libAbsFilepath := dep.GetOutputFilepath(buildPath, staticArchiver.LibFilepath(dep.DevProject.Name))
 					archivesToLink = append(archivesToLink, libAbsFilepath)
 				}
 			}
+
 			// Link them all together into a single executable
 			if err := linker.Link(archivesToLink, executableOutputFilepath); err != nil {
 				return outOfDate, err
@@ -210,10 +212,10 @@ func (p *Project) Build(buildConfig *Config, buildPath string) (outOfDate int, e
 		}
 
 	} else {
-		archiveOutputFilepath := p.GetOutputFilepath(buildPath, staticArchiver.LibFilepath(p.Name))
+		archiveOutputFilepath := p.GetOutputFilepath(buildPath, staticArchiver.LibFilepath(p.DevProject.Name))
 		if outOfDate > 0 || !projectDepFileTrackr.QueryItem(archiveOutputFilepath) {
 			if outOfDate == 0 {
-				corepkg.LogInfof("Archiving project: %s, config: %s\n", p.Name, p.Config.String())
+				corepkg.LogInfof("Archiving project: %s, config: %s\n", p.DevProject.Name, buildConfig.String())
 				buildStartTime = time.Now()
 				outOfDate += 1
 			}
@@ -247,8 +249,8 @@ func (p *Project) Build(buildConfig *Config, buildPath string) (outOfDate int, e
 	return outOfDate, nil
 }
 
-func (p *Project) Flash(buildConfig *Config, buildPath string) error {
-	burner := p.Toolchain.NewBurner(CopyConfig(buildConfig))
+func (p *Project) Flash(buildConfig denv.BuildConfig, buildTarget denv.BuildTarget, buildPath string) error {
+	burner := p.Toolchain.NewBurner(buildConfig, buildTarget)
 
 	buildPath = p.GetBuildPath(buildPath)
 
@@ -266,32 +268,3 @@ func (p *Project) Flash(buildConfig *Config, buildPath string) error {
 
 	return nil
 }
-
-// type AddSourceFileOptions int
-
-// const (
-// 	OptionAddCppFiles            AddSourceFileOptions = 1
-// 	OptionAddCFiles              AddSourceFileOptions = 2
-// 	OptionAddRecursively         AddSourceFileOptions = 4
-// 	OptionRecursivelyAddCppFiles AddSourceFileOptions = OptionAddCppFiles | OptionAddRecursively
-// 	OptionRecursivelyAddCFiles   AddSourceFileOptions = OptionAddCFiles | OptionAddRecursively
-// )
-
-// func HasOption(options AddSourceFileOptions, option AddSourceFileOptions) bool {
-// 	return (options & option) != 0
-// }
-
-// func (p *Project) AddSourceFilesFrom2(srcPath string, options AddSourceFileOptions) {
-// 	handleDir := func(rootPath, relPath string) bool {
-// 		return len(relPath) == 0 || HasOption(options, OptionAddRecursively)
-// 	}
-// 	handleFile := func(rootPath, relPath string) {
-// 		isCpp := HasOption(options, OptionAddCppFiles) && (filepath.Ext(relPath) == ".cpp" || filepath.Ext(relPath) == ".cxx")
-// 		isC := !isCpp && (HasOption(options, OptionAddCFiles) && filepath.Ext(relPath) == ".c")
-// 		if isCpp || isC {
-// 			p.AddSourceFile(filepath.Join(rootPath, relPath), relPath)
-// 		}
-// 	}
-
-// 	corepkg.FileEnumerate(srcPath, handleDir, handleFile)
-// }

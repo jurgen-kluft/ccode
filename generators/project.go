@@ -31,10 +31,10 @@ type Project struct {
 	Resolved *ProjectResolved
 }
 
-func newProject2(buildTarget denv.BuildTarget, prj *denv.DevProject, generateAbsPath string, settings *ProjectSettings) *Project {
+func newProject2(ws *Workspace, buildTarget denv.BuildTarget, prj *denv.DevProject, generateAbsPath string, settings *ProjectSettings) *Project {
 	projectAbsPath := prj.Package.PackagePath()
 	p := &Project{
-		//Workspace:        ws,
+		Workspace:       ws,
 		Name:            prj.Name,
 		BuildType:       prj.BuildType,
 		BuildTargets:    prj.BuildTargets,

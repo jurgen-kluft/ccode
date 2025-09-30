@@ -2,11 +2,13 @@ package clay
 
 import (
 	"flag"
+	"fmt"
 	"os"
 	"time"
 
 	"github.com/jurgen-kluft/ccode/clay/toolchain"
 	corepkg "github.com/jurgen-kluft/ccode/core"
+	"github.com/jurgen-kluft/ccode/denv"
 )
 
 // Clay App Arduino
@@ -80,7 +82,7 @@ func ClayAppMainArduino() {
 	case "monitor":
 		err = SerialMonitor(ParsePortAndBaud())
 	case "list-libraries":
-		err = ListLibraries()
+		err = ListLibraries(denv.BuildTargetFromString(fmt.Sprintf("%s(%s)", clayConfig.TargetOs, clayConfig.TargetArch)))
 	case "list-boards":
 		err = ListBoards(ParseArchBoardNameAndMax())
 	case "list-flash-sizes":
@@ -133,17 +135,23 @@ func UsageAppArduino() {
 	corepkg.LogInfo("  clay list-flash-sizes --arch <arch> --board esp32")
 }
 
-func BuildInfo(projectName string, buildConfig *Config) error {
-	espSdkPath := toolchain.ArduinoEspSdkPath(buildConfig.Target.Arch().String())
+func BuildInfo(projectName string, buildConfig denv.BuildConfig, buildTarget denv.BuildTarget) error {
+	espSdkPath := toolchain.ArduinoEspSdkPath(buildTarget.Arch().String())
 
-	prjs := ClayAppCreateProjectsFunc()
+	prjs, err := CreateProjects(buildTarget, buildConfig)
+	if err != nil {
+		return err
+	}
+
 	for _, prj := range prjs {
-		if projectName == "" || projectName == prj.Name {
-			if prj.Config.Matches(buildConfig) {
-				buildPath := prj.GetBuildPath(GetBuildPath(buildConfig.GetSubDir()))
-				appPath, _ := os.Getwd()
-				if err := GenerateBuildInfo(buildPath, appPath, espSdkPath, BuildInfoFilenameWithoutExt); err != nil {
-					return err
+		if projectName == "" || projectName == prj.DevProject.Name {
+			for _, cfg := range prj.Config {
+				if cfg.BuildConfig.IsEqual(buildConfig) {
+					buildPath := prj.GetBuildPath(GetBuildPath(GetBuildDirname(buildConfig, buildTarget)))
+					appPath, _ := os.Getwd()
+					if err := GenerateBuildInfo(buildPath, appPath, espSdkPath, BuildInfoFilenameWithoutExt); err != nil {
+						return err
+					}
 				}
 			}
 		}
@@ -152,35 +160,38 @@ func BuildInfo(projectName string, buildConfig *Config) error {
 	return nil
 }
 
-func Flash(projectName string, buildConfig *Config) error {
+func Flash(projectName string, buildConfig denv.BuildConfig, buildTarget denv.BuildTarget) error {
 	var board *EspressifBoard
-	if buildConfig.Target.Esp32() {
+	buildPath := GetBuildPath(GetBuildDirname(buildConfig, buildTarget))
+	if buildTarget.Esp32() {
 		esp32Toolchain := NewEsp32Toolchain()
 		if err := LoadToolchainJson(esp32Toolchain, "esp32.json"); err != nil {
 			return err
 		}
 		board = esp32Toolchain.GetBoardByName(clayConfig.TargetBoard)
-		esp32Toolchain.ResolveVariables(board, GetBuildPath(buildConfig.GetSubDir()))
-	} else if buildConfig.Target.Esp8266() {
+		esp32Toolchain.ResolveVariables(board, buildPath)
+	} else if buildTarget.Esp8266() {
 		esp8266Toolchain := NewEsp8266Toolchain()
 		if err := LoadToolchainJson(esp8266Toolchain, "esp8266.platform"); err != nil {
 			return err
 		}
 		board = esp8266Toolchain.GetBoardByName(clayConfig.TargetBoard)
-		esp8266Toolchain.ResolveVariables(board, GetBuildPath(buildConfig.GetSubDir()))
+		esp8266Toolchain.ResolveVariables(board, buildPath)
 	}
 
-	buildPath := GetBuildPath(buildConfig.GetSubDir())
+	prjs, err := CreateProjects(buildTarget, buildConfig)
+	if err != nil {
+		return err
+	}
 
-	prjs := ClayAppCreateProjectsFunc()
 	for _, prj := range prjs {
-		prj.SetToolchain(buildConfig, buildPath, board)
+		prj.SetToolchain(buildConfig, buildTarget, buildPath, board)
 	}
 
 	projectNames := []string{}
 	for _, prj := range prjs {
-		if prj.IsExecutable && prj.Config.Matches(buildConfig) {
-			projectNames = append(projectNames, prj.Name)
+		if prj.IsExecutable() && prj.CanBuildFor(buildConfig, buildTarget) {
+			projectNames = append(projectNames, prj.DevProject.Name)
 		}
 	}
 
@@ -188,12 +199,12 @@ func Flash(projectName string, buildConfig *Config) error {
 	closest := cm.ClosestN(projectName, 1)
 
 	for _, prj := range prjs {
-		if prj.IsExecutable && prj.Config.Matches(buildConfig) && prj.Name == closest[0] {
+		if prj.IsExecutable() && prj.CanBuildFor(buildConfig, buildTarget) && prj.DevProject.Name == closest[0] {
 
-			corepkg.LogInff("Flashing project: %s, config: %s", prj.Name, prj.Config.ConfigString())
+			corepkg.LogInff("Flashing project: %s, config: %s", prj.DevProject.Name, buildConfig.String())
 			startTime := time.Now()
 			{
-				if err := prj.Flash(buildConfig, buildPath); err != nil {
+				if err := prj.Flash(buildConfig, buildTarget, buildPath); err != nil {
 					return corepkg.LogErrorf(err, "Build failed")
 				}
 			}
