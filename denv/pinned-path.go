@@ -1,4 +1,4 @@
-package dev
+package denv
 
 import (
 	"path/filepath"

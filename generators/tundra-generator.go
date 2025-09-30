@@ -1,4 +1,4 @@
-package denv
+package ide_generators
 
 import (
 	"path/filepath"
@@ -6,7 +6,7 @@ import (
 	"strings"
 
 	corepkg "github.com/jurgen-kluft/ccode/core"
-	"github.com/jurgen-kluft/ccode/dev"
+	"github.com/jurgen-kluft/ccode/denv"
 )
 
 type TundraGenerator struct {
@@ -42,10 +42,10 @@ func (g *TundraGenerator) generateUnitsLua(ws *Workspace) {
 			continue
 		}
 		switch p.BuildType {
-		case dev.BuildTypeStaticLibrary:
+		case denv.BuildTypeStaticLibrary:
 			units.NewLine()
 			units.WriteILine("", "local ", p.Name, "_staticlib = ", "StaticLibrary", "{")
-		case dev.BuildTypeDynamicLibrary:
+		case denv.BuildTypeDynamicLibrary:
 			units.NewLine()
 			units.WriteILine("", "local ", p.Name, "_sharedlib = ", "SharedLibrary", "{")
 		}
@@ -86,7 +86,7 @@ func (g *TundraGenerator) writeUnit(units *corepkg.LineWriter, p *Project, isPro
 		//    },
 		units.WriteILine("++", "LIBPATH = {")
 		for _, cfg := range p.Resolved.Configs.Values {
-			linkDirs, _, _ := p.BuildLibraryInformation(DevTundra, cfg, p.Workspace.GenerateAbsPath)
+			linkDirs, _, _ := p.BuildLibraryInformation(denv.DevTundra, cfg, p.Workspace.GenerateAbsPath)
 			for _, linkDir := range linkDirs.Values {
 				units.WriteILine("+++", `{"`, linkDir, `", `, `Config = "`, cfg.BuildConfig.Tundra(), `"},`)
 			}
@@ -163,9 +163,9 @@ func (g *TundraGenerator) writeUnit(units *corepkg.LineWriter, p *Project, isPro
 	units.WriteILine("+", "Depends = {")
 	for _, dp := range p.Dependencies.Values {
 		switch dp.BuildType {
-		case dev.BuildTypeStaticLibrary:
+		case denv.BuildTypeStaticLibrary:
 			units.WriteILine("++", dp.Name, "_staticlib,")
-		case dev.BuildTypeDynamicLibrary:
+		case denv.BuildTypeDynamicLibrary:
 			units.WriteILine("++", dp.Name, "_sharedlib,")
 		}
 	}
@@ -180,7 +180,7 @@ func (g *TundraGenerator) writeUnit(units *corepkg.LineWriter, p *Project, isPro
 
 		units.WriteILine("+", "Libs = {")
 		for _, cfg := range p.Resolved.Configs.Values {
-			_, _, linkLibs := p.BuildLibraryInformation(DevTundra, cfg, p.Workspace.GenerateAbsPath)
+			_, _, linkLibs := p.BuildLibraryInformation(denv.DevTundra, cfg, p.Workspace.GenerateAbsPath)
 			for _, lib := range linkLibs.Values {
 				lib = strings.Replace(lib, "\\", "/", -1)
 				units.WriteILine("++", `{"`, lib, `"`, `, Config = "`, cfg.BuildConfig.Tundra(), `"},`)

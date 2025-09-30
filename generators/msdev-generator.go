@@ -1,15 +1,17 @@
-package denv
+package ide_generators
 
 import (
 	"path"
 	"path/filepath"
 
 	corepkg "github.com/jurgen-kluft/ccode/core"
+	"github.com/jurgen-kluft/ccode/denv"
 )
 
 type MsDevGenerator struct {
-	Workspace  *Workspace
-	VcxProjCpu string
+	Workspace   *Workspace
+	BuildTarget denv.BuildTarget
+	VcxProjCpu  string
 }
 
 func NewMsDevGenerator(ws *Workspace) *MsDevGenerator {
@@ -20,19 +22,17 @@ func NewMsDevGenerator(ws *Workspace) *MsDevGenerator {
 	return g
 }
 
-func (g *MsDevGenerator) Generate() {
+func (g *MsDevGenerator) Generate(buildTarget denv.BuildTarget) {
+	g.BuildTarget = buildTarget
+
 	for _, p := range g.Workspace.ProjectList.Values {
 		g.genProject(p)
 		g.genProjectFilters(p)
 	}
-	g.genWorkspace(g.Workspace.MasterWorkspace)
-	for _, ew := range g.Workspace.ExtraWorkspaces {
-		g.genWorkspace(ew)
-	}
 }
 
 func (g *MsDevGenerator) init(ws *Workspace) {
-	if ws.BuildTarget.X64() {
+	if g.BuildTarget.X64() {
 		g.VcxProjCpu = "x64"
 	} else {
 		g.VcxProjCpu = "Win32"
@@ -43,22 +43,22 @@ func (g *MsDevGenerator) init(ws *Workspace) {
 		g.genProjectFilters(p)
 	}
 
-	g.genWorkspace(ws.MasterWorkspace)
-	for _, ew := range ws.ExtraWorkspaces {
-		g.genWorkspace(ew)
-	}
+	// g.genWorkspace(ws.MasterWorkspace)
+	// for _, ew := range ws.ExtraWorkspaces {
+	// 	g.genWorkspace(ew)
+	// }
 }
 
 func (g *MsDevGenerator) PlatformToolset(proj *Project) string {
-	if proj.Workspace.Config.MsDev.PlatformToolset != "" {
-		return proj.Workspace.Config.MsDev.PlatformToolset
+	if g.Workspace.Config.MsDev.PlatformToolset != "" {
+		return g.Workspace.Config.MsDev.PlatformToolset
 	}
 	return g.Workspace.Config.MsDev.PlatformToolset
 }
 
 func (g *MsDevGenerator) TargetPlatformVersion(proj *Project) string {
-	if proj.Workspace.Config.MsDev.WindowsTargetPlatformVersion != "" {
-		return proj.Workspace.Config.MsDev.WindowsTargetPlatformVersion
+	if g.Workspace.Config.MsDev.WindowsTargetPlatformVersion != "" {
+		return g.Workspace.Config.MsDev.WindowsTargetPlatformVersion
 	}
 	return g.Workspace.Config.MsDev.WindowsTargetPlatformVersion
 }
@@ -72,7 +72,7 @@ func (g *MsDevGenerator) genProject(proj *Project) {
 		tag := wr.TagScope("Project")
 
 		wr.Attr("DefaultTargets", "Build")
-		wr.Attr("ToolsVersion", proj.Workspace.Config.MsDev.ProjectTools)
+		wr.Attr("ToolsVersion", g.Workspace.Config.MsDev.ProjectTools)
 		wr.Attr("xmlns", "http://schemas.microsoft.com/developer/msbuild/2003")
 
 		{
@@ -95,7 +95,7 @@ func (g *MsDevGenerator) genProject(proj *Project) {
 			wr.TagWithBody("ProjectGuid", proj.Resolved.GenDataMsDev.UUID.ForVisualStudio())
 			wr.TagWithBody("Keyword", "Win32Proj")
 			wr.TagWithBody("RootNamespace", proj.Name)
-			wr.TagWithBody("WindowsTargetPlatformVersion", proj.Workspace.Config.MsDev.WindowsTargetPlatformVersion)
+			wr.TagWithBody("WindowsTargetPlatformVersion", g.Workspace.Config.MsDev.WindowsTargetPlatformVersion)
 			tag.Close()
 		}
 
@@ -125,7 +125,7 @@ func (g *MsDevGenerator) genProject(proj *Project) {
 			wr.TagWithBody("ConfigurationType", productType)
 			wr.TagWithBody("CharacterSet", "Unicode")
 
-			if g.Workspace.BuildTarget.Linux() {
+			if g.BuildTarget.Linux() {
 				wr.TagWithBody("PlatformToolset", "Remote_GCC_1_0")
 				if g.Workspace.Config.Dev.CompilerIsGcc() {
 					wr.TagWithBody("RemoteCCompileToolExe", "gcc")
@@ -139,7 +139,7 @@ func (g *MsDevGenerator) genProject(proj *Project) {
 
 				relBuildDir := corepkg.PathGetRelativeTo(g.Workspace.GenerateAbsPath, g.Workspace.WorkspaceAbsPath)
 
-				remoteRootDir := "_vsForLinux/" + g.Workspace.BuildTarget.OSAsString() + "/" + relBuildDir
+				remoteRootDir := "_vsForLinux/" + g.BuildTarget.Os().String() + "/" + relBuildDir
 				wr.TagWithBody("RemoteRootDir", remoteRootDir)
 
 				projectDir := "$(RemoteRootDir)/../ProjectDir_" + proj.Name
@@ -173,7 +173,7 @@ func (g *MsDevGenerator) genProject(proj *Project) {
 			tag.Close()
 		}
 
-		if g.Workspace.BuildTarget.Linux() {
+		if g.BuildTarget.Linux() {
 			{
 				tag := wr.TagScope("ImportGroup")
 				wr.Attr("Label", "ExtensionSettings")
@@ -221,8 +221,8 @@ func (g *MsDevGenerator) genProjectFiles(wr *corepkg.XmlWriter, proj *Project) {
 
 	g.genProjectPch(wr, proj)
 
-	for _, g := range proj.SrcFileGroups {
-		for _, f := range g.Values {
+	for _, srcFileGroup := range proj.SrcFileGroups {
+		for _, f := range srcFileGroup.Values {
 			tagName := ""
 			remoteCopyFile := false
 			switch f.Type {
@@ -235,7 +235,7 @@ func (g *MsDevGenerator) genProjectFiles(wr *corepkg.XmlWriter, proj *Project) {
 			}
 
 			tag := wr.TagScope(tagName)
-			path := g.GetRelativePath(f, proj.Workspace.GenerateAbsPath)
+			path := srcFileGroup.GetRelativePath(f, g.Workspace.GenerateAbsPath)
 			wr.Attr("Include", path)
 			// if excludedFromBuild {
 			// 	wr.TagWithBody("ExcludedFromBuild", "true")
@@ -280,11 +280,11 @@ func (g *MsDevGenerator) genProjectConfig(wr *corepkg.XmlWriter, proj *Project, 
 		wr.Attr("Condition", cond)
 
 		outDir := corepkg.PathDirname(config.Resolved.OutputTarget.Path)
-		if g.Workspace.BuildTarget.Linux() {
-			outDir = filepath.Join(outDir, g.Workspace.BuildTarget.OSAsString())
+		if g.BuildTarget.Linux() {
+			outDir = filepath.Join(outDir, g.BuildTarget.Os().String())
 		}
 
-		intDir := filepath.Join(g.Workspace.GenerateAbsPath, "obj", proj.Name, config.String()+"_"+g.Workspace.BuildTarget.ArchAsString()+"_"+g.Workspace.Config.MsDev.PlatformToolset)
+		intDir := filepath.Join(g.Workspace.GenerateAbsPath, "obj", proj.Name, config.String()+"_"+g.BuildTarget.Arch().String()+"_"+g.Workspace.Config.MsDev.PlatformToolset)
 		targetName := corepkg.PathFilename(config.Resolved.OutputTarget.Path, false)
 		targetExt := corepkg.PathFileExtension(config.Resolved.OutputTarget.Path)
 
@@ -320,7 +320,7 @@ func (g *MsDevGenerator) genProjectConfig(wr *corepkg.XmlWriter, proj *Project, 
 				wr.TagWithBody("EnableEnhancedInstructionSet", cppAdvanced)
 			}
 
-			if g.Workspace.BuildTarget.Linux() {
+			if g.BuildTarget.Linux() {
 				wr.TagWithBody("Verbose", "true")
 			} else {
 				wr.TagWithBody("SDLCheck", "true")
@@ -339,12 +339,13 @@ func (g *MsDevGenerator) genProjectConfig(wr *corepkg.XmlWriter, proj *Project, 
 			g.genConfigOptionFromKeyValueDict(wr, proj, "DisableSpecificWarnings", config.DisableWarning, false)
 			g.genConfigOptionFromKeyValueDict(wr, proj, "PreprocessorDefinitions", config.CppDefines, false)
 			g.genConfigOptionWithModifier(wr, "AdditionalIncludeDirectories", config.IncludeDirs, func(_root, _base, _sub string) string {
-				relpath := corepkg.PathGetRelativeTo(path.Join(_root, _base, _sub), proj.Workspace.GenerateAbsPath)
+				relpath := corepkg.PathGetRelativeTo(path.Join(_root, _base, _sub), g.Workspace.GenerateAbsPath)
 				return relpath
 			})
 
-			for i, value := range config.VisualStudioClCompile.Values {
-				wr.TagWithBody(config.VisualStudioClCompile.Keys[i], value)
+			visualStudioClCompile := config.InitVisualStudioSettings()
+			for i, value := range visualStudioClCompile.Values {
+				wr.TagWithBody(visualStudioClCompile.Keys[i], value)
 			}
 
 			tag.Close()
@@ -361,26 +362,26 @@ func (g *MsDevGenerator) genProjectConfig(wr *corepkg.XmlWriter, proj *Project, 
 			// - Library files
 			// - And also include the dependency project output as a file to link with
 
-			linkDirs, linkFiles, linkLibs := proj.BuildLibraryInformation(DevVisualStudio, config, proj.Workspace.GenerateAbsPath)
+			linkDirs, linkFiles, linkLibs := proj.BuildLibraryInformation(denv.DevVisualStudio, config, g.Workspace.GenerateAbsPath)
 
 			if proj.TypeIsExeOrDll() {
 				g.genConfigOptionFromValueSet(wr, proj, "AdditionalLibraryDirectories", linkDirs, true)
 
 				optName := "AdditionalDependencies"
 				relativeTo := ""
-				if g.Workspace.BuildTarget.Linux() {
+				if g.BuildTarget.Linux() {
 					relativeTo = "$(RemoteRootDir)/"
 				}
 				tmp := linkLibs.Concatenated("", ";", func(s string) string { return s })
 				tmp += linkFiles.Concatenated(relativeTo, ";", func(value string) string {
-					path := corepkg.PathGetRelativeTo(value, proj.Workspace.GenerateAbsPath)
+					path := corepkg.PathGetRelativeTo(value, g.Workspace.GenerateAbsPath)
 					return path
 				})
 				tmp += "%(" + optName + ")"
 				wr.TagWithBody(optName, tmp)
 			}
 
-			if g.Workspace.BuildTarget.Linux() {
+			if g.BuildTarget.Linux() {
 				wr.TagWithBody("VerboseOutput", "true")
 
 				tmp := config.LinkFlags.Concatenated(" -Wl,", "", func(string, s string) string { return s })
@@ -431,7 +432,7 @@ func (g *MsDevGenerator) genProjectConfig(wr *corepkg.XmlWriter, proj *Project, 
 func (g *MsDevGenerator) genConfigOptionFromKeyValueDict(wr *corepkg.XmlWriter, proj *Project, name string, kv *corepkg.KeyValueSet, treatAsPath bool) {
 	option := kv.Concatenated("", ";", func(k string, v string) string {
 		if treatAsPath {
-			path := corepkg.PathGetRelativeTo(v, proj.Workspace.GenerateAbsPath)
+			path := corepkg.PathGetRelativeTo(v, g.Workspace.GenerateAbsPath)
 			return path
 		}
 		return v
@@ -443,7 +444,7 @@ func (g *MsDevGenerator) genConfigOptionFromKeyValueDict(wr *corepkg.XmlWriter, 
 func (g *MsDevGenerator) genConfigOptionFromValueSet(wr *corepkg.XmlWriter, proj *Project, name string, value *corepkg.ValueSet, treatAsPath bool) {
 	option := value.Concatenated("", ";", func(v string) string {
 		if treatAsPath {
-			path := corepkg.PathGetRelativeTo(v, proj.Workspace.GenerateAbsPath)
+			path := corepkg.PathGetRelativeTo(v, g.Workspace.GenerateAbsPath)
 			return path
 		}
 		return v
@@ -594,7 +595,7 @@ func (g *MsDevGenerator) genProjectFilters(proj *Project) {
 					}
 
 					tag := wr.TagScope(typeName)
-					relPath := corepkg.PathGetRelativeTo(filepath.Join(proj.VirtualFolders.DiskPath, f.Path), proj.Workspace.GenerateAbsPath)
+					relPath := corepkg.PathGetRelativeTo(filepath.Join(proj.VirtualFolders.DiskPath, f.Path), g.Workspace.GenerateAbsPath)
 					wr.Attr("Include", relPath)
 					if len(vf.Path) > 0 {
 						winPath := corepkg.PathWindowsPath(vf.Path)

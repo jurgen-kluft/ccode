@@ -1,4 +1,4 @@
-package denv
+package ide_generators
 
 import (
 	"fmt"
@@ -10,7 +10,7 @@ import (
 	"strings"
 
 	corepkg "github.com/jurgen-kluft/ccode/core"
-	"github.com/jurgen-kluft/ccode/dev"
+	"github.com/jurgen-kluft/ccode/denv"
 )
 
 // -------------------------------------------------------------------------------------
@@ -19,7 +19,7 @@ import (
 type ClayGenerator struct {
 	Workspace     *Workspace
 	Verbose       bool
-	BuildTarget   dev.BuildTarget
+	BuildTarget   denv.BuildTarget
 	TargetAbsPath string
 }
 
@@ -88,7 +88,7 @@ func (g *ClayGenerator) generateMain(out *corepkg.LineWriter) {
 	out.WriteLine()
 	out.WriteLine("func main() {")
 	out.WriteILine("", "clay.ClayAppCreateProjectsFunc = CreateProjects")
-	if g.BuildTarget.OSAsString() == "arduino" {
+	if g.BuildTarget.Os().String() == "arduino" {
 		out.WriteILine("", "clay.ClayAppMainArduino()")
 	} else {
 		out.WriteILine("", "clay.ClayAppMainDesktop()")
@@ -120,6 +120,15 @@ func (g *ClayGenerator) generateProjectFile(out *corepkg.LineWriter) {
 		}
 	}
 
+	/*
+		TODO
+			We write every project now with supported targets, but we already combine and list
+			all include files that come from 'inherited' projects. What if instead we list
+			the inherited projects as dependencies and list our own include dirs.
+			For the source files, we also don't want to already glob them and list them here,
+			instead based on the requested platform and config we should glob them at build time.
+	*/
+
 	out.WriteLine()
 	out.WriteLine("// Setup Project Identifiers")
 	out.WriteLine("const (")
@@ -135,10 +144,6 @@ func (g *ClayGenerator) generateProjectFile(out *corepkg.LineWriter) {
 	index = 0
 	for _, prj := range g.Workspace.ProjectList.Values {
 		if prj.SupportedTargets.HasOverlap(g.BuildTarget) {
-
-			// Get the version info for this project
-			depVersionInfo := corepkg.NewGitVersionInfo(prj.ProjectAbsPath)
-			prj.Version = depVersionInfo.Commit
 
 			//			projectBaseDir := prj.ProjectAbsPath
 
@@ -184,6 +189,7 @@ func (g *ClayGenerator) generateProjectFile(out *corepkg.LineWriter) {
 
 				numSrcFiles := 0
 				numPartitionFiles := 0
+
 				for _, group := range prj.SrcFileGroups {
 					for _, src := range group.Values {
 						if src.Is_SourceFile() {
@@ -235,7 +241,7 @@ func (g *ClayGenerator) generateProjectFile(out *corepkg.LineWriter) {
 
 	out.WriteILine("", "// Setup Project Dependencies")
 	for _, prj := range g.Workspace.ProjectList.Values {
-		if prj.SupportedTargets.Contains(g.BuildTarget) {
+		if prj.SupportedTargets.HasOverlap(g.BuildTarget) {
 			for _, prjCfg := range prj.Resolved.Configs.Values {
 				if prj.Dependencies.Len() > 0 {
 					configName := prjCfg.BuildConfig.AsString()
@@ -245,7 +251,7 @@ func (g *ClayGenerator) generateProjectFile(out *corepkg.LineWriter) {
 					out.WriteILine("+", "project := projects[", projectId, "_id]")
 					out.WriteILine("+", `project.Dependencies = []*clay.Project{`)
 					for _, depProject := range prj.Dependencies.Values {
-						if depProject.SupportedTargets.Contains(g.BuildTarget) {
+						if depProject.SupportedTargets.HasOverlap(g.BuildTarget) {
 							depProjectId := strings.ReplaceAll(depProject.Name+"_"+configName, "-", "_")
 							out.WriteILine("++", "projects[", depProjectId, "_id],")
 						}

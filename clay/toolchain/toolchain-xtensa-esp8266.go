@@ -175,15 +175,52 @@ func (t *ToolchainArduinoEsp8266Archiver) LibFilepath(filepath string) string {
 	return filepath + ".a"
 }
 
+func setupArchiverArgs(args *corepkg.Arguments) (arPath string, arArgs *corepkg.Arguments) {
+	arArgs = corepkg.NewArguments(8)
+	if args.Len() > 0 {
+		arPath = corepkg.StrTrimDelimiters(args.Args[0], '"')
+		for _, part := range args.Args[1:] {
+			part = corepkg.StrTrim(part)
+			part = corepkg.StrTrimDelimiters(part, '"')
+			if len(part) > 0 {
+				arArgs.Add(part)
+			}
+		}
+	}
+	return arPath, arArgs
+}
+
 func (a *ToolchainArduinoEsp8266Archiver) SetupArgs() {
-
-	// TODO
-
+	ar_cmdline := a.toolChain.Vars.GetFirstOrEmpty(`recipe.ar.pattern`)
+	ar_arg_parts := corepkg.NewArguments(32)
+	ar_arg_parts.SmartSplit(ar_cmdline)
+	a.archiverPath, a.archiverArgs = setupArchiverArgs(ar_arg_parts)
 }
 
 func (a *ToolchainArduinoEsp8266Archiver) Archive(inputObjectFilepaths []string, outputArchiveFilepath string) error {
 
-	// TODO
+	argLen := a.archiverArgs.Len()
+
+	// {output-archive-filepath}
+	a.archiverArgs.Add(outputArchiveFilepath)
+
+	// {input-object-filepaths}
+	a.archiverArgs.Add(inputObjectFilepaths...)
+
+	corepkg.LogInfof("Archiving %s", outputArchiveFilepath)
+
+	cmd := exec.Command(a.archiverPath, a.archiverArgs.Args...)
+	out, err := cmd.CombinedOutput()
+
+	// Restore the archiver original arguments
+	a.archiverArgs.Truncate(argLen)
+
+	if err != nil {
+		return corepkg.LogErrorf(err, "Archiving failed")
+	}
+	if len(out) > 0 {
+		corepkg.LogInfof("Archive output:\n%s", string(out))
+	}
 
 	return nil
 }
@@ -215,7 +252,10 @@ func (l *ToolchainArduinoEsp8266Linker) LinkedFilepath(filepath string) string {
 
 func (l *ToolchainArduinoEsp8266Linker) SetupArgs(libraryPaths []string, libraryFiles []string) {
 
-	// TODO
+	ld_cmdline := l.toolChain.Vars.GetFirstOrEmpty(`recipe.c.combine.pattern`)
+	ld_arg_parts := corepkg.NewArguments(32)
+	ld_arg_parts.SmartSplit(ld_cmdline)
+	l.linkerPath, l.linkerArgs = setupArchiverArgs(ld_arg_parts)
 
 }
 
@@ -523,10 +563,25 @@ func (t *ArduinoEsp8266Toolchain) NewDependencyTracker(dirpath string) deptrackr
 // --------------------------------------------------------------------------------------------------
 // --------------------------------------------------------------------------------------------------
 // Toolchain for ESP8266 on Arduino
-func NewArduinoEsp8266Toolchain(espBoardVars *corepkg.Vars, projectName string, buildPath string) *ArduinoEsp8266Toolchain {
+func NewArduinoEsp8266Toolchain(boardVars *corepkg.Vars, projectName string, buildPath string) *ArduinoEsp8266Toolchain {
+
+	boardVars.Set("build.path", buildPath)
+	boardVars.Set("build.arch", "esp8266")
+	boardVars.Set("build.extra_includes", "{runtime.platform.path}/variants/{board.name}")
+
+	boardVars.ResolveFinal()
+
+	// Create '{buildPath}/core/build.opt'
+	// TODO not sure what this file is for and who should create it with what content
+	optFilePath := filepath.Join(buildPath, "core", "build.opt")
+	os.MkdirAll(filepath.Dir(optFilePath), os.ModePerm)
+	f, err := os.Create(optFilePath)
+	if err == nil {
+		defer f.Close()
+	}
 
 	return &ArduinoEsp8266Toolchain{
 		ProjectName: projectName,
-		Vars:        espBoardVars,
+		Vars:        boardVars,
 	}
 }

@@ -1,4 +1,4 @@
-package denv
+package ide_generators
 
 import (
 	"fmt"
@@ -6,7 +6,7 @@ import (
 	"strings"
 
 	corepkg "github.com/jurgen-kluft/ccode/core"
-	"github.com/jurgen-kluft/ccode/dev"
+	"github.com/jurgen-kluft/ccode/denv"
 )
 
 // -----------------------------------------------------------------------------------------------------
@@ -75,7 +75,7 @@ func (cat CppAdvancedType) ToString() string {
 	}
 	return ""
 }
-func (cat CppAdvancedType) Tundra(d DevEnum, t dev.BuildTarget) string {
+func (cat CppAdvancedType) Tundra(d denv.DevEnum, t denv.BuildTarget) string {
 	if d.IsVisualStudio() && cat.IsEnabled() {
 		return "/arch:" + cat.ToString()
 	} else if d.CompilerIsClang() || d.CompilerIsGcc() {
@@ -116,8 +116,9 @@ func (cat CppAdvancedType) VisualStudio() string {
 // -----------------------------------------------------------------------------------------------------
 
 type WorkspaceConfig struct {
-	Dev                DevEnum             // The development environment (tundra, make, xcode, vs2022, espmake)
-	BuildTarget        dev.BuildTarget     // The build target (windows, linux, macos, etc.)
+	Dev                denv.DevEnum        // The development environment (tundra, make, xcode, vs2022, espmake)
+	BuildTarget        denv.BuildTarget    // The build target (windows, linux, macos, etc.)
+	BuildTargetOs      denv.BuildTargetOs  // The build target (windows, linux, macos, etc.)
 	GenerateAbsPath    string              // The directory where the workspace and project files will be generated
 	StartupProject     string              // The name of the project that will be marked as the startup project
 	CppStd             CppStdType          // The C++ standard to use for this workspace and all projects
@@ -133,10 +134,10 @@ type WorkspaceConfig struct {
 	LibTargetSuffix string
 }
 
-func NewWorkspaceConfig(_dev DevEnum, _buildTarget dev.BuildTarget, workspacePath string, projectName string) *WorkspaceConfig {
+func NewWorkspaceConfig(_dev denv.DevEnum, _buildTargetOs denv.BuildTargetOs, workspacePath string, projectName string) *WorkspaceConfig {
 	wsc := &WorkspaceConfig{}
 	wsc.Dev = _dev
-	wsc.BuildTarget = _buildTarget
+	wsc.BuildTargetOs = _buildTargetOs
 	wsc.GenerateAbsPath = filepath.Join(workspacePath, projectName, "target")
 	wsc.StartupProject = projectName
 	wsc.CppStd = CppStd17
@@ -151,32 +152,33 @@ func NewWorkspaceConfig(_dev DevEnum, _buildTarget dev.BuildTarget, workspacePat
 // -----------------------------------------------------------------------------------------------------
 
 type Workspace struct {
-	Config            *WorkspaceConfig           // The configuration for the workspace
-	WorkspaceName     string                     // The name of the workspace (e.g. For VisualStudio -> "cbase.sln", for Xcode -> "cbase.xcworkspace")
-	WorkspaceAbsPath  string                     // The workspace directory is the path where all the projects and workspace are to be generated
-	GenerateAbsPath   string                     // Where to generate the workspace and project files
-	HostAsBuildTarget dev.BuildTarget            // The make target for the workspace (e.g. contains details like OS, Compiler, Arch, etc.)
-	BuildTarget       dev.BuildTarget            // The make target for the workspace (e.g. contains details like OS, Compiler, Arch, etc.)
-	Compiler          string                     // The compiler to use for the workspace (e.g. "gcc", "clang", "msvc", etc.)
-	StartupProject    *Project                   // The project instance that will be marked as the startup project
-	ProjectList       *ProjectList               // The project list
-	ProjectGroups     *ProjectGroups             // The project groups that are part of the workspace
-	MasterWorkspace   *ExtraWorkspace            // The master workspace that contains all projects
-	ExtraWorkspaces   map[string]*ExtraWorkspace // The extra workspaces that contain a subset of the projects
+	Config           *WorkspaceConfig   // The configuration for the workspace
+	WorkspaceName    string             // The name of the workspace (e.g. For VisualStudio -> "cbase.sln", for Xcode -> "cbase.xcworkspace")
+	WorkspaceAbsPath string             // The workspace directory is the path where all the projects and workspace are to be generated
+	GenerateAbsPath  string             // Where to generate the workspace and project files
+	BuildTargetHost  denv.BuildTarget   // The make target for the workspace (e.g. contains details like OS, Compiler, Arch, etc.)
+	BuildTarget      denv.BuildTarget   // The make target for the workspace (e.g. contains details like OS, Compiler, Arch, etc.)
+	BuildTargetOs    denv.BuildTargetOs // The make target for the workspace (e.g. contains details like OS, Compiler, Arch, etc.)
+	StartupProject   *Project           // The project instance that will be marked as the startup project
+	ProjectList      *ProjectList       // The project list
+	ProjectGroups    *ProjectGroups     // The project groups that are part of the workspace
+	//cMasterWorkspace   *ExtraWorkspace            // The master workspace that contains all projects
+	//ExtraWorkspaces   map[string]*ExtraWorkspace // The extra workspaces that contain a subset of the projects
 }
 
 func NewWorkspace(wsc *WorkspaceConfig) *Workspace {
 	ws := &Workspace{
-		Config:          wsc,
-		ProjectList:     NewProjectList(),
-		ProjectGroups:   NewProjectGroups(),
-		ExtraWorkspaces: make(map[string]*ExtraWorkspace),
+		Config:        wsc,
+		ProjectList:   NewProjectList(),
+		ProjectGroups: NewProjectGroups(),
+		//ExtraWorkspaces: make(map[string]*ExtraWorkspace),
 	}
 	ws.BuildTarget = ws.Config.BuildTarget
-	ws.HostAsBuildTarget = dev.GetBuildTargetTargettingHost()
+	ws.BuildTargetOs = ws.Config.BuildTargetOs
+	ws.BuildTargetHost = denv.GetBuildTargetTargettingHost()
 	ws.GenerateAbsPath = ws.Config.GenerateAbsPath
 
-	if ws.BuildTarget.Windows() {
+	if ws.BuildTargetOs.Windows() {
 		wsc.ExeTargetSuffix = ".exe"
 		wsc.DllTargetSuffix = ".dll"
 	} else {
@@ -195,13 +197,13 @@ func NewWorkspace(wsc *WorkspaceConfig) *Workspace {
 	return ws
 }
 
-func (ws *Workspace) NewProject2(prj *DevProject, settings *ProjectSettings) *Project {
-	p := newProject2(prj, ws, settings)
+func (ws *Workspace) NewProject2(prj *denv.DevProject, settings *ProjectSettings) *Project {
+	p := newProject2(ws.BuildTarget, prj, ws.GenerateAbsPath, settings)
 	ws.ProjectList.Add(p)
 	return p
 }
 
-func (ws *Workspace) Resolve(dev DevEnum) error {
+func (ws *Workspace) Resolve(dev denv.DevEnum) error {
 	if ws.StartupProject == nil {
 		if startupProject, ok := ws.ProjectList.Get(ws.Config.StartupProject); ok {
 			ws.StartupProject = startupProject
@@ -224,14 +226,14 @@ func (ws *Workspace) Resolve(dev DevEnum) error {
 		}
 	}
 
-	ws.MasterWorkspace = NewExtraWorkspace(ws, ws.WorkspaceName)
-	for _, p := range ws.ProjectList.Values {
-		ws.MasterWorkspace.ProjectList.Add(p)
-	}
+	//ws.MasterWorkspace = NewExtraWorkspace(ws, ws.WorkspaceName)
+	// for _, p := range ws.ProjectList.Values {
+	// 	ws.MasterWorkspace.ProjectList.Add(p)
+	// }
 
-	for _, ew := range ws.ExtraWorkspaces {
-		ew.resolve()
-	}
+	// for _, ew := range ws.ExtraWorkspaces {
+	// 	ew.resolve()
+	// }
 
 	return nil
 }

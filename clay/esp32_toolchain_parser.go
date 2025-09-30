@@ -2,7 +2,6 @@ package clay
 
 import (
 	"bufio"
-	"fmt"
 	"os"
 	"path/filepath"
 	"runtime"
@@ -868,9 +867,7 @@ func (t *EspressifToolchain) ResolveVariables(board *EspressifBoard, buildPath s
 	boardVars.Set("runtime.os", runtime.GOOS)
 	boardVars.Set("runtime.platform.path", t.SdkPath)
 	boardVars.Set("runtime.ide.version", "10607")
-	boardVars.Set("build.path", buildPath)
-	boardVars.Set("build.arch", "esp8266")
-	boardVars.Set("build.extra_includes", "{runtime.platform.path}/variants/"+board.Name)
+	boardVars.Set("board.name", board.Name)
 
 	// Add all recipes to the board
 	for _, recipe := range t.Platform.Recipes {
@@ -880,9 +877,6 @@ func (t *EspressifToolchain) ResolveVariables(board *EspressifBoard, buildPath s
 	boardVars.Join(board.Vars)
 	board.Menu.RegisterVars(boardVars)
 	boardVars.Join(t.Platform.Vars)
-	boardVars.ResolveFinal()
-
-	fmt.Print(boardVars.String())
 
 	// For tools we can resolve some of the variables that are local to the tool
 	for _, tool := range t.Platform.Tools {

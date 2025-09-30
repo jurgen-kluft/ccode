@@ -1,4 +1,4 @@
-package dev
+package denv
 
 import (
 	"strings"
@@ -194,16 +194,6 @@ func (t BuildConfig) IsTest() bool {
 
 func (t BuildConfig) IsProfile() bool {
 	return t.Mode == BuildModeProfile
-}
-
-func ConcatString(str string, concat string, sep string) string {
-	if str == "" {
-		return concat
-	}
-	if concat == "" {
-		return str
-	}
-	return str + sep + concat
 }
 
 func (t BuildConfig) BuildAsString() string {

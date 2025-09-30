@@ -1,16 +1,16 @@
 package clay
 
 import (
-	"github.com/jurgen-kluft/ccode/dev"
+	"github.com/jurgen-kluft/ccode/denv"
 )
 
 type Config struct {
-	Config dev.BuildConfig
-	Target dev.BuildTarget
+	Config denv.BuildConfig
+	Target denv.BuildTarget
 }
 
-func NewConfig(supported dev.BuildTarget, config string) *Config {
-	buildConfig := dev.BuildConfigFromString(config)
+func NewConfig(supported denv.BuildTarget, config string) *Config {
+	buildConfig := denv.BuildConfigFromString(config)
 	return &Config{
 		Config: buildConfig,
 		Target: supported,
@@ -20,7 +20,7 @@ func NewConfig(supported dev.BuildTarget, config string) *Config {
 // GetSubDir returns a subdirectory name based on the OS, CPU, Build type, and Variant.
 // Example: "linux-x86-release-dev" or "arduino-esp32-debug-prod".
 func (c *Config) GetSubDir() string {
-	return c.Target.OSAsString() + "-" + c.Target.ArchAsString() + "-" + c.Config.AsString()
+	return c.Target.Os().String() + "-" + c.Target.Arch().String() + "-" + c.Config.AsString()
 }
 
 func (c *Config) Matches(other *Config) bool {
@@ -35,7 +35,7 @@ func (c *Config) ConfigString() string {
 }
 
 func (c *Config) String() string {
-	return c.Target.OSAsString() + "-" + c.Target.ArchAsString() + "-" + c.Config.AsString()
+	return c.Target.Os().String() + "-" + c.Target.Arch().String() + "-" + c.Config.AsString()
 }
 
 func (c *Config) GetCppDefines() []string {

@@ -2,15 +2,15 @@ package toolchain
 
 import (
 	"github.com/jurgen-kluft/ccode/clay/toolchain/deptrackr"
-	"github.com/jurgen-kluft/ccode/dev"
+	"github.com/jurgen-kluft/ccode/denv"
 )
 
 type Config struct {
-	Config dev.BuildConfig
-	Target dev.BuildTarget
+	Config denv.BuildConfig
+	Target denv.BuildTarget
 }
 
-func NewConfig(config dev.BuildConfig, target dev.BuildTarget) *Config {
+func NewConfig(config denv.BuildConfig, target denv.BuildTarget) *Config {
 	return &Config{
 		Config: config,
 		Target: target,
@@ -26,7 +26,7 @@ func (t *Config) IsProfile() bool     { return t.Config.IsProfile() }
 
 // GetDirname returns "os-arch-build-variant-mode"
 func (c *Config) GetDirname() string {
-	return c.Target.OSAsString() + "-" + c.Target.ArchAsString() + "-" + c.Config.AsString()
+	return c.Target.Os().String() + "-" + c.Target.Arch().String() + "-" + c.Config.AsString()
 }
 
 type Environment interface {

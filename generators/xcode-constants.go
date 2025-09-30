@@ -1,4 +1,4 @@
-package denv
+package ide_generators
 
 type XcodeProductTypeEnum string
 

@@ -2,29 +2,23 @@ package denv
 
 import (
 	corepkg "github.com/jurgen-kluft/ccode/core"
-	"github.com/jurgen-kluft/ccode/dev"
 )
 
 type DevConfig struct {
-	BuildType   dev.BuildType // Static, Dynamic, Executable
-	BuildConfig dev.BuildConfig
-	IncludeDirs []dev.PinnedPath
+	BuildType   BuildType // Static, Dynamic, Executable
+	BuildConfig BuildConfig
+	IncludeDirs []PinnedPath
 	Defines     *corepkg.ValueSet
-	LinkFlags   *corepkg.ValueSet
-	Libs        []dev.PinnedFilepath // Libraries to link against
+	Libs        []PinnedFilepath // Libraries to link against
 }
 
-func NewDevConfig(buildType dev.BuildType, buildConfig dev.BuildConfig) *DevConfig {
+func NewDevConfig(buildType BuildType, buildConfig BuildConfig) *DevConfig {
 	var config = &DevConfig{
-		// Type:    "Static", // Static, Dynamic, Executable
-		BuildType: buildType,
-		// Config:  "Debug",  // Debug, Release, Final
-		// Build:   "Dev",    // Development(dev), Unittest(test), Profile(prof), Production(prod)
+		BuildType:   buildType,
 		BuildConfig: buildConfig,
-		IncludeDirs: []dev.PinnedPath{},
+		IncludeDirs: []PinnedPath{},
 		Defines:     corepkg.NewValueSet(),
-		LinkFlags:   corepkg.NewValueSet(),
-		Libs:        []dev.PinnedFilepath{},
+		Libs:        []PinnedFilepath{},
 	}
 
 	return config

@@ -1,4 +1,4 @@
-package dev
+package denv
 
 type PinnedGlobPath struct {
 	Path PinnedPath

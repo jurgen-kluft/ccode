@@ -1,4 +1,4 @@
-package denv
+package ide_generators
 
 import (
 	"fmt"
@@ -7,7 +7,7 @@ import (
 	"strings"
 
 	corepkg "github.com/jurgen-kluft/ccode/core"
-	"github.com/jurgen-kluft/ccode/dev"
+	"github.com/jurgen-kluft/ccode/denv"
 )
 
 // ----------------------------------------------------------------------------------------------
@@ -56,7 +56,7 @@ func IsExcludedDefault(str string) bool {
 	return IsExcludedOn(str, gValidSuffixDefault)
 }
 
-func NewExclusionFilter(target dev.BuildTarget) *ExclusionFilter {
+func NewExclusionFilter(target denv.BuildTarget) *ExclusionFilter {
 	if target.Mac() {
 		return &ExclusionFilter{Filter: IsExcludedOnMac}
 	} else if target.Windows() {
@@ -86,22 +86,22 @@ func (f *ExclusionFilter) IsExcluded(filepath string) bool {
 // IDE generator
 // ----------------------------------------------------------------------------------------------
 type Generator struct {
-	Dev             DevEnum
-	BuildTarget     dev.BuildTarget
+	Dev             denv.DevEnum
+	BuildTarget     denv.BuildTarget
 	Verbose         bool
 	WorkspacePath   string // $(GOPATH)/src/github.com/user, absolute path
 	ExclusionFilter *ExclusionFilter
 }
 
-func NewGenerator(dev string, buildTarget dev.BuildTarget, verbose bool) *Generator {
+func NewGenerator(dev string, buildTarget denv.BuildTarget, verbose bool) *Generator {
 	g := &Generator{}
-	g.Dev = NewDevEnum(dev)
+	g.Dev = denv.NewDevEnum(dev)
 	g.BuildTarget = buildTarget
 	g.Verbose = verbose
 	return g
 }
 
-func (g *Generator) Generate(pkg *Package) {
+func (g *Generator) Generate(pkg *denv.Package) {
 	var ws *Workspace
 	var err error
 
@@ -111,19 +111,19 @@ func (g *Generator) Generate(pkg *Package) {
 	}
 
 	switch g.Dev {
-	case DevTundra:
+	case denv.DevTundra:
 		gg := NewTundraGenerator(ws)
 		gg.Generate()
-	case DevMake:
+	case denv.DevMake:
 		gg := NewMakeGenerator2(ws)
 		err = gg.Generate()
-	case DevXcode:
+	case denv.DevXcode:
 		gg := NewXcodeGenerator(ws)
 		gg.Generate()
-	case DevVs2015, DevVs2017, DevVs2019, DevVs2022:
+	case denv.DevVs2015, denv.DevVs2017, denv.DevVs2019, denv.DevVs2022:
 		gg := NewMsDevGenerator(ws)
-		gg.Generate()
-	case DevClay:
+		gg.Generate(g.BuildTarget)
+	case denv.DevClay:
 		gg := NewClayGenerator(ws, g.Verbose)
 		err = gg.Generate()
 	}
@@ -133,19 +133,19 @@ func (g *Generator) Generate(pkg *Package) {
 	}
 }
 
-func (g *Generator) GenerateWorkspace(pkg *Package, _dev DevEnum, _buildTarget dev.BuildTarget) (*Workspace, error) {
-	g.WorkspacePath = filepath.Join(os.Getenv("GOPATH"), "src", pkg.RepoPath)
+func (g *Generator) GenerateWorkspace(_pkg *denv.Package, _dev denv.DevEnum, _buildTarget denv.BuildTarget) (*Workspace, error) {
+	g.WorkspacePath = filepath.Join(os.Getenv("GOPATH"), "src", _pkg.RepoPath)
 
-	mainApps := pkg.GetMainApp()
-	mainTests := pkg.GetUnittest()
-	testLibs := pkg.GetTestLib()
-	mainLibs := pkg.GetMainLib()
+	mainApps := _pkg.GetMainApp()
+	mainTests := _pkg.GetUnittest()
+	testLibs := _pkg.GetTestLib()
+	mainLibs := _pkg.GetMainLib()
 
 	if (len(mainApps) == 0 && len(mainTests) == 0) && len(mainLibs) == 0 {
 		return nil, fmt.Errorf("this package has no application(s), unittest(s) or main lib(s)")
 	}
 
-	wsc := NewWorkspaceConfig(_dev, _buildTarget, g.WorkspacePath, pkg.RepoName)
+	wsc := NewWorkspaceConfig(_dev, _buildTarget.TargetOs(), g.WorkspacePath, _pkg.RepoName)
 	if len(mainApps) > 0 {
 		wsc.StartupProject = mainApps[0].Name
 	} else if len(mainTests) > 0 {
@@ -156,17 +156,17 @@ func (g *Generator) GenerateWorkspace(pkg *Package, _dev DevEnum, _buildTarget d
 	wsc.MultiThreadedBuild = true
 
 	ws := NewWorkspace(wsc)
-	ws.WorkspaceName = pkg.RepoName
-	ws.WorkspaceAbsPath = filepath.Join(g.WorkspacePath, pkg.RepoName)
+	ws.WorkspaceName = _pkg.RepoName
+	ws.WorkspaceAbsPath = filepath.Join(g.WorkspacePath, _pkg.RepoName)
 	ws.GenerateAbsPath = filepath.Join(ws.WorkspaceAbsPath, "target", ws.Config.Dev.ToString())
-	g.ExclusionFilter = NewExclusionFilter(ws.BuildTarget)
+	g.ExclusionFilter = NewExclusionFilter(_buildTarget)
 
-	projectStack := make([]*DevProject, 0)
+	projectStack := make([]*denv.DevProject, 0)
 	projectStack = append(projectStack, mainApps...)
 	projectStack = append(projectStack, mainTests...)
 	projectStack = append(projectStack, mainLibs...)
 	projectStack = append(projectStack, testLibs...)
-	projectHistory := make(map[*DevProject]string)
+	projectHistory := make(map[*denv.DevProject]string)
 
 	for len(projectStack) > 0 {
 		prj := projectStack[0]
@@ -190,7 +190,7 @@ func (g *Generator) GenerateWorkspace(pkg *Package, _dev DevEnum, _buildTarget d
 	return ws, nil
 }
 
-func (g *Generator) getOrCreateProject(devProj *DevProject, ws *Workspace) *Project {
+func (g *Generator) getOrCreateProject(devProj *denv.DevProject, ws *Workspace) *Project {
 
 	if p, ok := ws.ProjectList.Get(devProj.Name); ok {
 		return p

@@ -1,4 +1,4 @@
-package denv
+package ide_generators
 
 import (
 	corepkg "github.com/jurgen-kluft/ccode/core"
@@ -143,9 +143,9 @@ func (g *MakeGenerator2) generateProjectMakefile(project *Project, isMain bool) 
 	mk.WriteLine(`# Include Platform Specifics`)
 	mk.WriteLine(`#-------------------------------------------------------------------------------`)
 	mk.NewLine()
-	if g.Workspace.BuildTarget.Mac() {
+	if g.Workspace.BuildTargetOs.Mac() {
 		mk.WriteLine(`include ../makelib/platform/macos.mk`)
-	} else if g.Workspace.BuildTarget.Linux() {
+	} else if g.Workspace.BuildTargetOs.Linux() {
 		mk.WriteLine(`include ../makelib/platform/linux.mk`)
 	}
 	mk.NewLine()
@@ -452,12 +452,12 @@ func (g *MakeGenerator2) generateLibMake() error {
 	if err := g.generateLibMakeCommonMk(); err != nil {
 		return err
 	}
-	if g.Workspace.BuildTarget.Mac() {
+	if g.Workspace.BuildTargetOs.Mac() {
 		if err := g.generateLibMakePlatformMac(); err != nil {
 			return err
 		}
 	}
-	if g.Workspace.BuildTarget.Linux() {
+	if g.Workspace.BuildTargetOs.Linux() {
 		if err := g.generateLibMakePlatformLinux(); err != nil {
 			return err
 		}
@@ -473,7 +473,7 @@ func (g *MakeGenerator2) generateLibMakeCommonMk() error {
 	mk.NewLine()
 
 	mk.WriteLine(`# Target architecture`)
-	mk.WriteLine(`TARGET_ARCH := `, g.Workspace.BuildTarget.ArchAsString())
+	mk.WriteLine(`TARGET_ARCH := `, g.Workspace.BuildTarget.Arch().String())
 	mk.NewLine()
 
 	mk.WriteLine(`#-------------------------------------------------------------------------------`)

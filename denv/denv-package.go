@@ -5,8 +5,6 @@ import (
 	"path/filepath"
 	"slices"
 	"strings"
-
-	"github.com/jurgen-kluft/ccode/dev"
 )
 
 // Package hold a defined set of 'Projects'
@@ -29,7 +27,7 @@ func (p *Package) PackagePath() string {
 	return filepath.Join(p.RootPath, p.RepoPath, p.RepoName)
 }
 
-func collectTypes(buildType dev.BuildType, projects []*DevProject, list *DevProjectList) {
+func collectTypes(buildType BuildType, projects []*DevProject, list *DevProjectList) {
 	stack := slices.Clone(projects)
 	for len(stack) > 0 {
 		prj := stack[0]
@@ -54,10 +52,10 @@ func collectTypes(buildType dev.BuildType, projects []*DevProject, list *DevProj
 // Libraries returns all the libraries, including dependencies, in the package (used by fixer)
 func (p *Package) Libraries() []*DevProject {
 	list := NewDevProjectList()
-	collectTypes(dev.BuildTypeStaticLibrary|dev.BuildTypeDynamicLibrary, p.MainLibs, list)
-	collectTypes(dev.BuildTypeStaticLibrary|dev.BuildTypeDynamicLibrary, p.TestLibs, list)
-	collectTypes(dev.BuildTypeStaticLibrary|dev.BuildTypeDynamicLibrary, p.MainApps, list)
-	collectTypes(dev.BuildTypeStaticLibrary|dev.BuildTypeDynamicLibrary, p.Unittests, list)
+	collectTypes(BuildTypeStaticLibrary|BuildTypeDynamicLibrary, p.MainLibs, list)
+	collectTypes(BuildTypeStaticLibrary|BuildTypeDynamicLibrary, p.TestLibs, list)
+	collectTypes(BuildTypeStaticLibrary|BuildTypeDynamicLibrary, p.MainApps, list)
+	collectTypes(BuildTypeStaticLibrary|BuildTypeDynamicLibrary, p.Unittests, list)
 	return list.Values
 
 }

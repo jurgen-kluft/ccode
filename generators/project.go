@@ -1,11 +1,11 @@
-package denv
+package ide_generators
 
 import (
 	"fmt"
 	"path/filepath"
 
 	corepkg "github.com/jurgen-kluft/ccode/core"
-	"github.com/jurgen-kluft/ccode/dev"
+	"github.com/jurgen-kluft/ccode/denv"
 )
 
 // -----------------------------------------------------------------------------------------------------
@@ -14,17 +14,16 @@ import (
 type Project struct {
 	Workspace        *Workspace       // The workspace this project is part of
 	Name             string           // The name of the project
-	Version          string           // The version of the project
-	BuildType        dev.BuildType    // The build type of the project
-	SupportedTargets dev.BuildTarget  // The targets that this project supports
+	BuildType        denv.BuildType   // The build type of the project
+	SupportedTargets denv.BuildTarget // The targets that this project supports
 	ProjectAbsPath   string           // The path where the project is located on disk, under the workspace directory
 	GenerateAbsPath  string           // Where the project will be saved on disk
-	Settings         *ProjectSettings //
 	Group            *ProjectGroup    // Set when project is added into ProjectGroups
 	SrcFileGroups    []*FileEntryDict
 	ResFileGroups    []*FileEntryDict
 	VirtualFolders   *VirtualDirectories // For IDE generation, this is the path that is the root path of the virtual folder/file structure
 	PchCpp           *FileEntry
+	Settings         *ProjectSettings
 	ProjectFilename  string
 	ConfigsLocal     *ConfigList
 	Dependencies     *ProjectList
@@ -32,19 +31,19 @@ type Project struct {
 	Resolved *ProjectResolved
 }
 
-func newProject2(prj *DevProject, ws *Workspace, settings *ProjectSettings) *Project {
+func newProject2(buildTarget denv.BuildTarget, prj *denv.DevProject, generateAbsPath string, settings *ProjectSettings) *Project {
 	projectAbsPath := prj.Package.PackagePath()
 	p := &Project{
-		Workspace:        ws,
+		//Workspace:        ws,
 		Name:             prj.Name,
 		BuildType:        prj.BuildType,
 		SupportedTargets: prj.Supported,
 		ProjectAbsPath:   projectAbsPath,
-		GenerateAbsPath:  ws.GenerateAbsPath,
-		Settings:         settings,
+		GenerateAbsPath:  generateAbsPath,
 		Group:            nil,
 		SrcFileGroups:    []*FileEntryDict{NewFileEntryDict(projectAbsPath)},
 		ResFileGroups:    []*FileEntryDict{NewFileEntryDict(projectAbsPath)},
+		Settings:         settings,
 		ConfigsLocal:     NewConfigList(),
 		Dependencies:     NewProjectList(),
 	}
@@ -52,12 +51,12 @@ func newProject2(prj *DevProject, ws *Workspace, settings *ProjectSettings) *Pro
 
 	// TODO Should we copy the configurations here ?
 	for _, devCfg := range prj.Configs {
-		cfg := p.CreateConfiguration(devCfg)
+		cfg := p.CreateConfiguration(buildTarget, devCfg)
 		p.ConfigsLocal.Add(cfg)
 	}
 
-	p.Settings.MultiThreadedBuild = ws.Config.MultiThreadedBuild
-	p.Settings.Xcode.BundleIdentifier = "$(PROJECT_NAME)"
+	//p.Settings.MultiThreadedBuild = ws.Config.MultiThreadedBuild
+	//p.Settings.Xcode.BundleIdentifier = "$(PROJECT_NAME)"
 
 	return p
 }
@@ -66,24 +65,24 @@ func (p *Project) TypeIsExe() bool {
 	return p.BuildType.IsExecutable()
 }
 func (p *Project) TypeIsDll() bool {
-	return p.BuildType == dev.BuildTypeDynamicLibrary
+	return p.BuildType == denv.BuildTypeDynamicLibrary
 }
 func (p *Project) TypeIsLib() bool {
-	return p.BuildType == dev.BuildTypeDynamicLibrary || p.BuildType == dev.BuildTypeStaticLibrary
+	return p.BuildType == denv.BuildTypeDynamicLibrary || p.BuildType == denv.BuildTypeStaticLibrary
 }
 func (p *Project) TypeIsExeOrDll() bool {
 	return p.TypeIsExe() || p.TypeIsDll()
 }
 
-func (p *Project) GetOrCreateConfig(t dev.BuildConfig) *Config {
+func (p *Project) GetOrCreateConfig(b denv.BuildTarget, t denv.BuildConfig) *Config {
 	c, ok := p.ConfigsLocal.Get(t)
 	if !ok {
-		c = NewConfig(t, p.Workspace, p)
+		c = NewConfig(b, t, p)
 	}
 	return c
 }
 
-func (p *Project) FindConfig(t dev.BuildConfig) *Config {
+func (p *Project) FindConfig(t denv.BuildConfig) *Config {
 	c, ok := p.ConfigsLocal.Get(t)
 	if !ok {
 		return nil
@@ -111,8 +110,8 @@ func (p *Project) FileEntriesGenerateUUIDs() {
 	}
 }
 
-func (p *Project) CreateConfiguration(cfg *DevConfig) *Config {
-	config := p.GetOrCreateConfig(cfg.BuildConfig)
+func (p *Project) CreateConfiguration(buildTarget denv.BuildTarget, cfg *denv.DevConfig) *Config {
+	config := p.GetOrCreateConfig(buildTarget, cfg.BuildConfig)
 
 	// C++ defines
 	for _, define := range cfg.Defines.Values {
@@ -129,17 +128,13 @@ func (p *Project) CreateConfiguration(cfg *DevConfig) *Config {
 		config.AddIncludeDir(include)
 	}
 
-	if cfg.BuildConfig.IsTest() {
-		config.VisualStudioClCompile.AddOrSet("ExceptionHandling", "Sync")
-	}
-
 	return config
 }
 
-func (p *Project) AddConfigurations(configs []*DevConfig) {
+func (p *Project) AddConfigurations(configs []*denv.DevConfig) {
 	for _, cfg := range configs {
 		if !p.ConfigsLocal.Has(cfg.BuildConfig) {
-			config := p.CreateConfiguration(cfg)
+			config := p.CreateConfiguration(p.Workspace.BuildTarget, cfg)
 			p.ConfigsLocal.Add(config)
 		}
 	}
@@ -168,7 +163,7 @@ func NewProjectResolved() *ProjectResolved {
 	}
 }
 
-func (p *ProjectResolved) FindConfig(t dev.BuildConfig) *Config {
+func (p *ProjectResolved) FindConfig(t denv.BuildConfig) *Config {
 	c, ok := p.Configs.Get(t)
 	if !ok {
 		return nil
@@ -184,7 +179,7 @@ func (p *ProjectResolved) InitXCodeConfig(prj *Project) {
 	p.GenDataXcode = gd
 }
 
-func (p *ProjectResolved) GenerateUUIDs(dev DevEnum) {
+func (p *ProjectResolved) GenerateUUIDs(dev denv.DevEnum) {
 	if dev.IsXCode() {
 		p.GenDataXcode.Uuid = corepkg.GenerateUUID()
 		p.GenDataXcode.TargetUuid = corepkg.GenerateUUID()
@@ -205,7 +200,7 @@ func (p *ProjectResolved) GenerateUUIDs(dev DevEnum) {
 	p.GenDataMsDev.UUID = corepkg.GenerateUUID()
 }
 
-func (p *Project) Resolve(devEnum DevEnum) error {
+func (p *Project) Resolve(devEnum denv.DevEnum) error {
 	resolved := NewProjectResolved()
 
 	if p.BuildType.IsExecutable() {
@@ -220,17 +215,17 @@ func (p *Project) Resolve(devEnum DevEnum) error {
 
 	resolved.GeneratedFilesDir = filepath.Join(p.Workspace.GenerateAbsPath, "_generated_", p.Name)
 
-	if p.Settings.PchHeader != "" {
-		resolved.PchHeader = NewFileEntry()
-		resolved.PchHeader.Init(p.Settings.PchHeader, false)
-	}
+	// if p.Settings.PchHeader != "" {
+	// 	resolved.PchHeader = NewFileEntry()
+	// 	resolved.PchHeader.Init(p.Settings.PchHeader, false)
+	// }
 
 	for _, g := range p.SrcFileGroups {
 		for _, f := range g.Values {
 			p.VirtualFolders.AddFile(f)
 		}
 	}
-	configsPerConfigTypeDb := map[dev.BuildConfig][]*Config{}
+	configsPerConfigTypeDb := map[denv.BuildConfig][]*Config{}
 
 	err := p.Dependencies.TopoSort()
 	if err != nil {
@@ -318,7 +313,7 @@ func (p *Project) GlobFiles(path string, sub string, pattern string, isExcluded 
 // -----------------------------------------------------------------------------------------------------
 // -----------------------------------------------------------------------------------------------------
 
-func (p *Project) BuildLibraryInformation(devEnum DevEnum, config *Config, workspaceGenerateAbsPath string) (linkDirs, linkFiles, linkLibs *corepkg.ValueSet) {
+func (p *Project) BuildLibraryInformation(devEnum denv.DevEnum, config *Config, workspaceGenerateAbsPath string) (linkDirs, linkFiles, linkLibs *corepkg.ValueSet) {
 	linkDirs = corepkg.NewValueSet()
 	linkFiles = corepkg.NewValueSet()
 	linkLibs = corepkg.NewValueSet()

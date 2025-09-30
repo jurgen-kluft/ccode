@@ -7,8 +7,8 @@ import (
 
 	corepkg "github.com/jurgen-kluft/ccode/core"
 	"github.com/jurgen-kluft/ccode/denv"
-	"github.com/jurgen-kluft/ccode/dev"
 	"github.com/jurgen-kluft/ccode/embedded"
+	ide_generators "github.com/jurgen-kluft/ccode/generators"
 )
 
 // Init will initialize ccode before anything else is run
@@ -74,7 +74,7 @@ func Init() bool {
 	}
 
 	// Initialize the build target that will be used during Package, Project and Lib creation
-	dev.SetBuildTarget(cos, carch)
+	denv.SetBuildTarget(cos, carch)
 
 	return true
 }
@@ -82,8 +82,8 @@ func Init() bool {
 // Generate is the main function that requires 'arguments' to then generate
 // workspace and project files for a specified IDE.
 func Generate(pkg *denv.Package) {
-	buildTarget := dev.GetBuildTarget()
-	generator := denv.NewGenerator(cdev, buildTarget, cverbose)
+	buildTarget := denv.GetBuildTarget()
+	generator := ide_generators.NewGenerator(cdev, buildTarget, cverbose)
 	generator.Generate(pkg)
 }
 

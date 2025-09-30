@@ -10,7 +10,7 @@ import (
 	"strings"
 
 	corepkg "github.com/jurgen-kluft/ccode/core"
-	"github.com/jurgen-kluft/ccode/dev"
+	"github.com/jurgen-kluft/ccode/denv"
 )
 
 const (
@@ -77,8 +77,8 @@ func GetDefaultArch() string {
 	}
 }
 
-func BuildTargetFromString(s string) dev.BuildTarget {
-	return dev.BuildTargetFromString(s)
+func BuildTargetFromString(s string) denv.BuildTarget {
+	return denv.BuildTargetFromString(s)
 }
 
 func ParseProjectNameAndConfig() (string, *Config) {
@@ -206,7 +206,7 @@ func ParseProjectNameAndConfig() (string, *Config) {
 	}
 
 	buildTargetStr := fmt.Sprintf("%s(%s)", clayConfig.TargetOs, clayConfig.TargetArch)
-	buildTarget := dev.BuildTargetFromString(buildTargetStr)
+	buildTarget := denv.BuildTargetFromString(buildTargetStr)
 	return clayConfig.ProjectName, NewConfig(buildTarget, clayConfig.TargetBuild)
 }
 

@@ -8,14 +8,14 @@ import (
 	"runtime"
 
 	"github.com/jurgen-kluft/ccode/clay"
-	"github.com/jurgen-kluft/ccode/dev"
+	"github.com/jurgen-kluft/ccode/denv"
 )
 
 func CreateProjects() []*clay.Project {
 	arch := runtime.GOARCH
 	projectName := "test_project"
 	buildTargetStr := fmt.Sprintf("%s(%s)", "macos", arch)
-	projectTarget := dev.BuildTargetFromString(buildTargetStr)
+	projectTarget := denv.BuildTargetFromString(buildTargetStr)
 	projectConfig := clay.NewConfig(projectTarget, "debug-dev")
 	project := clay.NewExecutableProject(projectName, projectConfig)
 	clay.AddBuildInfoAsCppLibrary(project, projectConfig)

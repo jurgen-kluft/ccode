@@ -134,7 +134,7 @@ func UsageAppArduino() {
 }
 
 func BuildInfo(projectName string, buildConfig *Config) error {
-	espSdkPath := toolchain.ArduinoEspSdkPath(buildConfig.Target.ArchAsString())
+	espSdkPath := toolchain.ArduinoEspSdkPath(buildConfig.Target.Arch().String())
 
 	prjs := ClayAppCreateProjectsFunc()
 	for _, prj := range prjs {

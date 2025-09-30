@@ -7,6 +7,7 @@ import (
 	"time"
 
 	"github.com/jurgen-kluft/ccode/clay/toolchain"
+	"github.com/jurgen-kluft/ccode/denv"
 
 	corepkg "github.com/jurgen-kluft/ccode/core"
 )
@@ -36,6 +37,7 @@ type Project struct {
 	PartitionFiles []string              // Partition CSV files (for ESP32)
 	Dependencies   []*Project            // Libraries that this project depends on
 	Frameworks     []string              // Frameworks to link against (for macOS)
+	SourceDirs     []denv.PinnedGlobPath // Directories to glob source files from
 }
 
 func NewExecutableProject(name string, config *Config) *Project {
@@ -80,13 +82,13 @@ func (p *Project) GetBuildPath(buildPath string) string {
 }
 
 func (p *Project) SetToolchain(buildConfig *Config, buildPath string, board *EspressifBoard) (err error) {
-	targetOS := buildConfig.Target.OSAsString()
+	targetOS := buildConfig.Target.Os().String()
 	if targetOS == "arduino" && buildConfig.Target.Esp32() {
 		p.Toolchain = toolchain.NewArduinoEsp32Toolchain(board.Vars, p.Name, p.PartitionFiles)
 	} else if targetOS == "arduino" && buildConfig.Target.Esp8266() {
 		p.Toolchain = toolchain.NewArduinoEsp8266Toolchain(board.Vars, p.Name, p.GetBuildPath(buildPath))
 	} else if targetOS == "windows" {
-		p.Toolchain, err = toolchain.NewWinMsdev(buildConfig.Target.ArchAsString(), "Desktop")
+		p.Toolchain, err = toolchain.NewWinMsdev(buildConfig.Target.Arch().String(), "Desktop")
 	} else if targetOS == "mac" || targetOS == "macos" || targetOS == "darwin" {
 		p.Toolchain, err = toolchain.NewDarwinClang(runtime.GOARCH, p.Frameworks)
 	} else {
@@ -102,6 +104,9 @@ func (p *Project) AddSourceFile(srcPath string, srcRelPath string) {
 	})
 }
 
+func (p *Project) GlobSourceFiles(buildTargetStr string) {
+	// Glob source files based on the build target
+}
 func (p *Project) AddPartitionFile(partitionFile string) {
 	p.PartitionFiles = append(p.PartitionFiles, partitionFile)
 }

@@ -1,7 +1,9 @@
-package denv
+package ide_generators
 
 import (
 	"strings"
+
+	"github.com/jurgen-kluft/ccode/denv"
 )
 
 // ----------------------------------------------------------------------------------------------------------
@@ -9,13 +11,13 @@ import (
 
 type PinnedPathSet struct {
 	Entries map[string]int
-	Values  []PinnedPath
+	Values  []denv.PinnedPath
 }
 
-func NewPinnedPathSetd() *PinnedPathSet {
+func NewPinnedPathSet() *PinnedPathSet {
 	d := &PinnedPathSet{}
 	d.Entries = make(map[string]int)
-	d.Values = make([]PinnedPath, 0)
+	d.Values = make([]denv.PinnedPath, 0)
 	return d
 }
 
@@ -26,7 +28,7 @@ func (d *PinnedPathSet) Merge(other *PinnedPathSet) {
 }
 
 func (d *PinnedPathSet) Copy() *PinnedPathSet {
-	c := NewPinnedPathSetd()
+	c := NewPinnedPathSet()
 	c.Merge(d)
 	return c
 }
@@ -46,7 +48,7 @@ func (d *PinnedPathSet) UniqueExtend(rhs *PinnedPathSet) {
 	}
 }
 
-func (d *PinnedPathSet) AddOrSet(fp PinnedPath) {
+func (d *PinnedPathSet) AddOrSet(fp denv.PinnedPath) {
 	fullpath := fp.String()
 	i, ok := d.Entries[fullpath]
 	if !ok {

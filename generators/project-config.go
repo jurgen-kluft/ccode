@@ -1,11 +1,10 @@
-package denv
+package ide_generators
 
 import (
 	"path/filepath"
-	"strings"
 
 	corepkg "github.com/jurgen-kluft/ccode/core"
-	"github.com/jurgen-kluft/ccode/dev"
+	"github.com/jurgen-kluft/ccode/denv"
 )
 
 // -----------------------------------------------------------------------------------------------------
@@ -16,14 +15,14 @@ import (
 // -----------------------------------------------------------------------------------------------------
 
 type ConfigList struct {
-	Dict   map[dev.BuildConfig]int
+	Dict   map[denv.BuildConfig]int
 	Values []*Config
 	Keys   []string
 }
 
 func NewConfigList() *ConfigList {
 	return &ConfigList{
-		Dict:   map[dev.BuildConfig]int{},
+		Dict:   map[denv.BuildConfig]int{},
 		Values: []*Config{},
 		Keys:   []string{},
 	}
@@ -51,14 +50,14 @@ func (p *ConfigList) First() *Config {
 	return nil
 }
 
-func (p *ConfigList) Get(t dev.BuildConfig) (*Config, bool) {
+func (p *ConfigList) Get(t denv.BuildConfig) (*Config, bool) {
 	if i, ok := p.Dict[t]; ok {
 		return p.Values[i], true
 	}
 	return nil, false
 }
 
-func (p *ConfigList) Has(t dev.BuildConfig) bool {
+func (p *ConfigList) Has(t denv.BuildConfig) bool {
 	_, ok := p.Dict[t]
 	return ok
 }
@@ -76,21 +75,24 @@ func (p *ConfigList) CollectByWildcard(name string, list *ConfigList) {
 // -----------------------------------------------------------------------------------------------------
 
 type Config struct {
-	BuildConfig       dev.BuildConfig
-	Workspace         *Workspace
-	Project           *Project
-	CppDefines        *corepkg.KeyValueSet
-	CppFlags          *corepkg.KeyValueSet
-	IncludeDirs       *PinnedPathSet
-	LibraryPaths      *PinnedPathSet
-	LibraryFiles      *corepkg.ValueSet
-	LibraryFrameworks *corepkg.ValueSet // MacOS specific
-	LinkFlags         *corepkg.KeyValueSet
-	DisableWarning    *corepkg.KeyValueSet
-
-	XcodeSettings         *corepkg.KeyValueSet
-	VisualStudioClCompile *corepkg.KeyValueSet
-	VisualStudioLink      *corepkg.KeyValueSet
+	BuildTarget       denv.BuildTarget     // The build target of the project (os+arch)
+	BuildConfig       denv.BuildConfig     // The build configuration of the project (Debug, Release, Final)
+	GenerateAbsPath   string               // The path where generated files are stored
+	ToolSet           string               // String identifying the toolset to use, e.g. "v142", "v143", "clang12", "gcc10", "gcc11", "gcc12", "gcc13"
+	RuntimeLibrary    RuntimeLibraryType   // The runtime library to use
+	Dev               *denv.DevEnum        // The dev environment this config is part of
+	Project           *Project             // The project this config is part of
+	CppDefines        *corepkg.KeyValueSet // e.g. "DEBUG" "PROFILE"
+	CppFlags          *corepkg.KeyValueSet // e.g. "-g"
+	IncludeDirs       *PinnedPathSet       //
+	LibraryPaths      *PinnedPathSet       //
+	LibraryFiles      *corepkg.ValueSet    //
+	LibraryFrameworks *corepkg.ValueSet    // MacOS specific
+	LinkFlags         *corepkg.KeyValueSet //
+	DisableWarning    *corepkg.KeyValueSet //
+	XcodeSettings     *corepkg.KeyValueSet //
+	//
+	VisualStudioLink *corepkg.KeyValueSet //
 
 	GenDataXcode struct {
 		ProjectConfigUuid corepkg.UUID
@@ -101,10 +103,11 @@ type Config struct {
 	Resolved *ConfigResolved
 }
 
-func NewConfig(t dev.BuildConfig, ws *Workspace, p *Project) *Config {
+func NewConfig(buildTarget denv.BuildTarget, buildConfig denv.BuildConfig, p *Project) *Config {
 	c := &Config{}
-	c.BuildConfig = t
-	c.Workspace = ws
+	c.BuildTarget = buildTarget
+	c.BuildConfig = buildConfig
+	//c.Workspace = ws
 	c.Project = p
 
 	c.CppDefines = corepkg.NewKeyValueSet() // e.g. "DEBUG" "PROFILE"
@@ -119,15 +122,14 @@ func NewConfig(t dev.BuildConfig, ws *Workspace, p *Project) *Config {
 	c.DisableWarning = corepkg.NewKeyValueSet() // e.g. "unused-variable"
 
 	c.XcodeSettings = corepkg.NewKeyValueSet()
-	c.VisualStudioClCompile = corepkg.NewKeyValueSet()
 	c.VisualStudioLink = corepkg.NewKeyValueSet()
 
 	c.GenDataXcode.ProjectConfigUuid = corepkg.GenerateUUID()
 	c.GenDataXcode.TargetUuid = corepkg.GenerateUUID()
 	c.GenDataXcode.TargetConfigUuid = corepkg.GenerateUUID()
 
-	c.InitTargetSettings()
-	c.InitXcodeSettings()
+	c.InitTargetOsSettings(buildTarget.TargetOs())
+	c.InitXcodeSettings(buildTarget.TargetOs())
 	c.InitVisualStudioSettings()
 
 	return c
@@ -138,11 +140,11 @@ func (c *Config) String() string {
 }
 
 // AddIncludeDir adds an include to the list of include directories
-func (c *Config) AddIncludeDir(includeDir dev.PinnedPath) {
+func (c *Config) AddIncludeDir(includeDir denv.PinnedPath) {
 	c.IncludeDirs.AddOrSet(includeDir)
 }
 
-func (c *Config) AddLibrary(projectDirectory string, lib dev.PinnedFilepath) {
+func (c *Config) AddLibrary(projectDirectory string, lib denv.PinnedFilepath) {
 	c.LibraryPaths.AddOrSet(lib.Path)
 
 	libfile := lib.Filename
@@ -153,19 +155,19 @@ func (c *Config) AddFramework(framework string) {
 	c.LibraryFrameworks.Add(framework)
 }
 
-func (c *Config) InitTargetSettings() {
+func (c *Config) InitTargetOsSettings(os denv.BuildTargetOs) {
 
-	buildTarget := c.Workspace.BuildTarget
+	//buildTarget := c.Workspace.BuildTarget
 
-	if buildTarget.Windows() {
+	if os.Windows() {
 		c.CppDefines.AddOrSet("TARGET_PC", "TARGET_PC")
 		c.CppDefines.AddOrSet("UNICODE", "UNICODE")
 		c.CppDefines.AddOrSet("_UNICODE", "_UNICODE")
-	} else if buildTarget.Linux() {
+	} else if os.Linux() {
 		c.CppDefines.AddOrSet("TARGET_LINUX", "TARGET_LINUX")
 		c.CppDefines.AddOrSet("UNICODE", "UNICODE")
 		c.CppDefines.AddOrSet("_UNICODE", "_UNICODE")
-	} else if buildTarget.Mac() {
+	} else if os.Mac() {
 		c.CppDefines.AddOrSet("TARGET_MAC", "TARGET_MAC")
 		c.CppDefines.AddOrSet("UNICODE", "UNICODE")
 		c.CppDefines.AddOrSet("_UNICODE", "_UNICODE")
@@ -183,20 +185,20 @@ func (c *Config) InitTargetSettings() {
 		// 	l.Dirs.Merge(other.Dirs)
 		// }
 
-	} else if buildTarget.Arduino() {
+	} else if os.Arduino() {
 		c.CppDefines.AddOrSet("TARGET_ESP32", "TARGET_ESP32")
 	}
 }
 
-func (c *Config) InitXcodeSettings() {
+func (c *Config) InitXcodeSettings(os denv.BuildTargetOs) {
 
 	settings := make(map[string]string)
 
-	if c.Workspace.BuildTarget.Mac() {
+	if os.Mac() {
 		settings["SDKROOT"] = "iphoneos"
 		settings["SUPPORTED_PLATFORMS"] = "iphonesimulator iphoneos"
 		settings["IPHONEOS_DEPLOYMENT_TARGET"] = "10.1"
-	} else if c.Workspace.BuildTarget.Mac() {
+	} else if os.Mac() {
 		settings["SDKROOT"] = "macosx"
 		settings["SUPPORTED_PLATFORMS"] = "macosx"
 		settings["MACOSX_DEPLOYMENT_TARGET"] = "10.15" // c++11 require 10.10+
@@ -275,36 +277,42 @@ func (c *Config) InitXcodeSettings() {
 	}
 }
 
-func (c *Config) InitVisualStudioSettings() {
-	c.VisualStudioClCompile = corepkg.NewKeyValueSet()
-	c.VisualStudioClCompile.AddOrSet("MinimalRebuild", "false")
-	c.VisualStudioClCompile.AddOrSet("ExceptionHandling", "false")
-	c.VisualStudioClCompile.AddOrSet("CompileAs", "CompileAsCpp")
-	c.VisualStudioClCompile.AddOrSet("EnableModules", "false")
-	c.VisualStudioClCompile.AddOrSet("TreatWarningAsError", "true")
-	c.VisualStudioClCompile.AddOrSet("WarningLevel", "Level3") // Level0, Level1, Level2, Level3, Level4
+func (c *Config) InitVisualStudioSettings() *corepkg.KeyValueSet {
+	visualStudioClCompile := corepkg.NewKeyValueSet()
+	visualStudioClCompile.AddOrSet("MinimalRebuild", "false")
+	visualStudioClCompile.AddOrSet("ExceptionHandling", "false")
+	visualStudioClCompile.AddOrSet("CompileAs", "CompileAsCpp")
+	visualStudioClCompile.AddOrSet("EnableModules", "false")
+	visualStudioClCompile.AddOrSet("TreatWarningAsError", "true")
+	visualStudioClCompile.AddOrSet("WarningLevel", "Level3") // Level0, Level1, Level2, Level3, Level4
 
-	if c.Workspace.Config.Dev.CompilerIsClang() {
-		c.VisualStudioClCompile.AddOrSet("DebugInformationFormat", "None")
+	if c.Dev.CompilerIsClang() {
+		visualStudioClCompile.AddOrSet("DebugInformationFormat", "None")
 	} else {
 		if c.BuildConfig.IsFinal() == false {
-			c.VisualStudioClCompile.AddOrSet("DebugInformationFormat", "ProgramDatabase")
+			visualStudioClCompile.AddOrSet("DebugInformationFormat", "ProgramDatabase")
 		}
 	}
 
 	if c.BuildConfig.IsDebug() {
-		c.VisualStudioClCompile.AddOrSet("Optimization", "Disabled")
-		c.VisualStudioClCompile.AddOrSet("OmitFramePointers", "false")
+		visualStudioClCompile.AddOrSet("Optimization", "Disabled")
+		visualStudioClCompile.AddOrSet("OmitFramePointers", "false")
 	} else {
-		c.VisualStudioClCompile.AddOrSet("Optimization", "Full") // MinSpace, MaxSpeed
-		c.VisualStudioClCompile.AddOrSet("OmitFramePointers", "true")
-		c.VisualStudioClCompile.AddOrSet("FunctionLevelLinking", "true")
-		c.VisualStudioClCompile.AddOrSet("IntrinsicFunctions", "true")
-		c.VisualStudioClCompile.AddOrSet("WholeProgramOptimization", "true")
-		c.VisualStudioClCompile.AddOrSet("BasicRuntimeChecks", "Default")
+		visualStudioClCompile.AddOrSet("Optimization", "Full") // MinSpace, MaxSpeed
+		visualStudioClCompile.AddOrSet("OmitFramePointers", "true")
+		visualStudioClCompile.AddOrSet("FunctionLevelLinking", "true")
+		visualStudioClCompile.AddOrSet("IntrinsicFunctions", "true")
+		visualStudioClCompile.AddOrSet("WholeProgramOptimization", "true")
+		visualStudioClCompile.AddOrSet("BasicRuntimeChecks", "Default")
 	}
 
-	c.VisualStudioClCompile.AddOrSet("RuntimeLibrary", c.Workspace.Config.MsDev.RuntimeLibrary.String(c.BuildConfig.IsDebug()))
+	visualStudioClCompile.AddOrSet("RuntimeLibrary", c.RuntimeLibrary.String(c.BuildConfig.IsDebug()))
+
+	if c.BuildConfig.IsTest() {
+		visualStudioClCompile.AddOrSet("ExceptionHandling", "Sync")
+	}
+
+	return visualStudioClCompile
 }
 
 type ConfigResolved struct {
@@ -324,7 +332,7 @@ func NewConfigResolved() *ConfigResolved {
 }
 
 func (c *Config) Copy() *Config {
-	nc := NewConfig(c.BuildConfig, c.Workspace, c.Project)
+	nc := NewConfig(c.BuildTarget, c.BuildConfig, c.Project)
 
 	nc.CppDefines = c.CppDefines.Copy()
 	nc.CppFlags = c.CppFlags.Copy()
@@ -337,7 +345,6 @@ func (c *Config) Copy() *Config {
 	nc.DisableWarning = c.DisableWarning.Copy()
 
 	nc.XcodeSettings = c.XcodeSettings.Copy()
-	nc.VisualStudioClCompile = c.VisualStudioClCompile.Copy()
 	nc.VisualStudioLink = c.VisualStudioLink.Copy()
 
 	nc.GenDataXcode = c.GenDataXcode
@@ -363,57 +370,37 @@ func (c *Config) BuildResolved(otherConfigs []*Config) *Config {
 
 		configMerged.DisableWarning.Merge(otherConfig.DisableWarning)
 		configMerged.XcodeSettings.Merge(otherConfig.XcodeSettings)
-		configMerged.VisualStudioClCompile.Merge(otherConfig.VisualStudioClCompile)
 		configMerged.VisualStudioLink.Merge(otherConfig.VisualStudioLink)
-
 	}
 
 	configResolved := NewConfigResolved()
 
 	if configMerged.Project != nil {
-		path := filepath.Join(c.Workspace.GenerateAbsPath, "build_tmp", c.String(), c.Project.Name)
+		path := filepath.Join(c.GenerateAbsPath, "build_tmp", c.String(), c.Project.Name)
 		configResolved.BuildTmpDir = NewFileEntryInit(path, true)
 	}
 
-	emitCoreDefines := false
-	for _, deps := range c.Project.Dependencies.Values {
-		if deps.Name == "ccore" {
-			emitCoreDefines = true
-			break
-		}
-	}
-	if emitCoreDefines {
-		configMerged.CppDefines.AddOrSet("CCORE_GEN_CPU", "CCORE_GEN_CPU_"+strings.ToUpper(c.Workspace.BuildTarget.ArchAsString()))
-		configMerged.CppDefines.AddOrSet("CCORE_GEN_OS", "CCORE_GEN_OS_"+strings.ToUpper(c.Workspace.BuildTarget.OSAsString()))
-		configMerged.CppDefines.AddOrSet("CCORE_GEN_COMPILER", "CCORE_GEN_COMPILER_"+strings.ToUpper(c.Workspace.Config.Dev.CompilerAsString()))
-		configMerged.CppDefines.AddOrSet("CCORE_GEN_GENERATOR", "CCORE_GEN_GENERATOR_"+strings.ToUpper(c.Workspace.Config.Dev.ToString()))
-		configMerged.CppDefines.AddOrSet("CCORE_GEN_CONFIG", "CCORE_GEN_CONFIG_"+strings.ToUpper(c.String()))
-		configMerged.CppDefines.AddOrSet("CCORE_GEN_PLATFORM_NAME", "CCORE_GEN_PLATFORM_NAME=\""+strings.ToUpper(c.Workspace.BuildTarget.OSAsString()+"\""))
-		configMerged.CppDefines.AddOrSet("CCORE_GEN_PROJECT", "CCORE_GEN_PROJECT_"+strings.ToUpper(c.Project.Name))
-		genType := strings.ToUpper(c.Project.BuildType.String())
-		genType = strings.ReplaceAll(genType, " ", "_")
-		configMerged.CppDefines.AddOrSet("CCORE_GEN_TYPE", "CCORE_GEN_TYPE_"+genType)
-	}
-
 	if c.Project != nil {
-		BINDIR := filepath.Join(c.Workspace.GenerateAbsPath, "bin", c.Project.Name, c.String()+"_"+c.Workspace.BuildTarget.ArchAsString()+"_"+c.Workspace.Config.MsDev.PlatformToolset)
-		LIBDIR := filepath.Join(c.Workspace.GenerateAbsPath, "lib", c.Project.Name, c.String()+"_"+c.Workspace.BuildTarget.ArchAsString()+"_"+c.Workspace.Config.MsDev.PlatformToolset)
+		BINDIR := filepath.Join(c.GenerateAbsPath, "bin", c.Project.Name, c.String()+"_"+c.BuildTarget.Arch().String()+"_"+c.ToolSet)
+		LIBDIR := filepath.Join(c.GenerateAbsPath, "lib", c.Project.Name, c.String()+"_"+c.BuildTarget.Arch().String()+"_"+c.ToolSet)
+
+		settings := c.BuildTarget.TargetOs().Settings()
 
 		outputTarget := ""
 		if c.Project.TypeIsExe() {
-			executableFilename := c.Workspace.Config.ExeTargetPrefix + c.Project.Name + c.Workspace.Config.ExeTargetSuffix
+			executableFilename := settings.ExeTargetPrefix + c.Project.Name + settings.ExeTargetSuffix
 			outputTarget = filepath.Join(BINDIR, executableFilename)
 		} else if c.Project.TypeIsDll() {
-			dllFilename := c.Workspace.Config.DllTargetPrefix + c.Project.Name + c.Workspace.Config.DllTargetSuffix
+			dllFilename := settings.DllTargetPrefix + c.Project.Name + settings.DllTargetSuffix
 			outputTarget = filepath.Join(BINDIR, dllFilename)
-			if c.Workspace.BuildTarget.Windows() {
-				libFilename := c.Workspace.Config.LibTargetPrefix + c.Project.Name + c.Workspace.Config.LibTargetSuffix
+			if c.BuildTarget.Windows() {
+				libFilename := settings.LibTargetPrefix + c.Project.Name + settings.LibTargetSuffix
 				configResolved.OutputLib = NewFileEntryInit(filepath.Join(LIBDIR, libFilename), false)
 			} else {
 				configResolved.OutputLib = NewFileEntryInit(filepath.Join(BINDIR, dllFilename), false)
 			}
 		} else if c.Project.TypeIsLib() {
-			libFilename := c.Workspace.Config.LibTargetPrefix + c.Project.Name + c.Workspace.Config.LibTargetSuffix
+			libFilename := settings.LibTargetPrefix + c.Project.Name + settings.LibTargetSuffix
 			outputTarget = filepath.Join(LIBDIR, libFilename)
 			configResolved.OutputLib = NewFileEntryInit(outputTarget, false)
 		}
