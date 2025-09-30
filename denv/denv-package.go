@@ -203,3 +203,63 @@ func (p *Package) EncodeJson(encoder *corepkg.JsonEncoder, key string) {
 	}
 	encoder.EndObject()
 }
+
+func DecodeJsonPackage(decoder *corepkg.JsonDecoder) *Package {
+
+	pkg := &Package{
+		RootPath:  "",
+		RepoPath:  "",
+		RepoName:  "",
+		Packages:  make(map[string]*Package),
+		MainApps:  make([]*DevProject, 0),
+		MainLibs:  make([]*DevProject, 0),
+		Unittests: make([]*DevProject, 0),
+		TestLibs:  make([]*DevProject, 0),
+	}
+
+	fields := map[string]corepkg.JsonDecode{
+		"root_path": func(decoder *corepkg.JsonDecoder) { pkg.RootPath = decoder.DecodeString() },
+		"repo_path": func(decoder *corepkg.JsonDecoder) { pkg.RepoPath = decoder.DecodeString() },
+		"repo_name": func(decoder *corepkg.JsonDecoder) { pkg.RepoName = decoder.DecodeString() },
+		"packages": func(decoder *corepkg.JsonDecoder) {
+			pkg.Packages = make(map[string]*Package)
+			decoder.DecodeArray(func(decoder *corepkg.JsonDecoder) {
+				pkg := DecodeJsonPackage(decoder)
+				pkg.Packages[pkg.RepoName] = pkg
+			})
+		},
+		"main_apps": func(decoder *corepkg.JsonDecoder) {
+			pkg.MainApps = make([]*DevProject, 0)
+			decoder.DecodeArray(func(decoder *corepkg.JsonDecoder) {
+				prj := DecodeJsonDevProject(decoder, pkg)
+				pkg.MainApps = append(pkg.MainApps, prj)
+			})
+		},
+		"main_libs": func(decoder *corepkg.JsonDecoder) {
+			pkg.MainLibs = make([]*DevProject, 0)
+			decoder.DecodeArray(func(decoder *corepkg.JsonDecoder) {
+				prj := DecodeJsonDevProject(decoder, pkg)
+				pkg.MainLibs = append(pkg.MainLibs, prj)
+			})
+		},
+		"unittests": func(decoder *corepkg.JsonDecoder) {
+			pkg.Unittests = make([]*DevProject, 0)
+			decoder.DecodeArray(func(decoder *corepkg.JsonDecoder) {
+				prj := DecodeJsonDevProject(decoder, pkg)
+				pkg.Unittests = append(pkg.Unittests, prj)
+			})
+		},
+		"test_libs": func(decoder *corepkg.JsonDecoder) {
+			pkg.TestLibs = make([]*DevProject, 0)
+			decoder.DecodeArray(func(decoder *corepkg.JsonDecoder) {
+				prj := DecodeJsonDevProject(decoder, pkg)
+				pkg.TestLibs = append(pkg.TestLibs, prj)
+			})
+		},
+	}
+	if err := decoder.Decode(fields); err != nil {
+		corepkg.LogErrorf(err, "error decoding Package: %s", err.Error())
+	}
+
+	return pkg
+}

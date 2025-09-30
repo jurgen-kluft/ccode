@@ -29,3 +29,15 @@ func (fp PinnedFilepath) EncodeJson(encoder *corepkg.JsonEncoder, key string) {
 	}
 	encoder.EndObject()
 }
+
+func DecodeJsonPinnedFilepath(decoder *corepkg.JsonDecoder) PinnedFilepath {
+	var fp PinnedFilepath
+	fields := map[string]corepkg.JsonDecode{
+		"root":     func(dec *corepkg.JsonDecoder) { fp.Path.Root = dec.DecodeString() },
+		"base":     func(dec *corepkg.JsonDecoder) { fp.Path.Base = dec.DecodeString() },
+		"sub":      func(dec *corepkg.JsonDecoder) { fp.Path.Sub = dec.DecodeString() },
+		"filename": func(dec *corepkg.JsonDecoder) { fp.Filename = dec.DecodeString() },
+	}
+	decoder.Decode(fields)
+	return fp
+}

@@ -246,6 +246,46 @@ func (p *DevProject) EncodeJson(encoder *corepkg.JsonEncoder, key string) {
 	encoder.EndObject()
 }
 
+func DecodeJsonDevProject(decoder *corepkg.JsonDecoder, pkg *Package) *DevProject {
+	project := &DevProject{
+		Package:      pkg,
+		EnvVars:      make(map[string]string),
+		Configs:      make([]*DevConfig, 0),
+		Dependencies: NewDevProjectList(),
+		SourceDirs:   make([]PinnedGlobPath, 0),
+	}
+
+	fields := map[string]corepkg.JsonDecode{
+		"name":       func(decoder *corepkg.JsonDecoder) { project.Name = decoder.DecodeString() },
+		"dir_name":   func(decoder *corepkg.JsonDecoder) { project.DirName = decoder.DecodeString() },
+		"build_type": func(decoder *corepkg.JsonDecoder) { project.BuildType = BuildTypeFromString(decoder.DecodeString()) },
+		"build_targets": func(decoder *corepkg.JsonDecoder) {
+			project.BuildTargets = BuildTargetFromString(decoder.DecodeString())
+		},
+		"env_vars": func(decoder *corepkg.JsonDecoder) {
+			project.EnvVars = decoder.DecodeStringMapString()
+		},
+		"source_dirs": func(decoder *corepkg.JsonDecoder) {
+			decoder.DecodeArray(func(decoder *corepkg.JsonDecoder) {
+				dir := DecodeJsonPinnedGlobPath(decoder)
+				project.SourceDirs = append(project.SourceDirs, dir)
+			})
+		},
+		"configs": func(decoder *corepkg.JsonDecoder) {
+			decoder.DecodeArray(func(decoder *corepkg.JsonDecoder) {
+				cfg := DecodeJsonDevConfig(decoder)
+				project.Configs = append(project.Configs, cfg)
+			})
+		},
+		"dependencies": func(decoder *corepkg.JsonDecoder) {
+			decoder.DecodeStringArray()
+		},
+	}
+	decoder.Decode(fields)
+
+	return project
+}
+
 // SetupDefaultCppLibProject returns a default C++ library project, since such a project can be used by
 // an application as well as an unittest we need to add the appropriate configurations.
 // Example:

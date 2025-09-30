@@ -29,3 +29,14 @@ func (fp PinnedPath) EncodeJson(encoder *corepkg.JsonEncoder, key string) {
 	}
 	encoder.EndObject()
 }
+
+func DecodeJsonPinnedPath(decoder *corepkg.JsonDecoder, key string) PinnedPath {
+	var fp PinnedPath
+	fields := map[string]corepkg.JsonDecode{
+		"root": func(decoder *corepkg.JsonDecoder) { fp.Root = decoder.DecodeString() },
+		"base": func(decoder *corepkg.JsonDecoder) { fp.Base = decoder.DecodeString() },
+		"sub":  func(decoder *corepkg.JsonDecoder) { fp.Sub = decoder.DecodeString() },
+	}
+	decoder.Decode(fields)
+	return fp
+}

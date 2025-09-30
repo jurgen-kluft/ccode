@@ -17,3 +17,15 @@ func (fp PinnedGlobPath) EncodeJson(encoder *corepkg.JsonEncoder, key string) {
 	}
 	encoder.EndObject()
 }
+
+func DecodeJsonPinnedGlobPath(decoder *corepkg.JsonDecoder) PinnedGlobPath {
+	var fp PinnedGlobPath
+	fields := map[string]corepkg.JsonDecode{
+		"root": func(decoder *corepkg.JsonDecoder) { fp.Path.Root = decoder.DecodeString() },
+		"base": func(decoder *corepkg.JsonDecoder) { fp.Path.Base = decoder.DecodeString() },
+		"sub":  func(decoder *corepkg.JsonDecoder) { fp.Path.Sub = decoder.DecodeString() },
+		"glob": func(decoder *corepkg.JsonDecoder) { fp.Glob = decoder.DecodeString() },
+	}
+	decoder.Decode(fields)
+	return fp
+}
