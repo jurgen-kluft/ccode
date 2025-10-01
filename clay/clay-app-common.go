@@ -331,7 +331,38 @@ func CreateProjects(buildTarget denv.BuildTarget, buildConfig denv.BuildConfig) 
 
 	// First create the projects without dependencies
 	projectNameToIndex := make(map[string]int)
+
 	for _, devPrj := range pkg.GetMainLib() {
+		if !devPrj.HasMatchingConfigForTarget(buildConfig, buildTarget) {
+			continue
+		}
+		project := NewProjectFromDevProject(devPrj, devPrj.Configs)
+		projectNameToIndex[devPrj.Name] = len(projects)
+		projects = append(projects, project)
+	}
+
+	for _, devPrj := range pkg.GetMainApp() {
+		if !devPrj.HasMatchingConfigForTarget(buildConfig, buildTarget) {
+			continue
+		}
+		project := NewProjectFromDevProject(devPrj, devPrj.Configs)
+		projectNameToIndex[devPrj.Name] = len(projects)
+		projects = append(projects, project)
+	}
+
+	for _, devPrj := range pkg.GetTestLib() {
+		if !devPrj.HasMatchingConfigForTarget(buildConfig, buildTarget) {
+			continue
+		}
+		project := NewProjectFromDevProject(devPrj, devPrj.Configs)
+		projectNameToIndex[devPrj.Name] = len(projects)
+		projects = append(projects, project)
+	}
+
+	for _, devPrj := range pkg.GetUnittest() {
+		if !devPrj.HasMatchingConfigForTarget(buildConfig, buildTarget) {
+			continue
+		}
 		project := NewProjectFromDevProject(devPrj, devPrj.Configs)
 		projectNameToIndex[devPrj.Name] = len(projects)
 		projects = append(projects, project)
@@ -343,6 +374,11 @@ func CreateProjects(buildTarget denv.BuildTarget, buildConfig denv.BuildConfig) 
 			if idx, ok := projectNameToIndex[depPrj.Name]; ok {
 				prj.AddLibrary(projects[idx])
 			} else {
+				// A dependency project should have matching config + target
+				if !depPrj.HasMatchingConfigForTarget(buildConfig, buildTarget) {
+					corepkg.LogWarnf("Dependency project %s does not have a matching config for target %s and build %s, skipping", depPrj.Name, buildTarget.String(), buildConfig.String())
+					continue
+				}
 				depProject := NewProjectFromDevProject(depPrj, depPrj.Configs)
 				projectNameToIndex[depPrj.Name] = len(projects)
 				projects = append(projects, depProject)

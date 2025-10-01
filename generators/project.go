@@ -32,7 +32,7 @@ type Project struct {
 }
 
 func newProject2(ws *Workspace, buildTarget denv.BuildTarget, prj *denv.DevProject, generateAbsPath string, settings *ProjectSettings) *Project {
-	projectAbsPath := prj.Package.PackagePath()
+	projectAbsPath := prj.Path()
 	p := &Project{
 		Workspace:       ws,
 		Name:            prj.Name,

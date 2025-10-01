@@ -10,8 +10,9 @@ import (
 
 // DevProject is a structure that holds all the information that defines a project in an IDE
 type DevProject struct {
-	Package      *Package
 	Name         string
+	RepoName     string
+	PackagePath  string
 	DirName      string
 	BuildType    BuildType
 	BuildTargets BuildTarget
@@ -23,8 +24,9 @@ type DevProject struct {
 
 func NewProject(pkg *Package, name string, dirname string) *DevProject {
 	return &DevProject{
-		Package:      pkg,
 		Name:         name,
+		RepoName:     pkg.RepoName,
+		PackagePath:  pkg.Path(),
 		DirName:      dirname,
 		BuildType:    BuildTypeUnknown,
 		BuildTargets: EmptyBuildTarget,
@@ -32,6 +34,21 @@ func NewProject(pkg *Package, name string, dirname string) *DevProject {
 		Configs:      []*DevConfig{},
 		Dependencies: NewDevProjectList(),
 	}
+}
+
+func (p *DevProject) Path() string {
+	return filepath.Join(p.PackagePath, p.RepoName)
+}
+
+func (prj *DevProject) HasMatchingConfigForTarget(config BuildConfig, target BuildTarget) bool {
+	if prj.BuildTargets.HasOverlap(target) {
+		for _, cfg := range prj.Configs {
+			if cfg.BuildConfig == config {
+				return true
+			}
+		}
+	}
+	return false
 }
 
 func (prj *DevProject) AddEnvironmentVariable(ev string) {
@@ -84,7 +101,7 @@ func (prj *DevProject) AddDependency(dep *DevProject) {
 	}
 }
 
-func (prj *DevProject) AddDependencies(deps ...*DevProject) {
+func (prj *DevProject) AddDependencies(deps map[string]*DevProject) {
 	for _, dep := range deps {
 		prj.AddDependency(dep)
 	}
@@ -197,10 +214,10 @@ func (proj *DevProject) CollectProjectDependencies() *DevProjectList {
 }
 
 func (prj *DevProject) AddSharedSource(name string) {
-	prj.SourceDirs = append(prj.SourceDirs, PinnedGlobPath{Path: PinnedPath{Root: prj.Package.WorkspacePath(), Base: prj.Package.RepoName, Sub: "source/" + name + "/cpp"}, Glob: "**/*.c"})
-	prj.SourceDirs = append(prj.SourceDirs, PinnedGlobPath{Path: PinnedPath{Root: prj.Package.WorkspacePath(), Base: prj.Package.RepoName, Sub: "source/" + name + "/cpp"}, Glob: "**/*.cpp"})
+	prj.SourceDirs = append(prj.SourceDirs, PinnedGlobPath{Path: PinnedPath{Root: prj.Path(), Base: prj.RepoName, Sub: "source/" + name + "/cpp"}, Glob: "**/*.c"})
+	prj.SourceDirs = append(prj.SourceDirs, PinnedGlobPath{Path: PinnedPath{Root: prj.Path(), Base: prj.RepoName, Sub: "source/" + name + "/cpp"}, Glob: "**/*.cpp"})
 	for _, cfg := range prj.Configs {
-		cfg.IncludeDirs = append(cfg.IncludeDirs, PinnedPath{Root: prj.Package.WorkspacePath(), Base: prj.Package.RepoName, Sub: "source/" + name + "/include"})
+		cfg.IncludeDirs = append(cfg.IncludeDirs, PinnedPath{Root: prj.Path(), Base: prj.RepoName, Sub: "source/" + name + "/include"})
 	}
 }
 
@@ -208,6 +225,8 @@ func (p *DevProject) EncodeJson(encoder *corepkg.JsonEncoder, key string) {
 	encoder.BeginObject(key)
 	{
 		encoder.WriteField("name", p.Name)
+		encoder.WriteField("repo_name", p.RepoName)
+		encoder.WriteField("package_path", p.Path())
 		encoder.WriteField("dir_name", p.DirName)
 		encoder.WriteField("build_type", p.BuildType.String())
 		encoder.WriteField("build_targets", p.BuildTargets.String())
@@ -249,9 +268,10 @@ func (p *DevProject) EncodeJson(encoder *corepkg.JsonEncoder, key string) {
 	encoder.EndObject()
 }
 
-func DecodeJsonDevProject(decoder *corepkg.JsonDecoder, pkg *Package) *DevProject {
+func DecodeJsonDevProject(decoder *corepkg.JsonDecoder) *DevProject {
 	project := &DevProject{
-		Package:      pkg,
+		RepoName:     "",
+		PackagePath:  "",
 		EnvVars:      make(map[string]string),
 		Configs:      make([]*DevConfig, 0),
 		Dependencies: NewDevProjectList(),
@@ -259,9 +279,11 @@ func DecodeJsonDevProject(decoder *corepkg.JsonDecoder, pkg *Package) *DevProjec
 	}
 
 	fields := map[string]corepkg.JsonDecode{
-		"name":       func(decoder *corepkg.JsonDecoder) { project.Name = decoder.DecodeString() },
-		"dir_name":   func(decoder *corepkg.JsonDecoder) { project.DirName = decoder.DecodeString() },
-		"build_type": func(decoder *corepkg.JsonDecoder) { project.BuildType = BuildTypeFromString(decoder.DecodeString()) },
+		"name":         func(decoder *corepkg.JsonDecoder) { project.Name = decoder.DecodeString() },
+		"repo_name":    func(decoder *corepkg.JsonDecoder) { project.RepoName = decoder.DecodeString() },
+		"package_path": func(decoder *corepkg.JsonDecoder) { project.PackagePath = decoder.DecodeString() },
+		"dir_name":     func(decoder *corepkg.JsonDecoder) { project.DirName = decoder.DecodeString() },
+		"build_type":   func(decoder *corepkg.JsonDecoder) { project.BuildType = BuildTypeFromString(decoder.DecodeString()) },
 		"build_targets": func(decoder *corepkg.JsonDecoder) {
 			project.BuildTargets = BuildTargetFromString(decoder.DecodeString())
 		},
@@ -281,7 +303,12 @@ func DecodeJsonDevProject(decoder *corepkg.JsonDecoder, pkg *Package) *DevProjec
 			})
 		},
 		"dependencies": func(decoder *corepkg.JsonDecoder) {
-			decoder.DecodeStringArray()
+			projectNames := decoder.DecodeStringArray()
+			for i, depName := range projectNames {
+				project.Dependencies.Keys = append(project.Dependencies.Keys, depName)
+				project.Dependencies.Values = append(project.Dependencies.Values, nil) // We will resolve the value later
+				project.Dependencies.Dict[depName] = i                                 // We will resolve the value later
+			}
 		},
 	}
 	decoder.Decode(fields)
@@ -299,8 +326,8 @@ func SetupDefaultCppLibProject(pkg *Package, name string, dir string, buildTarge
 	project.BuildType = BuildTypeStaticLibrary
 	project.Dependencies = NewDevProjectList()
 
-	project.SourceDirs = append(project.SourceDirs, PinnedGlobPath{Path: PinnedPath{Root: pkg.WorkspacePath(), Base: pkg.RepoName, Sub: "source/" + dir + "/cpp"}, Glob: "**/*.c"})
-	project.SourceDirs = append(project.SourceDirs, PinnedGlobPath{Path: PinnedPath{Root: pkg.WorkspacePath(), Base: pkg.RepoName, Sub: "source/" + dir + "/cpp"}, Glob: "**/*.cpp"})
+	project.SourceDirs = append(project.SourceDirs, PinnedGlobPath{Path: PinnedPath{Root: pkg.Path(), Base: pkg.RepoName, Sub: "source/" + dir + "/cpp"}, Glob: "**/*.c"})
+	project.SourceDirs = append(project.SourceDirs, PinnedGlobPath{Path: PinnedPath{Root: pkg.Path(), Base: pkg.RepoName, Sub: "source/" + dir + "/cpp"}, Glob: "**/*.cpp"})
 
 	return project
 }
@@ -317,7 +344,7 @@ func SetupCppLibProject(pkg *Package, name string) *DevProject {
 
 	for _, cfg := range project.Configs {
 		configureProjectCompilerDefines(cfg)
-		cfg.IncludeDirs = append(cfg.IncludeDirs, PinnedPath{Root: pkg.WorkspacePath(), Base: pkg.RepoName, Sub: "source/main/include"})
+		cfg.IncludeDirs = append(cfg.IncludeDirs, PinnedPath{Root: pkg.Path(), Base: pkg.RepoName, Sub: "source/main/include"})
 	}
 	return project
 }
@@ -334,7 +361,7 @@ func SetupCppTestLibProject(pkg *Package, name string) *DevProject {
 
 	for _, cfg := range project.Configs {
 		configureProjectCompilerDefines(cfg)
-		cfg.IncludeDirs = append(cfg.IncludeDirs, PinnedPath{Root: pkg.WorkspacePath(), Base: pkg.RepoName, Sub: "source/main/include"})
+		cfg.IncludeDirs = append(cfg.IncludeDirs, PinnedPath{Root: pkg.Path(), Base: pkg.RepoName, Sub: "source/main/include"})
 	}
 	return project
 }
@@ -351,7 +378,7 @@ func SetupCppLibProjectForDesktop(pkg *Package, name string) *DevProject {
 
 	for _, cfg := range project.Configs {
 		configureProjectCompilerDefines(cfg)
-		cfg.IncludeDirs = append(cfg.IncludeDirs, PinnedPath{Root: pkg.WorkspacePath(), Base: pkg.RepoName, Sub: "source/main/include"})
+		cfg.IncludeDirs = append(cfg.IncludeDirs, PinnedPath{Root: pkg.Path(), Base: pkg.RepoName, Sub: "source/main/include"})
 	}
 	return project
 }
@@ -368,7 +395,7 @@ func SetupCppLibProjectForArduinoEsp32(pkg *Package, name string) *DevProject {
 
 	for _, cfg := range project.Configs {
 		configureProjectCompilerDefines(cfg)
-		cfg.IncludeDirs = append(cfg.IncludeDirs, PinnedPath{Root: pkg.WorkspacePath(), Base: pkg.RepoName, Sub: "source/main/include"})
+		cfg.IncludeDirs = append(cfg.IncludeDirs, PinnedPath{Root: pkg.Path(), Base: pkg.RepoName, Sub: "source/main/include"})
 	}
 	return project
 }
@@ -384,7 +411,7 @@ func SetupCppLibProjectForArduinoEsp8266(pkg *Package, name string) *DevProject 
 	project.BuildTargets = BuildTargetArduinoEsp8266
 	for _, cfg := range project.Configs {
 		configureProjectCompilerDefines(cfg)
-		cfg.IncludeDirs = append(cfg.IncludeDirs, PinnedPath{Root: pkg.WorkspacePath(), Base: pkg.RepoName, Sub: "source/main/include"})
+		cfg.IncludeDirs = append(cfg.IncludeDirs, PinnedPath{Root: pkg.Path(), Base: pkg.RepoName, Sub: "source/main/include"})
 	}
 	return project
 }
@@ -400,13 +427,13 @@ func SetupDefaultCppTestProject(pkg *Package, name string, buildTarget BuildTarg
 
 	project.Dependencies = NewDevProjectList()
 
-	project.SourceDirs = append(project.SourceDirs, PinnedGlobPath{Path: PinnedPath{Root: pkg.WorkspacePath(), Base: pkg.RepoName, Sub: "source/test/cpp"}, Glob: "**/*.c"})
-	project.SourceDirs = append(project.SourceDirs, PinnedGlobPath{Path: PinnedPath{Root: pkg.WorkspacePath(), Base: pkg.RepoName, Sub: "source/test/cpp"}, Glob: "**/*.cpp"})
+	project.SourceDirs = append(project.SourceDirs, PinnedGlobPath{Path: PinnedPath{Root: pkg.Path(), Base: pkg.RepoName, Sub: "source/test/cpp"}, Glob: "**/*.c"})
+	project.SourceDirs = append(project.SourceDirs, PinnedGlobPath{Path: PinnedPath{Root: pkg.Path(), Base: pkg.RepoName, Sub: "source/test/cpp"}, Glob: "**/*.cpp"})
 
 	for _, cfg := range project.Configs {
 		configureProjectCompilerDefines(cfg)
-		cfg.IncludeDirs = append(cfg.IncludeDirs, PinnedPath{Root: pkg.WorkspacePath(), Base: pkg.RepoName, Sub: "source/test/include"})
-		cfg.IncludeDirs = append(cfg.IncludeDirs, PinnedPath{Root: pkg.WorkspacePath(), Base: pkg.RepoName, Sub: "source/main/include"})
+		cfg.IncludeDirs = append(cfg.IncludeDirs, PinnedPath{Root: pkg.Path(), Base: pkg.RepoName, Sub: "source/test/include"})
+		cfg.IncludeDirs = append(cfg.IncludeDirs, PinnedPath{Root: pkg.Path(), Base: pkg.RepoName, Sub: "source/main/include"})
 	}
 
 	return project
@@ -432,12 +459,12 @@ func SetupDefaultCppCliProject(pkg *Package, name string, buildTarget BuildTarge
 	project.Configs = append(project.Configs, NewDevConfig(BuildTypeCli, NewReleaseDevConfig()))
 	project.Dependencies = NewDevProjectList()
 
-	project.SourceDirs = append(project.SourceDirs, PinnedGlobPath{Path: PinnedPath{Root: pkg.WorkspacePath(), Base: pkg.RepoName, Sub: "source/cli/cpp"}, Glob: "**/*.c"})
-	project.SourceDirs = append(project.SourceDirs, PinnedGlobPath{Path: PinnedPath{Root: pkg.WorkspacePath(), Base: pkg.RepoName, Sub: "source/cli/cpp"}, Glob: "**/*.cpp"})
+	project.SourceDirs = append(project.SourceDirs, PinnedGlobPath{Path: PinnedPath{Root: pkg.Path(), Base: pkg.RepoName, Sub: "source/cli/cpp"}, Glob: "**/*.c"})
+	project.SourceDirs = append(project.SourceDirs, PinnedGlobPath{Path: PinnedPath{Root: pkg.Path(), Base: pkg.RepoName, Sub: "source/cli/cpp"}, Glob: "**/*.cpp"})
 
 	for _, cfg := range project.Configs {
 		configureProjectCompilerDefines(cfg)
-		cfg.IncludeDirs = append(cfg.IncludeDirs, PinnedPath{Root: pkg.WorkspacePath(), Base: pkg.RepoName, Sub: "source/cli/include"})
+		cfg.IncludeDirs = append(cfg.IncludeDirs, PinnedPath{Root: pkg.Path(), Base: pkg.RepoName, Sub: "source/cli/include"})
 	}
 
 	return project
@@ -455,12 +482,12 @@ func SetupDefaultCppAppProject(pkg *Package, name string, dirname string, buildT
 	project.Configs = append(project.Configs, NewDevConfig(BuildTypeApplication, NewReleaseDevConfig()))
 	project.Dependencies = NewDevProjectList()
 
-	project.SourceDirs = append(project.SourceDirs, PinnedGlobPath{Path: PinnedPath{Root: pkg.WorkspacePath(), Base: pkg.RepoName, Sub: "source/" + dirname + "/cpp"}, Glob: "**/*.c"})
-	project.SourceDirs = append(project.SourceDirs, PinnedGlobPath{Path: PinnedPath{Root: pkg.WorkspacePath(), Base: pkg.RepoName, Sub: "source/" + dirname + "/cpp"}, Glob: "**/*.cpp"})
+	project.SourceDirs = append(project.SourceDirs, PinnedGlobPath{Path: PinnedPath{Root: pkg.Path(), Base: pkg.RepoName, Sub: "source/" + dirname + "/cpp"}, Glob: "**/*.c"})
+	project.SourceDirs = append(project.SourceDirs, PinnedGlobPath{Path: PinnedPath{Root: pkg.Path(), Base: pkg.RepoName, Sub: "source/" + dirname + "/cpp"}, Glob: "**/*.cpp"})
 
 	for _, cfg := range project.Configs {
 		configureProjectCompilerDefines(cfg)
-		cfg.IncludeDirs = append(cfg.IncludeDirs, PinnedPath{Root: pkg.WorkspacePath(), Base: pkg.RepoName, Sub: "source/" + dirname + "/include"})
+		cfg.IncludeDirs = append(cfg.IncludeDirs, PinnedPath{Root: pkg.Path(), Base: pkg.RepoName, Sub: "source/" + dirname + "/include"})
 	}
 
 	return project
@@ -483,7 +510,7 @@ func SetupCppAppProjectForDesktop(pkg *Package, name string, dirname string) *De
 func SetupCppAppProjectForArduino(pkg *Package, name string, dirname string) *DevProject {
 	// Arduino project
 	project := SetupDefaultCppAppProject(pkg, "app_"+name, dirname, BuildTargetArduinoEsp32)
-	project.SourceDirs = append(project.SourceDirs, PinnedGlobPath{Path: PinnedPath{Root: pkg.WorkspacePath(), Base: pkg.RepoName, Sub: "source/" + dirname + "/partitions"}, Glob: "**/*.csv"})
+	project.SourceDirs = append(project.SourceDirs, PinnedGlobPath{Path: PinnedPath{Root: pkg.Path(), Base: pkg.RepoName, Sub: "source/" + dirname + "/partitions"}, Glob: "**/*.csv"})
 	project.BuildTargets = BuildTargetsArduino
 	return project
 }
@@ -531,6 +558,17 @@ func (p *DevProjectList) IsEmpty() bool {
 	return len(p.Values) == 0
 }
 
+func (p *DevProjectList) Pop() *DevProject {
+	if len(p.Values) == 0 {
+		return nil
+	}
+	prj := p.Values[len(p.Values)-1]
+	p.Values = p.Values[:len(p.Values)-1]
+	p.Keys = p.Keys[:len(p.Keys)-1]
+	delete(p.Dict, prj.Name)
+	return prj
+}
+
 func (p *DevProjectList) Add(project *DevProject) {
 	if _, ok := p.Dict[project.Name]; !ok {
 		p.Dict[project.Name] = len(p.Values)
@@ -539,7 +577,7 @@ func (p *DevProjectList) Add(project *DevProject) {
 	}
 }
 
-func (p *DevProjectList) AddMany(project ...*DevProject) {
+func (p *DevProjectList) AddMany(project map[string]*DevProject) {
 	for _, prj := range project {
 		if prj != nil {
 			p.Add(prj)

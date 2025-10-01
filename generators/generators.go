@@ -72,12 +72,33 @@ func (g *Generator) GenerateWorkspace(_pkg *denv.Package, _dev DevEnum, _buildTa
 	}
 
 	wsc := NewWorkspaceConfig(_dev, _buildTarget.TargetOs(), g.WorkspacePath, _pkg.RepoName)
-	if len(mainApps) > 0 {
-		wsc.StartupProject = mainApps[0].Name
-	} else if len(mainTests) > 0 {
-		wsc.StartupProject = mainTests[0].Name
-	} else if len(mainLibs) > 0 {
-		wsc.StartupProject = mainLibs[0].Name
+	for _, app := range mainApps {
+		if app.BuildType.IsApplication() {
+			wsc.StartupProject = app.Name
+			break
+		} else if wsc.StartupProject == "" {
+			wsc.StartupProject = app.Name
+		}
+	}
+	if len(wsc.StartupProject) == 0 {
+		for _, test := range mainTests {
+			if test.BuildType.IsUnittest() {
+				wsc.StartupProject = test.Name
+				break
+			} else if wsc.StartupProject == "" {
+				wsc.StartupProject = test.Name
+			}
+		}
+	}
+	if len(wsc.StartupProject) == 0 {
+		for _, lib := range mainLibs {
+			if lib.BuildType.IsUnittest() {
+				wsc.StartupProject = lib.Name
+				break
+			} else if wsc.StartupProject == "" {
+				wsc.StartupProject = lib.Name
+			}
+		}
 	}
 	wsc.MultiThreadedBuild = true
 
@@ -87,24 +108,24 @@ func (g *Generator) GenerateWorkspace(_pkg *denv.Package, _dev DevEnum, _buildTa
 	ws.GenerateAbsPath = filepath.Join(ws.WorkspaceAbsPath, "target", ws.Config.Dev.ToString())
 	g.ExclusionFilter = denv.NewExclusionFilter(_buildTarget)
 
-	projectStack := make([]*denv.DevProject, 0)
-	projectStack = append(projectStack, mainApps...)
-	projectStack = append(projectStack, mainTests...)
-	projectStack = append(projectStack, mainLibs...)
-	projectStack = append(projectStack, testLibs...)
-	projectHistory := make(map[*denv.DevProject]string)
+	projectStack := denv.NewDevProjectList()
+	projectStack.AddMany(mainApps)
+	projectStack.AddMany(mainTests)
+	projectStack.AddMany(mainLibs)
+	projectStack.AddMany(testLibs)
 
-	for len(projectStack) > 0 {
-		prj := projectStack[0]
-		projectStack = projectStack[1:]
+	projectHistory := make(map[*denv.DevProject]bool)
+
+	for projectStack.Len() > 0 {
+		prj := projectStack.Pop()
 		project := g.getOrCreateProject(prj, ws)
 		projectDependencies := prj.CollectProjectDependencies()
 		for _, dp := range projectDependencies.Values {
 			depProject := g.getOrCreateProject(dp, ws)
 			project.Dependencies.Add(depProject)
 			if _, ok := projectHistory[dp]; !ok {
-				projectHistory[dp] = dp.Name
-				projectStack = append(projectStack, dp)
+				projectHistory[dp] = true
+				projectStack.Add(dp)
 			}
 		}
 	}
