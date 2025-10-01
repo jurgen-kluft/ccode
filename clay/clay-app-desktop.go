@@ -81,7 +81,7 @@ func BuildDesktop(projectName string, buildConfig denv.BuildConfig, buildTarget 
 	}
 
 	for _, prj := range prjs {
-		prj.SetToolchain(buildConfig, buildTarget, buildPath, nil)
+		prj.SetToolchain(buildConfig, buildTarget, buildPath)
 	}
 
 	var outOfDate int

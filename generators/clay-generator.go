@@ -40,11 +40,11 @@ func (g *ClayGenerator) Generate() error {
 	appDir := g.TargetAbsPath
 	corepkg.DirMake(appDir)
 
-	corepkg.LogInfof("Generating clay project files in '%s' for target %s", corepkg.PathGetRelativeTo(appDir, currentDir), g.BuildTarget)
+	corepkg.LogInfof("Generating clay main in '%s' for target %s", corepkg.PathGetRelativeTo(appDir, currentDir), g.BuildTarget)
 
 	out := corepkg.NewLineWriter(corepkg.IndentModeSpaces)
 	g.generateMain(out)
-	g.generateProjectFile(out)
+	//	g.generateProjectFile(out)
 
 	// Write the generated file to the target path
 	projectDotGoFilepath := filepath.Join(appDir, "clay.go")
@@ -87,12 +87,7 @@ func (g *ClayGenerator) generateMain(out *corepkg.LineWriter) {
 	out.WriteLine(")")
 	out.WriteLine()
 	out.WriteLine("func main() {")
-	out.WriteILine("", "clay.ClayAppCreateProjectsFunc = CreateProjects")
-	if g.BuildTarget.Os().String() == "arduino" {
-		out.WriteILine("", "clay.ClayAppMainArduino()")
-	} else {
-		out.WriteILine("", "clay.ClayAppMainDesktop()")
-	}
+	out.WriteILine("", "clay.ClayAppMain()")
 	out.WriteLine("}")
 }
 

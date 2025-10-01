@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"os"
 	"sort"
+	"strings"
 
 	corepkg "github.com/jurgen-kluft/ccode/core"
 )
@@ -71,36 +72,47 @@ func PrintAllFlashSizes(espressifToolchain *EspressifToolchain, arch string, boa
 
 	// Get the parsed board
 	//var board *EspressifBoard
-	if _, ok := espressifToolchain.BoardNameToIndex[boardName]; ok {
-		//board = espressifToolchain.ListOfBoards[i]
+	if i, ok := espressifToolchain.BoardNameToIndex[boardName]; ok {
+		board := espressifToolchain.ListOfBoards[i]
 
 		column1 := make([]string, 0)
 		column2 := make([]string, 0)
 
 		// Get the flash sizes
 		// Iterate over the board menu entries to find the flash sizes
+		for _, e := range board.Menu.Entries {
+			if e.Name == "eesz" {
+				for _, se := range e.SubEntries {
+					column2 = append(column2, se.Title)
+					for pi, pk := range se.Keys {
+						if pk == "build.flash_size" {
+							column1 = append(column1, se.Values[pi])
+							break
+						}
+					}
+				}
+			}
+		}
 
 		// Sort the keys, column1
 		sort.Strings(column1)
 
 		// Now get the values
-		for _, flashKey := range column1 {
-			flashValue := flashKey
-			column2 = append(column2, flashValue)
-		}
+		// for _, flashKey := range column1 {
+		// 	flashValue := flashKey
+		// 	column2 = append(column2, flashValue)
+		// }
 
 		column1MaxLength := len("Flash Size")
 		for _, val := range column1 {
-			if len(val) > column1MaxLength {
-				column1MaxLength = len(val)
-			}
+			column1MaxLength = max(column1MaxLength, len(val))
 		}
 
 		// Print the header
-		corepkg.LogInfof("%-*s   %s\n", column1MaxLength, "----------", "-----------")
-		corepkg.LogInfof("%-*s | %s\n", column1MaxLength, "Flash Size", "Description")
+		corepkg.LogInfof("%-*s   %s", column1MaxLength, "----------", "-----------")
+		corepkg.LogInfof("%-*s | %s", column1MaxLength, "Flash Size", "Description")
 		for i := 0; i < len(column1); i++ {
-			corepkg.LogInfof("%-*s | %s\n", column1MaxLength, column1[i], column2[i])
+			corepkg.LogInfof("%-*s | %s", column1MaxLength, column1[i], column2[i])
 		}
 	}
 	return nil
@@ -122,10 +134,20 @@ func PrintAllBoardInfos(espressifToolchain *EspressifToolchain, boardName string
 	if len(closest) > 0 {
 		for _, match := range closest {
 			if board := espressifToolchain.GetBoardByName(match); board != nil {
+				espressifToolchain.ResolveVariables(board, "buildpath/")
 				corepkg.LogInfo("----------------------- " + board.Name + " -----------------------")
 				corepkg.LogInfof("Board: %s", board.Name)
 				corepkg.LogInfof("Description: %s", board.Description)
-				corepkg.LogInfo(board.Vars.String())
+				//corepkg.LogInfo(board.Vars.String())
+				for _, key := range board.Vars.Keys {
+					if strings.HasPrefix(key, "build.") || strings.HasPrefix(key, "upload.") {
+						values := board.Vars.Values[board.Vars.KeyToIndex[key]]
+						if len(values) > 0 {
+							corepkg.LogInfof("%s:%s", key, values)
+						}
+					}
+				}
+
 				corepkg.LogInfo()
 			}
 		}
@@ -180,7 +202,7 @@ func LoadToolchainJson(espressifToolchain *EspressifToolchain, inputFilename str
 	return nil
 }
 
-func PrintAllMatchingBoards(espressifToolchain *EspressifToolchain, fuzzy string, max int) error {
+func PrintAllMatchingBoards(espressifToolchain *EspressifToolchain, fuzzy string, listMax int) error {
 
 	// First search in the board names
 	names := make([]string, 0, len(espressifToolchain.ListOfBoards))
@@ -188,8 +210,11 @@ func PrintAllMatchingBoards(espressifToolchain *EspressifToolchain, fuzzy string
 		names = append(names, board.Name)
 	}
 
+	boardNameMaxLen := 0
+	listedBoards := make(map[string]bool)
+
 	cm := corepkg.NewClosestMatch(names, []int{2})
-	closest := cm.ClosestN(fuzzy, max)
+	closest := cm.ClosestN(fuzzy, listMax)
 	if len(closest) > 0 {
 
 		// Create map of board name to board description
@@ -198,46 +223,44 @@ func PrintAllMatchingBoards(espressifToolchain *EspressifToolchain, fuzzy string
 			boardMap[board.Name] = board.Description
 		}
 
-		longestName := 0
 		for _, match := range closest {
-			if len(match) > longestName {
-				longestName = len(match)
-			}
+			boardNameMaxLen = max(boardNameMaxLen, len(match)+8)
 		}
 		for _, match := range closest {
-			corepkg.LogInfof("%-*s %s", longestName, match, boardMap[match])
+			listedBoards[match] = true
+			corepkg.LogInfof("    %-*s %s", boardNameMaxLen, match, boardMap[match])
 		}
 	}
 
-	if len(closest) < max {
+	if len(closest) < listMax {
 
 		// Now search in the board descriptions
 		descriptions := make([]string, 0, len(espressifToolchain.ListOfBoards))
 		for _, board := range espressifToolchain.ListOfBoards {
 			descriptions = append(descriptions, board.Description)
 		}
+
 		cm = corepkg.NewClosestMatch(descriptions, []int{2})
-		closest = cm.ClosestN(fuzzy, max-len(closest))
+		closest = cm.ClosestN(fuzzy, listMax-len(closest))
 		if len(closest) > 0 {
 
-			// Create map of board name to board description
+			// Create map of board description to board name
 			boardMap := make(map[string]string)
 			for _, board := range espressifToolchain.ListOfBoards {
 				boardMap[board.Description] = board.Name
 			}
 
-			longestName := 0
 			for _, match := range closest {
 				boardName := boardMap[match]
-				if len(boardName) > longestName {
-					longestName = len(match)
+				boardNameMaxLen = max(boardNameMaxLen, len(boardName)+8)
+			}
+			for _, match := range closest {
+				boardName := boardMap[match]
+				if _, ok := listedBoards[boardName]; !ok {
+					listedBoards[boardName] = true
+					corepkg.LogInfof("    %-*s %s", boardNameMaxLen, boardName, match)
 				}
 			}
-			for _, match := range closest {
-				boardName := boardMap[match]
-				corepkg.LogInfof("%-*s %s", longestName, boardName, match)
-			}
-
 		}
 	}
 

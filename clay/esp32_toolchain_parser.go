@@ -656,37 +656,39 @@ func encodeJsonEspressifToolchain(encoder *corepkg.JsonEncoder, key string, obje
 	encoder.EndObject()
 }
 
-func NewEsp32Toolchain() *EspressifToolchain {
-	espSdkPath := toolchain.ArduinoEspSdkPath("esp32")
-	toolchain := &EspressifToolchain{
-		Name:             "Espressif ESP32 Arduino",
-		Version:          "3.2.0",
-		SdkPath:          espSdkPath,
-		ListOfBoards:     make([]*EspressifBoard, 0, 350),
-		BoardNameToIndex: make(map[string]int),
-		Platform:         NewPlatform(),
-	}
-	return toolchain
-}
+func NewEspressifToolchain(arch string) *EspressifToolchain {
+	if arch == "esp32" {
+		espSdkPath := toolchain.ArduinoEspSdkPath("esp32")
+		toolchain := &EspressifToolchain{
+			Name:             "Espressif ESP32 Arduino",
+			Version:          "3.2.0",
+			SdkPath:          espSdkPath,
+			ListOfBoards:     make([]*EspressifBoard, 0, 350),
+			BoardNameToIndex: make(map[string]int),
+			Platform:         NewPlatform(),
+		}
+		return toolchain
+	} else if arch == "esp8266" {
 
-func NewEsp8266Toolchain() *EspressifToolchain {
-	espSdkPath := toolchain.ArduinoEspSdkPath("esp8266")
-	toolchain := &EspressifToolchain{
-		Name:             "Espressif ESP8266 Arduino",
-		Version:          "3.2.0",
-		SdkPath:          espSdkPath,
-		ListOfBoards:     make([]*EspressifBoard, 0, 350),
-		BoardNameToIndex: make(map[string]int),
-		Platform:         NewPlatform(),
+		espSdkPath := toolchain.ArduinoEspSdkPath("esp8266")
+		toolchain := &EspressifToolchain{
+			Name:             "Espressif ESP8266 Arduino",
+			Version:          "3.2.0",
+			SdkPath:          espSdkPath,
+			ListOfBoards:     make([]*EspressifBoard, 0, 350),
+			BoardNameToIndex: make(map[string]int),
+			Platform:         NewPlatform(),
+		}
+		return toolchain
 	}
-	return toolchain
+	return nil
 }
 
 func (t *EspressifToolchain) PrintInfo() {
 	corepkg.LogInfof("Toolchain: %s, version: %s", t.Name, t.Version)
 	corepkg.LogInfof("SDK Path: %s", t.SdkPath)
 	corepkg.LogInfof("Number of boards: %d", len(t.ListOfBoards))
-	corepkg.LogInfof("Platform: %s, version: %s", t.Platform.Name, t.Platform.Version)
+	corepkg.LogInfof("Platform: %s", t.Platform.Name)
 }
 
 func (t *EspressifToolchain) GetBoardByName(name string) *EspressifBoard {

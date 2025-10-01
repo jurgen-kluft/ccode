@@ -4,83 +4,9 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
-	"strings"
 
-	corepkg "github.com/jurgen-kluft/ccode/core"
 	"github.com/jurgen-kluft/ccode/denv"
 )
-
-// ----------------------------------------------------------------------------------------------
-// Exclusion filter
-// ----------------------------------------------------------------------------------------------
-var gValidSuffixDefault = 0
-var gValidSuffixWindows = 1
-var gValidSuffixMac = 2
-var gValidSuffixIOs = 3
-var gValidSuffixLinux = 4
-var gValidSuffixArduino = 5
-
-var gValidSuffixDB = [][]string{
-	[]string{"_nob", "_null", "_nill"},
-	[]string{"_win", "_pc", "_win32", "_win64", "_windows", "_d3d11", "_d3d12"},
-	[]string{"_mac", "_macos", "_darwin", "_cocoa", "_metal", "_osx"},
-	[]string{"_ios", "_iphone", "_ipad", "_ipod"},
-	[]string{"_linux", "_unix"},
-	[]string{"arduino", "esp32"},
-}
-
-func IsExcludedOn(str string, os int) bool {
-	for i, l := range gValidSuffixDB {
-		if i == os {
-			continue
-		}
-		for _, e := range l {
-			if strings.HasSuffix(str, e) {
-				return true
-			}
-		}
-	}
-	return false
-}
-
-func IsExcludedOnMac(str string) bool {
-	return IsExcludedOn(str, gValidSuffixMac)
-}
-func IsExcludedOnWindows(str string) bool {
-	return IsExcludedOn(str, gValidSuffixWindows)
-}
-func IsExcludedOnLinux(str string) bool {
-	return IsExcludedOn(str, gValidSuffixLinux)
-}
-func IsExcludedDefault(str string) bool {
-	return IsExcludedOn(str, gValidSuffixDefault)
-}
-
-func NewExclusionFilter(target denv.BuildTarget) *ExclusionFilter {
-	if target.Mac() {
-		return &ExclusionFilter{Filter: IsExcludedOnMac}
-	} else if target.Windows() {
-		return &ExclusionFilter{Filter: IsExcludedOnWindows}
-	} else if target.Linux() {
-		return &ExclusionFilter{Filter: IsExcludedOnLinux}
-	}
-	return &ExclusionFilter{Filter: IsExcludedDefault}
-}
-
-type ExclusionFilter struct {
-	Filter func(filepath string) bool
-}
-
-func (f *ExclusionFilter) IsExcluded(filepath string) bool {
-	parts := corepkg.PathSplitRelativeFilePath(filepath, true)
-	for i := 0; i < len(parts)-1; i++ {
-		p := strings.ToLower(parts[i])
-		if f.Filter(p) {
-			return true
-		}
-	}
-	return false
-}
 
 // ----------------------------------------------------------------------------------------------
 // IDE generator
@@ -90,7 +16,7 @@ type Generator struct {
 	BuildTarget     denv.BuildTarget
 	Verbose         bool
 	WorkspacePath   string // $(GOPATH)/src/github.com/user, absolute path
-	ExclusionFilter *ExclusionFilter
+	ExclusionFilter *denv.ExclusionFilter
 }
 
 func NewGenerator(dev string, buildTarget denv.BuildTarget, verbose bool) *Generator {
@@ -159,7 +85,7 @@ func (g *Generator) GenerateWorkspace(_pkg *denv.Package, _dev DevEnum, _buildTa
 	ws.WorkspaceName = _pkg.RepoName
 	ws.WorkspaceAbsPath = filepath.Join(g.WorkspacePath, _pkg.RepoName)
 	ws.GenerateAbsPath = filepath.Join(ws.WorkspaceAbsPath, "target", ws.Config.Dev.ToString())
-	g.ExclusionFilter = NewExclusionFilter(_buildTarget)
+	g.ExclusionFilter = denv.NewExclusionFilter(_buildTarget)
 
 	projectStack := make([]*denv.DevProject, 0)
 	projectStack = append(projectStack, mainApps...)
