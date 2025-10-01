@@ -30,9 +30,9 @@ func NewProjectFromDevProject(devPrj *denv.DevProject, configs []*denv.DevConfig
 		DevProject:     devPrj,
 		Config:         configs,
 		Toolchain:      nil,
-		SourceFiles:    nil,
-		PartitionFiles: nil,
-		Dependencies:   nil,
+		SourceFiles:    []SourceFile{},
+		PartitionFiles: []string{},
+		Dependencies:   []*Project{},
 	}
 }
 

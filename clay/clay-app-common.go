@@ -369,10 +369,13 @@ func CreateProjects(buildTarget denv.BuildTarget, buildConfig denv.BuildConfig) 
 	}
 
 	// Now fix all project dependencies
-	for _, prj := range projects {
+	for i := 0; i < len(projects); i++ {
+		prj := projects[i]
+
+		// Add dependencies as libraries
 		for _, depPrj := range prj.DevProject.Dependencies.Values {
 			if idx, ok := projectNameToIndex[depPrj.Name]; ok {
-				prj.AddLibrary(projects[idx])
+				prj.Dependencies = append(prj.Dependencies, projects[idx])
 			} else {
 				// A dependency project should have matching config + target
 				if !depPrj.HasMatchingConfigForTarget(buildConfig, buildTarget) {

@@ -29,10 +29,6 @@ func (p *Package) Path() string {
 	return filepath.Join(p.RootPath, p.RepoPath)
 }
 
-// func (p *Package) PackagePath() string {
-// 	return filepath.Join(p.RootPath, p.RepoPath, p.RepoName)
-// }
-
 func iterateAllPackages(pkg *Package, iterator func(pkg *Package)) {
 	packageStack := make([]*Package, 0)
 	packageMap := make(map[string]bool)
@@ -306,6 +302,35 @@ func LoadPackageFromJson(filepath string) (*Package, error) {
 	for _, pkg := range packages {
 		for k := range pkg.Packages {
 			pkg.Packages[k] = packages[k]
+		}
+
+		for i := range pkg.MainApps {
+			if prj, ok := projects[i]; ok {
+				pkg.MainApps[i] = prj
+			} else {
+				corepkg.LogErrorf(nil, "error: package '%s' has unknown main app project '%s'", pkg.RepoName, i)
+			}
+		}
+		for i := range pkg.MainLibs {
+			if prj, ok := projects[i]; ok {
+				pkg.MainLibs[i] = prj
+			} else {
+				corepkg.LogErrorf(nil, "error: package '%s' has unknown main lib project '%s'", pkg.RepoName, i)
+			}
+		}
+		for i := range pkg.Unittests {
+			if prj, ok := projects[i]; ok {
+				pkg.Unittests[i] = prj
+			} else {
+				corepkg.LogErrorf(nil, "error: package '%s' has unknown unittest project '%s'", pkg.RepoName, i)
+			}
+		}
+		for i := range pkg.TestLibs {
+			if prj, ok := projects[i]; ok {
+				pkg.TestLibs[i] = prj
+			} else {
+				corepkg.LogErrorf(nil, "error: package '%s' has unknown test lib project '%s'", pkg.RepoName, i)
+			}
 		}
 	}
 
