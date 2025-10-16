@@ -42,9 +42,7 @@ func GenerateArchiverCmdline(objectFiles []string, outputArchiveFilepath string)
 	args := corepkg.NewArguments(len(objectFiles) + 8)
 
 	ac := NewArchiverCmdline(args)
-
 	ac.ReplaceCreateSort()
 	ac.OutputArchiveAndObjectFiles(outputArchiveFilepath, objectFiles)
-
 	return args
 }

@@ -71,13 +71,11 @@ func (g *Generator) GenerateWorkspace(_pkg *denv.Package, _dev DevEnum, _buildTa
 		return nil, fmt.Errorf("this package has no application(s), unittest(s) or main lib(s)")
 	}
 
-	wsc := NewWorkspaceConfig(_dev, _buildTarget.TargetOs(), g.WorkspacePath, _pkg.RepoName)
+	wsc := NewWorkspaceConfig(_dev, _buildTarget.Os(), g.WorkspacePath, _pkg.RepoName)
 	for _, app := range mainApps {
 		if app.BuildType.IsApplication() {
 			wsc.StartupProject = app.Name
 			break
-		} else if wsc.StartupProject == "" {
-			wsc.StartupProject = app.Name
 		}
 	}
 	if len(wsc.StartupProject) == 0 {
@@ -85,18 +83,14 @@ func (g *Generator) GenerateWorkspace(_pkg *denv.Package, _dev DevEnum, _buildTa
 			if test.BuildType.IsUnittest() {
 				wsc.StartupProject = test.Name
 				break
-			} else if wsc.StartupProject == "" {
-				wsc.StartupProject = test.Name
 			}
 		}
 	}
 	if len(wsc.StartupProject) == 0 {
 		for _, lib := range mainLibs {
-			if lib.BuildType.IsUnittest() {
+			if lib.BuildType.IsLibrary() {
 				wsc.StartupProject = lib.Name
 				break
-			} else if wsc.StartupProject == "" {
-				wsc.StartupProject = lib.Name
 			}
 		}
 	}
@@ -114,17 +108,15 @@ func (g *Generator) GenerateWorkspace(_pkg *denv.Package, _dev DevEnum, _buildTa
 	projectStack.AddMany(mainLibs)
 	projectStack.AddMany(testLibs)
 
-	projectHistory := make(map[*denv.DevProject]bool)
-
+	projectDependencies := denv.NewDevProjectList()
 	for projectStack.Len() > 0 {
 		prj := projectStack.Pop()
 		project := g.getOrCreateProject(prj, ws)
-		projectDependencies := prj.CollectProjectDependencies()
+		projectDependencies.Reset()
+		prj.CollectProjectDependencies(projectDependencies)
 		for _, dp := range projectDependencies.Values {
 			depProject := g.getOrCreateProject(dp, ws)
-			project.Dependencies.Add(depProject)
-			if _, ok := projectHistory[dp]; !ok {
-				projectHistory[dp] = true
+			if project.Dependencies.Add(depProject) {
 				projectStack.Add(dp)
 			}
 		}

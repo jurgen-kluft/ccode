@@ -128,8 +128,8 @@ func NewConfig(buildTarget denv.BuildTarget, buildConfig denv.BuildConfig, p *Pr
 	c.GenDataXcode.TargetUuid = corepkg.GenerateUUID()
 	c.GenDataXcode.TargetConfigUuid = corepkg.GenerateUUID()
 
-	c.InitTargetOsSettings(buildTarget.TargetOs())
-	c.InitXcodeSettings(buildTarget.TargetOs())
+	c.InitTargetOsSettings(buildTarget.Os())
+	c.InitXcodeSettings(buildTarget.Os())
 	c.InitVisualStudioSettings()
 
 	return c
@@ -157,8 +157,6 @@ func (c *Config) AddFramework(framework string) {
 
 func (c *Config) InitTargetOsSettings(os denv.BuildTargetOs) {
 
-	//buildTarget := c.Workspace.BuildTarget
-
 	if os.Windows() {
 		c.CppDefines.AddOrSet("TARGET_PC", "TARGET_PC")
 		c.CppDefines.AddOrSet("UNICODE", "UNICODE")
@@ -177,13 +175,6 @@ func (c *Config) InitTargetOsSettings(os denv.BuildTargetOs) {
 		for _, cocoa := range []string{"Foundation", "Cocoa", "Carbon", "Metal", "OpenGL", "IOKit", "AppKit", "CoreVideo", "QuartzCore"} {
 			c.AddFramework(cocoa)
 		}
-
-		// func (l *Library2) Merge(other *Library2) {
-		// 	l.Frameworks.Merge(other.Frameworks)
-		// 	l.Files.Merge(other.Files)
-		// 	l.Libs.Merge(other.Libs)
-		// 	l.Dirs.Merge(other.Dirs)
-		// }
 
 	} else if os.Arduino() {
 		c.CppDefines.AddOrSet("TARGET_ESP32", "TARGET_ESP32")
@@ -384,7 +375,7 @@ func (c *Config) BuildResolved(otherConfigs []*Config) *Config {
 		BINDIR := filepath.Join(c.GenerateAbsPath, "bin", c.Project.Name, c.String()+"_"+c.BuildTarget.Arch().String()+"_"+c.ToolSet)
 		LIBDIR := filepath.Join(c.GenerateAbsPath, "lib", c.Project.Name, c.String()+"_"+c.BuildTarget.Arch().String()+"_"+c.ToolSet)
 
-		settings := c.BuildTarget.TargetOs().Settings()
+		settings := c.BuildTarget.Os().Settings()
 
 		outputTarget := ""
 		if c.Project.TypeIsExe() {

@@ -9,40 +9,94 @@ import (
 // ----------------------------------------------------------------------------------------------
 // Exclusion filter
 // ----------------------------------------------------------------------------------------------
-var gValidSuffixDefault = []string{"_nob", "_null", "_nill"}
-var gValidSuffixWindows = []string{"_win", "_pc", "_win32", "_win64", "_windows", "_d3d11", "_d3d12"}
-var gValidSuffixMac = []string{"_mac", "_macos", "_darwin", "_cocoa", "_metal", "_osx"}
-var gValidSuffixIOs = []string{"_ios", "_iphone", "_ipad", "_ipod"}
-var gValidSuffixLinux = []string{"_linux", "_unix"}
-var gValidSuffixArduinoEsp32 = []string{"_arduino", "_esp32"}
-var gValidSuffixArduinoEsp8266 = []string{"_arduino", "_esp32"}
+var gExcludeDefault = map[string]bool{
+	"_nob": false, "_null": false, "_nill": false,
+	"_win": true, "_pc": true, "_win32": true, "_win64": true, "_windows": true, "_d3d11": true, "_d3d12": true,
+	"_mac": true, "_macos": true, "_darwin": true, "_cocoa": true, "_metal": true, "_osx": true,
+	"_ios": true, "_iphone": true, "_ipad": true, "_ipod": true,
+	"_linux": true, "_unix": true,
+	"_arduino": true, "_esp32": true, "_esp8266": true,
+}
 
-func IsExcludedOn(str string, suffixes []string) bool {
-	for _, e := range suffixes {
-		if strings.HasSuffix(str, e) {
-			return true
+var gExcludeWindows = map[string]bool{
+	"_nob": true, "_null": true, "_nill": true,
+	"_win": false, "_pc": false, "_win32": false, "_win64": false, "_windows": false, "_d3d11": false, "_d3d12": false,
+	"_mac": true, "_macos": true, "_darwin": true, "_cocoa": true, "_metal": true, "_osx": true,
+	"_ios": true, "_iphone": true, "_ipad": true, "_ipod": true,
+	"_linux": true, "_unix": true,
+	"_arduino": true, "_esp32": true, "_esp8266": true,
+}
+var gExcludeMac = map[string]bool{
+	"_nob": true, "_null": true, "_nill": true,
+	"_win": true, "_pc": true, "_win32": true, "_win64": true, "_windows": true, "_d3d11": true, "_d3d12": true,
+	"_mac": false, "_macos": false, "_darwin": false, "_cocoa": false, "_metal": false, "_osx": false,
+	"_ios": true, "_iphone": true, "_ipad": true, "_ipod": true,
+	"_linux": true, "_unix": true,
+	"_arduino": true, "_esp32": true, "_esp8266": true,
+}
+var gExcludeIOs = map[string]bool{
+	"_nob": true, "_null": true, "_nill": true,
+	"_win": true, "_pc": true, "_win32": true, "_win64": true, "_windows": true, "_d3d11": true, "_d3d12": true,
+	"_mac": true, "_macos": true, "_darwin": true, "_cocoa": true, "_metal": true, "_osx": true,
+	"_ios": false, "_iphone": false, "_ipad": false, "_ipod": false,
+	"_linux": true, "_unix": true,
+	"_arduino": true, "_esp32": true, "_esp8266": true,
+}
+var gExcludeLinux = map[string]bool{
+	"_nob": true, "_null": true, "_nill": true,
+	"_win": true, "_pc": true, "_win32": true, "_win64": true, "_windows": true, "_d3d11": true, "_d3d12": true,
+	"_mac": true, "_macos": true, "_darwin": true, "_cocoa": true, "_metal": true, "_osx": true,
+	"_ios": true, "_iphone": true, "_ipad": true, "_ipod": true,
+	"_linux": false, "_unix": false,
+	"_arduino": true, "_esp32": true, "_esp8266": true,
+}
+var gExcludeArduinoEsp32 = map[string]bool{
+	"_nob": true, "_null": true, "_nill": true,
+	"_win": true, "_pc": true, "_win32": true, "_win64": true, "_windows": true, "_d3d11": true, "_d3d12": true,
+	"_mac": true, "_macos": true, "_darwin": true, "_cocoa": true, "_metal": true, "_osx": true,
+	"_ios": true, "_iphone": true, "_ipad": true, "_ipod": true,
+	"_linux": true, "_unix": true,
+	"_arduino": false, "_esp32": false, "_esp8266": true,
+}
+var gExcludeArduinoEsp8266 = map[string]bool{
+	"_nob": true, "_null": true, "_nill": true,
+	"_win": true, "_pc": true, "_win32": true, "_win64": true, "_windows": true, "_d3d11": true, "_d3d12": true,
+	"_mac": true, "_macos": true, "_darwin": true, "_cocoa": true, "_metal": true, "_osx": true,
+	"_ios": true, "_iphone": true, "_ipad": true, "_ipod": true,
+	"_linux": true, "_unix": true,
+	"_arduino": false, "_esp32": true, "_esp8266": false,
+}
+
+func IsExcludedOn(str string, suffixes map[string]bool) bool {
+	// find '_' in str from the end
+	for i := len(str) - 1; i >= 0; i-- {
+		if str[i] == '_' {
+			suffix := str[i:]
+			if val, ok := suffixes[suffix]; ok {
+				return val
+			}
 		}
 	}
 	return false
 }
 
 func IsExcludedOnMac(str string) bool {
-	return IsExcludedOn(str, gValidSuffixMac)
+	return IsExcludedOn(str, gExcludeMac)
 }
 func IsExcludedOnWindows(str string) bool {
-	return IsExcludedOn(str, gValidSuffixWindows)
+	return IsExcludedOn(str, gExcludeWindows)
 }
 func IsExcludedOnLinux(str string) bool {
-	return IsExcludedOn(str, gValidSuffixLinux)
+	return IsExcludedOn(str, gExcludeLinux)
 }
 func IsExcludedOnArduinoEsp32(str string) bool {
-	return IsExcludedOn(str, gValidSuffixArduinoEsp32)
+	return IsExcludedOn(str, gExcludeArduinoEsp32)
 }
 func IsExcludedOnArduinoEsp8266(str string) bool {
-	return IsExcludedOn(str, gValidSuffixArduinoEsp8266)
+	return IsExcludedOn(str, gExcludeArduinoEsp8266)
 }
 func IsExcludedDefault(str string) bool {
-	return IsExcludedOn(str, gValidSuffixDefault)
+	return IsExcludedOn(str, gExcludeDefault)
 }
 
 func NewExclusionFilter(target BuildTarget) *ExclusionFilter {

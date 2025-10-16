@@ -5,7 +5,6 @@ import (
 	"path/filepath"
 	"strings"
 
-	corepkg "github.com/jurgen-kluft/ccode/core"
 	"github.com/jurgen-kluft/ccode/denv"
 )
 
@@ -139,7 +138,7 @@ func NewWorkspaceConfig(_dev DevEnum, _buildTargetOs denv.BuildTargetOs, workspa
 	wsc.Dev = _dev
 	wsc.BuildTargetOs = _buildTargetOs
 	wsc.GenerateAbsPath = filepath.Join(workspacePath, projectName, "target")
-	wsc.StartupProject = projectName
+	wsc.StartupProject = ""
 	wsc.CppStd = CppStd17
 	wsc.CppAdvanced = CppAdvancedNone
 	wsc.MultiThreadedBuild = true
@@ -197,6 +196,15 @@ func NewWorkspace(wsc *WorkspaceConfig) *Workspace {
 	return ws
 }
 
+func (ws *Workspace) HasProject(project *Project) bool {
+	for _, p := range ws.ProjectList.Values {
+		if p == project {
+			return true
+		}
+	}
+	return false
+}
+
 func (ws *Workspace) NewProject2(prj *denv.DevProject, settings *ProjectSettings) *Project {
 	p := newProject2(ws, ws.BuildTarget, prj, ws.GenerateAbsPath, settings)
 	ws.ProjectList.Add(p)
@@ -241,79 +249,79 @@ func (ws *Workspace) Resolve(dev DevEnum) error {
 // -----------------------------------------------------------------------------------------------------
 // -----------------------------------------------------------------------------------------------------
 
-type ExtraWorkspaceConfig struct {
-	Projects        []string
-	Groups          []string
-	ExcludeProjects []string
-	ExcludeGroups   []string
-}
+// type ExtraWorkspaceConfig struct {
+// 	Projects        []string
+// 	Groups          []string
+// 	ExcludeProjects []string
+// 	ExcludeGroups   []string
+// }
 
-type ExtraWorkspace struct {
-	Workspace   *Workspace
-	Name        string
-	Config      *ExtraWorkspaceConfig
-	ProjectList *ProjectList
-	MsDev       *VisualStudioConfig
-}
+// type ExtraWorkspace struct {
+// 	Workspace   *Workspace
+// 	Name        string
+// 	Config      *ExtraWorkspaceConfig
+// 	ProjectList *ProjectList
+// 	MsDev       *VisualStudioConfig
+// }
 
-func (ew *ExtraWorkspace) HasProject(project *Project) bool {
-	for _, p := range ew.ProjectList.Values {
-		if p == project {
-			return true
-		}
-	}
-	return false
-}
+// func (ew *ExtraWorkspace) HasProject(project *Project) bool {
+// 	for _, p := range ew.ProjectList.Values {
+// 		if p == project {
+// 			return true
+// 		}
+// 	}
+// 	return false
+// }
 
-func (ew *ExtraWorkspace) resolve() {
-	projectToAdd := NewProjectList()
-	projectToRemove := NewProjectList()
+// func (ew *ExtraWorkspace) resolve() {
+// 	projectToAdd := NewProjectList()
+// 	projectToRemove := NewProjectList()
 
-	for _, name := range ew.Config.Projects {
-		ew.Workspace.ProjectList.CollectByWildcard(name, projectToAdd)
-	}
+// 	for _, name := range ew.Config.Projects {
+// 		ew.Workspace.ProjectList.CollectByWildcard(name, projectToAdd)
+// 	}
 
-	for _, name := range ew.Config.Groups {
-		for _, g := range ew.Workspace.ProjectGroups.Values {
-			if corepkg.PathMatchWildcard(g.Path, name, true) {
-				for _, gp := range g.Projects {
-					projectToAdd.Add(gp)
-				}
-			}
-		}
-	}
+// 	for _, name := range ew.Config.Groups {
+// 		for _, g := range ew.Workspace.ProjectGroups.Values {
+// 			if corepkg.PathMatchWildcard(g.Path, name, true) {
+// 				for _, gp := range g.Projects {
+// 					projectToAdd.Add(gp)
+// 				}
+// 			}
+// 		}
+// 	}
 
-	for _, name := range ew.Config.ExcludeProjects {
-		for _, p := range ew.Workspace.ProjectList.Values {
-			if corepkg.PathMatchWildcard(p.Name, name, true) {
-				projectToRemove.Add(p)
-			}
-		}
-	}
+// 	for _, name := range ew.Config.ExcludeProjects {
+// 		for _, p := range ew.Workspace.ProjectList.Values {
+// 			if corepkg.PathMatchWildcard(p.Name, name, true) {
+// 				projectToRemove.Add(p)
+// 			}
+// 		}
+// 	}
 
-	for _, name := range ew.Config.ExcludeGroups {
-		for _, g := range ew.Workspace.ProjectGroups.Values {
-			if corepkg.PathMatchWildcard(g.Path, name, true) {
-				for _, gp := range g.Projects {
-					projectToRemove.Add(gp)
-				}
-			}
-		}
-	}
+// 	for _, name := range ew.Config.ExcludeGroups {
+// 		for _, g := range ew.Workspace.ProjectGroups.Values {
+// 			if corepkg.PathMatchWildcard(g.Path, name, true) {
+// 				for _, gp := range g.Projects {
+// 					projectToRemove.Add(gp)
+// 				}
+// 			}
+// 		}
+// 	}
 
-	for _, p := range projectToAdd.Values {
-		ew.ProjectList.Add(p)
-	}
-}
+// 	for _, p := range projectToAdd.Values {
+// 		ew.ProjectList.Add(p)
+// 	}
+// }
 
-func NewExtraWorkspace(ws *Workspace, name string) *ExtraWorkspace {
-	ew := &ExtraWorkspace{
-		Workspace:   ws,
-		Name:        name,
-		Config:      &ExtraWorkspaceConfig{},
-		ProjectList: NewProjectList(),
-		MsDev:       ws.Config.MsDev,
-	}
-	ew.MsDev = ws.Config.MsDev
-	return ew
-}
+// func NewExtraWorkspace(ws *Workspace, name string) *ExtraWorkspace {
+// 	ew := &ExtraWorkspace{
+// 		Workspace:   ws,
+// 		Name:        name,
+// 		Config:      &ExtraWorkspaceConfig{},
+// 		ProjectList: NewProjectList(),
+// 		MsDev:       ws.Config.MsDev,
+// 	}
+// 	ew.MsDev = ws.Config.MsDev
+// 	return ew
+// }

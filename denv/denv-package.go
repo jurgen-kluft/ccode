@@ -3,11 +3,14 @@ package denv
 import (
 	"os"
 	"path/filepath"
-	"slices"
 	"strings"
 
 	corepkg "github.com/jurgen-kluft/ccode/core"
 )
+
+// GetVarsFunc is a function that returns variables for a specific build target and build configuration, the
+// hardwareId is used for Arduino to specify the board name.
+type GetVarsFunc func(buildTarget BuildTarget, buildConfig BuildConfig, hardwareId string, vars *corepkg.Vars)
 
 // Package holds sets of 'Projects'
 type Package struct {
@@ -19,6 +22,7 @@ type Package struct {
 	MainLibs  map[string]*DevProject
 	Unittests map[string]*DevProject
 	TestLibs  map[string]*DevProject
+	getVars   GetVarsFunc
 }
 
 // Root path is the path where you have cloned many repositories, e.g. $GOPATH/src
@@ -29,26 +33,20 @@ func (p *Package) Path() string {
 	return filepath.Join(p.RootPath, p.RepoPath)
 }
 
-func iterateAllPackages(pkg *Package, iterator func(pkg *Package)) {
-	packageStack := make([]*Package, 0)
-	packageMap := make(map[string]bool)
-
-	packageStack = append(packageStack, pkg)
-	packageMap[pkg.RepoName] = true
-
-	for len(packageStack) > 0 {
-		pkg := packageStack[0]
-		packageStack = packageStack[1:]
-
-		iterator(pkg)
-
-		for _, depPkg := range pkg.Packages {
-			if _, ok := packageMap[depPkg.RepoName]; !ok {
-				packageMap[depPkg.RepoName] = true
-				packageStack = append(packageStack, depPkg)
-			}
-		}
+func iterateAllPackagesRecursive(pkg *Package, iterator func(pkg *Package), history map[string]bool) {
+	if _, ok := history[pkg.RepoName]; ok {
+		return
 	}
+	history[pkg.RepoName] = true
+	for _, depPkg := range pkg.Packages {
+		iterateAllPackagesRecursive(depPkg, iterator, history)
+	}
+	iterator(pkg)
+}
+
+func iterateAllPackages(pkg *Package, iterator func(pkg *Package)) {
+	history := make(map[string]bool)
+	iterateAllPackagesRecursive(pkg, iterator, history)
 }
 
 func iterateProjects(projects map[string]*DevProject, iterateProject func(prj *DevProject)) {
@@ -127,6 +125,7 @@ func NewPackage(repo_path string, repo_name string) *Package {
 		MainLibs:  make(map[string]*DevProject, 0),
 		Unittests: make(map[string]*DevProject, 0),
 		TestLibs:  make(map[string]*DevProject, 0),
+		getVars:   nil,
 	}
 }
 
@@ -136,7 +135,8 @@ func hasDependencyOn(name string, projects map[string]*DevProject) bool {
 			return true
 		}
 
-		deps := prj.CollectProjectDependencies()
+		deps := NewDevProjectList()
+		prj.CollectProjectDependencies(deps)
 		for _, dep := range deps.Values {
 			if dep.RepoName == name {
 				return true
@@ -159,6 +159,25 @@ func (p *Package) TestingHasDependencyOn(name string) bool {
 // AddPackage adds a package to this package
 func (p *Package) AddPackage(pkg *Package) {
 	p.Packages[pkg.RepoName] = pkg
+}
+
+type Var struct {
+	Config string
+	Value  []string
+	Append bool
+}
+
+// AddVars adds variables to this package for a specific build target
+func (p *Package) SetGetVarsFunc(getVars GetVarsFunc) {
+	p.getVars = getVars
+}
+
+func (p *Package) GetVars(buildTarget BuildTarget, buildConfig BuildConfig, hardwareId string, vars *corepkg.Vars) {
+	iterateAllPackages(p, func(pkg *Package) {
+		if pkg.getVars != nil {
+			pkg.getVars(buildTarget, buildConfig, hardwareId, vars)
+		}
+	})
 }
 
 // AddMainApp adds a project to this package under 'name.mainapp'
@@ -211,245 +230,245 @@ func (p *Package) CollectAllPackages(collectPackages func(pkg *Package)) {
 	}
 }
 
-func (p *Package) SaveJson(filepath string) error {
-	encoder := corepkg.NewJsonEncoder("    ")
-	encoder.Begin()
-	{
-		encoder.BeginObject("")
-		{
-			encoder.WriteFieldString("main", p.RepoName)
+// func (p *Package) SaveJson(filepath string) error {
+// 	encoder := corepkg.NewJsonEncoder("    ")
+// 	encoder.Begin()
+// 	{
+// 		encoder.BeginObject("")
+// 		{
+// 			encoder.WriteFieldString("main", p.RepoName)
 
-			packages := make([]*Package, 0, 32)
-			iterateAllPackages(p, func(pkg *Package) { packages = append(packages, pkg) })
+// 			packages := make([]*Package, 0, 32)
+// 			iterateAllPackages(p, func(pkg *Package) { packages = append(packages, pkg) })
 
-			projects := make(map[string]*DevProject)
-			encoder.BeginArray("packages")
-			{
-				for _, pkg := range packages {
-					pkg.encodeJson(encoder, "", &projects)
-				}
-			}
-			encoder.EndArray()
+// 			projects := make(map[string]*DevProject)
+// 			encoder.BeginArray("packages")
+// 			{
+// 				for _, pkg := range packages {
+// 					pkg.encodeJson(encoder, "", &projects)
+// 				}
+// 			}
+// 			encoder.EndArray()
 
-			// Sort projects by name
-			projectNames := make([]string, 0, len(projects))
-			for name := range projects {
-				projectNames = append(projectNames, name)
-			}
-			slices.Sort(projectNames)
+// 			// Sort projects by name
+// 			projectNames := make([]string, 0, len(projects))
+// 			for name := range projects {
+// 				projectNames = append(projectNames, name)
+// 			}
+// 			slices.Sort(projectNames)
 
-			encoder.BeginArray("projects")
-			{
-				for _, name := range projectNames {
-					prj := projects[name]
-					prj.EncodeJson(encoder, "")
-				}
-			}
-			encoder.EndArray()
-		}
-		encoder.EndObject()
-	}
-	json := encoder.End()
+// 			encoder.BeginArray("projects")
+// 			{
+// 				for _, name := range projectNames {
+// 					prj := projects[name]
+// 					prj.EncodeJson(encoder, "")
+// 				}
+// 			}
+// 			encoder.EndArray()
+// 		}
+// 		encoder.EndObject()
+// 	}
+// 	json := encoder.End()
 
-	return corepkg.FileOpenWriteClose(filepath, []byte(json))
-}
+// 	return corepkg.FileOpenWriteClose(filepath, []byte(json))
+// }
 
-func LoadPackageFromJson(filepath string) (*Package, error) {
-	data, err := corepkg.FileOpenReadClose(filepath)
-	if err != nil {
-		return nil, err
-	}
-	decoder := corepkg.NewJsonDecoder()
+// func LoadPackageFromJson(filepath string) (*Package, error) {
+// 	data, err := corepkg.FileOpenReadClose(filepath)
+// 	if err != nil {
+// 		return nil, err
+// 	}
+// 	decoder := corepkg.NewJsonDecoder()
 
-	mainPkg := ""
-	packages := make(map[string]*Package)
-	projects := make(map[string]*DevProject)
-	decoder.Begin(string(data))
-	{
-		fields := map[string]corepkg.JsonDecode{
-			"main": func(decoder *corepkg.JsonDecoder) { mainPkg = decoder.DecodeString() },
-			"packages": func(decoder *corepkg.JsonDecoder) {
-				decoder.DecodeArray(func(decoder *corepkg.JsonDecoder) {
-					pkg := decodeJsonPackage(decoder)
-					packages[pkg.RepoName] = pkg
-				})
-			},
-			"projects": func(decoder *corepkg.JsonDecoder) {
-				decoder.DecodeArray(func(decoder *corepkg.JsonDecoder) {
-					prj := DecodeJsonDevProject(decoder)
-					projects[prj.Name] = prj
-				})
-			},
-		}
-		if err := decoder.Decode(fields); err != nil {
-			corepkg.LogErrorf(err, "error decoding Package: %s", err.Error())
-		}
-	}
-	decoder.End()
+// 	mainPkg := ""
+// 	packages := make(map[string]*Package)
+// 	projects := make(map[string]*DevProject)
+// 	decoder.Begin(string(data))
+// 	{
+// 		fields := map[string]corepkg.JsonDecode{
+// 			"main": func(decoder *corepkg.JsonDecoder) { mainPkg = decoder.DecodeString() },
+// 			"packages": func(decoder *corepkg.JsonDecoder) {
+// 				decoder.DecodeArray(func(decoder *corepkg.JsonDecoder) {
+// 					pkg := decodeJsonPackage(decoder)
+// 					packages[pkg.RepoName] = pkg
+// 				})
+// 			},
+// 			"projects": func(decoder *corepkg.JsonDecoder) {
+// 				decoder.DecodeArray(func(decoder *corepkg.JsonDecoder) {
+// 					prj := DecodeJsonDevProject(decoder)
+// 					projects[prj.Name] = prj
+// 				})
+// 			},
+// 		}
+// 		if err := decoder.Decode(fields); err != nil {
+// 			corepkg.LogErrorf(err, "error decoding Package: %s", err.Error())
+// 		}
+// 	}
+// 	decoder.End()
 
-	// For every project process the array of dependency names and populate the Dependencies list
-	for _, prj := range projects {
-		for i, name := range prj.Dependencies.Keys {
-			if dep, ok := projects[name]; ok {
-				prj.Dependencies.Values[i] = dep
-			} else {
-				corepkg.LogErrorf(nil, "error: project '%s' depends on unknown project '%s'", prj.Name, name)
-			}
-		}
-	}
+// 	// For every project process the array of dependency names and populate the Dependencies list
+// 	for _, prj := range projects {
+// 		for i, name := range prj.Dependencies.Keys {
+// 			if dep, ok := projects[name]; ok {
+// 				prj.Dependencies.Values[i] = dep
+// 			} else {
+// 				corepkg.LogErrorf(nil, "error: project '%s' depends on unknown project '%s'", prj.Name, name)
+// 			}
+// 		}
+// 	}
 
-	// For every package process the array of packages and get them
-	for _, pkg := range packages {
-		for k := range pkg.Packages {
-			pkg.Packages[k] = packages[k]
-		}
+// 	// For every package process the array of packages and get them
+// 	for _, pkg := range packages {
+// 		for k := range pkg.Packages {
+// 			pkg.Packages[k] = packages[k]
+// 		}
 
-		for i := range pkg.MainApps {
-			if prj, ok := projects[i]; ok {
-				pkg.MainApps[i] = prj
-			} else {
-				corepkg.LogErrorf(nil, "error: package '%s' has unknown main app project '%s'", pkg.RepoName, i)
-			}
-		}
-		for i := range pkg.MainLibs {
-			if prj, ok := projects[i]; ok {
-				pkg.MainLibs[i] = prj
-			} else {
-				corepkg.LogErrorf(nil, "error: package '%s' has unknown main lib project '%s'", pkg.RepoName, i)
-			}
-		}
-		for i := range pkg.Unittests {
-			if prj, ok := projects[i]; ok {
-				pkg.Unittests[i] = prj
-			} else {
-				corepkg.LogErrorf(nil, "error: package '%s' has unknown unittest project '%s'", pkg.RepoName, i)
-			}
-		}
-		for i := range pkg.TestLibs {
-			if prj, ok := projects[i]; ok {
-				pkg.TestLibs[i] = prj
-			} else {
-				corepkg.LogErrorf(nil, "error: package '%s' has unknown test lib project '%s'", pkg.RepoName, i)
-			}
-		}
-	}
+// 		for i := range pkg.MainApps {
+// 			if prj, ok := projects[i]; ok {
+// 				pkg.MainApps[i] = prj
+// 			} else {
+// 				corepkg.LogErrorf(nil, "error: package '%s' has unknown main app project '%s'", pkg.RepoName, i)
+// 			}
+// 		}
+// 		for i := range pkg.MainLibs {
+// 			if prj, ok := projects[i]; ok {
+// 				pkg.MainLibs[i] = prj
+// 			} else {
+// 				corepkg.LogErrorf(nil, "error: package '%s' has unknown main lib project '%s'", pkg.RepoName, i)
+// 			}
+// 		}
+// 		for i := range pkg.Unittests {
+// 			if prj, ok := projects[i]; ok {
+// 				pkg.Unittests[i] = prj
+// 			} else {
+// 				corepkg.LogErrorf(nil, "error: package '%s' has unknown unittest project '%s'", pkg.RepoName, i)
+// 			}
+// 		}
+// 		for i := range pkg.TestLibs {
+// 			if prj, ok := projects[i]; ok {
+// 				pkg.TestLibs[i] = prj
+// 			} else {
+// 				corepkg.LogErrorf(nil, "error: package '%s' has unknown test lib project '%s'", pkg.RepoName, i)
+// 			}
+// 		}
+// 	}
 
-	return packages[mainPkg], nil
-}
+// 	return packages[mainPkg], nil
+// }
 
-func (p *Package) encodeJson(encoder *corepkg.JsonEncoder, key string, projects *map[string]*DevProject) {
-	encoder.BeginObject(key)
-	{
-		encoder.WriteField("root_path", p.RootPath)
-		encoder.WriteField("repo_path", p.RepoPath)
-		encoder.WriteField("repo_name", p.RepoName)
+// func (p *Package) encodeJson(encoder *corepkg.JsonEncoder, key string, projects *map[string]*DevProject) {
+// 	encoder.BeginObject(key)
+// 	{
+// 		encoder.WriteField("root_path", p.RootPath)
+// 		encoder.WriteField("repo_path", p.RepoPath)
+// 		encoder.WriteField("repo_name", p.RepoName)
 
-		if len(p.Packages) > 0 {
-			encoder.BeginArray("packages")
-			for _, pkg := range p.Packages {
-				encoder.WriteArrayElement(pkg.RepoName)
-			}
-			encoder.EndArray()
-		}
+// 		if len(p.Packages) > 0 {
+// 			encoder.BeginArray("packages")
+// 			for _, pkg := range p.Packages {
+// 				encoder.WriteArrayElement(pkg.RepoName)
+// 			}
+// 			encoder.EndArray()
+// 		}
 
-		if len(p.MainApps) > 0 {
-			encoder.BeginArray("main_apps")
-			for _, prj := range p.MainApps {
-				if _, ok := (*projects)[prj.Name]; !ok {
-					(*projects)[prj.Name] = prj
-				}
-				encoder.WriteArrayElement(prj.Name)
-			}
-			encoder.EndArray()
-		}
-		if len(p.MainLibs) > 0 {
-			encoder.BeginArray("main_libs")
-			for _, prj := range p.MainLibs {
-				if _, ok := (*projects)[prj.Name]; !ok {
-					(*projects)[prj.Name] = prj
-				}
-				encoder.WriteArrayElement(prj.Name)
-			}
-			encoder.EndArray()
-		}
-		if len(p.Unittests) > 0 {
-			encoder.BeginArray("unittests")
-			for _, prj := range p.Unittests {
-				if _, ok := (*projects)[prj.Name]; !ok {
-					(*projects)[prj.Name] = prj
-				}
-				encoder.WriteArrayElement(prj.Name)
-			}
-			encoder.EndArray()
-		}
-		if len(p.TestLibs) > 0 {
-			encoder.BeginArray("test_libs")
-			for _, prj := range p.TestLibs {
-				if _, ok := (*projects)[prj.Name]; !ok {
-					(*projects)[prj.Name] = prj
-				}
-				encoder.WriteArrayElement(prj.Name)
-			}
-			encoder.EndArray()
-		}
-	}
-	encoder.EndObject()
-}
+// 		if len(p.MainApps) > 0 {
+// 			encoder.BeginArray("main_apps")
+// 			for _, prj := range p.MainApps {
+// 				if _, ok := (*projects)[prj.Name]; !ok {
+// 					(*projects)[prj.Name] = prj
+// 				}
+// 				encoder.WriteArrayElement(prj.Name)
+// 			}
+// 			encoder.EndArray()
+// 		}
+// 		if len(p.MainLibs) > 0 {
+// 			encoder.BeginArray("main_libs")
+// 			for _, prj := range p.MainLibs {
+// 				if _, ok := (*projects)[prj.Name]; !ok {
+// 					(*projects)[prj.Name] = prj
+// 				}
+// 				encoder.WriteArrayElement(prj.Name)
+// 			}
+// 			encoder.EndArray()
+// 		}
+// 		if len(p.Unittests) > 0 {
+// 			encoder.BeginArray("unittests")
+// 			for _, prj := range p.Unittests {
+// 				if _, ok := (*projects)[prj.Name]; !ok {
+// 					(*projects)[prj.Name] = prj
+// 				}
+// 				encoder.WriteArrayElement(prj.Name)
+// 			}
+// 			encoder.EndArray()
+// 		}
+// 		if len(p.TestLibs) > 0 {
+// 			encoder.BeginArray("test_libs")
+// 			for _, prj := range p.TestLibs {
+// 				if _, ok := (*projects)[prj.Name]; !ok {
+// 					(*projects)[prj.Name] = prj
+// 				}
+// 				encoder.WriteArrayElement(prj.Name)
+// 			}
+// 			encoder.EndArray()
+// 		}
+// 	}
+// 	encoder.EndObject()
+// }
 
-func decodeJsonPackage(decoder *corepkg.JsonDecoder) *Package {
-	pkg := &Package{
-		RootPath:  "",
-		RepoPath:  "",
-		RepoName:  "",
-		Packages:  make(map[string]*Package),
-		MainApps:  make(map[string]*DevProject, 0),
-		MainLibs:  make(map[string]*DevProject, 0),
-		Unittests: make(map[string]*DevProject, 0),
-		TestLibs:  make(map[string]*DevProject, 0),
-	}
+// func decodeJsonPackage(decoder *corepkg.JsonDecoder) *Package {
+// 	pkg := &Package{
+// 		RootPath:  "",
+// 		RepoPath:  "",
+// 		RepoName:  "",
+// 		Packages:  make(map[string]*Package),
+// 		MainApps:  make(map[string]*DevProject, 0),
+// 		MainLibs:  make(map[string]*DevProject, 0),
+// 		Unittests: make(map[string]*DevProject, 0),
+// 		TestLibs:  make(map[string]*DevProject, 0),
+// 	}
 
-	fields := map[string]corepkg.JsonDecode{
-		"root_path": func(decoder *corepkg.JsonDecoder) { pkg.RootPath = decoder.DecodeString() },
-		"repo_path": func(decoder *corepkg.JsonDecoder) { pkg.RepoPath = decoder.DecodeString() },
-		"repo_name": func(decoder *corepkg.JsonDecoder) { pkg.RepoName = decoder.DecodeString() },
-		"packages": func(decoder *corepkg.JsonDecoder) {
-			decoder.DecodeArray(func(decoder *corepkg.JsonDecoder) {
-				pkgName := decoder.DecodeString()
-				pkg.Packages[pkgName] = nil
-			})
-		},
-		"main_apps": func(decoder *corepkg.JsonDecoder) {
-			pkg.MainApps = make(map[string]*DevProject, 0)
-			decoder.DecodeArray(func(decoder *corepkg.JsonDecoder) {
-				prjName := decoder.DecodeString()
-				pkg.MainApps[prjName] = nil
-			})
-		},
-		"main_libs": func(decoder *corepkg.JsonDecoder) {
-			pkg.MainLibs = make(map[string]*DevProject, 0)
-			decoder.DecodeArray(func(decoder *corepkg.JsonDecoder) {
-				prjName := decoder.DecodeString()
-				pkg.MainLibs[prjName] = nil
-			})
-		},
-		"unittests": func(decoder *corepkg.JsonDecoder) {
-			pkg.Unittests = make(map[string]*DevProject, 0)
-			decoder.DecodeArray(func(decoder *corepkg.JsonDecoder) {
-				prjName := decoder.DecodeString()
-				pkg.Unittests[prjName] = nil
-			})
-		},
-		"test_libs": func(decoder *corepkg.JsonDecoder) {
-			pkg.TestLibs = make(map[string]*DevProject, 0)
-			decoder.DecodeArray(func(decoder *corepkg.JsonDecoder) {
-				prjName := decoder.DecodeString()
-				pkg.TestLibs[prjName] = nil
-			})
-		},
-	}
-	if err := decoder.Decode(fields); err != nil {
-		corepkg.LogErrorf(err, "error decoding Package: %s", err.Error())
-	}
+// 	fields := map[string]corepkg.JsonDecode{
+// 		"root_path": func(decoder *corepkg.JsonDecoder) { pkg.RootPath = decoder.DecodeString() },
+// 		"repo_path": func(decoder *corepkg.JsonDecoder) { pkg.RepoPath = decoder.DecodeString() },
+// 		"repo_name": func(decoder *corepkg.JsonDecoder) { pkg.RepoName = decoder.DecodeString() },
+// 		"packages": func(decoder *corepkg.JsonDecoder) {
+// 			decoder.DecodeArray(func(decoder *corepkg.JsonDecoder) {
+// 				pkgName := decoder.DecodeString()
+// 				pkg.Packages[pkgName] = nil
+// 			})
+// 		},
+// 		"main_apps": func(decoder *corepkg.JsonDecoder) {
+// 			pkg.MainApps = make(map[string]*DevProject, 0)
+// 			decoder.DecodeArray(func(decoder *corepkg.JsonDecoder) {
+// 				prjName := decoder.DecodeString()
+// 				pkg.MainApps[prjName] = nil
+// 			})
+// 		},
+// 		"main_libs": func(decoder *corepkg.JsonDecoder) {
+// 			pkg.MainLibs = make(map[string]*DevProject, 0)
+// 			decoder.DecodeArray(func(decoder *corepkg.JsonDecoder) {
+// 				prjName := decoder.DecodeString()
+// 				pkg.MainLibs[prjName] = nil
+// 			})
+// 		},
+// 		"unittests": func(decoder *corepkg.JsonDecoder) {
+// 			pkg.Unittests = make(map[string]*DevProject, 0)
+// 			decoder.DecodeArray(func(decoder *corepkg.JsonDecoder) {
+// 				prjName := decoder.DecodeString()
+// 				pkg.Unittests[prjName] = nil
+// 			})
+// 		},
+// 		"test_libs": func(decoder *corepkg.JsonDecoder) {
+// 			pkg.TestLibs = make(map[string]*DevProject, 0)
+// 			decoder.DecodeArray(func(decoder *corepkg.JsonDecoder) {
+// 				prjName := decoder.DecodeString()
+// 				pkg.TestLibs[prjName] = nil
+// 			})
+// 		},
+// 	}
+// 	if err := decoder.Decode(fields); err != nil {
+// 		corepkg.LogErrorf(err, "error decoding Package: %s", err.Error())
+// 	}
 
-	return pkg
-}
+// 	return pkg
+// }

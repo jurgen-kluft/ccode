@@ -433,12 +433,14 @@ func (p *ProjectList) IsEmpty() bool {
 	return len(p.Values) == 0
 }
 
-func (p *ProjectList) Add(project *Project) {
+func (p *ProjectList) Add(project *Project) bool {
 	if _, ok := p.Dict[project.Name]; !ok {
 		p.Dict[project.Name] = len(p.Values)
 		p.Values = append(p.Values, project)
 		p.Keys = append(p.Keys, project.Name)
+		return true
 	}
+	return false
 }
 
 func (p *ProjectList) Get(name string) (*Project, bool) {

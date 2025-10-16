@@ -30,8 +30,8 @@ var (
 func Init() bool {
 	corepkg.SetLogger(corepkg.NewStandardLogger(corepkg.LevelError))
 
-	flag.StringVar(&cdev, "dev", "", "the build system to generate for (vs2022, tundra, make, cmake, xcode, clay)")
-	flag.StringVar(&carch, "arch", "", "the architecture to target (x64, arm64, amd64, 386, esp32, esp32c3, esp32s3, esp8266)")
+	flag.StringVar(&cdev, "dev", "", "the build system to generate for (vs2022, tundra, make, xcode, clay)")
+	flag.StringVar(&carch, "arch", "", "the architecture to target (x64, arm64, esp32, esp8266)")
 	flag.BoolVar(&cverbose, "verbose", false, "verbose output")
 	flag.Parse()
 
@@ -50,9 +50,10 @@ func Init() bool {
 	}
 
 	if cdev == "" {
-		if cos == "darwin" {
+		switch cos {
+		case "darwin":
 			cdev = "tundra"
-		} else if cos == "windows" {
+		case "windows":
 			cdev = "vs2022"
 		}
 	}
@@ -104,8 +105,6 @@ func GenerateClangFormat() {
 
 func GenerateFiles(pkg *denv.Package) {
 	GenerateGitIgnore()
-
-	pkg.SaveJson("target/package.json")
 
 	// Analyze the package to see if unittesting has dependencies on:
 	// - ccore

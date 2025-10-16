@@ -2,64 +2,12 @@ package clay
 
 import (
 	"bufio"
-	"fmt"
 	"os"
 	"sort"
 	"strings"
 
 	corepkg "github.com/jurgen-kluft/ccode/core"
 )
-
-// opName: Any of the following:
-// - first
-// - check
-// - first_flash
-// - first_lwip
-// - list_names
-// - list_flash
-// - list_lwip
-
-// BoardsOperation performs a search operation on the board configuration file and returns nil if successful.
-func BoardsOperation(espressifToolchain *EspressifToolchain, cpuName string, boardName string, opName string) (result []string, err error) {
-
-	// var flashDefMatch string
-	// if cpuName == "esp32" {
-	// 	flashDefMatch = `\.build\.flash_size=(\S+)`
-	// } else {
-	// 	flashDefMatch = `\.menu\.(?:FlashSize|eesz)\.([^\.]+)=(.+)`
-	// }
-
-	// lwipDefMatch := `\.menu\.(?:LwIPVariant|ip)\.(\w+)=(.+)`
-
-	if opName == "first" {
-		result := espressifToolchain.ListOfBoards[0].Name
-		result = result[0:1]
-	} else if opName == "check" {
-		if i, ok := espressifToolchain.BoardNameToIndex[boardName]; ok {
-			result = []string{espressifToolchain.ListOfBoards[i].Name}
-		} else {
-			return []string{}, fmt.Errorf("Board %s not found in toolchain\n", boardName)
-		}
-	} else if opName == "first_flash" {
-		if _, ok := espressifToolchain.BoardNameToIndex[boardName]; ok {
-			// TODO, iterate over the menu entries to find the first flash size
-		} else {
-			return []string{}, fmt.Errorf("Board %s not found in toolchain\n", boardName)
-		}
-	} else if opName == "first_lwip" {
-		// lwip configurations for board (a manual search shows there are none)
-	} else if opName == "list_boards" {
-		for i := 0; i < len(espressifToolchain.ListOfBoards); i++ {
-			result = append(result, fmt.Sprintf("%-20s %s", espressifToolchain.ListOfBoards[i].Name, espressifToolchain.ListOfBoards[i].Description))
-		}
-	} else if opName == "list_flash" {
-		// memory configurations for board
-	} else if opName == "list_lwip" {
-		// lwip configurations for board (a manual search shows there are none)
-	}
-
-	return result, nil
-}
 
 func PrintAllFlashSizes(espressifToolchain *EspressifToolchain, arch string, boardName string) (err error) {
 
@@ -96,12 +44,6 @@ func PrintAllFlashSizes(espressifToolchain *EspressifToolchain, arch string, boa
 
 		// Sort the keys, column1
 		sort.Strings(column1)
-
-		// Now get the values
-		// for _, flashKey := range column1 {
-		// 	flashValue := flashKey
-		// 	column2 = append(column2, flashValue)
-		// }
 
 		column1MaxLength := len("Flash Size")
 		for _, val := range column1 {
@@ -152,53 +94,6 @@ func PrintAllBoardInfos(espressifToolchain *EspressifToolchain, boardName string
 			}
 		}
 	}
-	return nil
-}
-
-func GenerateToolchainJson(espressifToolchain *EspressifToolchain, outputFilename string) error {
-	file, err := os.Create(outputFilename)
-	if err != nil {
-		return err
-	}
-	defer file.Close()
-
-	jsonEncoder := corepkg.NewJsonEncoder("    ")
-	jsonEncoder.HintOutputSize(4 * 1024 * 1024)
-	jsonEncoder.Begin()
-	encodeJsonEspressifToolchain(jsonEncoder, "", espressifToolchain)
-	json := jsonEncoder.End()
-
-	file.WriteString(json)
-	return nil
-}
-
-func LoadToolchainJson(espressifToolchain *EspressifToolchain, inputFilename string) error {
-	file, err := os.Open(inputFilename)
-	if err != nil {
-		return err
-	}
-	defer file.Close()
-
-	stat, err := file.Stat()
-	if err != nil {
-		return err
-	}
-
-	size := stat.Size()
-	buffer := make([]byte, size)
-
-	reader := bufio.NewReader(file)
-	_, err = reader.Read(buffer)
-	if err != nil {
-		return err
-	}
-
-	jsonDecoder := corepkg.NewJsonDecoder()
-	jsonDecoder.Begin(string(buffer))
-	if err := decodeJsonEspressifToolchain(espressifToolchain, jsonDecoder); err != nil {
-		return err
-	}
-
 	return nil
 }
 
@@ -262,6 +157,53 @@ func PrintAllMatchingBoards(espressifToolchain *EspressifToolchain, fuzzy string
 				}
 			}
 		}
+	}
+
+	return nil
+}
+
+func GenerateToolchainJson(espressifToolchain *EspressifToolchain, outputFilename string) error {
+	file, err := os.Create(outputFilename)
+	if err != nil {
+		return err
+	}
+	defer file.Close()
+
+	jsonEncoder := corepkg.NewJsonEncoder("    ")
+	jsonEncoder.HintOutputSize(4 * 1024 * 1024)
+	jsonEncoder.Begin()
+	encodeJsonEspressifToolchain(jsonEncoder, "", espressifToolchain)
+	json := jsonEncoder.End()
+
+	file.WriteString(json)
+	return nil
+}
+
+func LoadToolchainJson(espressifToolchain *EspressifToolchain, inputFilename string) error {
+	file, err := os.Open(inputFilename)
+	if err != nil {
+		return err
+	}
+	defer file.Close()
+
+	stat, err := file.Stat()
+	if err != nil {
+		return err
+	}
+
+	size := stat.Size()
+	buffer := make([]byte, size)
+
+	reader := bufio.NewReader(file)
+	_, err = reader.Read(buffer)
+	if err != nil {
+		return err
+	}
+
+	jsonDecoder := corepkg.NewJsonDecoder()
+	jsonDecoder.Begin(string(buffer))
+	if err := decodeJsonEspressifToolchain(espressifToolchain, jsonDecoder); err != nil {
+		return err
 	}
 
 	return nil

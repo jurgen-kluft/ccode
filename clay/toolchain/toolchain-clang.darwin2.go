@@ -1,0 +1,320 @@
+package toolchain
+
+import (
+	"os/exec"
+	"path/filepath"
+	"strings"
+
+	"github.com/jurgen-kluft/ccode/clay/toolchain/deptrackr"
+	corepkg "github.com/jurgen-kluft/ccode/core"
+	"github.com/jurgen-kluft/ccode/denv"
+)
+
+type DarwinClang2 struct {
+	Name string
+	Vars *corepkg.Vars
+}
+
+// --------------------------------------------------------------------------------------------------
+// --------------------------------------------------------------------------------------------------
+// C/C++ Compiler
+
+type ToolchainDarwin2ClangCompiler struct {
+	toolChain       *DarwinClang2
+	buildConfig     denv.BuildConfig
+	buildTarget     denv.BuildTarget
+	cCompilerPath   string
+	cCompilerArgs   *corepkg.Arguments
+	cppCompilerPath string
+	cppCompilerArgs *corepkg.Arguments
+	vars            *corepkg.Vars
+}
+
+func (t *DarwinClang2) NewCompiler(buildConfig denv.BuildConfig, buildTarget denv.BuildTarget) Compiler {
+	return &ToolchainDarwin2ClangCompiler{
+		toolChain:       t,
+		buildConfig:     buildConfig,
+		buildTarget:     buildTarget,
+		cCompilerPath:   "",
+		cCompilerArgs:   nil,
+		cppCompilerPath: "",
+		cppCompilerArgs: nil,
+		vars:            corepkg.NewVars(corepkg.VarsFormatCurlyBraces),
+	}
+}
+
+func (cl *ToolchainDarwin2ClangCompiler) ObjFilepath(srcRelFilepath string) string {
+	return srcRelFilepath + ".o"
+}
+
+func (cl *ToolchainDarwin2ClangCompiler) DepFilepath(objRelFilepath string) string {
+	return objRelFilepath + ".d"
+}
+
+func (cl *ToolchainDarwin2ClangCompiler) SetupArgs(_defines []string, _includes []string) {
+	for i, inc := range _includes {
+		if !strings.HasPrefix(inc, "-I") {
+			_includes[i] = "-I" + inc
+		}
+	}
+	for i, def := range _defines {
+		if !strings.HasPrefix(def, "-D") {
+			_defines[i] = "-D" + def
+		}
+	}
+	cl.vars.Set("build.includes", _includes...)
+	cl.vars.Set("build.defines", _defines...)
+
+	cl.cCompilerPath = ""
+	cl.cCompilerArgs = corepkg.NewArguments(0)
+	if c_compiler_args, ok := cl.toolChain.Vars.Get(`recipe.c.pattern`); ok {
+		cl.cCompilerPath = c_compiler_args[0]
+		cl.cCompilerArgs.Args = c_compiler_args[1:]
+
+		cl.cCompilerPath = cl.toolChain.Vars.FinalResolveStringWith(cl.cCompilerPath, " ")
+		cl.cCompilerArgs.Args = cl.toolChain.Vars.FinalResolveArrayWith(cl.cCompilerArgs.Args, cl.vars)
+	}
+
+	cl.cppCompilerPath = ""
+	cl.cppCompilerArgs = corepkg.NewArguments(0)
+	if cpp_compiler_args, ok := cl.toolChain.Vars.Get(`recipe.cpp.pattern`); ok {
+		cl.cppCompilerPath = cpp_compiler_args[0]
+		cl.cppCompilerArgs.Args = cpp_compiler_args[1:]
+
+		cl.cppCompilerPath = cl.toolChain.Vars.FinalResolveStringWith(cl.cppCompilerPath, " ")
+		cl.cppCompilerArgs.Args = cl.toolChain.Vars.FinalResolveArrayWith(cl.cppCompilerArgs.Args, cl.vars)
+	}
+}
+
+func (cl *ToolchainDarwin2ClangCompiler) Compile(sourceAbsFilepaths []string, objRelFilepaths []string) error {
+	for i, sourceAbsFilepath := range sourceAbsFilepaths {
+		var compilerPath string
+		var compilerArgs []string
+		if strings.HasSuffix(sourceAbsFilepath, ".c") {
+			compilerPath = cl.cCompilerPath
+			compilerArgs = cl.cCompilerArgs.Args
+		} else {
+			compilerPath = cl.cppCompilerPath
+			compilerArgs = cl.cppCompilerArgs.Args
+		}
+
+		// TODO would like this to be part of the resolve step
+		compilerArgs = append(compilerArgs, "-o", objRelFilepaths[i])
+		compilerArgs = append(compilerArgs, sourceAbsFilepath)
+
+		cmd := exec.Command(compilerPath, compilerArgs...)
+
+		corepkg.LogInfof("Compiling (%s) %s", cl.buildConfig.String(), filepath.Base(sourceAbsFilepath))
+		out, err := cmd.CombinedOutput()
+		if err != nil {
+			corepkg.LogInfof("Compile failed, output:\n%s", string(out))
+			return corepkg.LogErrorf(err, "Compiling failed")
+		}
+		if len(out) > 0 {
+			corepkg.LogInfof("Compile output:\n%s", string(out))
+		}
+	}
+	return nil
+}
+
+// --------------------------------------------------------------------------------------------------
+// --------------------------------------------------------------------------------------------------
+// Archiver
+
+type ToolchainDarwin2ClangStaticArchiver struct {
+	toolChain   *DarwinClang2
+	buildConfig denv.BuildConfig
+	buildTarget denv.BuildTarget
+	arPath      string
+	arArgs      *corepkg.Arguments
+}
+
+type ToolchainDarwin2ClangDynamicArchiver struct {
+	toolChain   *DarwinClang2
+	buildConfig denv.BuildConfig
+	buildTarget denv.BuildTarget
+	arPath      string
+	arArgs      *corepkg.Arguments
+}
+
+func (t *DarwinClang2) NewArchiver(at ArchiverType, buildConfig denv.BuildConfig, buildTarget denv.BuildTarget) Archiver {
+	args := corepkg.NewArguments(512)
+	switch at {
+	case ArchiverTypeStatic:
+		return &ToolchainDarwin2ClangStaticArchiver{toolChain: t, buildConfig: buildConfig, buildTarget: buildTarget, arArgs: args}
+	case ArchiverTypeDynamic:
+		return &ToolchainDarwin2ClangDynamicArchiver{toolChain: t, buildConfig: buildConfig, buildTarget: buildTarget, arArgs: args}
+	}
+	return nil
+}
+
+func (t *ToolchainDarwin2ClangStaticArchiver) LibFilepath(_filepath string) string {
+	filename := corepkg.PathFilename(_filepath, true)
+	dirpath := corepkg.PathDirname(_filepath)
+	return filepath.Join(dirpath, "lib"+filename+".a") // The file extension for the archive on Darwin is typically ".a"
+}
+
+func (t *ToolchainDarwin2ClangStaticArchiver) SetupArgs() {
+	if archiver_args, ok := t.toolChain.Vars.Get(`recipe.ar.pattern`); ok {
+		t.arPath = archiver_args[0]
+		t.arArgs = corepkg.NewArguments(0)
+		t.arArgs.Args = archiver_args[1:]
+		t.arPath = t.toolChain.Vars.FinalResolveStringWith(t.arPath, " ")
+		t.arArgs.Args = t.toolChain.Vars.FinalResolveArrayWith(t.arArgs.Args)
+	}
+}
+
+func (t *ToolchainDarwin2ClangStaticArchiver) Archive(inputObjectFilepaths []string, outputArchiveFilepath string) error {
+	archiverPath := t.arPath
+	archiverArgs := t.arArgs.Args
+
+	// TODO would like this to be part of the resolve step
+	archiverArgs = append(archiverArgs, outputArchiveFilepath)
+	archiverArgs = append(archiverArgs, inputObjectFilepaths...)
+
+	cmd := exec.Command(archiverPath, archiverArgs...)
+
+	out, err := cmd.CombinedOutput()
+
+	if err != nil {
+		return corepkg.LogErrorf(err, "Archiving failed: ", string(out))
+	}
+
+	return nil
+}
+
+func (t *ToolchainDarwin2ClangDynamicArchiver) LibFilepath(_filepath string) string {
+	filename := corepkg.PathFilename(_filepath, true)
+	dirpath := corepkg.PathDirname(_filepath)
+	return filepath.Join(dirpath, "lib"+filename+".dylib")
+}
+
+func (t *ToolchainDarwin2ClangDynamicArchiver) SetupArgs() {
+	if archiver_args, ok := t.toolChain.Vars.Get(`recipe.ar.pattern`); ok {
+		t.arPath = archiver_args[0]
+		t.arArgs = corepkg.NewArguments(0)
+		t.arArgs.Args = archiver_args[1:]
+
+		t.arPath = t.toolChain.Vars.FinalResolveStringWith(t.arPath, " ")
+		t.arArgs.Args = t.toolChain.Vars.FinalResolveArrayWith(t.arArgs.Args)
+	}
+}
+
+func (t *ToolchainDarwin2ClangDynamicArchiver) Archive(inputObjectFilepaths []string, outputArchiveFilepath string) error {
+	archiverPath := t.arPath
+	archiverArgs := t.arArgs.Args
+
+	// TODO would like this to be part of the resolve step
+	archiverArgs = append(archiverArgs, "-dynamiclib", "-o", outputArchiveFilepath)
+	archiverArgs = append(archiverArgs, inputObjectFilepaths...)
+
+	cmd := exec.Command(archiverPath, archiverArgs...)
+	out, err := cmd.CombinedOutput()
+
+	if err != nil {
+		return corepkg.LogErrorf(err, "Archiving failed")
+	}
+	if len(out) > 0 {
+		corepkg.LogInfof("Archive output:\n%s", string(out))
+	}
+
+	return nil
+}
+
+// --------------------------------------------------------------------------------------------------
+// --------------------------------------------------------------------------------------------------
+// Linker
+
+type ToolchainDarwin2ClangLinker struct {
+	toolChain   *DarwinClang2
+	buildConfig denv.BuildConfig
+	buildTarget denv.BuildTarget
+	linkerPath  string
+	linkerArgs  *corepkg.Arguments
+	vars        *corepkg.Vars
+	frameworks  []string
+}
+
+func (l *DarwinClang2) NewLinker(buildConfig denv.BuildConfig, buildTarget denv.BuildTarget) Linker {
+	args := corepkg.NewArguments(512)
+	return &ToolchainDarwin2ClangLinker{
+		toolChain:   l,
+		buildConfig: buildConfig,
+		buildTarget: buildTarget,
+		vars:        corepkg.NewVars(corepkg.VarsFormatCurlyBraces),
+		linkerArgs:  args,
+	}
+}
+
+func (l *ToolchainDarwin2ClangLinker) LinkedFilepath(filepath string) string {
+	return filepath
+}
+
+func (l *ToolchainDarwin2ClangLinker) SetupArgs(libraryPaths []string, libraryFiles []string) {
+	for i, libPath := range libraryPaths {
+		libraryPaths[i] = "-L" + libPath
+	}
+	for i, libFile := range libraryFiles {
+		libraryFiles[i] = "-l" + libFile
+	}
+
+	l.vars.Set("library.paths", libraryPaths...)
+	l.vars.Set("library.files", libraryFiles...)
+
+	if linker_args, ok := l.toolChain.Vars.Get(`recipe.link.pattern`); ok {
+		l.linkerPath = linker_args[0]
+		l.linkerArgs = corepkg.NewArguments(0)
+		l.linkerArgs.Args = linker_args[1:]
+
+		l.linkerPath = l.toolChain.Vars.FinalResolveStringWith(l.linkerPath, " ")
+		l.linkerArgs.Args = l.toolChain.Vars.FinalResolveArrayWith(l.linkerArgs.Args, l.vars)
+	}
+}
+
+func (l *ToolchainDarwin2ClangLinker) Link(inputArchiveAbsFilepaths []string, outputAppRelFilepathNoExt string) error {
+
+	linkerPath := l.linkerPath
+	linkerArgs := l.linkerArgs.Args
+
+	// TODO would like this to be part of the resolve step
+	linkerArgs = append(linkerArgs, "-Wl,-map,"+outputAppRelFilepathNoExt+".map")
+	linkerArgs = append(linkerArgs, "-o", l.LinkedFilepath(outputAppRelFilepathNoExt))
+	linkerArgs = append(linkerArgs, inputArchiveAbsFilepaths...)
+
+	corepkg.LogInff("Linking (%s) %s", l.buildConfig.String(), filepath.Base(outputAppRelFilepathNoExt))
+
+	cmd := exec.Command(linkerPath, linkerArgs...)
+	out, err := cmd.CombinedOutput()
+
+	if err != nil {
+		corepkg.LogInff("Link failed, output:\n%s", string(out))
+		return corepkg.LogError(err, "Linking failed")
+	}
+	if len(out) > 0 {
+		corepkg.LogInfof("Link output:\n%s", string(out))
+	}
+
+	return nil
+}
+
+// --------------------------------------------------------------------------------------------------
+// --------------------------------------------------------------------------------------------------
+// Burner
+
+func (t *DarwinClang2) NewBurner(buildConfig denv.BuildConfig, buildTarget denv.BuildTarget) Burner {
+	return &EmptyBurner{}
+}
+
+// --------------------------------------------------------------------------------------------------
+// --------------------------------------------------------------------------------------------------
+// Dependency Tracker
+func (t *DarwinClang2) NewDependencyTracker(dirpath string) deptrackr.FileTrackr {
+	return deptrackr.LoadDepFileTrackr(filepath.Join(dirpath, "deptrackr"))
+}
+
+// --------------------------------------------------------------------------------------------------
+// --------------------------------------------------------------------------------------------------
+// Toolchain for Clang on MacOS
+func NewDarwin2Clang(arch string, vars *corepkg.Vars) *DarwinClang2 {
+	return &DarwinClang2{Name: "clang", Vars: vars}
+}

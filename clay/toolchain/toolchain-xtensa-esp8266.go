@@ -35,6 +35,7 @@ type ToolchainArduinoEsp8266Compiler struct {
 	cppCompilerPath string
 	cCompilerArgs   *corepkg.Arguments
 	cppCompilerArgs *corepkg.Arguments
+	vars            *corepkg.Vars
 }
 
 func (t *ArduinoEsp8266Toolchain) NewCompiler(buildConfig denv.BuildConfig, buildTarget denv.BuildTarget) Compiler {
@@ -46,6 +47,7 @@ func (t *ArduinoEsp8266Toolchain) NewCompiler(buildConfig denv.BuildConfig, buil
 		cppCompilerPath: "",
 		cCompilerArgs:   corepkg.NewArguments(64),
 		cppCompilerArgs: corepkg.NewArguments(64),
+		vars:            corepkg.NewVars(corepkg.VarsFormatCurlyBraces),
 	}
 }
 
@@ -57,61 +59,49 @@ func (cl *ToolchainArduinoEsp8266Compiler) DepFilepath(objRelFilepath string) st
 	return objRelFilepath + ".d"
 }
 
-func setupCompilerArgs(args *corepkg.Arguments, defines []string, includes []string) (cpPath string, cpArgs *corepkg.Arguments) {
-	cpPath = ""
-	cpArgs = corepkg.NewArguments(64)
-	if args.Len() > 0 {
-		if strings.HasPrefix(args.Args[0], "\"") && strings.HasSuffix(args.Args[0], "\"") {
-			cpPath = strings.Trim(args.Args[0], "\" ")
-		}
-		for _, part := range args.Args[1:] {
+func setupCompilerArgs(args []string) (string, []string) {
+	cpArgs := make([]string, 0, len(args)+32)
+	if len(args) > 0 {
+		for _, part := range args {
 			part = strings.Trim(part, " ")
 			if strings.HasPrefix(part, "\"") && strings.HasSuffix(part, "\"") {
 				part = strings.Trim(part, "\"")
 			}
-			if len(part) == 0 {
-				continue
-			} else if part == "-o" {
-				continue
-			}
-			if strings.HasPrefix(part, "-D") {
-				// Insert the user defines here
-				for _, define := range defines {
-					cpArgs.Add("-D" + define)
-				}
-				defines = []string{} // Clear the defines so we don't add them again
-				cpArgs.Add(part)
-			} else if strings.HasPrefix(part, "-I") {
-				// Insert the user includes here
-				for _, inc := range includes {
-					cpArgs.Add("-I" + inc)
-				}
-				includes = []string{} // Clear the includes so we don't add them again
-				cpArgs.Add(part)
-			} else {
-				cpArgs.Add(part)
+			if len(part) > 0 {
+				cpArgs = append(cpArgs, part)
 			}
 		}
+		return cpArgs[0], cpArgs[1:]
 	}
-	return cpPath, cpArgs
+	return "", []string{}
 }
 
 func (cl *ToolchainArduinoEsp8266Compiler) SetupArgs(defines []string, includes []string) {
-	if extra_includes, has_extra_includes := cl.toolChain.Vars.Get("build.extra_includes"); has_extra_includes {
-		for _, inc := range extra_includes {
-			includes = append(includes, inc)
-		}
+	for i, inc := range includes {
+		includes[i] = "-I" + inc
 	}
+	for i, def := range defines {
+		defines[i] = "-D" + def
+	}
+
+	cl.vars.Set("includes", includes...)
+	cl.vars.Set("defines", defines...)
 
 	c_compiler := cl.toolChain.Vars.GetFirstOrEmpty(`recipe.c.o.pattern`)
 	c_compiler_parts := corepkg.NewArguments(32)
 	c_compiler_parts.SmartSplit(c_compiler)
-	cl.cCompilerPath, cl.cCompilerArgs = setupCompilerArgs(c_compiler_parts, defines, includes)
+	cl.cCompilerPath, cl.cCompilerArgs.Args = setupCompilerArgs(c_compiler_parts.Args)
+
+	cl.cCompilerPath = cl.toolChain.Vars.FinalResolveString(cl.cCompilerPath, " ")
+	cl.cCompilerArgs.Args = cl.toolChain.Vars.FinalResolveArrayWith(cl.cCompilerArgs.Args, cl.vars)
 
 	cpp_compiler := cl.toolChain.Vars.GetFirstOrEmpty(`recipe.cpp.o.pattern`)
 	cpp_compiler_parts := corepkg.NewArguments(32)
 	cpp_compiler_parts.SmartSplit(cpp_compiler)
-	cl.cppCompilerPath, cl.cppCompilerArgs = setupCompilerArgs(cpp_compiler_parts, defines, includes)
+	cl.cppCompilerPath, cl.cppCompilerArgs.Args = setupCompilerArgs(cpp_compiler_parts.Args)
+
+	cl.cppCompilerPath = cl.toolChain.Vars.FinalResolveString(cl.cppCompilerPath, " ")
+	cl.cppCompilerArgs.Args = cl.toolChain.Vars.FinalResolveArrayWith(cl.cppCompilerArgs.Args, cl.vars)
 }
 
 func (cl *ToolchainArduinoEsp8266Compiler) Compile(sourceAbsFilepaths []string, objRelFilepaths []string) error {
@@ -241,6 +231,7 @@ type ToolchainArduinoEsp8266Linker struct {
 	buildTarget denv.BuildTarget
 	linkerPath  string
 	linkerArgs  *corepkg.Arguments
+	vars        *corepkg.Vars
 }
 
 func (t *ArduinoEsp8266Toolchain) NewLinker(buildConfig denv.BuildConfig, buildTarget denv.BuildTarget) Linker {
@@ -250,6 +241,7 @@ func (t *ArduinoEsp8266Toolchain) NewLinker(buildConfig denv.BuildConfig, buildT
 		buildTarget: buildTarget,
 		linkerPath:  "",
 		linkerArgs:  corepkg.NewArguments(512),
+		vars:        corepkg.NewVars(corepkg.VarsFormatCurlyBraces),
 	}
 }
 
@@ -259,17 +251,61 @@ func (l *ToolchainArduinoEsp8266Linker) LinkedFilepath(filepath string) string {
 }
 
 func (l *ToolchainArduinoEsp8266Linker) SetupArgs(libraryPaths []string, libraryFiles []string) {
+	for i, libPath := range libraryPaths {
+		libraryPaths[i] = "-L" + libPath
+	}
+	for i, libFile := range libraryFiles {
+		if strings.HasPrefix(libFile, "lib") && strings.HasSuffix(libFile, ".a") {
+			libFile = libFile[3 : len(libFile)-2]
+		}
+		libraryFiles[i] = "-l" + libFile
+	}
+	l.vars.Set("build.extra_libs", libraryPaths...)
+	l.vars.Set("build.extra_libs", libraryFiles...)
 
 	ld_cmdline := l.toolChain.Vars.GetFirstOrEmpty(`recipe.c.combine.pattern`)
 	ld_arg_parts := corepkg.NewArguments(32)
 	ld_arg_parts.SmartSplit(ld_cmdline)
 	l.linkerPath, l.linkerArgs = setupArchiverArgs(ld_arg_parts)
 
+	l.linkerPath = l.toolChain.Vars.FinalResolveString(l.linkerPath, " ")
+	l.linkerArgs.Args = l.toolChain.Vars.FinalResolveArrayWith(l.linkerArgs.Args, l.vars)
 }
 
 func (l *ToolchainArduinoEsp8266Linker) Link(inputArchiveAbsFilepaths []string, outputAppRelFilepathNoExt string) error {
+	linker := l.linkerPath
 
-	// TODO
+	linkerArgs := *l.linkerArgs
+
+	linkerArgs.Add(inputArchiveAbsFilepaths...)
+
+	linkerArgs.Add("-o")
+	linkerArgs.Add(outputAppRelFilepathNoExt)
+
+	// Do we need to fill in the arg to generate map file?
+	generateMapfile := linkerArgs.Args[0] == "genmap"
+	if generateMapfile {
+		outputMapFilepath := outputAppRelFilepathNoExt + ".map"
+		linkerArgs.Args[0] = "-Wl,--Map=" + outputMapFilepath
+	}
+
+	corepkg.LogInfof("Linking '%s'...", outputAppRelFilepathNoExt)
+	cmd := exec.Command(linker, linkerArgs.Args...)
+	out, err := cmd.CombinedOutput()
+
+	// Reset the map generation command in the arguments so that it
+	// will be updated correctly on the next Link() call.
+	if generateMapfile {
+		l.linkerArgs.Args[0] = "genmap"
+	}
+
+	if err != nil {
+		corepkg.LogInfof("Link failed, output:\n%s", string(out))
+		return corepkg.LogErrorf(err, "Linking failed")
+	}
+	if len(out) > 0 {
+		corepkg.LogInfof("Link output:\n%s", string(out))
+	}
 
 	return nil
 }
@@ -574,12 +610,17 @@ func (t *ArduinoEsp8266Toolchain) NewDependencyTracker(dirpath string) deptrackr
 // --------------------------------------------------------------------------------------------------
 // Toolchain for ESP8266 on Arduino
 func NewArduinoEsp8266Toolchain(boardVars *corepkg.Vars, projectName string, buildPath string) *ArduinoEsp8266Toolchain {
+	tc := &ArduinoEsp8266Toolchain{ProjectName: projectName, Vars: boardVars}
 
+	boardVars.Set("project.name", projectName)
 	boardVars.Set("build.path", buildPath)
 	boardVars.Set("build.arch", "esp8266")
-	boardVars.Set("build.extra_includes", "{runtime.platform.path}/variants/{board.name}")
+	boardVars.Set("build.includes", "{runtime.platform.path}/variants/{board.name}")
+	boardVars.Set("build.defines", "")
 
-	boardVars.ResolveFinal()
+	// TODO we are not doing a final resolve here, instead, each tool should resolve its own
+	// command line and arguments based on its needs.
+	//boardVars.FinalResolve()
 
 	// Create '{buildPath}/core/build.opt'
 	// TODO not sure what this file is for and who should create it with what content
@@ -590,8 +631,5 @@ func NewArduinoEsp8266Toolchain(boardVars *corepkg.Vars, projectName string, bui
 		defer f.Close()
 	}
 
-	return &ArduinoEsp8266Toolchain{
-		ProjectName: projectName,
-		Vars:        boardVars,
-	}
+	return tc
 }

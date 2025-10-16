@@ -7,8 +7,6 @@ import (
 	"runtime"
 	"strings"
 
-	"github.com/jurgen-kluft/ccode/clay/toolchain"
-
 	corepkg "github.com/jurgen-kluft/ccode/core"
 )
 
@@ -538,7 +536,7 @@ func (m *EspressifBoardMenu) RegisterVars(vars *corepkg.Vars) {
 type EspressifBoard struct {
 	Name        string              // The name of the board
 	Description string              // The description of the board
-	SdkPath     string              // The path to the ESP32 or ESP8266 SDK
+	SdkPath     string              // The path to the SDK
 	Menu        *EspressifBoardMenu // Menu options for the board
 	Vars        *corepkg.Vars       // Variables for the board
 }
@@ -658,7 +656,7 @@ func encodeJsonEspressifToolchain(encoder *corepkg.JsonEncoder, key string, obje
 
 func NewEspressifToolchain(arch string) *EspressifToolchain {
 	if arch == "esp32" {
-		espSdkPath := toolchain.ArduinoEspSdkPath("esp32")
+		espSdkPath := ArduinoEspSdkPath("esp32")
 		toolchain := &EspressifToolchain{
 			Name:             "Espressif ESP32 Arduino",
 			Version:          "3.2.0",
@@ -670,7 +668,7 @@ func NewEspressifToolchain(arch string) *EspressifToolchain {
 		return toolchain
 	} else if arch == "esp8266" {
 
-		espSdkPath := toolchain.ArduinoEspSdkPath("esp8266")
+		espSdkPath := ArduinoEspSdkPath("esp8266")
 		toolchain := &EspressifToolchain{
 			Name:             "Espressif ESP8266 Arduino",
 			Version:          "3.2.0",
@@ -910,14 +908,20 @@ func (t *EspressifToolchain) ParseBoardsFile(boardsFile string) error {
 		line := scanner.Text()
 		line = strings.TrimSpace(line)
 
-		// Skip empty lines and comments
-		if line == "" || strings.HasPrefix(line, "#") {
+		// Skip empty and comment lines
+		if len(line) == 0 || strings.HasPrefix(line, "#") {
 			continue
 		}
 
+		// Remove any comment at the end of the line
+		if idx := strings.Index(line, "#"); idx != -1 {
+			line = strings.TrimSpace(line[:idx])
+		}
+
 		keyAndValue := strings.SplitN(line, "=", 2)
-		key := keyAndValue[0]
-		value := keyAndValue[1]
+		key := strings.TrimSpace(keyAndValue[0])
+		value := strings.TrimSpace(keyAndValue[1])
+
 		keyParts := strings.Split(key, ".")
 
 		// Check if the line is a board definition

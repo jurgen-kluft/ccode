@@ -2,11 +2,9 @@ package clay
 
 import (
 	"flag"
-	"fmt"
 	"os"
 	"time"
 
-	"github.com/jurgen-kluft/ccode/clay/toolchain"
 	corepkg "github.com/jurgen-kluft/ccode/core"
 	"github.com/jurgen-kluft/ccode/denv"
 )
@@ -63,34 +61,40 @@ func ParseArchAndBoardName() (string, string) {
 	return arch, boardName
 }
 
-func ClayAppMain() {
+func ClayAppMain(pkg *denv.Package) {
 	// Consume the first argument as the command
 	command := os.Args[1]
 	os.Args = os.Args[1:]
+
+	app := NewApp(pkg)
 
 	// Parse command line arguments
 	var err error
 	switch command {
 	case "build":
-		err = Build(ParseProjectNameAndConfig())
+		ParseProjectNameAndConfig(app)
+		err = app.Build()
 	case "build-info":
-		err = BuildInfo(ParseProjectNameAndConfig())
+		ParseProjectNameAndConfig(app)
+		err = app.BuildInfo()
 	case "clean":
-		err = Clean(ParseProjectNameAndConfig())
+		ParseProjectNameAndConfig(app)
+		err = app.Clean()
 	case "flash":
-		err = Flash(ParseProjectNameAndConfig())
+		ParseProjectNameAndConfig(app)
+		err = app.Flash()
 	case "monitor":
-		err = SerialMonitor(ParsePortAndBaud())
+		err = app.SerialMonitor(ParsePortAndBaud())
 	case "list-libraries":
-		err = ListLibraries(denv.BuildTargetFromString(fmt.Sprintf("%s(%s)", clayConfig.TargetOs, clayConfig.TargetArch)))
+		err = app.ListLibraries()
 	case "list-boards":
-		err = ListBoards(ParseArchBoardNameAndMax())
+		err = app.ListBoards(ParseArchBoardNameAndMax())
 	case "list-flash-sizes":
-		err = ListFlashSizes(ParseArchAndBoardName())
+		err = app.ListFlashSizes(ParseArchAndBoardName())
 	case "board-info":
-		err = PrintBoardInfo(ParseArchBoardNameAndMax())
+		err = app.PrintBoardInfo(ParseArchBoardNameAndMax())
 	case "generate-boards":
-		err = GenerateBoards(ParseArch())
+		err = app.GenerateBoards(ParseArch())
 	case "version":
 		version := corepkg.NewVersionInfo()
 		corepkg.LogInff("Version: %s", version.Version)
@@ -135,19 +139,38 @@ func UsageApp() {
 	corepkg.LogInfo("  clay list-flash-sizes --arch <arch> --board esp32")
 }
 
-func BuildInfo(projectName string, buildConfig denv.BuildConfig, buildTarget denv.BuildTarget) error {
-	espSdkPath := toolchain.ArduinoEspSdkPath(buildTarget.Arch().String())
+// --------------------------------------------------------------------------------------------------
+// --------------------------------------------------------------------------------------------------
+func ArduinoEspSdkPath(arch string) string {
+	EspSdkPath := "$HOME/sdk/arduino/esp32"
+	switch arch {
+	case "esp32":
+		EspSdkPath = "$HOME/sdk/arduino/esp32"
+		if env := os.Getenv("ESP32_SDK"); env != "" {
+			EspSdkPath = env
+		}
+	case "esp8266":
+		EspSdkPath = "$HOME/sdk/arduino/esp8266"
+		if env := os.Getenv("ESP8266_SDK"); env != "" {
+			EspSdkPath = env
+		}
+	}
+	EspSdkPath = os.ExpandEnv(EspSdkPath)
+	return EspSdkPath
+}
 
-	prjs, err := CreateProjects(buildTarget, buildConfig)
+func (a *App) BuildInfo() error {
+	espSdkPath := ArduinoEspSdkPath(a.BuildTarget.Arch().String())
+	prjs, err := a.CreateProjects(a.BuildTarget, a.BuildConfig)
 	if err != nil {
 		return err
 	}
 
 	for _, prj := range prjs {
-		if projectName == "" || projectName == prj.DevProject.Name {
+		if a.Config.ProjectName == "" || a.Config.ProjectName == prj.DevProject.Name {
 			for _, cfg := range prj.Config {
-				if cfg.BuildConfig.IsEqual(buildConfig) {
-					buildPath := prj.GetBuildPath(GetBuildPath(GetBuildDirname(buildConfig, buildTarget)))
+				if cfg.BuildConfig.IsEqual(a.BuildConfig) {
+					buildPath := prj.GetBuildPath(a.GetBuildPath(GetBuildDirname(a.BuildConfig, a.BuildTarget)))
 					appPath, _ := os.Getwd()
 					if err := GenerateBuildInfo(buildPath, appPath, espSdkPath, BuildInfoFilenameWithoutExt); err != nil {
 						return err
@@ -160,35 +183,34 @@ func BuildInfo(projectName string, buildConfig denv.BuildConfig, buildTarget den
 	return nil
 }
 
-func Flash(projectName string, buildConfig denv.BuildConfig, buildTarget denv.BuildTarget) error {
-	buildPath := GetBuildPath(GetBuildDirname(buildConfig, buildTarget))
-
-	prjs, err := CreateProjects(buildTarget, buildConfig)
+func (a *App) Flash() error {
+	buildPath := a.GetBuildPath(GetBuildDirname(a.BuildConfig, a.BuildTarget))
+	prjs, err := a.CreateProjects(a.BuildTarget, a.BuildConfig)
 	if err != nil {
 		return err
 	}
 
 	for _, prj := range prjs {
-		prj.SetToolchain(buildConfig, buildTarget, buildPath)
+		a.SetToolchain(prj, buildPath)
 	}
 
 	projectNames := []string{}
 	for _, prj := range prjs {
-		if prj.IsExecutable() && prj.CanBuildFor(buildConfig, buildTarget) {
+		if prj.IsExecutable() && prj.CanBuildFor(a.BuildConfig, a.BuildTarget) {
 			projectNames = append(projectNames, prj.DevProject.Name)
 		}
 	}
 
 	cm := corepkg.NewClosestMatch(projectNames, []int{2})
-	closest := cm.ClosestN(projectName, 1)
+	closest := cm.ClosestN(a.Config.ProjectName, 1)
 
 	for _, prj := range prjs {
-		if prj.IsExecutable() && prj.CanBuildFor(buildConfig, buildTarget) && prj.DevProject.Name == closest[0] {
+		if prj.IsExecutable() && prj.CanBuildFor(a.BuildConfig, a.BuildTarget) && prj.DevProject.Name == closest[0] {
 
-			corepkg.LogInff("Flashing project: %s, config: %s", prj.DevProject.Name, buildConfig.String())
+			corepkg.LogInff("Flashing project: %s, config: %s", prj.DevProject.Name, a.BuildConfig.String())
 			startTime := time.Now()
 			{
-				if err := prj.Flash(buildConfig, buildTarget, buildPath); err != nil {
+				if err := prj.Flash(a.BuildConfig, a.BuildTarget, buildPath); err != nil {
 					return corepkg.LogErrorf(err, "Build failed")
 				}
 			}
@@ -199,12 +221,12 @@ func Flash(projectName string, buildConfig denv.BuildConfig, buildTarget denv.Bu
 	return nil
 }
 
-func SerialMonitor(port string, baud int) error {
+func (a *App) SerialMonitor(port string, baud int) error {
 
 	return nil
 }
 
-func ListBoards(arch string, boardName string, matches int) error {
+func (a *App) ListBoards(arch string, boardName string, matches int) error {
 	if matches <= 0 {
 		matches = 10
 	}
@@ -218,7 +240,7 @@ func ListBoards(arch string, boardName string, matches int) error {
 	return PrintAllMatchingBoards(espressifToolchain, boardName, matches)
 }
 
-func GenerateBoards(arch string) error {
+func (a *App) GenerateBoards(arch string) error {
 	espressifToolchain := NewEspressifToolchain(arch)
 	if espressifToolchain == nil {
 		return corepkg.LogErrorf(nil, "Unsupported architecture: %s", arch)
@@ -229,10 +251,10 @@ func GenerateBoards(arch string) error {
 	if err := GenerateToolchainJson(espressifToolchain, arch+".json"); err != nil {
 		return err
 	}
-	return corepkg.LogErrorf(nil, "Unsupported architecture: %s", clayConfig.TargetArch)
+	return corepkg.LogErrorf(nil, "Unsupported architecture: %s", a.Config.TargetArch)
 }
 
-func PrintBoardInfo(arch string, boardName string, matches int) error {
+func (a *App) PrintBoardInfo(arch string, boardName string, matches int) error {
 	if matches <= 0 {
 		matches = 10
 	}
@@ -246,7 +268,7 @@ func PrintBoardInfo(arch string, boardName string, matches int) error {
 	return PrintAllBoardInfos(espressifToolchain, boardName, matches)
 }
 
-func ListFlashSizes(arch string, boardName string) error {
+func (a *App) ListFlashSizes(arch string, boardName string) error {
 	espressifToolchain := NewEspressifToolchain(arch)
 	if espressifToolchain == nil {
 		return corepkg.LogErrorf(nil, "Unsupported architecture: %s", arch)

@@ -1,7 +1,6 @@
 package clay
 
 import (
-	"fmt"
 	"os"
 
 	corepkg "github.com/jurgen-kluft/ccode/core"
@@ -18,22 +17,27 @@ import (
 //    - clean -p <project> -c <config>
 //    - list-libraries
 
-func ClayAppMainDesktop() {
+func ClayAppMainDesktop(pkg *denv.Package) {
 	// Consume the first argument as the command
 	command := os.Args[1]
 	os.Args = os.Args[1:]
+
+	app := NewApp(pkg)
 
 	// Parse command line arguments
 	var err error
 	switch command {
 	case "build":
-		err = BuildDesktop(ParseProjectNameAndConfig())
+		ParseProjectNameAndConfig(app)
+		err = app.BuildDesktop()
 	case "build-info":
-		err = BuildInfoDesktop(ParseProjectNameAndConfig())
+		ParseProjectNameAndConfig(app)
+		err = app.BuildInfoDesktop()
 	case "clean":
-		err = Clean(ParseProjectNameAndConfig())
+		ParseProjectNameAndConfig(app)
+		err = app.Clean()
 	case "list-libraries":
-		err = ListLibraries(denv.BuildTargetFromString(fmt.Sprintf("%s(%s)", clayConfig.TargetOs, clayConfig.TargetArch)))
+		err = app.ListLibraries()
 	case "version":
 		version := corepkg.NewVersionInfo()
 		corepkg.LogInfof("Version: %s", version.Version)
@@ -69,27 +73,27 @@ func UsageDesktop() {
 	corepkg.LogInfo("  clay list-libraries")
 }
 
-func BuildDesktop(projectName string, buildConfig denv.BuildConfig, buildTarget denv.BuildTarget) error {
+func (a *App) BuildDesktop() error {
 	// Note: We should be running this from the "target/{build target}" directory
 	// Create the build directory
-	buildPath := GetBuildPath(GetBuildDirname(buildConfig, buildTarget))
+	buildPath := a.GetBuildPath(GetBuildDirname(a.BuildConfig, a.BuildTarget))
 	os.MkdirAll(buildPath+"/", os.ModePerm)
 
-	prjs, err := CreateProjects(buildTarget, buildConfig)
+	prjs, err := a.CreateProjects(a.BuildTarget, a.BuildConfig)
 	if err != nil {
 		return err
 	}
 
 	for _, prj := range prjs {
-		prj.SetToolchain(buildConfig, buildTarget, buildPath)
+		a.SetToolchain(prj, buildPath)
 	}
 
 	var outOfDate int
 
 	// Build the libraries first
 	for _, prj := range prjs {
-		if !prj.IsExecutable() && prj.CanBuildFor(buildConfig, buildTarget) {
-			if ood, err := prj.Build(buildConfig, buildTarget, buildPath); err != nil {
+		if !prj.IsExecutable() && prj.CanBuildFor(a.BuildConfig, a.BuildTarget) {
+			if ood, err := prj.Build(a.BuildConfig, a.BuildTarget, buildPath); err != nil {
 				return err
 			} else {
 				outOfDate += ood
@@ -99,10 +103,10 @@ func BuildDesktop(projectName string, buildConfig denv.BuildConfig, buildTarget 
 
 	// Now build the executables
 	for _, prj := range prjs {
-		if projectName == "" || projectName == prj.DevProject.Name {
-			if prj.IsExecutable() && prj.CanBuildFor(buildConfig, buildTarget) {
-				//AddBuildInfoAsCppLibrary(prj, buildConfig)
-				if ood, err := prj.Build(buildConfig, buildTarget, buildPath); err != nil {
+		if a.Config.ProjectName == "" || a.Config.ProjectName == prj.DevProject.Name {
+			if prj.IsExecutable() && prj.CanBuildFor(a.BuildConfig, a.BuildTarget) {
+				//AddBuildInfoAsCppLibrary(prj, a.BuildConfig)
+				if ood, err := prj.Build(a.BuildConfig, a.BuildTarget, buildPath); err != nil {
 					return err
 				} else {
 					outOfDate += ood
@@ -118,16 +122,19 @@ func BuildDesktop(projectName string, buildConfig denv.BuildConfig, buildTarget 
 	return nil
 }
 
-func BuildInfoDesktop(projectName string, buildConfig denv.BuildConfig, buildTarget denv.BuildTarget) error {
+func (a *App) BuildInfoDesktop() error {
 
 	// TODO what should this do for just desktop applications?
 	// Windows SDK version ?
 	// Mac SDK version ?
+
 	sdkVersion := ""
+	buildConfig := a.BuildConfig
+	buildTarget := a.BuildTarget
+	projectName := a.Config.ProjectName
 
-	buildPath := GetBuildPath(GetBuildDirname(buildConfig, buildTarget))
-
-	prjs, err := CreateProjects(buildTarget, buildConfig)
+	buildPath := a.GetBuildPath(GetBuildDirname(buildConfig, buildTarget))
+	prjs, err := a.CreateProjects(buildTarget, buildConfig)
 	if err != nil {
 		return err
 	}

@@ -77,6 +77,9 @@ func (g *ClayGenerator) Generate() error {
 }
 
 func (g *ClayGenerator) generateMain(out *corepkg.LineWriter) {
+
+	packageName := g.Workspace.WorkspaceName
+
 	out.WriteLine("// --------------------------------------------------------------------")
 	out.WriteLine("// ---------------------- GENERATED -----------------------------------")
 	out.WriteLine("// --------------------------------------------------------------------")
@@ -84,10 +87,11 @@ func (g *ClayGenerator) generateMain(out *corepkg.LineWriter) {
 	out.WriteLine()
 	out.WriteLine("import (")
 	out.WriteILine("", "clay \"github.com/jurgen-kluft/ccode/clay\"")
+	out.WriteILine("", "cpkg \"github.com/jurgen-kluft/", packageName, "/package\"")
 	out.WriteLine(")")
 	out.WriteLine()
 	out.WriteLine("func main() {")
-	out.WriteILine("", "clay.ClayAppMain()")
+	out.WriteILine("", "clay.ClayAppMain(cpkg.GetPackage())")
 	out.WriteLine("}")
 }
 

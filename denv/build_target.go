@@ -378,15 +378,6 @@ func (pt BuildTarget) Esp8266() bool {
 	return pt.HasArch(BuildTargetArchEsp8266)
 }
 
-func (pt BuildTarget) TargetOs() BuildTargetOs {
-	if len(pt) == 1 {
-		for os := range pt {
-			return os
-		}
-	}
-	return BuildTargetOsEmpty
-}
-
 func (pt BuildTarget) ArchAsUcString() string {
 	if len(pt) == 1 {
 		for _, arch := range pt {
@@ -404,7 +395,7 @@ func (pt BuildTarget) String() string {
 			if full == "" {
 				full = os + "(" + arch.String() + ")"
 			} else {
-				full += ", " + os + "(" + arch.String() + ")"
+				full += "," + os + "(" + arch.String() + ")"
 			}
 		}
 	}

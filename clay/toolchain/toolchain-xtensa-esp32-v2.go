@@ -9,7 +9,6 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
-	"runtime"
 	"strings"
 
 	"github.com/jurgen-kluft/ccode/clay/toolchain/deptrackr"
@@ -18,17 +17,17 @@ import (
 	corepkg "github.com/jurgen-kluft/ccode/core"
 )
 
-type ArduinoEsp32Toolchain struct {
-	Vars        *corepkg.Vars
+type ArduinoEsp32Toolchainv2 struct {
 	ProjectName string // The name of the project, used for output files
+	Vars        *corepkg.Vars
 }
 
 // --------------------------------------------------------------------------------------------------
 // --------------------------------------------------------------------------------------------------
 // Compiler
 
-type ToolchainArduinoEsp32Compiler struct {
-	toolChain       *ArduinoEsp32Toolchain
+type ToolchainArduinoEsp32Compilerv2 struct {
+	toolChain       *ArduinoEsp32Toolchainv2
 	buildConfig     denv.BuildConfig // Configuration for the compiler, e.g., debug or release
 	buildTarget     denv.BuildTarget
 	cCompilerPath   string
@@ -37,8 +36,8 @@ type ToolchainArduinoEsp32Compiler struct {
 	cppCompilerArgs *corepkg.Arguments
 }
 
-func (t *ArduinoEsp32Toolchain) NewCompiler(buildConfig denv.BuildConfig, buildTarget denv.BuildTarget) Compiler {
-	return &ToolchainArduinoEsp32Compiler{
+func (t *ArduinoEsp32Toolchainv2) NewCompiler(buildConfig denv.BuildConfig, buildTarget denv.BuildTarget) Compiler {
+	return &ToolchainArduinoEsp32Compilerv2{
 		toolChain:       t,
 		buildConfig:     buildConfig,
 		buildTarget:     buildTarget,
@@ -49,15 +48,15 @@ func (t *ArduinoEsp32Toolchain) NewCompiler(buildConfig denv.BuildConfig, buildT
 	}
 }
 
-func (cl *ToolchainArduinoEsp32Compiler) ObjFilepath(srcRelFilepath string) string {
+func (cl *ToolchainArduinoEsp32Compilerv2) ObjFilepath(srcRelFilepath string) string {
 	return srcRelFilepath + ".o"
 }
 
-func (cl *ToolchainArduinoEsp32Compiler) DepFilepath(objRelFilepath string) string {
+func (cl *ToolchainArduinoEsp32Compilerv2) DepFilepath(objRelFilepath string) string {
 	return objRelFilepath + ".d"
 }
 
-func (cl *ToolchainArduinoEsp32Compiler) SetupArgs(defines []string, includes []string) {
+func (cl *ToolchainArduinoEsp32Compilerv2) SetupArgs(defines []string, includes []string) {
 	// C Compiler Arguments
 	{
 		cl.cCompilerArgs.Clear()
@@ -196,7 +195,7 @@ func (cl *ToolchainArduinoEsp32Compiler) SetupArgs(defines []string, includes []
 	}
 }
 
-func (cl *ToolchainArduinoEsp32Compiler) Compile(sourceAbsFilepaths []string, objRelFilepaths []string) error {
+func (cl *ToolchainArduinoEsp32Compilerv2) Compile(sourceAbsFilepaths []string, objRelFilepaths []string) error {
 
 	for i, sourceAbsFilepath := range sourceAbsFilepaths {
 		objRelFilepath := objRelFilepaths[i]
@@ -240,16 +239,16 @@ func (cl *ToolchainArduinoEsp32Compiler) Compile(sourceAbsFilepaths []string, ob
 // --------------------------------------------------------------------------------------------------
 // Archiver
 
-type ToolchainArduinoEsp32Archiver struct {
-	toolChain    *ArduinoEsp32Toolchain
+type ToolchainArduinoEsp32Archiverv2 struct {
+	toolChain    *ArduinoEsp32Toolchainv2
 	buildConfig  denv.BuildConfig
 	buildTarget  denv.BuildTarget
 	archiverPath string
 	archiverArgs *corepkg.Arguments
 }
 
-func (t *ArduinoEsp32Toolchain) NewArchiver(a ArchiverType, buildConfig denv.BuildConfig, buildTarget denv.BuildTarget) Archiver {
-	return &ToolchainArduinoEsp32Archiver{
+func (t *ArduinoEsp32Toolchainv2) NewArchiver(a ArchiverType, buildConfig denv.BuildConfig, buildTarget denv.BuildTarget) Archiver {
+	return &ToolchainArduinoEsp32Archiverv2{
 		toolChain:    t,
 		buildConfig:  buildConfig,
 		buildTarget:  buildTarget,
@@ -258,16 +257,16 @@ func (t *ArduinoEsp32Toolchain) NewArchiver(a ArchiverType, buildConfig denv.Bui
 	}
 }
 
-func (t *ToolchainArduinoEsp32Archiver) LibFilepath(filepath string) string {
+func (t *ToolchainArduinoEsp32Archiverv2) LibFilepath(filepath string) string {
 	// The file extension for the archive on ESP32 is typically ".a"
 	return filepath + ".a"
 }
 
-func (a *ToolchainArduinoEsp32Archiver) SetupArgs() {
+func (a *ToolchainArduinoEsp32Archiverv2) SetupArgs() {
 
 }
 
-func (a *ToolchainArduinoEsp32Archiver) Archive(inputObjectFilepaths []string, outputArchiveFilepath string) error {
+func (a *ToolchainArduinoEsp32Archiverv2) Archive(inputObjectFilepaths []string, outputArchiveFilepath string) error {
 
 	a.archiverArgs.Clear() // Reset the arguments
 	a.archiverArgs.Add("cr")
@@ -297,16 +296,16 @@ func (a *ToolchainArduinoEsp32Archiver) Archive(inputObjectFilepaths []string, o
 // --------------------------------------------------------------------------------------------------
 // Linker
 
-type ToolchainArduinoEsp32Linker struct {
-	toolChain   *ArduinoEsp32Toolchain
+type ToolchainArduinoEsp32Linkerv2 struct {
+	toolChain   *ArduinoEsp32Toolchainv2
 	buildConfig denv.BuildConfig
 	buildTarget denv.BuildTarget
 	linkerPath  string
 	linkerArgs  *corepkg.Arguments
 }
 
-func (t *ArduinoEsp32Toolchain) NewLinker(buildConfig denv.BuildConfig, buildTarget denv.BuildTarget) Linker {
-	return &ToolchainArduinoEsp32Linker{
+func (t *ArduinoEsp32Toolchainv2) NewLinker(buildConfig denv.BuildConfig, buildTarget denv.BuildTarget) Linker {
+	return &ToolchainArduinoEsp32Linkerv2{
 		toolChain:   t,
 		buildConfig: buildConfig,
 		buildTarget: buildTarget,
@@ -316,11 +315,11 @@ func (t *ArduinoEsp32Toolchain) NewLinker(buildConfig denv.BuildConfig, buildTar
 }
 
 // FileExt returns the file extension for the linker output, which is ".elf" for ESP32.
-func (l *ToolchainArduinoEsp32Linker) LinkedFilepath(filepath string) string {
+func (l *ToolchainArduinoEsp32Linkerv2) LinkedFilepath(filepath string) string {
 	return filepath + ".elf"
 }
 
-func (l *ToolchainArduinoEsp32Linker) SetupArgs(libraryPaths []string, libraryFiles []string) {
+func (l *ToolchainArduinoEsp32Linkerv2) SetupArgs(libraryPaths []string, libraryFiles []string) {
 
 	l.linkerArgs.Clear()
 
@@ -359,7 +358,7 @@ func (l *ToolchainArduinoEsp32Linker) SetupArgs(libraryPaths []string, libraryFi
 	}
 }
 
-func (l *ToolchainArduinoEsp32Linker) Link(inputArchiveAbsFilepaths []string, outputAppRelFilepathNoExt string) error {
+func (l *ToolchainArduinoEsp32Linkerv2) Link(inputArchiveAbsFilepaths []string, outputAppRelFilepathNoExt string) error {
 	linker := l.linkerPath
 
 	linkerArgs := *l.linkerArgs
@@ -403,8 +402,8 @@ func (l *ToolchainArduinoEsp32Linker) Link(inputArchiveAbsFilepaths []string, ou
 // --------------------------------------------------------------------------------------------------
 // Burner
 
-type ToolchainArduinoEsp32Burner struct {
-	toolChain                            *ArduinoEsp32Toolchain
+type ToolchainArduinoEsp32Burnerv2 struct {
+	toolChain                            *ArduinoEsp32Toolchainv2
 	buildConfig                          denv.BuildConfig
 	buildTarget                          denv.BuildTarget
 	dependencyTracker                    deptrackr.FileTrackr // Dependency tracker for the burner
@@ -428,8 +427,8 @@ type ToolchainArduinoEsp32Burner struct {
 	flashToolPath                        string
 }
 
-func (t *ArduinoEsp32Toolchain) NewBurner(buildConfig denv.BuildConfig, buildTarget denv.BuildTarget) Burner {
-	return &ToolchainArduinoEsp32Burner{
+func (t *ArduinoEsp32Toolchainv2) NewBurner(buildConfig denv.BuildConfig, buildTarget denv.BuildTarget) Burner {
+	return &ToolchainArduinoEsp32Burnerv2{
 		toolChain:                            t,
 		buildConfig:                          buildConfig,
 		buildTarget:                          buildTarget,
@@ -455,7 +454,7 @@ func (t *ArduinoEsp32Toolchain) NewBurner(buildConfig denv.BuildConfig, buildTar
 	}
 }
 
-func (b *ToolchainArduinoEsp32Burner) hashArguments(args []string) []byte {
+func (b *ToolchainArduinoEsp32Burnerv2) hashArguments(args []string) []byte {
 	b.hasher.Reset()
 	for _, arg := range args {
 		b.hasher.Write([]byte(arg))
@@ -463,7 +462,7 @@ func (b *ToolchainArduinoEsp32Burner) hashArguments(args []string) []byte {
 	return b.hasher.Sum(nil)
 }
 
-func (b *ToolchainArduinoEsp32Burner) SetupBuild(buildPath string) {
+func (b *ToolchainArduinoEsp32Burnerv2) SetupBuild(buildPath string) {
 
 	projectElfFilepath := filepath.Join(buildPath, b.toolChain.ProjectName+".elf")
 	projectBinFilepath := filepath.Join(buildPath, b.toolChain.ProjectName+".bin")
@@ -523,7 +522,7 @@ func (b *ToolchainArduinoEsp32Burner) SetupBuild(buildPath string) {
 	b.genBootloaderToolArgsHash = b.hashArguments(b.genBootloaderToolArgs.Args)
 }
 
-func (b *ToolchainArduinoEsp32Burner) Build() error {
+func (b *ToolchainArduinoEsp32Burnerv2) Build() error {
 
 	// - Generate image partitions bin file ('PROJECT.NAME.partitions.bin'):
 	// - Generate image bin file ('PROJECT.NAME.bin'):
@@ -601,7 +600,7 @@ func (b *ToolchainArduinoEsp32Burner) Build() error {
 	return nil
 }
 
-func (b *ToolchainArduinoEsp32Burner) SetupBurn(buildPath string) error {
+func (b *ToolchainArduinoEsp32Burnerv2) SetupBurn(buildPath string) error {
 
 	b.flashToolArgs.Clear()
 	b.flashToolArgs.Add("--chip", b.toolChain.Vars.GetFirstOrEmpty("build.mcu"))
@@ -634,7 +633,7 @@ func (b *ToolchainArduinoEsp32Burner) SetupBurn(buildPath string) error {
 	return nil
 }
 
-func (b *ToolchainArduinoEsp32Burner) Burn() error {
+func (b *ToolchainArduinoEsp32Burnerv2) Burn() error {
 	if !corepkg.FileExists(b.genBootloaderToolOutputFilepath) {
 		return corepkg.LogErrorf(os.ErrNotExist, "Cannot burn, bootloader bin file '%s' doesn't exist", b.genBootloaderToolOutputFilepath)
 	}
@@ -691,178 +690,34 @@ func (b *ToolchainArduinoEsp32Burner) Burn() error {
 // --------------------------------------------------------------------------------------------------
 // --------------------------------------------------------------------------------------------------
 // Dependency Tracker
-func (t *ArduinoEsp32Toolchain) NewDependencyTracker(dirpath string) deptrackr.FileTrackr {
+func (t *ArduinoEsp32Toolchainv2) NewDependencyTracker(dirpath string) deptrackr.FileTrackr {
 	return deptrackr.LoadDepFileTrackr(filepath.Join(dirpath, "deptrackr"))
 }
 
 // --------------------------------------------------------------------------------------------------
 // --------------------------------------------------------------------------------------------------
 
-func NewArduinoEsp32Toolchain(espBoardVars *corepkg.Vars, projectName string) *ArduinoEsp32Toolchain {
-	type item struct {
-		key   string
-		value []string
+func NewArduinoEsp32Toolchainv2(boardVars *corepkg.Vars, projectName string, buildPath string) *ArduinoEsp32Toolchainv2 {
+	tc := &ArduinoEsp32Toolchainv2{ProjectName: projectName, Vars: boardVars}
+
+	boardVars.Set("project.name", projectName)
+	boardVars.Set("build.path", buildPath)
+	boardVars.Set("build.arch", "esp8266")
+	boardVars.Set("build.includes", "{runtime.platform.path}/variants/{board.name}")
+	boardVars.Set("build.defines", "")
+
+	// TODO we are not doing a final resolve here, instead, each tool should resolve its own
+	// command line and arguments based on its needs.
+	//boardVars.FinalResolve()
+
+	// Create '{buildPath}/core/build.opt'
+	// TODO not sure what this file is for and who should create it with what content
+	optFilePath := filepath.Join(buildPath, "core", "build.opt")
+	os.MkdirAll(filepath.Dir(optFilePath), os.ModePerm)
+	f, err := os.Create(optFilePath)
+	if err == nil {
+		defer f.Close()
 	}
 
-	hostOS := "macosx"
-	if runtime.GOOS == "linux" {
-		hostOS = "linux"
-	} else if runtime.GOOS == "windows" {
-		hostOS = "windows"
-	}
-
-	vars := []item{
-		{key: "runtime.os", value: []string{hostOS}},
-		{key: "build.fqbn", value: []string{"generic"}},
-		{key: "upload.speed", value: []string{"921600"}},
-
-		{key: "project.name", value: []string{projectName}},
-		{key: "esp.sdk.path", value: []string{`{runtime}`}},
-		{key: "esp.arduino.sdk.path", value: []string{`{esp.sdk.path}/tools/esp32-arduino-libs/{build.mcu}`}},
-
-		{key: "c.compiler.generate.mapfile", value: []string{"-MMD"}},
-		{key: "c.compiler.response.flags", value: []string{`{esp.arduino.sdk.path}/flags/c_flags`}},
-		{key: "c.compiler.response.defines", value: []string{`{esp.arduino.sdk.path}/flags/defines`}},
-		{key: "c.compiler.response.includes", value: []string{`{esp.arduino.sdk.path}/flags/includes`}},
-		{key: "c.compiler.switches", value: []string{`-w`, `-Os`}},
-		{key: "c.compiler.warning.switches", value: []string{`-Werror=return-type`}},
-		{key: "c.compiler.system.prefix.include", value: []string{`{esp.arduino.sdk.path}/include`}},
-		{key: "c.compiler.system.includes", value: []string{
-			`{esp.sdk.path}/cores/esp32`,
-			`{esp.sdk.path}/variants/{build.mcu}`,
-		}},
-
-		{key: "cpp.compiler.generate.mapfile", value: []string{"-MMD"}},
-		{key: "cpp.compiler.response.flags", value: []string{`{esp.arduino.sdk.path}/flags/cpp_flags`}},
-		{key: "cpp.compiler.response.defines", value: []string{`{esp.arduino.sdk.path}/flags/defines`}},
-		{key: "cpp.compiler.response.includes", value: []string{`{esp.arduino.sdk.path}/flags/includes`}},
-		{key: "cpp.compiler.switches", value: []string{`-w`, `-Os`}},
-		{key: "cpp.compiler.warning.switches", value: []string{`-Werror=return-type`}},
-		{key: "cpp.compiler.system.prefix.include", value: []string{`{esp.arduino.sdk.path}/include`}},
-		{key: "cpp.compiler.system.includes", value: []string{
-			`{esp.sdk.path}/cores/esp32`,
-			`{esp.sdk.path}/variants/{build.mcu}`,
-		}},
-
-		{key: "linker.generate.mapfile", value: []string{`true`}},
-		{key: "linker.response.ldflags", value: []string{`{esp.arduino.sdk.path}/flags/ld_flags`}},
-		{key: "linker.response.ldscripts", value: []string{`{esp.arduino.sdk.path}/flags/ld_scripts`}},
-		{key: "linker.response.ldlibs", value: []string{`{esp.arduino.sdk.path}/flags/ld_libs`}},
-		{key: "linker.system.library.paths", value: []string{
-			`{esp.arduino.sdk.path}/lib`,
-			`{esp.arduino.sdk.path}/ld`,
-		}},
-
-		{key: "burner.generate-image-bin.script", value: []string{`{esp.sdk.path}/tools/gen_esp32part.py`}},
-		{key: "burner.generate-partitions-bin.script", value: []string{`{esp.sdk.path}/tools/gen_esp32part.py`}},
-
-		{key: "elf-sha256-offset", value: []string{`0xb0`}},
-		{key: "burner.bootapp0.bin.filepath", value: []string{`{esp.sdk.path}/tools/partitions/boot_app0.bin`}},
-		{key: "burner.flash.partitions.bin.offset", value: []string{`0x8000`}},
-		{key: "burner.flash.bootapp0.bin.offset", value: []string{`0xe000`}},
-		{key: "burner.flash.application.bin.offset", value: []string{`0x10000`}},
-
-		{key: "c.compiler", value: []string{`{esp.sdk.path}/tools/{build.tarch}-esp-elf/bin/{build.tarch}-{build.target}-elf-gcc`}},
-		{key: "cpp.compiler", value: []string{`{esp.sdk.path}/tools/{build.tarch}-esp-elf/bin/{build.tarch}-{build.target}-elf-g++`}},
-		{key: "archiver", value: []string{`{esp.sdk.path}/tools/{build.tarch}-esp-elf/bin/{build.tarch}-{build.target}-elf-gcc-ar`}},
-		{key: "linker", value: []string{`{esp.sdk.path}/tools/{build.tarch}-esp-elf/bin/{build.tarch}-{build.target}-elf-g++`}},
-		{key: "burner.generate-bootloader", value: []string{`{esp.sdk.path}/tools/esptool/esptool`}},
-		{key: "burner.generate-image-bin", value: []string{`{esp.sdk.path}/tools/esptool/esptool`}},
-		{key: "burner.generate-partitions-bin", value: []string{`python3`}},
-		{key: "burner.generate-elf-size", value: []string{`{esp.sdk.path}/tools/{build.tarch}-esp-elf/bin/{build.tarch}-{build.target}-elf-size"`}},
-		{key: "burner.flash", value: []string{`{esp.sdk.path}/tools/esptool/esptool`}},
-	}
-
-	// Add the board specific variables
-	for i, key := range espBoardVars.Keys {
-		values := espBoardVars.Values[i]
-		vars = append(vars, item{key: key, value: values})
-	}
-
-	t := &ArduinoEsp32Toolchain{
-		ProjectName: projectName,
-		Vars:        corepkg.NewVars(corepkg.VarsFormatCurlyBraces),
-	}
-
-	for _, kv := range vars {
-		t.Vars.Append(kv.key, kv.value...)
-	}
-
-	espMcu := t.Vars.GetFirstOrEmpty("build.mcu")
-
-	// #----------------------------------------------------------------------------------
-	//     xtensa-esp32 partitions file
-
-	// TODO
-
-	// var partitionFile string
-	// for _, pf := range partitionFiles {
-	// 	if strings.Compare(strings.ToLower(filepath.Base(pf)), espMcu) == 0 && strings.HasSuffix(strings.ToLower(pf), ".csv") {
-	// 		partitionFile = pf
-	// 		break
-	// 	}
-	// }
-	// if len(partitionFile) == 0 {
-	// 	partitionFile = `{esp.sdk.path}/tools/partitions/default.csv`
-	// }
-	// t.Vars.Set("burner.flash.partitions.csv.filepath", partitionFile)
-
-	// #----------------------------------------------------------------------------------
-	//     xtensa-esp32 build properties
-
-	defines := []string{
-		`F_CPU={build.f_cpu}`,
-		`ARDUINO={arduino.version}`,
-		`ARDUINO_{build.board}`,
-		`ARDUINO_ARCH_{build.core:u}`,
-		`ARDUINO_BOARD="{build.board}"`,
-		`ARDUINO_VARIANT="{build.variant}"`,
-		`ARDUINO_PARTITION_{build.partitions}`,
-	}
-
-	// Process build.extra_flags and build.extra_flags.{build.mcu}
-	// This means we have to split the flags by space and remove any '-D' prefix
-	// Some of the defines we should ignore, like the ones already defined above here in 'defines'
-	extra_flags_splitted := []string{}
-	if extra_flags, has_extra_flags := t.Vars.Get("build.extra_flags"); has_extra_flags {
-
-		if extra_flags_mcu, has_extra_flags_mcu := t.Vars.Get("build.extra_flags." + espMcu); has_extra_flags_mcu {
-			extra_flags = append(extra_flags, extra_flags_mcu...)
-		}
-
-		for _, flag := range extra_flags {
-			flag = strings.TrimSpace(flag)
-			flags := strings.Split(flag, " ")
-			for _, f := range flags {
-				f = strings.TrimSpace(f)
-				if strings.HasPrefix(f, "-D") {
-					f = strings.TrimPrefix(f, "-D")
-					if len(f) > 0 {
-						// Ignore any of the following defines
-						if strings.HasPrefix(f, "CORE_DEBUG_LEVEL=") {
-							continue
-						}
-						defines = append(defines, f)
-					}
-				} else if len(f) > 0 {
-					extra_flags_splitted = append(extra_flags_splitted, f)
-				}
-			}
-		}
-	}
-	t.Vars.Set("build.extra_flags", extra_flags_splitted...)
-
-	t.Vars.Set("c.compiler.defines", defines...)
-	t.Vars.Set("cpp.compiler.defines", defines...)
-
-	t.Vars.Set("burner.sdk.bootloader.elf.path", `{esp.arduino.sdk.path}/bin/bootloader_{build.boot}_{build.boot_freq}.elf`)
-	t.Vars.Append("c.compiler.system.includes", `{esp.arduino.sdk.path}/{build.memory_type}/include`)
-	t.Vars.Append("c.compiler.system.includes", "{esp.arduino.sdk.path}/include")
-	t.Vars.Append("cpp.compiler.system.includes", `{esp.arduino.sdk.path}/{build.memory_type}/include`)
-	t.Vars.Append("cpp.compiler.system.includes", "{esp.arduino.sdk.path}/include")
-	t.Vars.Append("linker.system.library.paths", "{esp.arduino.sdk.path}/{build.memory_type}")
-
-	t.Vars.Resolve()
-
-	return t
+	return tc
 }

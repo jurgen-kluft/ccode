@@ -475,19 +475,19 @@ func (g *MsDevGenerator) writeSolutionProject(proj *Project, sb *corepkg.LineWri
 	sb.WriteLine("EndProject")
 }
 
-func (g *MsDevGenerator) genWorkspace(ws *ExtraWorkspace) {
-	visualStudioSolutionFilepath := filepath.Join(g.Workspace.GenerateAbsPath, ws.Workspace.WorkspaceName+".sln")
+func (g *MsDevGenerator) genWorkspace(ws *Workspace) {
+	visualStudioSolutionFilepath := filepath.Join(g.Workspace.GenerateAbsPath, ws.WorkspaceName+".sln")
 
 	sb := corepkg.NewLineWriter(corepkg.IndentModeSpaces)
 
-	sb.WriteManyLines(ws.MsDev.SlnHeader)
+	sb.WriteManyLines(ws.Config.MsDev.SlnHeader)
 
 	{
 		sb.WriteLines("", "# ---- projects ----", "")
 
-		g.writeSolutionProject(ws.Workspace.StartupProject, sb)
+		g.writeSolutionProject(ws.StartupProject, sb)
 		for _, proj := range ws.ProjectList.Values {
-			if proj == ws.Workspace.StartupProject {
+			if proj == ws.StartupProject {
 				continue
 			}
 			g.writeSolutionProject(proj, sb)

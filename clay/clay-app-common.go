@@ -9,6 +9,7 @@ import (
 	"runtime"
 	"strings"
 
+	"github.com/jurgen-kluft/ccode/clay/toolchain"
 	corepkg "github.com/jurgen-kluft/ccode/core"
 	"github.com/jurgen-kluft/ccode/denv"
 )
@@ -17,7 +18,7 @@ const (
 	BuildInfoFilenameWithoutExt = "buildinfo"
 )
 
-type ClayConfig struct {
+type AppConfig struct {
 	ProjectName string `json:"project,omitempty"`
 	TargetOs    string `json:"os,omitempty"`
 	TargetArch  string `json:"arch,omitempty"`
@@ -25,7 +26,7 @@ type ClayConfig struct {
 	TargetBoard string `json:"board,omitempty"`
 }
 
-func (c ClayConfig) Equal(other ClayConfig) bool {
+func (c *AppConfig) Equal(other *AppConfig) bool {
 	return c.ProjectName == other.ProjectName &&
 		c.TargetOs == other.TargetOs &&
 		c.TargetArch == other.TargetArch &&
@@ -33,16 +34,25 @@ func (c ClayConfig) Equal(other ClayConfig) bool {
 		c.TargetBoard == other.TargetBoard
 }
 
-var clayConfig ClayConfig
+type App struct {
+	Pkg         *denv.Package
+	Config      *AppConfig
+	BuildTarget denv.BuildTarget
+	BuildConfig denv.BuildConfig
+}
+
+func NewApp(pkg *denv.Package) *App {
+	return &App{Pkg: pkg, Config: &AppConfig{}}
+}
 
 func GetBuildDirname(buildConfig denv.BuildConfig, buildTarget denv.BuildTarget) string {
 	return buildTarget.Os().String() + "-" + buildTarget.Arch().String() + "-" + buildConfig.String()
 }
 
-func GetBuildPath(subdir string) string {
+func (a *App) GetBuildPath(subdir string) string {
 	var buildPath string
-	if len(clayConfig.TargetBoard) > 0 {
-		buildPath = filepath.Join("build", subdir, clayConfig.TargetBoard)
+	if len(a.Config.TargetBoard) > 0 {
+		buildPath = filepath.Join("build", subdir, a.Config.TargetBoard)
 	} else {
 		buildPath = filepath.Join("build", subdir)
 	}
@@ -83,21 +93,21 @@ func BuildTargetFromString(s string) denv.BuildTarget {
 	return denv.BuildTargetFromString(s)
 }
 
-func ParseProjectNameAndConfig() (string, denv.BuildConfig, denv.BuildTarget) {
-	flag.StringVar(&clayConfig.ProjectName, "p", "", "Name of the project")
-	flag.StringVar(&clayConfig.TargetOs, "os", "", "Target OS (windows, darwin, linux, arduino)")
-	flag.StringVar(&clayConfig.TargetBuild, "build", "", "Format 'build' or 'build-variant', e.g. debug, debug-dev, release-dev, debug-dev-test)")
-	flag.StringVar(&clayConfig.TargetArch, "arch", "", "Cpu Architecture (amd64, x64, arm64, esp32, esp8266)")
-	flag.StringVar(&clayConfig.TargetBoard, "board", "", "Board name (s3, c3, xiao-c3, ...)")
+func ParseProjectNameAndConfig(app *App) {
+	flag.StringVar(&app.Config.ProjectName, "p", "", "Name of the project")
+	flag.StringVar(&app.Config.TargetOs, "os", "", "Target OS (windows, darwin, linux, arduino)")
+	flag.StringVar(&app.Config.TargetBuild, "build", "", "Format 'build' or 'build-variant', e.g. debug, debug-dev, release-dev, debug-dev-test)")
+	flag.StringVar(&app.Config.TargetArch, "arch", "", "Cpu Architecture (amd64, x64, arm64, esp32, esp8266)")
+	flag.StringVar(&app.Config.TargetBoard, "board", "", "Board name (s3, c3, xiao-c3, ...)")
 	flag.Parse()
 
-	clayConfig.TargetArch = strings.ToLower(clayConfig.TargetArch)
-	clayConfig.TargetOs = strings.ToLower(clayConfig.TargetOs)
-	clayConfig.TargetBuild = strings.ToLower(clayConfig.TargetBuild)
-	clayConfig.TargetBoard = strings.ToLower(clayConfig.TargetBoard)
+	app.Config.TargetArch = strings.ToLower(app.Config.TargetArch)
+	app.Config.TargetOs = strings.ToLower(app.Config.TargetOs)
+	app.Config.TargetBuild = strings.ToLower(app.Config.TargetBuild)
+	app.Config.TargetBoard = strings.ToLower(app.Config.TargetBoard)
 
 	configFilePath := "clay.json"
-	loadedConfig := ClayConfig{}
+	loadedConfig := &AppConfig{}
 	{
 		if corepkg.FileExists(configFilePath) {
 			data, err := os.ReadFile(configFilePath)
@@ -111,86 +121,86 @@ func ParseProjectNameAndConfig() (string, denv.BuildConfig, denv.BuildTarget) {
 		}
 	}
 
-	if len(clayConfig.ProjectName) == 0 {
-		clayConfig.ProjectName = loadedConfig.ProjectName
+	if len(app.Config.ProjectName) == 0 {
+		app.Config.ProjectName = loadedConfig.ProjectName
 	}
 
-	if len(clayConfig.TargetBoard) > 0 {
-		clayConfig.TargetOs = "arduino"
-		if len(clayConfig.TargetArch) != 0 && clayConfig.TargetArch != "esp32" && clayConfig.TargetArch != "esp8266" {
-			clayConfig.TargetArch = "esp32"
+	if len(app.Config.TargetBoard) > 0 {
+		app.Config.TargetOs = "arduino"
+		if len(app.Config.TargetArch) != 0 && app.Config.TargetArch != "esp32" && app.Config.TargetArch != "esp8266" {
+			app.Config.TargetArch = "esp32"
 		}
 	}
 
-	if len(clayConfig.TargetOs) == 0 {
-		clayConfig.TargetOs = loadedConfig.TargetOs
+	if len(app.Config.TargetOs) == 0 {
+		app.Config.TargetOs = loadedConfig.TargetOs
 	} else {
 		// If the target OS was specified on the command line, clear the board and arch
-		switch clayConfig.TargetOs {
+		switch app.Config.TargetOs {
 		case "native":
-			clayConfig.TargetBoard = ""
-			clayConfig.TargetArch = GetNativeArch()
-			clayConfig.TargetOs = GetNativeOs()
+			app.Config.TargetBoard = ""
+			app.Config.TargetArch = GetNativeArch()
+			app.Config.TargetOs = GetNativeOs()
 		case "windows":
-			clayConfig.TargetBoard = ""
-			clayConfig.TargetArch = "x64"
+			app.Config.TargetBoard = ""
+			app.Config.TargetArch = "x64"
 		case "darwin":
-			clayConfig.TargetBoard = ""
-			clayConfig.TargetArch = GetNativeArch()
+			app.Config.TargetBoard = ""
+			app.Config.TargetArch = GetNativeArch()
 		case "linux":
-			clayConfig.TargetBoard = ""
-			clayConfig.TargetArch = "amd64"
+			app.Config.TargetBoard = ""
+			app.Config.TargetArch = "amd64"
 		case "arduino":
-			if len(clayConfig.TargetArch) == 0 {
-				clayConfig.TargetArch = "esp32"
+			if len(app.Config.TargetArch) == 0 {
+				app.Config.TargetArch = "esp32"
 			}
 		}
 	}
-	if len(clayConfig.TargetOs) == 0 {
+	if len(app.Config.TargetOs) == 0 {
 		switch runtime.GOOS {
 		case "windows":
-			clayConfig.TargetOs = "windows"
+			app.Config.TargetOs = "windows"
 		case "darwin":
-			clayConfig.TargetOs = "darwin"
+			app.Config.TargetOs = "darwin"
 		default:
-			clayConfig.TargetOs = "linux"
+			app.Config.TargetOs = "linux"
 		}
 	}
 
-	if clayConfig.TargetOs == "arduino" {
-		if len(clayConfig.TargetBoard) == 0 {
-			clayConfig.TargetBoard = loadedConfig.TargetBoard
+	if app.Config.TargetOs == "arduino" {
+		if len(app.Config.TargetBoard) == 0 {
+			app.Config.TargetBoard = loadedConfig.TargetBoard
 		}
 	}
 
-	if len(clayConfig.TargetBuild) == 0 {
-		clayConfig.TargetBuild = loadedConfig.TargetBuild
+	if len(app.Config.TargetBuild) == 0 {
+		app.Config.TargetBuild = loadedConfig.TargetBuild
 	}
-	if len(clayConfig.TargetBuild) == 0 {
-		clayConfig.TargetBuild = "dev-release"
+	if len(app.Config.TargetBuild) == 0 {
+		app.Config.TargetBuild = "dev-release"
 	}
 
-	if len(clayConfig.TargetArch) == 0 {
-		clayConfig.TargetArch = loadedConfig.TargetArch
+	if len(app.Config.TargetArch) == 0 {
+		app.Config.TargetArch = loadedConfig.TargetArch
 	}
-	if len(clayConfig.TargetArch) == 0 {
-		clayConfig.TargetArch = runtime.GOARCH
-		switch clayConfig.TargetOs {
+	if len(app.Config.TargetArch) == 0 {
+		app.Config.TargetArch = runtime.GOARCH
+		switch app.Config.TargetOs {
 		case "arduino":
-			clayConfig.TargetArch = "esp32"
+			app.Config.TargetArch = "esp32"
 		case "darwin":
-			clayConfig.TargetArch = "arm64"
+			app.Config.TargetArch = "arm64"
 		case "windows":
-			clayConfig.TargetArch = "x64"
+			app.Config.TargetArch = "x64"
 		case "linux":
-			clayConfig.TargetArch = "amd64"
+			app.Config.TargetArch = "amd64"
 		}
 	}
 
 	// If any of the config values were updated from the command line flags, write back the config file
 	// Compare the loaded and current config, when they are different we need to update the file
-	if clayConfig.Equal(loadedConfig) == false {
-		jsonContent, err := json.MarshalIndent(clayConfig, "", "  ")
+	if app.Config.Equal(loadedConfig) == false {
+		jsonContent, err := json.MarshalIndent(app.Config, "", "  ")
 		if err != nil {
 			corepkg.LogFatalf("Failed to marshal config file", configFilePath, err)
 		}
@@ -199,69 +209,81 @@ func ParseProjectNameAndConfig() (string, denv.BuildConfig, denv.BuildTarget) {
 		}
 	}
 
-	corepkg.LogInfof("Project: %s", clayConfig.ProjectName)
-	corepkg.LogInfof("Os: %s", clayConfig.TargetOs)
-	corepkg.LogInfof("Arch: %s", clayConfig.TargetArch)
-	corepkg.LogInfof("Build: %s", clayConfig.TargetBuild)
-	if len(clayConfig.TargetBoard) > 0 {
-		corepkg.LogInfof("Board: %s", clayConfig.TargetBoard)
+	corepkg.LogInfof("Project: %s", app.Config.ProjectName)
+	corepkg.LogInfof("Os: %s", app.Config.TargetOs)
+	corepkg.LogInfof("Arch: %s", app.Config.TargetArch)
+	corepkg.LogInfof("Build: %s", app.Config.TargetBuild)
+	if len(app.Config.TargetBoard) > 0 {
+		corepkg.LogInfof("Board: %s", app.Config.TargetBoard)
 	}
 
-	buildConfig := denv.BuildConfigFromString(clayConfig.TargetBuild)
-	buildTargetStr := fmt.Sprintf("%s(%s)", clayConfig.TargetOs, clayConfig.TargetArch)
-	buildTarget := denv.BuildTargetFromString(buildTargetStr)
-	return clayConfig.ProjectName, buildConfig, buildTarget
+	app.BuildConfig = denv.BuildConfigFromString(app.Config.TargetBuild)
+	buildTargetStr := fmt.Sprintf("%s(%s)", app.Config.TargetOs, app.Config.TargetArch)
+	app.BuildTarget = denv.BuildTargetFromString(buildTargetStr)
 }
 
-func Build(projectName string, buildConfig denv.BuildConfig, buildTarget denv.BuildTarget) (err error) {
-	// Note: We should be running this from the "target/{build target}" directory
+func (a *App) Build() (err error) {
 	// Create the build directory
-	buildPath := GetBuildPath(GetBuildDirname(buildConfig, buildTarget))
+	buildPath := a.GetBuildPath(GetBuildDirname(a.BuildConfig, a.BuildTarget))
 	os.MkdirAll(buildPath+"/", os.ModePerm)
 
-	prjs, err := CreateProjects(buildTarget, buildConfig)
+	prjs, err := a.CreateProjects(a.BuildTarget, a.BuildConfig)
 	if err != nil {
 		return err
 	}
 
 	for _, prj := range prjs {
-		prj.SetToolchain(buildConfig, buildTarget, buildPath)
+		a.SetToolchain(prj, buildPath)
 	}
 
-	var noMatchConfigs int
+	var numberOfProjects int
+	var numberOfNoMatchConfigs int
 	var outOfDate int
+
+	// First build libraries
 	for _, prj := range prjs {
-		if prj.CanBuildFor(buildConfig, buildTarget) {
-			// if prj.IsExecutable {
-			// 	AddBuildInfoAsCppLibrary(prj, buildConfig)
-			// }
-			if outOfDate, err = prj.Build(buildConfig, buildTarget, buildPath); err != nil {
+		if prj.DevProject.BuildType.IsLibrary() && prj.CanBuildFor(a.BuildConfig, a.BuildTarget) {
+			numberOfProjects++
+			if outOfDate, err = prj.Build(a.BuildConfig, a.BuildTarget, buildPath); err != nil {
 				return err
 			}
 		} else {
-			noMatchConfigs++
+			numberOfNoMatchConfigs++
 		}
 	}
-	if outOfDate == 0 && noMatchConfigs < len(prjs) {
+
+	// Then build applications
+	for _, prj := range prjs {
+		if prj.DevProject.BuildType.IsExecutable() && prj.CanBuildFor(a.BuildConfig, a.BuildTarget) {
+			numberOfProjects++
+			if outOfDate, err = prj.Build(a.BuildConfig, a.BuildTarget, buildPath); err != nil {
+				return err
+			}
+		} else {
+			numberOfNoMatchConfigs++
+		}
+	}
+
+	if outOfDate == 0 && numberOfProjects > 0 {
 		corepkg.LogInfo("Nothing to build, everything is up to date")
-	} else if noMatchConfigs >= len(prjs) {
+	} else if numberOfProjects == 0 {
 		corepkg.LogError(fmt.Errorf("!"), "No matching project configurations found")
 	}
+
 	return err
 }
 
-func Clean(projectName string, buildConfig denv.BuildConfig, buildTarget denv.BuildTarget) error {
-	buildPath := GetBuildPath(GetBuildDirname(buildConfig, buildTarget))
-
-	prjs, err := CreateProjects(buildTarget, buildConfig)
+func (a *App) Clean() error {
+	buildPath := a.GetBuildPath(GetBuildDirname(a.BuildConfig, a.BuildTarget))
+	prjs, err := a.CreateProjects(a.BuildTarget, a.BuildConfig)
 	if err != nil {
 		return err
 	}
 
 	for _, prj := range prjs {
 		for _, cfg := range prj.Config {
-			if cfg.BuildConfig.IsEqual(buildConfig) {
-				fmt.Println(prj.DevProject.Name, buildConfig.String())
+			if cfg.BuildConfig.IsEqual(a.BuildConfig) {
+				fmt.Println(prj.DevProject.Name, a.BuildConfig.String())
 
 				projectBuildPath := prj.GetBuildPath(buildPath)
 				corepkg.LogInfo("Clean " + projectBuildPath)
@@ -280,9 +302,8 @@ func Clean(projectName string, buildConfig denv.BuildConfig, buildTarget denv.Bu
 	return nil
 }
 
-func ListLibraries(buildTarget denv.BuildTarget) error {
-	buildConfig := denv.NewDebugDevConfig()
-	prjs, err := CreateProjects(buildTarget, buildConfig)
+func (a *App) ListLibraries() error {
+	prjs, err := a.CreateProjects(a.BuildTarget, a.BuildConfig)
 	if err != nil {
 		return err
 	}
@@ -293,9 +314,9 @@ func ListLibraries(buildTarget denv.BuildTarget) error {
 		if idx, ok := nameToIndex[prj.DevProject.Name]; !ok {
 			idx = len(configs)
 			nameToIndex[prj.DevProject.Name] = idx
-			configs = append(configs, buildConfig.String())
+			configs = append(configs, a.BuildConfig.String())
 		} else {
-			configs[idx] += ", " + buildConfig.String()
+			configs[idx] += ", " + a.BuildConfig.String()
 		}
 	}
 
@@ -321,18 +342,13 @@ func ListLibraries(buildTarget denv.BuildTarget) error {
 
 // CreateProjects creates projects using the package.json file, it will create
 // projects that match the build target and build configuration.
-func CreateProjects(buildTarget denv.BuildTarget, buildConfig denv.BuildConfig) ([]*Project, error) {
+func (a *App) CreateProjects(buildTarget denv.BuildTarget, buildConfig denv.BuildConfig) ([]*Project, error) {
 	projects := make([]*Project, 0, 4)
-
-	pkg, err := denv.LoadPackageFromJson("../package.json")
-	if err != nil {
-		return nil, err
-	}
 
 	// First create the projects without dependencies
 	projectNameToIndex := make(map[string]int)
 
-	for _, devPrj := range pkg.GetMainLib() {
+	for _, devPrj := range a.Pkg.GetMainLib() {
 		if !devPrj.HasMatchingConfigForTarget(buildConfig, buildTarget) {
 			continue
 		}
@@ -341,7 +357,7 @@ func CreateProjects(buildTarget denv.BuildTarget, buildConfig denv.BuildConfig) 
 		projects = append(projects, project)
 	}
 
-	for _, devPrj := range pkg.GetMainApp() {
+	for _, devPrj := range a.Pkg.GetMainApp() {
 		if !devPrj.HasMatchingConfigForTarget(buildConfig, buildTarget) {
 			continue
 		}
@@ -350,7 +366,7 @@ func CreateProjects(buildTarget denv.BuildTarget, buildConfig denv.BuildConfig) 
 		projects = append(projects, project)
 	}
 
-	for _, devPrj := range pkg.GetTestLib() {
+	for _, devPrj := range a.Pkg.GetTestLib() {
 		if !devPrj.HasMatchingConfigForTarget(buildConfig, buildTarget) {
 			continue
 		}
@@ -359,7 +375,7 @@ func CreateProjects(buildTarget denv.BuildTarget, buildConfig denv.BuildConfig) 
 		projects = append(projects, project)
 	}
 
-	for _, devPrj := range pkg.GetUnittest() {
+	for _, devPrj := range a.Pkg.GetUnittest() {
 		if !devPrj.HasMatchingConfigForTarget(buildConfig, buildTarget) {
 			continue
 		}
@@ -369,11 +385,13 @@ func CreateProjects(buildTarget denv.BuildTarget, buildConfig denv.BuildConfig) 
 	}
 
 	// Now fix all project dependencies
+	prjDependencyList := denv.NewDevProjectList()
 	for i := 0; i < len(projects); i++ {
 		prj := projects[i]
-
+		prjDependencyList.Reset()
+		prj.DevProject.CollectProjectDependencies(prjDependencyList)
 		// Add dependencies as libraries
-		for _, depPrj := range prj.DevProject.Dependencies.Values {
+		for _, depPrj := range prjDependencyList.Values {
 			if idx, ok := projectNameToIndex[depPrj.Name]; ok {
 				prj.Dependencies = append(prj.Dependencies, projects[idx])
 			} else {
@@ -385,7 +403,7 @@ func CreateProjects(buildTarget denv.BuildTarget, buildConfig denv.BuildConfig) 
 				depProject := NewProjectFromDevProject(depPrj, depPrj.Configs)
 				projectNameToIndex[depPrj.Name] = len(projects)
 				projects = append(projects, depProject)
-				prj.AddLibrary(depProject)
+				prj.Dependencies = append(prj.Dependencies, depProject)
 			}
 		}
 	}
@@ -396,5 +414,29 @@ func CreateProjects(buildTarget denv.BuildTarget, buildConfig denv.BuildConfig) 
 		prj.GlobSourceFiles(exclusionFilter.IsExcluded)
 	}
 
+	// Collect all variables for each project
+
 	return projects, nil
+}
+
+func (a *App) SetToolchain(p *Project, buildPath string) (err error) {
+	if a.BuildTarget.Arduino() && a.BuildTarget.Esp32() {
+		vars := corepkg.NewVars(corepkg.VarsFormatCurlyBraces)
+		a.Pkg.GetVars(a.BuildTarget, a.BuildConfig, a.Config.TargetBoard, vars)
+		p.Toolchain = toolchain.NewArduinoEsp32Toolchain(vars, p.DevProject.Name)
+	} else if a.BuildTarget.Arduino() && a.BuildTarget.Esp8266() {
+		vars := corepkg.NewVars(corepkg.VarsFormatCurlyBraces)
+		a.Pkg.GetVars(a.BuildTarget, a.BuildConfig, a.Config.TargetBoard, vars)
+		p.Toolchain = toolchain.NewArduinoEsp8266Toolchain(vars, p.DevProject.Name, p.GetBuildPath(buildPath))
+	} else if a.BuildTarget.Windows() {
+		p.Toolchain, err = toolchain.NewWinMsdev(a.BuildTarget.Arch().String(), "Desktop")
+	} else if a.BuildTarget.Mac() {
+		vars := corepkg.NewVars(corepkg.VarsFormatCurlyBraces)
+		a.Pkg.GetVars(a.BuildTarget, a.BuildConfig, a.Config.TargetBoard, vars)
+		p.Toolchain = toolchain.NewDarwin2Clang(runtime.GOARCH, vars)
+		//p.Toolchain, err = toolchain.NewDarwinClang(runtime.GOARCH, p.Frameworks)
+	} else {
+		err = corepkg.LogErrorf(os.ErrNotExist, "error, %s as a build target on %s is not supported", a.BuildTarget.Os().String(), runtime.GOOS)
+	}
+	return err
 }
