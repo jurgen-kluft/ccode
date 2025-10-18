@@ -177,7 +177,7 @@ func ParseProjectNameAndConfig(app *App) {
 		app.Config.TargetBuild = loadedConfig.TargetBuild
 	}
 	if len(app.Config.TargetBuild) == 0 {
-		app.Config.TargetBuild = "dev-release"
+		app.Config.TargetBuild = "debug-dev-test"
 	}
 
 	if len(app.Config.TargetArch) == 0 {
