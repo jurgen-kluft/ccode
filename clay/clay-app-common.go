@@ -423,7 +423,7 @@ func (a *App) SetToolchain(p *Project, buildPath string) (err error) {
 	if a.BuildTarget.Arduino() && a.BuildTarget.Esp32() {
 		vars := corepkg.NewVars(corepkg.VarsFormatCurlyBraces)
 		a.Pkg.GetVars(a.BuildTarget, a.BuildConfig, a.Config.TargetBoard, vars)
-		p.Toolchain = toolchain.NewArduinoEsp32Toolchain(vars, p.DevProject.Name)
+		p.Toolchain = toolchain.NewArduinoEsp32Toolchainv2(vars, p.DevProject.Name, p.GetBuildPath(buildPath))
 	} else if a.BuildTarget.Arduino() && a.BuildTarget.Esp8266() {
 		vars := corepkg.NewVars(corepkg.VarsFormatCurlyBraces)
 		a.Pkg.GetVars(a.BuildTarget, a.BuildConfig, a.Config.TargetBoard, vars)
@@ -433,8 +433,7 @@ func (a *App) SetToolchain(p *Project, buildPath string) (err error) {
 	} else if a.BuildTarget.Mac() {
 		vars := corepkg.NewVars(corepkg.VarsFormatCurlyBraces)
 		a.Pkg.GetVars(a.BuildTarget, a.BuildConfig, a.Config.TargetBoard, vars)
-		p.Toolchain = toolchain.NewDarwin2Clang(runtime.GOARCH, vars)
-		//p.Toolchain, err = toolchain.NewDarwinClang(runtime.GOARCH, p.Frameworks)
+		p.Toolchain = toolchain.NewDarwinClangv2(vars, p.DevProject.Name, p.GetBuildPath(buildPath))
 	} else {
 		err = corepkg.LogErrorf(os.ErrNotExist, "error, %s as a build target on %s is not supported", a.BuildTarget.Os().String(), runtime.GOOS)
 	}

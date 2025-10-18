@@ -9,6 +9,7 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"slices"
 	"strings"
 
 	"github.com/jurgen-kluft/ccode/clay/toolchain/deptrackr"
@@ -31,9 +32,10 @@ type ToolchainArduinoEsp32Compilerv2 struct {
 	buildConfig     denv.BuildConfig // Configuration for the compiler, e.g., debug or release
 	buildTarget     denv.BuildTarget
 	cCompilerPath   string
-	cppCompilerPath string
 	cCompilerArgs   *corepkg.Arguments
+	cppCompilerPath string
 	cppCompilerArgs *corepkg.Arguments
+	vars            *corepkg.Vars // Local variables for the compiler
 }
 
 func (t *ArduinoEsp32Toolchainv2) NewCompiler(buildConfig denv.BuildConfig, buildTarget denv.BuildTarget) Compiler {
@@ -41,10 +43,11 @@ func (t *ArduinoEsp32Toolchainv2) NewCompiler(buildConfig denv.BuildConfig, buil
 		toolChain:       t,
 		buildConfig:     buildConfig,
 		buildTarget:     buildTarget,
-		cCompilerPath:   t.Vars.GetFirstOrEmpty("c.compiler"),
-		cppCompilerPath: t.Vars.GetFirstOrEmpty("cpp.compiler"),
+		cCompilerPath:   "",
+		cppCompilerPath: "",
 		cCompilerArgs:   corepkg.NewArguments(64),
 		cppCompilerArgs: corepkg.NewArguments(64),
+		vars:            corepkg.NewVars(16),
 	}
 }
 
@@ -57,170 +60,59 @@ func (cl *ToolchainArduinoEsp32Compilerv2) DepFilepath(objRelFilepath string) st
 }
 
 func (cl *ToolchainArduinoEsp32Compilerv2) SetupArgs(defines []string, includes []string) {
-	// C Compiler Arguments
-	{
-		cl.cCompilerArgs.Clear()
-
-		cl.cCompilerArgs.Add("-c")
-		cl.cCompilerArgs.Add("-MMD")
-
-		if responseFileFlags, ok := cl.toolChain.Vars.GetFirst("c.compiler.response.flags"); ok {
-			cl.cCompilerArgs.Add("@" + responseFileFlags)
-		}
-
-		if switches, ok := cl.toolChain.Vars.Get("c.compiler.switches"); ok {
-			cl.cCompilerArgs.Add(switches...)
-		}
-
-		if warningSwitches, ok := cl.toolChain.Vars.Get("c.compiler.warning.switches"); ok {
-			cl.cCompilerArgs.Add(warningSwitches...)
-		}
-
-		// Optimization
-		if cl.buildConfig.IsDebug() {
-			cl.cCompilerArgs.Add("-Os")
-		} else {
-			cl.cCompilerArgs.Add("-Og", "-g3")
-		}
-
-		// Compiler system defines (debug / release ?)
-		if compilerDefines, ok := cl.toolChain.Vars.Get("c.compiler.defines"); ok {
-			cl.cCompilerArgs.AddWithPrefix("-D", compilerDefines...)
-		}
-
-		// Compiler user defines
-		cl.cCompilerArgs.AddWithPrefix("-D", defines...)
-		// Depending on Debug/Release/Final, we add CORE_DEBUG_LEVEL
-		if cl.buildConfig.IsDebug() {
-			cl.cCompilerArgs.AddWithPrefix("-D", "CORE_DEBUG_LEVEL=1")
-		} else {
-			cl.cCompilerArgs.AddWithPrefix("-D", "CORE_DEBUG_LEVEL=0")
-		}
-
-		if responseFileDefines, ok := cl.toolChain.Vars.GetFirst("c.compiler.response.defines"); ok {
-			cl.cCompilerArgs.Add("@" + responseFileDefines)
-		}
-
-		// Compiler prefix include paths
-		if compilerPrefixInclude, ok := cl.toolChain.Vars.GetFirst("c.compiler.system.prefix.include"); ok {
-			cl.cCompilerArgs.Add("-iprefix")
-			// Make sure the path ends with a /
-			if !strings.HasSuffix(compilerPrefixInclude, "/") {
-				cl.cCompilerArgs.Add(compilerPrefixInclude + "/")
-			} else {
-				cl.cCompilerArgs.Add(compilerPrefixInclude)
-			}
-
-			if responseFileIncludes, ok := cl.toolChain.Vars.GetFirst("c.compiler.response.includes"); ok {
-				cl.cCompilerArgs.Add("@" + responseFileIncludes)
-			}
-		}
-
-		// Compiler system include paths
-		if systemIncludes, ok := cl.toolChain.Vars.Get("c.compiler.system.includes"); ok {
-			cl.cCompilerArgs.AddWithPrefix("-I", systemIncludes...)
-		}
-
-		// User include paths
-		cl.cCompilerArgs.AddWithPrefix("-I", includes...)
+	for i, inc := range includes {
+		includes[i] = "-I" + inc
+	}
+	for i, def := range defines {
+		defines[i] = "-D" + def
 	}
 
-	// C++ Compiler Arguments
-	{
-		cl.cppCompilerArgs.Clear()
-
-		cl.cppCompilerArgs.Add("-c")
-		cl.cppCompilerArgs.Add("-MMD")
-
-		if cppResponseFileFlags, ok := cl.toolChain.Vars.GetFirst("cpp.compiler.response.flags"); ok {
-			cl.cppCompilerArgs.Add("@" + cppResponseFileFlags)
-		}
-
-		if cppSwitches, ok := cl.toolChain.Vars.Get("cpp.compiler.switches"); ok {
-			cl.cppCompilerArgs.Add(cppSwitches...)
-		}
-
-		if cppWarningSwitches, ok := cl.toolChain.Vars.Get("cpp.compiler.warning.switches"); ok {
-			cl.cppCompilerArgs.Add(cppWarningSwitches...)
-		}
-
-		// Optimization
-		if cl.buildConfig.IsDebug() {
-			cl.cCompilerArgs.Add("-Os")
-		} else {
-			cl.cCompilerArgs.Add("-Og", "-g3")
-		}
-
-		// Compiler system defines (debug / release ?)
-		if compilerDefines, ok := cl.toolChain.Vars.Get("cpp.compiler.defines"); ok {
-			cl.cppCompilerArgs.AddWithPrefix("-D", compilerDefines...)
-		}
-
-		// Compiler user defines
-		cl.cppCompilerArgs.AddWithPrefix("-D", defines...)
-
-		// Depending on Debug/Release/Final, we add CORE_DEBUG_LEVEL
-		if cl.buildConfig.IsDebug() {
-			cl.cCompilerArgs.AddWithPrefix("-D", "CORE_DEBUG_LEVEL=1")
-		} else {
-			cl.cCompilerArgs.AddWithPrefix("-D", "CORE_DEBUG_LEVEL=0")
-		}
-
-		if responseFileDefines, ok := cl.toolChain.Vars.GetFirst("cpp.compiler.response.defines"); ok {
-			cl.cppCompilerArgs.Add("@" + responseFileDefines)
-		}
-
-		// Compiler prefix include paths
-		if compilerPrefixInclude, ok := cl.toolChain.Vars.GetFirst("cpp.compiler.system.prefix.include"); ok {
-			cl.cppCompilerArgs.Add("-iprefix")
-			// Make sure the path ends with a /
-			if !strings.HasSuffix(compilerPrefixInclude, "/") {
-				cl.cppCompilerArgs.Add(compilerPrefixInclude + "/")
-			} else {
-				cl.cppCompilerArgs.Add(compilerPrefixInclude)
-			}
-
-			if responseFileIncludes, ok := cl.toolChain.Vars.GetFirst("cpp.compiler.response.includes"); ok {
-				cl.cppCompilerArgs.Add("@" + responseFileIncludes)
-			}
-		}
-
-		// Compiler system include paths
-		if systemIncludes, ok := cl.toolChain.Vars.Get("cpp.compiler.system.includes"); ok {
-			cl.cppCompilerArgs.AddWithPrefix("-I", systemIncludes...)
-		}
-
-		// User include paths
-		cl.cppCompilerArgs.AddWithPrefix("-I", includes...)
-	}
+	cl.vars.Clear()
+	cl.vars.Append("includes", "-I{runtime.platform.path}/variants/{board.name}")
+	cl.vars.Append("includes", includes...)
+	cl.vars.Append("build.defines", defines...)
 }
 
 func (cl *ToolchainArduinoEsp32Compilerv2) Compile(sourceAbsFilepaths []string, objRelFilepaths []string) error {
-
 	for i, sourceAbsFilepath := range sourceAbsFilepaths {
+		corepkg.LogInfof("Compiling %s", filepath.Base(sourceAbsFilepath))
+
 		objRelFilepath := objRelFilepaths[i]
+		cl.vars.Set("build.source.path", corepkg.PathDirname(sourceAbsFilepath))
+		cl.vars.Set("source_file", sourceAbsFilepath)
+		cl.vars.Set("object_file", objRelFilepath)
 
 		var compilerPath string
-		var args []string
+		var compilerArgs []string
 		if strings.HasSuffix(sourceAbsFilepath, ".c") {
+			c_compiler, _ := cl.toolChain.Vars.Get(`recipe.c.o.pattern`)
+			cl.cCompilerPath = c_compiler[0]
+			cl.cCompilerArgs.Args = c_compiler[1:]
+
+			cl.cCompilerPath = cl.toolChain.Vars.FinalResolveString(cl.cCompilerPath, " ", cl.vars)
+			cl.cCompilerArgs.Args = cl.toolChain.Vars.FinalResolveArray(cl.cCompilerArgs.Args, cl.vars)
+
 			compilerPath = cl.cCompilerPath
-			args = cl.cCompilerArgs.Args
+			compilerArgs = cl.cCompilerArgs.Args
 		} else {
+			cpp_compiler, _ := cl.toolChain.Vars.Get(`recipe.cpp.o.pattern`)
+			cl.cppCompilerPath = cpp_compiler[0]
+			cl.cppCompilerArgs.Args = cpp_compiler[1:]
+
+			cl.cppCompilerPath = cl.toolChain.Vars.FinalResolveString(cl.cppCompilerPath, " ", cl.vars)
+			cl.cppCompilerArgs.Args = cl.toolChain.Vars.FinalResolveArray(cl.cppCompilerArgs.Args, cl.vars)
+
 			compilerPath = cl.cppCompilerPath
-			args = cl.cppCompilerArgs.Args
+			compilerArgs = cl.cppCompilerArgs.Args
 		}
+		compilerPath = corepkg.StrTrimDelimiters(compilerPath, '"')
 
-		// The source file and the output object file
-		// sourceAbsFilepath
-		// -o
-		// sourceRelFilepath + ".o"
-		args = append(args, sourceAbsFilepath)
-		args = append(args, "-o")
-		args = append(args, objRelFilepath)
+		// Remove empty entries from compilerArgs
+		compilerArgs = slices.DeleteFunc(compilerArgs, func(s string) bool {
+			return strings.TrimSpace(s) == ""
+		})
 
-		corepkg.LogInfof("Compiling (%s) %s", cl.buildConfig.String(), filepath.Base(sourceAbsFilepath))
-
-		cmd := exec.Command(compilerPath, args...)
+		cmd := exec.Command(compilerPath, compilerArgs...)
 		out, err := cmd.CombinedOutput()
 
 		if err != nil {
@@ -245,6 +137,7 @@ type ToolchainArduinoEsp32Archiverv2 struct {
 	buildTarget  denv.BuildTarget
 	archiverPath string
 	archiverArgs *corepkg.Arguments
+	vars         *corepkg.Vars
 }
 
 func (t *ArduinoEsp32Toolchainv2) NewArchiver(a ArchiverType, buildConfig denv.BuildConfig, buildTarget denv.BuildTarget) Archiver {
@@ -252,43 +145,47 @@ func (t *ArduinoEsp32Toolchainv2) NewArchiver(a ArchiverType, buildConfig denv.B
 		toolChain:    t,
 		buildConfig:  buildConfig,
 		buildTarget:  buildTarget,
-		archiverPath: t.Vars.GetFirstOrEmpty("archiver"),
+		archiverPath: "",
 		archiverArgs: corepkg.NewArguments(16),
+		vars:         corepkg.NewVars(corepkg.VarsFormatCurlyBraces),
 	}
 }
 
 func (t *ToolchainArduinoEsp32Archiverv2) LibFilepath(filepath string) string {
-	// The file extension for the archive on ESP32 is typically ".a"
+	// The file extension for an archive/library on ESP32 is typically ".a"
 	return filepath + ".a"
 }
 
 func (a *ToolchainArduinoEsp32Archiverv2) SetupArgs() {
-
 }
 
 func (a *ToolchainArduinoEsp32Archiverv2) Archive(inputObjectFilepaths []string, outputArchiveFilepath string) error {
-
-	a.archiverArgs.Clear() // Reset the arguments
-	a.archiverArgs.Add("cr")
-
-	// {output-archive-filepath}
-	a.archiverArgs.Add(outputArchiveFilepath)
-
-	// {input-object-filepaths}
-	a.archiverArgs.Add(inputObjectFilepaths...)
-
 	corepkg.LogInfof("Archiving %s", outputArchiveFilepath)
 
-	cmd := exec.Command(a.archiverPath, a.archiverArgs.Args...)
-	out, err := cmd.CombinedOutput()
+	a.vars.Set("archive_file_path", outputArchiveFilepath)
+	a.vars.Set("object_file", inputObjectFilepaths...)
 
+	archiverArgs, _ := a.toolChain.Vars.Get(`recipe.ar.pattern`)
+	archiverPath := archiverArgs[0]
+	archiverArgs = archiverArgs[1:]
+
+	// Resolve archiverPath and archiverArgs
+	archiverPath = a.toolChain.Vars.FinalResolveString(archiverPath, " ", a.vars)
+	archiverArgs = a.toolChain.Vars.FinalResolveArray(archiverArgs, a.vars)
+
+	// Remove any empty entries from archiverArgs
+	archiverArgs = slices.DeleteFunc(archiverArgs, func(s string) bool {
+		return strings.TrimSpace(s) == ""
+	})
+
+	cmd := exec.Command(archiverPath, archiverArgs...)
+	out, err := cmd.CombinedOutput()
 	if err != nil {
 		return corepkg.LogErrorf(err, "Archiving failed")
 	}
 	if len(out) > 0 {
 		corepkg.LogInfof("Archive output:\n%s", string(out))
 	}
-
 	return nil
 }
 
@@ -302,6 +199,7 @@ type ToolchainArduinoEsp32Linkerv2 struct {
 	buildTarget denv.BuildTarget
 	linkerPath  string
 	linkerArgs  *corepkg.Arguments
+	vars        *corepkg.Vars // Local variables for the linker
 }
 
 func (t *ArduinoEsp32Toolchainv2) NewLinker(buildConfig denv.BuildConfig, buildTarget denv.BuildTarget) Linker {
@@ -309,8 +207,9 @@ func (t *ArduinoEsp32Toolchainv2) NewLinker(buildConfig denv.BuildConfig, buildT
 		toolChain:   t,
 		buildConfig: buildConfig,
 		buildTarget: buildTarget,
-		linkerPath:  t.Vars.GetFirstOrEmpty("linker"),
+		linkerPath:  "",
 		linkerArgs:  corepkg.NewArguments(512),
+		vars:        corepkg.NewVars(16),
 	}
 }
 
@@ -320,72 +219,56 @@ func (l *ToolchainArduinoEsp32Linkerv2) LinkedFilepath(filepath string) string {
 }
 
 func (l *ToolchainArduinoEsp32Linkerv2) SetupArgs(libraryPaths []string, libraryFiles []string) {
-
-	l.linkerArgs.Clear()
-
-	if genMapfile, ok := l.toolChain.Vars.GetFirst("linker.generate.mapfile"); ok && genMapfile == "true" {
-		l.linkerArgs.Add("genmap")
+	for i, libPath := range libraryPaths {
+		libraryPaths[i] = "-L" + libPath
+	}
+	for i, libFile := range libraryFiles {
+		libFile = strings.TrimPrefix(libFile, "lib")
+		libFile = strings.TrimSuffix(libFile, ".a")
+		libraryFiles[i] = "-l" + libFile
 	}
 
-	if linkerSystemLibraryPaths, ok := l.toolChain.Vars.Get("linker.system.library.paths"); ok {
-		l.linkerArgs.AddWithPrefix("-L", linkerSystemLibraryPaths...)
-	}
-
-	// User library paths
-	l.linkerArgs.AddWithPrefix("-L", libraryPaths...)
-
-	l.linkerArgs.Add("-Wl,--wrap=esp_panic_handler")
-
-	linkerResponseFile, _ := l.toolChain.Vars.GetFirst("linker.response.ldflags")
-	if len(linkerResponseFile) > 0 {
-		l.linkerArgs.Add("@" + linkerResponseFile)
-	}
-
-	linkerResponseFile, _ = l.toolChain.Vars.GetFirst("linker.response.ldscripts")
-	if len(linkerResponseFile) > 0 {
-		l.linkerArgs.Add("@" + linkerResponseFile)
-	}
-
-	l.linkerArgs.Add("-Wl,--start-group")
-	{
-		// User library files
-		l.linkerArgs.Add(libraryFiles...)
-
-		linkerResponseFile, _ = l.toolChain.Vars.GetFirst("linker.response.ldlibs")
-		if len(linkerResponseFile) > 0 {
-			l.linkerArgs.Add("@" + linkerResponseFile)
-		}
-	}
+	l.vars.Clear()
+	l.vars.Set("build.extra_libs", libraryPaths...)
+	l.vars.Set("build.extra_libs", libraryFiles...)
 }
 
 func (l *ToolchainArduinoEsp32Linkerv2) Link(inputArchiveAbsFilepaths []string, outputAppRelFilepathNoExt string) error {
-	linker := l.linkerPath
+	corepkg.LogInfof("Linking '%s'...", outputAppRelFilepathNoExt)
 
-	linkerArgs := *l.linkerArgs
+	linkerArgs, _ := l.toolChain.Vars.Get(`recipe.c.combine.pattern`)
 
-	linkerArgs.Add(inputArchiveAbsFilepaths...)
-	linkerArgs.Add("-Wl,--end-group")
-	linkerArgs.Add("-Wl,-EL") //
+	linkerPath := linkerArgs[0]
+	linkerArgs = linkerArgs[1:]
 
-	linkerArgs.Add("-o")
-	linkerArgs.Add(outputAppRelFilepathNoExt)
+	l.vars.Set("object_files", inputArchiveAbsFilepaths...)
+
+	// Split 'outputAppRelFilepathNoExt' into directory and filename parts
+	// Remove the extension of the output file if present
+	outputDir := filepath.Dir(outputAppRelFilepathNoExt)
+	outputFile := corepkg.PathFilename(outputAppRelFilepathNoExt, false)
+
+	l.toolChain.Vars.Set("build.path", outputDir)
+	l.toolChain.Vars.Set("build.project_name", outputFile)
+
+	// Resolve linkerPath and linkerArgs
+	linkerPath = l.toolChain.Vars.FinalResolveString(linkerPath, " ", l.vars)
+	linkerArgs = l.toolChain.Vars.FinalResolveArray(linkerArgs, l.vars)
 
 	// Do we need to fill in the arg to generate map file?
-	generateMapfile := linkerArgs.Args[0] == "genmap"
+	generateMapfile := true
 	if generateMapfile {
 		outputMapFilepath := outputAppRelFilepathNoExt + ".map"
-		linkerArgs.Args[0] = "-Wl,--Map=" + outputMapFilepath
+		linkerArgs = append(linkerArgs, "-Wl,--Map="+outputMapFilepath)
 	}
 
-	corepkg.LogInfof("Linking '%s'...", outputAppRelFilepathNoExt)
-	cmd := exec.Command(linker, linkerArgs.Args...)
+	// Remove any empty entries from linkerArgs
+	linkerArgs = slices.DeleteFunc(linkerArgs, func(s string) bool {
+		return strings.TrimSpace(s) == ""
+	})
+
+	cmd := exec.Command(linkerPath, linkerArgs...)
 	out, err := cmd.CombinedOutput()
-
-	// Reset the map generation command in the arguments so that it
-	// will be updated correctly on the next Link() call.
-	if generateMapfile {
-		l.linkerArgs.Args[0] = "genmap"
-	}
 
 	if err != nil {
 		corepkg.LogInfof("Link failed, output:\n%s", string(out))
@@ -408,23 +291,24 @@ type ToolchainArduinoEsp32Burnerv2 struct {
 	buildTarget                          denv.BuildTarget
 	dependencyTracker                    deptrackr.FileTrackr // Dependency tracker for the burner
 	hasher                               hash.Hash            // Hasher for generating digests of arguments
-	genImageBinToolArgs                  *corepkg.Arguments
+	genImageBinToolArgs                  []string
 	genImageBinToolArgsHash              []byte   // Hash of the arguments for the image bin tool
 	genImageBinToolOutputFilepath        string   // The output file for the image bin
 	genImageBinToolInputFilepaths        []string // The input files for the image bin
 	genImageBinToolPath                  string
-	genImagePartitionsToolArgs           *corepkg.Arguments
+	genImagePartitionsToolArgs           []string
 	genImagePartitionsToolArgsHash       []byte   // Hash of the arguments for the image partitions tool
 	genImagePartitionsToolOutputFilepath string   // The output file for the image partitions
 	genImagePartitionsToolInputFilepaths []string // The input files for the image partitions
 	genImagePartitionsToolPath           string
-	genBootloaderToolArgs                *corepkg.Arguments
+	genBootloaderToolArgs                []string
 	genBootloaderToolArgsHash            []byte   // Hash of the arguments for the bootloader tool
 	genBootloaderToolOutputFilepath      string   // The output file for the bootloader
 	genBootloaderToolInputFilepaths      []string // The input files for the bootloader
 	genBootloaderToolPath                string
-	flashToolArgs                        *corepkg.Arguments
+	flashToolArgs                        []string
 	flashToolPath                        string
+	vars                                 *corepkg.Vars // Local variables for the burner
 }
 
 func (t *ArduinoEsp32Toolchainv2) NewBurner(buildConfig denv.BuildConfig, buildTarget denv.BuildTarget) Burner {
@@ -434,23 +318,24 @@ func (t *ArduinoEsp32Toolchainv2) NewBurner(buildConfig denv.BuildConfig, buildT
 		buildTarget:                          buildTarget,
 		dependencyTracker:                    nil,
 		hasher:                               sha1.New(),
-		genImageBinToolArgs:                  corepkg.NewArguments(64),
+		genImageBinToolArgs:                  make([]string, 0, 32),
 		genImageBinToolArgsHash:              nil, // Will be set later
 		genImageBinToolOutputFilepath:        "",
 		genImageBinToolInputFilepaths:        []string{},
-		genImageBinToolPath:                  t.Vars.GetFirstOrEmpty("burner.generate-image-bin"),
-		genImagePartitionsToolArgs:           corepkg.NewArguments(64),
+		genImageBinToolPath:                  "",
+		genImagePartitionsToolArgs:           make([]string, 0, 32),
 		genImagePartitionsToolArgsHash:       nil, // Will be set later
 		genImagePartitionsToolOutputFilepath: "",
 		genImagePartitionsToolInputFilepaths: []string{},
-		genImagePartitionsToolPath:           t.Vars.GetFirstOrEmpty("burner.generate-partitions-bin"),
-		genBootloaderToolArgs:                corepkg.NewArguments(64),
+		genImagePartitionsToolPath:           "",
+		genBootloaderToolArgs:                make([]string, 0, 32),
 		genBootloaderToolArgsHash:            nil, // Will be set later
 		genBootloaderToolOutputFilepath:      "",
 		genBootloaderToolInputFilepaths:      []string{},
-		genBootloaderToolPath:                t.Vars.GetFirstOrEmpty("burner.generate-bootloader"),
-		flashToolArgs:                        corepkg.NewArguments(64),
-		flashToolPath:                        t.Vars.GetFirstOrEmpty("burner.flash"),
+		genBootloaderToolPath:                "",
+		flashToolArgs:                        make([]string, 0, 32),
+		flashToolPath:                        "",
+		vars:                                 corepkg.NewVars(16),
 	}
 }
 
@@ -463,75 +348,88 @@ func (b *ToolchainArduinoEsp32Burnerv2) hashArguments(args []string) []byte {
 }
 
 func (b *ToolchainArduinoEsp32Burnerv2) SetupBuild(buildPath string) {
-
-	projectElfFilepath := filepath.Join(buildPath, b.toolChain.ProjectName+".elf")
-	projectBinFilepath := filepath.Join(buildPath, b.toolChain.ProjectName+".bin")
-	projectPartitionsBinFilepath := filepath.Join(buildPath, b.toolChain.ProjectName+".partitions.bin")
-	projectBootloaderBinFilepath := filepath.Join(buildPath, b.toolChain.ProjectName+".bootloader.bin")
-
-	flashMode := b.toolChain.Vars.GetFirstOrEmpty("build.flash_mode")
-	flashFreq := b.toolChain.Vars.GetFirstOrEmpty("build.flash_freq")
-	flashSize := b.toolChain.Vars.GetFirstOrEmpty("build.flash_size")
-
-	// The XIAO_ESP32C3 board is configured as "qio" flash mode, 80MHz flash frequency and 4MB flash size.
-	// However, the flash that is on the board can only be successfully flashed when using "dio" flash mode.
-	if b.toolChain.Vars.GetFirstOrEmpty("build.mcu") == "esp32c3" {
-		corepkg.LogWarnf("Overriding flash mode to 'dio' for XIAO_ESP32C3 board")
-		flashMode = "dio"
-	}
-
-	b.genImageBinToolArgs.Clear()
-	b.genImageBinToolArgs.Add("--chip", b.toolChain.Vars.GetFirstOrEmpty("build.mcu"))
-	b.genImageBinToolArgs.Add("elf2image")
-	b.genImageBinToolArgs.Add("--flash_mode", flashMode)
-	b.genImageBinToolArgs.Add("--flash_freq", flashFreq)
-	b.genImageBinToolArgs.Add("--flash_size", flashSize)
-	b.genImageBinToolArgs.Add("--elf-sha256-offset", b.toolChain.Vars.GetFirstOrEmpty("elf-sha256-offset"))
-	b.genImageBinToolArgs.Add("-o", projectBinFilepath)
-	b.genImageBinToolArgs.Add(projectElfFilepath)
-
-	b.genImagePartitionsToolArgs.Clear()
-	b.genImagePartitionsToolArgs.Add(b.toolChain.Vars.GetFirstOrEmpty("burner.generate-partitions-bin.script"))
-	b.genImagePartitionsToolArgs.Add("-q")
-	b.genImagePartitionsToolArgs.Add(b.toolChain.Vars.GetFirstOrEmpty("burner.flash.partitions.csv.filepath"))
-	b.genImagePartitionsToolArgs.Add(projectPartitionsBinFilepath)
-
-	b.genBootloaderToolArgs.Clear()
-	b.genBootloaderToolArgs.Add("--chip", b.toolChain.Vars.GetFirstOrEmpty("build.mcu"))
-	b.genBootloaderToolArgs.Add("elf2image")
-	b.genBootloaderToolArgs.Add("--flash_mode", flashMode)
-	b.genBootloaderToolArgs.Add("--flash_freq", flashFreq)
-	b.genBootloaderToolArgs.Add("--flash_size", flashSize)
-	b.genBootloaderToolArgs.Add("-o", projectBootloaderBinFilepath)
-	sdkBootLoaderElfPath, _ := b.toolChain.Vars.GetFirst("burner.sdk.bootloader.elf.path")
-	b.genBootloaderToolArgs.Add(sdkBootLoaderElfPath)
-
 	// File Dependency Tracker and Information
 	b.dependencyTracker = deptrackr.LoadDepFileTrackr(filepath.Join(buildPath, "deptrackr.burn"))
 
-	b.genImageBinToolOutputFilepath = projectBinFilepath
-	b.genImageBinToolInputFilepaths = []string{projectElfFilepath}
-	b.genImageBinToolArgsHash = b.hashArguments(b.genImageBinToolArgs.Args)
+	b.vars.Set("build.project_name", b.toolChain.ProjectName)
+	b.vars.Set("build.source.path", filepath.Join(buildPath, "void"))
+	b.vars.Set("build.variant.path", filepath.Join(buildPath, "void"))
 
-	b.genImagePartitionsToolOutputFilepath = projectPartitionsBinFilepath
+	// ------------------------------------------------------------------------------------------------
+	// Image partitions tool setup
+	dstPartitionsFilepath := filepath.Join(buildPath, "partitions.csv")
+	if !b.dependencyTracker.QueryItem(dstPartitionsFilepath) {
+		// Create a 'partitions.csv' file in the build path if it doesn't exist, take the one from
+		//    {runtime.platform.path}/tools/partitions/{build.partitions}.csv
+		srcPartitionsFilepath := b.toolChain.Vars.FinalResolveString("{runtime.platform.path}/tools/partitions/{build.partitions}.csv", " ", b.vars)
+		input, err := os.ReadFile(srcPartitionsFilepath)
+		if err == nil {
+			err = os.WriteFile(filepath.Join(buildPath, "partitions.csv"), input, 0644)
+			if err != nil {
+				corepkg.LogErrorf(err, "Failed to create partitions file in build path")
+			}
+		} else {
+			corepkg.LogErrorf(err, "Failed to read partitions file from platform path")
+		}
+
+		b.dependencyTracker.AddItem(dstPartitionsFilepath, []string{srcPartitionsFilepath})
+	} else {
+		b.dependencyTracker.CopyItem(dstPartitionsFilepath)
+	}
+
+	genImagePartitionsArgs, _ := b.toolChain.Vars.Get("recipe.objcopy.partitions.bin.pattern")
+	genImagePartitionsArgs = b.toolChain.Vars.FinalResolveArray(genImagePartitionsArgs, b.vars)
+
+	b.genImagePartitionsToolPath = genImagePartitionsArgs[0]
+	b.genImagePartitionsToolArgs = genImagePartitionsArgs[1:]
+	b.genImagePartitionsToolOutputFilepath = filepath.Join(buildPath, b.toolChain.ProjectName+".partitions.bin")
 	b.genImagePartitionsToolInputFilepaths = []string{}
-	b.genImagePartitionsToolArgsHash = b.hashArguments(b.genImagePartitionsToolArgs.Args)
 
-	b.genBootloaderToolOutputFilepath = projectBootloaderBinFilepath
+	// Remove any empty entries from genImagePartitionsArgs
+	b.genImagePartitionsToolArgs = slices.DeleteFunc(b.genImagePartitionsToolArgs, func(s string) bool { return strings.TrimSpace(s) == "" })
+	b.genImagePartitionsToolArgsHash = b.hashArguments(b.genImagePartitionsToolArgs)
+
+	// ------------------------------------------------------------------------------------------------
+	// Image bin tool setup
+
+	genImageBinArgs, _ := b.toolChain.Vars.Get("recipe.objcopy.bin.pattern")
+	genImageBinArgs = b.toolChain.Vars.FinalResolveArray(genImageBinArgs, b.vars)
+
+	b.genImageBinToolPath = genImageBinArgs[0]
+	b.genImageBinToolArgs = genImageBinArgs[1:]
+	b.genImageBinToolOutputFilepath = filepath.Join(buildPath, b.toolChain.ProjectName+".bin")
+	b.genImageBinToolInputFilepaths = []string{filepath.Join(buildPath, b.toolChain.ProjectName+".elf")}
+
+	// Remove any empty entries from genImageBinArgs
+	b.genImageBinToolArgs = slices.DeleteFunc(b.genImageBinToolArgs, func(s string) bool { return strings.TrimSpace(s) == "" })
+	b.genImageBinToolArgsHash = b.hashArguments(b.genImageBinToolArgs)
+
+	// ------------------------------------------------------------------------------------------------
+	// Bootloader tool setup
+	genBootloaderToolArgs, _ := b.toolChain.Vars.Get("recipe.hooks.prebuild.4.pattern")
+	genBootloaderToolArgs = b.toolChain.Vars.FinalResolveArray(genBootloaderToolArgs, b.vars)
+
+	b.genBootloaderToolPath = genBootloaderToolArgs[0]
+	b.genBootloaderToolArgs = genBootloaderToolArgs[1:]
+	b.genBootloaderToolOutputFilepath = filepath.Join(buildPath, b.toolChain.ProjectName+".bootloader.bin")
 	b.genBootloaderToolInputFilepaths = []string{}
-	b.genBootloaderToolArgsHash = b.hashArguments(b.genBootloaderToolArgs.Args)
+
+	// Remove any empty entries from genBootloaderToolArgs
+	b.genBootloaderToolArgs = slices.DeleteFunc(b.genBootloaderToolArgs, func(s string) bool { return strings.TrimSpace(s) == "" })
+	b.genBootloaderToolArgsHash = b.hashArguments(b.genBootloaderToolArgs)
 }
 
 func (b *ToolchainArduinoEsp32Burnerv2) Build() error {
 
-	// - Generate image partitions bin file ('PROJECT.NAME.partitions.bin'):
-	// - Generate image bin file ('PROJECT.NAME.bin'):
-	// - Generate bootloader image ('PROJECT.NAME.bootloader.bin'):
+	// - Generate image partitions bin file ('PROJECT.NAME.partitions.bin')
+	// - Generate image bin file ('PROJECT.NAME.bin')
+	// - Generate bootloader image ('PROJECT.NAME.bootloader.bin')
 
 	// Generate the image partitions bin file
 	if !b.dependencyTracker.QueryItemWithExtraData(b.genImagePartitionsToolOutputFilepath, b.genImagePartitionsToolArgsHash) {
+
 		img, _ := exec.LookPath(b.genImagePartitionsToolPath)
-		args := b.genImagePartitionsToolArgs.Args
+		args := b.genImagePartitionsToolArgs
 
 		cmd := exec.Command(img, args...)
 		corepkg.LogInfof("Creating image partitions '%s' ...", b.toolChain.ProjectName+".partitions.bin")
@@ -552,7 +450,7 @@ func (b *ToolchainArduinoEsp32Burnerv2) Build() error {
 	// Generate the image bin file
 	if !b.dependencyTracker.QueryItemWithExtraData(b.genImageBinToolOutputFilepath, b.genImageBinToolArgsHash) {
 		imgPath := b.genImageBinToolPath
-		args := b.genImageBinToolArgs.Args
+		args := b.genImageBinToolArgs
 
 		cmd := exec.Command(imgPath, args...)
 		corepkg.LogInfof("Generating image '%s'", b.toolChain.ProjectName+".bin")
@@ -576,7 +474,7 @@ func (b *ToolchainArduinoEsp32Burnerv2) Build() error {
 	// Generate the bootloader image
 	if !b.dependencyTracker.QueryItemWithExtraData(b.genBootloaderToolOutputFilepath, b.genBootloaderToolArgsHash) {
 		imgPath := b.genBootloaderToolPath
-		args := b.genBootloaderToolArgs.Args
+		args := b.genBootloaderToolArgs
 
 		cmd := exec.Command(imgPath, args...)
 		corepkg.LogInfof("Generating bootloader '%s'", b.toolChain.ProjectName+".bootloader.bin")
@@ -601,39 +499,6 @@ func (b *ToolchainArduinoEsp32Burnerv2) Build() error {
 }
 
 func (b *ToolchainArduinoEsp32Burnerv2) SetupBurn(buildPath string) error {
-
-	b.flashToolArgs.Clear()
-	b.flashToolArgs.Add("--chip", b.toolChain.Vars.GetFirstOrEmpty("build.mcu"))
-
-	// If we leave this empty then the tool will search for the USB port
-	// b.flashToolArgs.Add("--port", "tty port")
-
-	b.flashToolArgs.Add("--baud", b.toolChain.Vars.GetFirstOrEmpty("upload.speed"))
-	b.flashToolArgs.Add("--before", "default_reset")
-	b.flashToolArgs.Add("--after", "hard_reset")
-	b.flashToolArgs.Add("write_flash", "-z")
-	b.flashToolArgs.Add("--flash_mode", "keep")
-	b.flashToolArgs.Add("--flash_freq", "keep")
-	b.flashToolArgs.Add("--flash_size", "keep")
-
-	bootApp0BinFilePath, _ := b.toolChain.Vars.GetFirst("burner.bootapp0.bin.filepath")
-	if !corepkg.FileExists(bootApp0BinFilePath) {
-		return corepkg.LogErrorf(os.ErrNotExist, "Boot app0 bin file '%s' does not exist", bootApp0BinFilePath)
-	}
-
-	b.flashToolArgs.Add(b.toolChain.Vars.GetFirstOrEmpty("build.bootloader_addr"))
-	b.flashToolArgs.Add(b.genBootloaderToolOutputFilepath)
-	b.flashToolArgs.Add(b.toolChain.Vars.GetFirstOrEmpty("burner.flash.partitions.bin.offset"))
-	b.flashToolArgs.Add(b.genImagePartitionsToolOutputFilepath)
-	b.flashToolArgs.Add(b.toolChain.Vars.GetFirstOrEmpty("burner.flash.bootapp0.bin.offset"))
-	b.flashToolArgs.Add(bootApp0BinFilePath)
-	b.flashToolArgs.Add(b.toolChain.Vars.GetFirstOrEmpty("burner.flash.application.bin.offset"))
-	b.flashToolArgs.Add(b.genImageBinToolOutputFilepath)
-
-	return nil
-}
-
-func (b *ToolchainArduinoEsp32Burnerv2) Burn() error {
 	if !corepkg.FileExists(b.genBootloaderToolOutputFilepath) {
 		return corepkg.LogErrorf(os.ErrNotExist, "Cannot burn, bootloader bin file '%s' doesn't exist", b.genBootloaderToolOutputFilepath)
 	}
@@ -644,8 +509,33 @@ func (b *ToolchainArduinoEsp32Burnerv2) Burn() error {
 		return corepkg.LogErrorf(os.ErrNotExist, "Cannot burn, application bin file '%s' doesn't exist", b.genImageBinToolOutputFilepath)
 	}
 
+	// ------------------------------------------------------------------------------------------------
+	// Flash tool setup
+	flashToolArgs, _ := b.toolChain.Vars.Get("tools.esptool_py.upload.pattern")
+
+	b.vars.Set("cmd", "{tools.esptool_py.cmd}")
+	b.vars.Set("path", "{tools.esptool_py.path}")
+
+	b.vars.Set("upload.network_pattern", "{tools.esptool_py.upload.network_pattern}")
+	b.vars.Set("upload.params.quiet", "{tools.esptool_py.upload.params.quiet}")
+	b.vars.Set("upload.params", "{tools.esptool_py.upload.params.verbose}")
+	b.vars.Set("upload.pattern_args", "{tools.esptool_py.upload.pattern_args}")
+	b.vars.Set("upload.protocol", "{tools.esptool_py.upload.protocol}")
+
+    flashToolArgs = b.toolChain.Vars.FinalResolveArray(flashToolArgs, b.vars)
+
+	b.flashToolPath = flashToolArgs[0]
+	b.flashToolArgs = flashToolArgs[1:]
+
+	// Remove any empty entries from flashToolArgs
+	b.flashToolArgs = slices.DeleteFunc(b.flashToolArgs, func(s string) bool { return strings.TrimSpace(s) == "" })
+
+	return nil
+}
+
+func (b *ToolchainArduinoEsp32Burnerv2) Burn() error {
 	flashToolPath := b.flashToolPath
-	flashToolArgs := b.flashToolArgs.Args
+	flashToolArgs := b.flashToolArgs
 
 	corepkg.LogInfof("Flashing '%s'...", b.toolChain.ProjectName+".bin")
 
@@ -702,19 +592,27 @@ func NewArduinoEsp32Toolchainv2(boardVars *corepkg.Vars, projectName string, bui
 
 	boardVars.Set("project.name", projectName)
 	boardVars.Set("build.path", buildPath)
-	boardVars.Set("build.arch", "esp8266")
+	boardVars.Set("build.arch", "ESP32")
 	boardVars.Set("build.includes", "{runtime.platform.path}/variants/{board.name}")
 	boardVars.Set("build.defines", "")
 
-	// TODO we are not doing a final resolve here, instead, each tool should resolve its own
-	// command line and arguments based on its needs.
-	//boardVars.FinalResolve()
+	boardVars.SortByKey()
 
-	// Create '{buildPath}/core/build.opt'
-	// TODO not sure what this file is for and who should create it with what content
-	optFilePath := filepath.Join(buildPath, "core", "build.opt")
-	os.MkdirAll(filepath.Dir(optFilePath), os.ModePerm)
-	f, err := os.Create(optFilePath)
+	// Create '{buildPath}/build.opt'
+	// Create '{buildPath}/file.opt'
+
+	// TODO not sure what these files are for and who should create it with what content
+
+	buildOptFilePath := filepath.Join(buildPath, "build_opt.h")
+	os.MkdirAll(filepath.Dir(buildOptFilePath), os.ModePerm)
+	f, err := os.Create(buildOptFilePath)
+	if err == nil {
+		defer f.Close()
+	}
+
+	fileOptFilePath := filepath.Join(buildPath, "file_opts")
+	os.MkdirAll(filepath.Dir(fileOptFilePath), os.ModePerm)
+	f, err = os.Create(fileOptFilePath)
 	if err == nil {
 		defer f.Close()
 	}

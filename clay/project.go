@@ -116,8 +116,8 @@ func (p *Project) Build(buildConfig denv.BuildConfig, buildTarget denv.BuildTarg
 
 	// Collect all include directories from project and dependencies
 	// Collect all defines from project and dependencies
-	includes := corepkg.NewValueSet2(32)
-	defines := corepkg.NewValueSet2(32)
+	includes := corepkg.NewValueSet2(8)
+	defines := corepkg.NewValueSet2(8)
 
 	if buildTarget.Windows() {
 		defines.Add("TARGET_PC")
@@ -161,9 +161,9 @@ func (p *Project) Build(buildConfig denv.BuildConfig, buildTarget denv.BuildTarg
 				incPath = corepkg.PathNormalize(incPath)
 				includes.Add(incPath)
 			}
-			for _, def := range prjConfig.Defines.Values {
-				defines.Add(def)
-			}
+			//for _, def := range prjConfig.Defines.Values {
+				//defines.Add(def)
+			//}
 		}
 	}
 

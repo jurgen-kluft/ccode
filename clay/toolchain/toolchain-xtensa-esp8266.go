@@ -93,7 +93,7 @@ func (cl *ToolchainArduinoEsp8266Compiler) SetupArgs(defines []string, includes 
 	cl.cCompilerPath, cl.cCompilerArgs.Args = setupCompilerArgs(c_compiler_parts.Args)
 
 	cl.cCompilerPath = cl.toolChain.Vars.FinalResolveString(cl.cCompilerPath, " ")
-	cl.cCompilerArgs.Args = cl.toolChain.Vars.FinalResolveArrayWith(cl.cCompilerArgs.Args, cl.vars)
+	cl.cCompilerArgs.Args = cl.toolChain.Vars.FinalResolveArray(cl.cCompilerArgs.Args, cl.vars)
 
 	cpp_compiler := cl.toolChain.Vars.GetFirstOrEmpty(`recipe.cpp.o.pattern`)
 	cpp_compiler_parts := corepkg.NewArguments(32)
@@ -101,7 +101,7 @@ func (cl *ToolchainArduinoEsp8266Compiler) SetupArgs(defines []string, includes 
 	cl.cppCompilerPath, cl.cppCompilerArgs.Args = setupCompilerArgs(cpp_compiler_parts.Args)
 
 	cl.cppCompilerPath = cl.toolChain.Vars.FinalResolveString(cl.cppCompilerPath, " ")
-	cl.cppCompilerArgs.Args = cl.toolChain.Vars.FinalResolveArrayWith(cl.cppCompilerArgs.Args, cl.vars)
+	cl.cppCompilerArgs.Args = cl.toolChain.Vars.FinalResolveArray(cl.cppCompilerArgs.Args, cl.vars)
 }
 
 func (cl *ToolchainArduinoEsp8266Compiler) Compile(sourceAbsFilepaths []string, objRelFilepaths []string) error {
@@ -176,7 +176,7 @@ func setupArchiverArgs(args *corepkg.Arguments) (arPath string, arArgs *corepkg.
 	if args.Len() > 0 {
 		arPath = corepkg.StrTrimDelimiters(args.Args[0], '"')
 		for _, part := range args.Args[1:] {
-			part = corepkg.StrTrim(part)
+			part = strings.Trim(part, " ")
 			part = corepkg.StrTrimDelimiters(part, '"')
 			if len(part) > 0 {
 				arArgs.Add(part)
@@ -260,8 +260,8 @@ func (l *ToolchainArduinoEsp8266Linker) SetupArgs(libraryPaths []string, library
 		}
 		libraryFiles[i] = "-l" + libFile
 	}
-	l.vars.Set("build.extra_libs", libraryPaths...)
-	l.vars.Set("build.extra_libs", libraryFiles...)
+	l.vars.Append("build.extra_libs", libraryPaths...)
+	l.vars.Append("build.extra_libs", libraryFiles...)
 
 	ld_cmdline := l.toolChain.Vars.GetFirstOrEmpty(`recipe.c.combine.pattern`)
 	ld_arg_parts := corepkg.NewArguments(32)
@@ -269,7 +269,7 @@ func (l *ToolchainArduinoEsp8266Linker) SetupArgs(libraryPaths []string, library
 	l.linkerPath, l.linkerArgs = setupArchiverArgs(ld_arg_parts)
 
 	l.linkerPath = l.toolChain.Vars.FinalResolveString(l.linkerPath, " ")
-	l.linkerArgs.Args = l.toolChain.Vars.FinalResolveArrayWith(l.linkerArgs.Args, l.vars)
+	l.linkerArgs.Args = l.toolChain.Vars.FinalResolveArray(l.linkerArgs.Args, l.vars)
 }
 
 func (l *ToolchainArduinoEsp8266Linker) Link(inputArchiveAbsFilepaths []string, outputAppRelFilepathNoExt string) error {

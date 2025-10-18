@@ -12,8 +12,8 @@ import (
 // Clay App
 //
 //	<project>: name of a project (if you have more than one project)
-//	<config>: debug, release (default), final
-//	<arch>: esp32 (default), esp32s3
+//	<config>: debug-dev-none, release-dev-none, release-final-none
+//	<arch>: esp32 (default), esp2866
 //	<board>: esp32 (default), esp32s3
 //
 //	Commands:
@@ -185,7 +185,8 @@ func (a *App) BuildInfo() error {
 
 func (a *App) Flash() error {
 	buildPath := a.GetBuildPath(GetBuildDirname(a.BuildConfig, a.BuildTarget))
-	prjs, err := a.CreateProjects(a.BuildTarget, a.BuildConfig)
+
+    prjs, err := a.CreateProjects(a.BuildTarget, a.BuildConfig)
 	if err != nil {
 		return err
 	}

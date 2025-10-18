@@ -36,7 +36,11 @@ func NewProject(pkg *Package, name string, dirname string) *DevProject {
 	}
 }
 
-func (p *DevProject) Path() string {
+func (p *DevProject) RootPath() string {
+	return p.PackagePath
+}
+
+func (p *DevProject) ProjectPath() string {
 	return filepath.Join(p.PackagePath, p.RepoName)
 }
 
@@ -210,11 +214,10 @@ func (proj *DevProject) CollectProjectDependencies(deps *DevProjectList) {
 	}
 }
 
-func (prj *DevProject) AddSharedSource(name string) {
-	prj.SourceDirs = append(prj.SourceDirs, PinnedGlobPath{Path: PinnedPath{Root: prj.Path(), Base: prj.RepoName, Sub: "source/" + name + "/cpp"}, Glob: "**/*.c"})
-	prj.SourceDirs = append(prj.SourceDirs, PinnedGlobPath{Path: PinnedPath{Root: prj.Path(), Base: prj.RepoName, Sub: "source/" + name + "/cpp"}, Glob: "**/*.cpp"})
+func (prj *DevProject) AddCppSource(name string) {
+	prj.SourceDirs = append(prj.SourceDirs, PinnedGlobPath{Path: PinnedPath{Root: prj.RootPath(), Base: prj.RepoName, Sub: "source/" + name + "/cpp"}, Glob: "**/*.cpp"})
 	for _, cfg := range prj.Configs {
-		cfg.IncludeDirs = append(cfg.IncludeDirs, PinnedPath{Root: prj.Path(), Base: prj.RepoName, Sub: "source/" + name + "/include"})
+		cfg.IncludeDirs = append(cfg.IncludeDirs, PinnedPath{Root: prj.RootPath(), Base: prj.RepoName, Sub: "source/" + name + "/include"})
 	}
 }
 
@@ -323,9 +326,6 @@ func SetupDefaultCppLibProject(pkg *Package, name string, dir string, buildTarge
 	project.BuildType = BuildTypeStaticLibrary
 	project.Dependencies = NewDevProjectList()
 
-	project.SourceDirs = append(project.SourceDirs, PinnedGlobPath{Path: PinnedPath{Root: pkg.Path(), Base: pkg.RepoName, Sub: "source/" + dir + "/cpp"}, Glob: "**/*.c"})
-	project.SourceDirs = append(project.SourceDirs, PinnedGlobPath{Path: PinnedPath{Root: pkg.Path(), Base: pkg.RepoName, Sub: "source/" + dir + "/cpp"}, Glob: "**/*.cpp"})
-
 	return project
 }
 
@@ -352,8 +352,13 @@ func SetupCppHeaderProject(pkg *Package, name string) *DevProject {
 }
 
 func SetupCppLibProject(pkg *Package, name string) *DevProject {
+	dir := "main"
+
 	// Windows, Mac and Linux, build for the Host platform
-	project := SetupDefaultCppLibProject(pkg, "library_"+name, "main", GetBuildTarget())
+	project := SetupDefaultCppLibProject(pkg, "library_"+name, dir, GetBuildTarget())
+
+	project.SourceDirs = append(project.SourceDirs, PinnedGlobPath{Path: PinnedPath{Root: pkg.Path(), Base: pkg.RepoName, Sub: "source/" + dir + "/cpp"}, Glob: "**/*.c"})
+	project.SourceDirs = append(project.SourceDirs, PinnedGlobPath{Path: PinnedPath{Root: pkg.Path(), Base: pkg.RepoName, Sub: "source/" + dir + "/cpp"}, Glob: "**/*.cpp"})
 
 	// TODO we should create all possible configuration, not just debug-dev/release-dev
 	project.Configs = append(project.Configs, NewDevConfig(BuildTypeStaticLibrary, NewDebugDevConfig()))
@@ -369,8 +374,13 @@ func SetupCppLibProject(pkg *Package, name string) *DevProject {
 }
 
 func SetupCppTestLibProject(pkg *Package, name string) *DevProject {
+	dir := "main"
+
 	// Windows, Mac and Linux, build for the Host platform
-	project := SetupDefaultCppLibProject(pkg, "unittest_library_"+name, "main", GetBuildTarget())
+	project := SetupDefaultCppLibProject(pkg, "unittest_library_"+name, dir, GetBuildTarget())
+
+	project.SourceDirs = append(project.SourceDirs, PinnedGlobPath{Path: PinnedPath{Root: pkg.Path(), Base: pkg.RepoName, Sub: "source/" + dir + "/cpp"}, Glob: "**/*.c"})
+	project.SourceDirs = append(project.SourceDirs, PinnedGlobPath{Path: PinnedPath{Root: pkg.Path(), Base: pkg.RepoName, Sub: "source/" + dir + "/cpp"}, Glob: "**/*.cpp"})
 
 	// TODO we should create all possible configuration, not just debug-dev/release-dev
 	project.Configs = append(project.Configs, NewDevConfig(BuildTypeStaticLibrary, NewDebugDevTestConfig()))
@@ -386,8 +396,13 @@ func SetupCppTestLibProject(pkg *Package, name string) *DevProject {
 }
 
 func SetupCppLibProjectForDesktop(pkg *Package, name string) *DevProject {
+	dir := "main"
+
 	// Windows, Mac and Linux, build for the Host platform
-	project := SetupDefaultCppLibProject(pkg, "library_"+name, "main", GetBuildTarget())
+	project := SetupDefaultCppLibProject(pkg, "library_"+name, dir, GetBuildTarget())
+
+	project.SourceDirs = append(project.SourceDirs, PinnedGlobPath{Path: PinnedPath{Root: pkg.Path(), Base: pkg.RepoName, Sub: "source/" + dir + "/cpp"}, Glob: "**/*.c"})
+	project.SourceDirs = append(project.SourceDirs, PinnedGlobPath{Path: PinnedPath{Root: pkg.Path(), Base: pkg.RepoName, Sub: "source/" + dir + "/cpp"}, Glob: "**/*.cpp"})
 
 	// TODO we should create all possible configuration, not just debug-dev/release-dev
 	project.Configs = append(project.Configs, NewDevConfig(BuildTypeStaticLibrary, NewDebugDevConfig()))
@@ -404,7 +419,9 @@ func SetupCppLibProjectForDesktop(pkg *Package, name string) *DevProject {
 
 // Arduino Esp32
 func SetupCppLibProjectForArduinoEsp32(pkg *Package, name string) *DevProject {
-	project := SetupDefaultCppLibProject(pkg, "library_"+name, "main", BuildTargetArduinoEsp32)
+	dir := "main"
+
+	project := SetupDefaultCppLibProject(pkg, "library_"+name, dir, BuildTargetArduinoEsp32)
 
 	// TODO we should create all possible configuration, not just debug-dev/release-dev
 	project.Configs = append(project.Configs, NewDevConfig(BuildTypeStaticLibrary, NewDebugDevConfig()))
@@ -421,7 +438,9 @@ func SetupCppLibProjectForArduinoEsp32(pkg *Package, name string) *DevProject {
 
 // Arduino Esp8266
 func SetupCppLibProjectForArduinoEsp8266(pkg *Package, name string) *DevProject {
-	project := SetupDefaultCppLibProject(pkg, "library_"+name, "main", BuildTargetArduinoEsp8266)
+	dir := "main"
+
+	project := SetupDefaultCppLibProject(pkg, "library_"+name, dir, BuildTargetArduinoEsp8266)
 
 	// TODO we should create all possible configuration, not just debug-dev/release-dev
 	project.Configs = append(project.Configs, NewDevConfig(BuildTypeStaticLibrary, NewDebugDevConfig()))
@@ -495,11 +514,12 @@ func SetupDefaultCppCliProject(pkg *Package, name string, buildTarget BuildTarge
 //	SetupDefaultCppAppProject("cmyapp", "github.com\\jurgen-kluft")
 func SetupDefaultCppAppProject(pkg *Package, name string, dirname string, buildTarget BuildTarget) *DevProject {
 	project := NewProject(pkg, name, dirname)
+
 	project.BuildType = BuildTypeApplication
 	project.BuildTargets = BuildTargetsDesktop
+
 	project.Configs = append(project.Configs, NewDevConfig(BuildTypeApplication, NewDebugDevConfig()))
 	project.Configs = append(project.Configs, NewDevConfig(BuildTypeApplication, NewReleaseDevConfig()))
-	project.Dependencies = NewDevProjectList()
 
 	project.SourceDirs = append(project.SourceDirs, PinnedGlobPath{Path: PinnedPath{Root: pkg.Path(), Base: pkg.RepoName, Sub: "source/" + dirname + "/cpp"}, Glob: "**/*.c"})
 	project.SourceDirs = append(project.SourceDirs, PinnedGlobPath{Path: PinnedPath{Root: pkg.Path(), Base: pkg.RepoName, Sub: "source/" + dirname + "/cpp"}, Glob: "**/*.cpp"})
