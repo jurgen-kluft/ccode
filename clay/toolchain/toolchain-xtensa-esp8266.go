@@ -9,6 +9,7 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"slices"
 	"strings"
 
 	"github.com/jurgen-kluft/ccode/clay/toolchain/deptrackr"
@@ -59,23 +60,6 @@ func (cl *ToolchainArduinoEsp8266Compiler) DepFilepath(objRelFilepath string) st
 	return objRelFilepath + ".d"
 }
 
-func setupCompilerArgs(args []string) (string, []string) {
-	cpArgs := make([]string, 0, len(args)+32)
-	if len(args) > 0 {
-		for _, part := range args {
-			part = strings.Trim(part, " ")
-			if strings.HasPrefix(part, "\"") && strings.HasSuffix(part, "\"") {
-				part = strings.Trim(part, "\"")
-			}
-			if len(part) > 0 {
-				cpArgs = append(cpArgs, part)
-			}
-		}
-		return cpArgs[0], cpArgs[1:]
-	}
-	return "", []string{}
-}
-
 func (cl *ToolchainArduinoEsp8266Compiler) SetupArgs(defines []string, includes []string) {
 	for i, inc := range includes {
 		includes[i] = "-I" + inc
@@ -84,52 +68,44 @@ func (cl *ToolchainArduinoEsp8266Compiler) SetupArgs(defines []string, includes 
 		defines[i] = "-D" + def
 	}
 
-	cl.vars.Set("includes", includes...)
-	cl.vars.Set("defines", defines...)
-
-	c_compiler := cl.toolChain.Vars.GetFirstOrEmpty(`recipe.c.o.pattern`)
-	c_compiler_parts := corepkg.NewArguments(32)
-	c_compiler_parts.SmartSplit(c_compiler)
-	cl.cCompilerPath, cl.cCompilerArgs.Args = setupCompilerArgs(c_compiler_parts.Args)
-
-	cl.cCompilerPath = cl.toolChain.Vars.FinalResolveString(cl.cCompilerPath, " ")
-	cl.cCompilerArgs.Args = cl.toolChain.Vars.FinalResolveArray(cl.cCompilerArgs.Args, cl.vars)
-
-	cpp_compiler := cl.toolChain.Vars.GetFirstOrEmpty(`recipe.cpp.o.pattern`)
-	cpp_compiler_parts := corepkg.NewArguments(32)
-	cpp_compiler_parts.SmartSplit(cpp_compiler)
-	cl.cppCompilerPath, cl.cppCompilerArgs.Args = setupCompilerArgs(cpp_compiler_parts.Args)
-
-	cl.cppCompilerPath = cl.toolChain.Vars.FinalResolveString(cl.cppCompilerPath, " ")
-	cl.cppCompilerArgs.Args = cl.toolChain.Vars.FinalResolveArray(cl.cppCompilerArgs.Args, cl.vars)
+	cl.vars.Clear()
+	cl.vars.Append("includes", "-I{runtime.platform.path}/variants/{board.name}")
+	cl.vars.Append("includes", includes...)
+	cl.vars.Append("build.defines", defines...)
 }
 
 func (cl *ToolchainArduinoEsp8266Compiler) Compile(sourceAbsFilepaths []string, objRelFilepaths []string) error {
-
 	for i, sourceAbsFilepath := range sourceAbsFilepaths {
+		corepkg.LogInfof("Compiling %s", filepath.Base(sourceAbsFilepath))
+
 		objRelFilepath := objRelFilepaths[i]
+		cl.vars.Set("build.source.path", corepkg.PathDirname(sourceAbsFilepath))
+		cl.vars.Set("source_file", sourceAbsFilepath)
+		cl.vars.Set("object_file", objRelFilepath)
 
 		var compilerPath string
-		var args []string
+		var compilerArgs []string
 		if strings.HasSuffix(sourceAbsFilepath, ".c") {
-			compilerPath = cl.cCompilerPath
-			args = cl.cCompilerArgs.Args
+			c_compiler, _ := cl.toolChain.Vars.Get(`recipe.c.o.pattern`)
+			compilerPath = c_compiler[0]
+			compilerArgs = c_compiler[1:]
+			compilerPath = cl.toolChain.Vars.FinalResolveString(compilerPath, " ", cl.vars)
+			compilerArgs = cl.toolChain.Vars.FinalResolveArray(compilerArgs, cl.vars)
 		} else {
-			compilerPath = cl.cppCompilerPath
-			args = cl.cppCompilerArgs.Args
+			cpp_compiler, _ := cl.toolChain.Vars.Get(`recipe.cpp.o.pattern`)
+			compilerPath = cpp_compiler[0]
+			compilerArgs = cpp_compiler[1:]
+			compilerPath = cl.toolChain.Vars.FinalResolveString(compilerPath, " ", cl.vars)
+			compilerArgs = cl.toolChain.Vars.FinalResolveArray(compilerArgs, cl.vars)
 		}
+		compilerPath = corepkg.StrTrimDelimiters(compilerPath, '"')
 
-		// The source file and the output object file
-		// sourceAbsFilepath
-		// -o
-		// sourceRelFilepath + ".o"
-		args = append(args, sourceAbsFilepath)
-		args = append(args, "-o")
-		args = append(args, objRelFilepath)
+		// Remove empty entries from compilerArgs
+		compilerArgs = slices.DeleteFunc(compilerArgs, func(s string) bool {
+			return strings.TrimSpace(s) == ""
+		})
 
-		corepkg.LogInfof("Compiling (%s) %s", cl.buildConfig.String(), filepath.Base(sourceAbsFilepath))
-
-		cmd := exec.Command(compilerPath, args...)
+		cmd := exec.Command(compilerPath, compilerArgs...)
 		out, err := cmd.CombinedOutput()
 
 		if err != nil {
@@ -149,20 +125,18 @@ func (cl *ToolchainArduinoEsp8266Compiler) Compile(sourceAbsFilepaths []string, 
 // Archiver
 
 type ToolchainArduinoEsp8266Archiver struct {
-	toolChain    *ArduinoEsp8266Toolchain
-	buildConfig  denv.BuildConfig
-	buildTarget  denv.BuildTarget
-	archiverPath string
-	archiverArgs *corepkg.Arguments
+	toolChain   *ArduinoEsp8266Toolchain
+	buildConfig denv.BuildConfig
+	buildTarget denv.BuildTarget
+	vars        *corepkg.Vars
 }
 
 func (t *ArduinoEsp8266Toolchain) NewArchiver(a ArchiverType, buildConfig denv.BuildConfig, buildTarget denv.BuildTarget) Archiver {
 	return &ToolchainArduinoEsp8266Archiver{
-		toolChain:    t,
-		buildConfig:  buildConfig,
-		buildTarget:  buildTarget,
-		archiverPath: "",
-		archiverArgs: corepkg.NewArguments(16),
+		toolChain:   t,
+		buildConfig: buildConfig,
+		buildTarget: buildTarget,
+		vars:        corepkg.NewVars(corepkg.VarsFormatCurlyBraces),
 	}
 }
 
@@ -171,53 +145,37 @@ func (t *ToolchainArduinoEsp8266Archiver) LibFilepath(filepath string) string {
 	return filepath + ".a"
 }
 
-func setupArchiverArgs(args *corepkg.Arguments) (arPath string, arArgs *corepkg.Arguments) {
-	arArgs = corepkg.NewArguments(8)
-	if args.Len() > 0 {
-		arPath = corepkg.StrTrimDelimiters(args.Args[0], '"')
-		for _, part := range args.Args[1:] {
-			part = strings.Trim(part, " ")
-			part = corepkg.StrTrimDelimiters(part, '"')
-			if len(part) > 0 {
-				arArgs.Add(part)
-			}
-		}
-	}
-	return arPath, arArgs
-}
-
 func (a *ToolchainArduinoEsp8266Archiver) SetupArgs() {
-	ar_cmdline := a.toolChain.Vars.GetFirstOrEmpty(`recipe.ar.pattern`)
-	ar_arg_parts := corepkg.NewArguments(32)
-	ar_arg_parts.SmartSplit(ar_cmdline)
-	a.archiverPath, a.archiverArgs = setupArchiverArgs(ar_arg_parts)
 }
 
 func (a *ToolchainArduinoEsp8266Archiver) Archive(inputObjectFilepaths []string, outputArchiveFilepath string) error {
 
-	argLen := a.archiverArgs.Len()
-
-	// {output-archive-filepath}
-	a.archiverArgs.Add(outputArchiveFilepath)
-
-	// {input-object-filepaths}
-	a.archiverArgs.Add(inputObjectFilepaths...)
-
 	corepkg.LogInfof("Archiving %s", outputArchiveFilepath)
 
-	cmd := exec.Command(a.archiverPath, a.archiverArgs.Args...)
+	a.vars.Set("archive_file_path", outputArchiveFilepath)
+	a.vars.Set("object_file", inputObjectFilepaths...)
+
+	archiverArgs, _ := a.toolChain.Vars.Get(`recipe.ar.pattern`)
+	archiverPath := archiverArgs[0]
+	archiverArgs = archiverArgs[1:]
+
+	// Resolve archiverPath and archiverArgs
+	archiverPath = a.toolChain.Vars.FinalResolveString(archiverPath, " ", a.vars)
+	archiverArgs = a.toolChain.Vars.FinalResolveArray(archiverArgs, a.vars)
+
+	// Remove any empty entries from archiverArgs
+	archiverArgs = slices.DeleteFunc(archiverArgs, func(s string) bool {
+		return strings.TrimSpace(s) == ""
+	})
+
+	cmd := exec.Command(archiverPath, archiverArgs...)
 	out, err := cmd.CombinedOutput()
-
-	// Restore the archiver original arguments
-	a.archiverArgs.Truncate(argLen)
-
 	if err != nil {
 		return corepkg.LogErrorf(err, "Archiving failed")
 	}
 	if len(out) > 0 {
 		corepkg.LogInfof("Archive output:\n%s", string(out))
 	}
-
 	return nil
 }
 
@@ -229,8 +187,6 @@ type ToolchainArduinoEsp8266Linker struct {
 	toolChain   *ArduinoEsp8266Toolchain
 	buildConfig denv.BuildConfig
 	buildTarget denv.BuildTarget
-	linkerPath  string
-	linkerArgs  *corepkg.Arguments
 	vars        *corepkg.Vars
 }
 
@@ -239,8 +195,6 @@ func (t *ArduinoEsp8266Toolchain) NewLinker(buildConfig denv.BuildConfig, buildT
 		toolChain:   t,
 		buildConfig: buildConfig,
 		buildTarget: buildTarget,
-		linkerPath:  "",
-		linkerArgs:  corepkg.NewArguments(512),
 		vars:        corepkg.NewVars(corepkg.VarsFormatCurlyBraces),
 	}
 }
@@ -255,49 +209,52 @@ func (l *ToolchainArduinoEsp8266Linker) SetupArgs(libraryPaths []string, library
 		libraryPaths[i] = "-L" + libPath
 	}
 	for i, libFile := range libraryFiles {
-		if strings.HasPrefix(libFile, "lib") && strings.HasSuffix(libFile, ".a") {
-			libFile = libFile[3 : len(libFile)-2]
-		}
+		libFile = strings.TrimPrefix(libFile, "lib")
+		libFile = strings.TrimSuffix(libFile, ".a")
 		libraryFiles[i] = "-l" + libFile
 	}
-	l.vars.Append("build.extra_libs", libraryPaths...)
-	l.vars.Append("build.extra_libs", libraryFiles...)
 
-	ld_cmdline := l.toolChain.Vars.GetFirstOrEmpty(`recipe.c.combine.pattern`)
-	ld_arg_parts := corepkg.NewArguments(32)
-	ld_arg_parts.SmartSplit(ld_cmdline)
-	l.linkerPath, l.linkerArgs = setupArchiverArgs(ld_arg_parts)
-
-	l.linkerPath = l.toolChain.Vars.FinalResolveString(l.linkerPath, " ")
-	l.linkerArgs.Args = l.toolChain.Vars.FinalResolveArray(l.linkerArgs.Args, l.vars)
+	l.vars.Clear()
+	l.vars.Set("build.extra_libs", libraryPaths...)
+	l.vars.Set("build.extra_libs", libraryFiles...)
 }
 
 func (l *ToolchainArduinoEsp8266Linker) Link(inputArchiveAbsFilepaths []string, outputAppRelFilepathNoExt string) error {
-	linker := l.linkerPath
+	corepkg.LogInfof("Linking '%s'...", outputAppRelFilepathNoExt)
 
-	linkerArgs := *l.linkerArgs
+	linkerArgs, _ := l.toolChain.Vars.Get(`recipe.c.combine.pattern`)
 
-	linkerArgs.Add(inputArchiveAbsFilepaths...)
+	linkerPath := linkerArgs[0]
+	linkerArgs = linkerArgs[1:]
 
-	linkerArgs.Add("-o")
-	linkerArgs.Add(outputAppRelFilepathNoExt)
+	l.vars.Set("object_files", inputArchiveAbsFilepaths...)
+
+	// Split 'outputAppRelFilepathNoExt' into directory and filename parts
+	// Remove the extension of the output file if present
+	outputDir := filepath.Dir(outputAppRelFilepathNoExt)
+	outputFile := corepkg.PathFilename(outputAppRelFilepathNoExt, false)
+
+	l.toolChain.Vars.Set("build.path", outputDir)
+	l.toolChain.Vars.Set("build.project_name", outputFile)
+
+	// Resolve linkerPath and linkerArgs
+	linkerPath = l.toolChain.Vars.FinalResolveString(linkerPath, " ", l.vars)
+	linkerArgs = l.toolChain.Vars.FinalResolveArray(linkerArgs, l.vars)
 
 	// Do we need to fill in the arg to generate map file?
-	generateMapfile := linkerArgs.Args[0] == "genmap"
+	generateMapfile := true
 	if generateMapfile {
 		outputMapFilepath := outputAppRelFilepathNoExt + ".map"
-		linkerArgs.Args[0] = "-Wl,--Map=" + outputMapFilepath
+		linkerArgs = append(linkerArgs, "-Wl,--Map="+outputMapFilepath)
 	}
 
-	corepkg.LogInfof("Linking '%s'...", outputAppRelFilepathNoExt)
-	cmd := exec.Command(linker, linkerArgs.Args...)
+	// Remove any empty entries from linkerArgs
+	linkerArgs = slices.DeleteFunc(linkerArgs, func(s string) bool {
+		return strings.TrimSpace(s) == ""
+	})
+
+	cmd := exec.Command(linkerPath, linkerArgs...)
 	out, err := cmd.CombinedOutput()
-
-	// Reset the map generation command in the arguments so that it
-	// will be updated correctly on the next Link() call.
-	if generateMapfile {
-		l.linkerArgs.Args[0] = "genmap"
-	}
 
 	if err != nil {
 		corepkg.LogInfof("Link failed, output:\n%s", string(out))

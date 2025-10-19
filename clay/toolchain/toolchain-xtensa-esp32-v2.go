@@ -28,26 +28,18 @@ type ArduinoEsp32Toolchainv2 struct {
 // Compiler
 
 type ToolchainArduinoEsp32Compilerv2 struct {
-	toolChain       *ArduinoEsp32Toolchainv2
-	buildConfig     denv.BuildConfig // Configuration for the compiler, e.g., debug or release
-	buildTarget     denv.BuildTarget
-	cCompilerPath   string
-	cCompilerArgs   *corepkg.Arguments
-	cppCompilerPath string
-	cppCompilerArgs *corepkg.Arguments
-	vars            *corepkg.Vars // Local variables for the compiler
+	toolChain   *ArduinoEsp32Toolchainv2
+	buildConfig denv.BuildConfig // Configuration for the compiler, e.g., debug or release
+	buildTarget denv.BuildTarget
+	vars        *corepkg.Vars // Local variables for the compiler
 }
 
 func (t *ArduinoEsp32Toolchainv2) NewCompiler(buildConfig denv.BuildConfig, buildTarget denv.BuildTarget) Compiler {
 	return &ToolchainArduinoEsp32Compilerv2{
-		toolChain:       t,
-		buildConfig:     buildConfig,
-		buildTarget:     buildTarget,
-		cCompilerPath:   "",
-		cppCompilerPath: "",
-		cCompilerArgs:   corepkg.NewArguments(64),
-		cppCompilerArgs: corepkg.NewArguments(64),
-		vars:            corepkg.NewVars(16),
+		toolChain:   t,
+		buildConfig: buildConfig,
+		buildTarget: buildTarget,
+		vars:        corepkg.NewVars(16),
 	}
 }
 
@@ -86,24 +78,16 @@ func (cl *ToolchainArduinoEsp32Compilerv2) Compile(sourceAbsFilepaths []string, 
 		var compilerArgs []string
 		if strings.HasSuffix(sourceAbsFilepath, ".c") {
 			c_compiler, _ := cl.toolChain.Vars.Get(`recipe.c.o.pattern`)
-			cl.cCompilerPath = c_compiler[0]
-			cl.cCompilerArgs.Args = c_compiler[1:]
-
-			cl.cCompilerPath = cl.toolChain.Vars.FinalResolveString(cl.cCompilerPath, " ", cl.vars)
-			cl.cCompilerArgs.Args = cl.toolChain.Vars.FinalResolveArray(cl.cCompilerArgs.Args, cl.vars)
-
-			compilerPath = cl.cCompilerPath
-			compilerArgs = cl.cCompilerArgs.Args
+			compilerPath = c_compiler[0]
+			compilerArgs = c_compiler[1:]
+			compilerPath = cl.toolChain.Vars.FinalResolveString(compilerPath, " ", cl.vars)
+			compilerArgs = cl.toolChain.Vars.FinalResolveArray(compilerArgs, cl.vars)
 		} else {
 			cpp_compiler, _ := cl.toolChain.Vars.Get(`recipe.cpp.o.pattern`)
-			cl.cppCompilerPath = cpp_compiler[0]
-			cl.cppCompilerArgs.Args = cpp_compiler[1:]
-
-			cl.cppCompilerPath = cl.toolChain.Vars.FinalResolveString(cl.cppCompilerPath, " ", cl.vars)
-			cl.cppCompilerArgs.Args = cl.toolChain.Vars.FinalResolveArray(cl.cppCompilerArgs.Args, cl.vars)
-
-			compilerPath = cl.cppCompilerPath
-			compilerArgs = cl.cppCompilerArgs.Args
+			compilerPath = cpp_compiler[0]
+			compilerArgs = cpp_compiler[1:]
+			compilerPath = cl.toolChain.Vars.FinalResolveString(compilerPath, " ", cl.vars)
+			compilerArgs = cl.toolChain.Vars.FinalResolveArray(compilerArgs, cl.vars)
 		}
 		compilerPath = corepkg.StrTrimDelimiters(compilerPath, '"')
 
@@ -132,22 +116,18 @@ func (cl *ToolchainArduinoEsp32Compilerv2) Compile(sourceAbsFilepaths []string, 
 // Archiver
 
 type ToolchainArduinoEsp32Archiverv2 struct {
-	toolChain    *ArduinoEsp32Toolchainv2
-	buildConfig  denv.BuildConfig
-	buildTarget  denv.BuildTarget
-	archiverPath string
-	archiverArgs *corepkg.Arguments
-	vars         *corepkg.Vars
+	toolChain   *ArduinoEsp32Toolchainv2
+	buildConfig denv.BuildConfig
+	buildTarget denv.BuildTarget
+	vars        *corepkg.Vars
 }
 
 func (t *ArduinoEsp32Toolchainv2) NewArchiver(a ArchiverType, buildConfig denv.BuildConfig, buildTarget denv.BuildTarget) Archiver {
 	return &ToolchainArduinoEsp32Archiverv2{
-		toolChain:    t,
-		buildConfig:  buildConfig,
-		buildTarget:  buildTarget,
-		archiverPath: "",
-		archiverArgs: corepkg.NewArguments(16),
-		vars:         corepkg.NewVars(corepkg.VarsFormatCurlyBraces),
+		toolChain:   t,
+		buildConfig: buildConfig,
+		buildTarget: buildTarget,
+		vars:        corepkg.NewVars(corepkg.VarsFormatCurlyBraces),
 	}
 }
 
@@ -197,8 +177,6 @@ type ToolchainArduinoEsp32Linkerv2 struct {
 	toolChain   *ArduinoEsp32Toolchainv2
 	buildConfig denv.BuildConfig
 	buildTarget denv.BuildTarget
-	linkerPath  string
-	linkerArgs  *corepkg.Arguments
 	vars        *corepkg.Vars // Local variables for the linker
 }
 
@@ -207,8 +185,6 @@ func (t *ArduinoEsp32Toolchainv2) NewLinker(buildConfig denv.BuildConfig, buildT
 		toolChain:   t,
 		buildConfig: buildConfig,
 		buildTarget: buildTarget,
-		linkerPath:  "",
-		linkerArgs:  corepkg.NewArguments(512),
 		vars:        corepkg.NewVars(16),
 	}
 }
@@ -522,7 +498,7 @@ func (b *ToolchainArduinoEsp32Burnerv2) SetupBurn(buildPath string) error {
 	b.vars.Set("upload.pattern_args", "{tools.esptool_py.upload.pattern_args}")
 	b.vars.Set("upload.protocol", "{tools.esptool_py.upload.protocol}")
 
-    flashToolArgs = b.toolChain.Vars.FinalResolveArray(flashToolArgs, b.vars)
+	flashToolArgs = b.toolChain.Vars.FinalResolveArray(flashToolArgs, b.vars)
 
 	b.flashToolPath = flashToolArgs[0]
 	b.flashToolArgs = flashToolArgs[1:]
