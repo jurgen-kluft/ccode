@@ -85,25 +85,82 @@ func (cl *ToolchainArduinoEsp8266Compiler) Compile(sourceAbsFilepaths []string, 
 
 		var compilerPath string
 		var compilerArgs []string
-		if strings.HasSuffix(sourceAbsFilepath, ".c") {
+
+		fileExtension := filepath.Ext(sourceAbsFilepath)
+		if strings.EqualFold(fileExtension, ".c") {
 			c_compiler, _ := cl.toolChain.Vars.Get(`recipe.c.o.pattern`)
 			compilerPath = c_compiler[0]
 			compilerArgs = c_compiler[1:]
 			compilerPath = cl.toolChain.Vars.FinalResolveString(compilerPath, " ", cl.vars)
 			compilerArgs = cl.toolChain.Vars.FinalResolveArray(compilerArgs, cl.vars)
-		} else {
+		} else if strings.EqualFold(fileExtension, ".cpp") {
 			cpp_compiler, _ := cl.toolChain.Vars.Get(`recipe.cpp.o.pattern`)
 			compilerPath = cpp_compiler[0]
 			compilerArgs = cpp_compiler[1:]
 			compilerPath = cl.toolChain.Vars.FinalResolveString(compilerPath, " ", cl.vars)
 			compilerArgs = cl.toolChain.Vars.FinalResolveArray(compilerArgs, cl.vars)
+		} else if strings.EqualFold(fileExtension, ".s") {
+			asm_compiler, _ := cl.toolChain.Vars.Get(`recipe.S.o.pattern`)
+			compilerPath = asm_compiler[0]
+			compilerArgs = asm_compiler[1:]
+			compilerPath = cl.toolChain.Vars.FinalResolveString(compilerPath, " ", cl.vars)
+			compilerArgs = cl.toolChain.Vars.FinalResolveArray(compilerArgs, cl.vars)
 		}
+
 		compilerPath = corepkg.StrTrimDelimiters(compilerPath, '"')
 
 		// Remove empty entries from compilerArgs
-		compilerArgs = slices.DeleteFunc(compilerArgs, func(s string) bool {
-			return strings.TrimSpace(s) == ""
-		})
+		compilerArgs = slices.DeleteFunc(compilerArgs, func(s string) bool { return strings.TrimSpace(s) == "" })
+
+		// /Users/obnosis5/Library/Arduino15/packages/esp8266/tools/python3/3.7.2-post1/python3 -I /Users/obnosis5/Library/Arduino15/packages/esp8266/hardware/esp8266/3.1.2/tools/signing.py --mode header --publickey /Users/obnosis5/Documents/Arduino/sketch_apr27a/public.key --out /Users/obnosis5/Library/Caches/arduino/sketches/1C5B914ED5195AE28CD84B76EBD00CED/core/Updater_Signing.h
+		// /Users/obnosis5/Library/Arduino15/packages/esp8266/tools/xtensa-lx106-elf-gcc/3.1.0-gcc10.3-e5f9fec/bin/xtensa-lx106-elf-g++
+		// -D__ets__
+		// -DICACHE_FLASH
+		// -U__STRICT_ANSI__
+		// -D_GNU_SOURCE
+		// -DESP8266
+		// @/Users/obnosis5/Library/Caches/arduino/sketches/1C5B914ED5195AE28CD84B76EBD00CED/core/build.opt
+		// -I/Users/obnosis5/Library/Arduino15/packages/esp8266/hardware/esp8266/3.1.2/tools/sdk/include
+		// -I/Users/obnosis5/Library/Arduino15/packages/esp8266/hardware/esp8266/3.1.2/tools/sdk/lwip2/include
+		// -I/Users/obnosis5/Library/Arduino15/packages/esp8266/hardware/esp8266/3.1.2/tools/sdk/libc/xtensa-lx106-elf/include
+		// -I/Users/obnosis5/Library/Caches/arduino/sketches/1C5B914ED5195AE28CD84B76EBD00CED/core
+		// -c
+		// @/Users/obnosis5/Library/Arduino15/packages/esp8266/hardware/esp8266/3.1.2/tools/warnings/default-cppflags
+		// -Os
+		// -g
+		// -free
+		// -fipa-pta
+		// -Werror=return-type
+		// -mlongcalls
+		// -mtext-section-literals
+		// -fno-rtti
+		// -falign-functions=4
+		// -std=gnu++17
+		// -MMD
+		// -ffunction-sections
+		// -fdata-sections
+		// -fno-exceptions
+		// -DMMU_IRAM_SIZE=0x8000
+		// -DMMU_ICACHE_SIZE=0x8000
+		// -DNONOSDK22x_190703=1
+		// -DF_CPU=80000000L
+		// -DLWIP_OPEN_SRC
+		// -DTCP_MSS=536
+		// -DLWIP_FEATURES=1
+		// -DLWIP_IPV6=0
+		// -DARDUINO=10607
+		// -DARDUINO_ESP8266_GENERIC
+		// -DARDUINO_ARCH_ESP8266
+		// "-DARDUINO_BOARD=\"ESP8266_GENERIC\""
+		// "-DARDUINO_BOARD_ID=\"generic\""
+		// -DLED_BUILTIN=2
+		// -DFLASHMODE_DOUT
+		// -I/Users/obnosis5/Library/Arduino15/packages/esp8266/hardware/esp8266/3.1.2/cores/esp8266
+		// -I/Users/obnosis5/Library/Arduino15/packages/esp8266/hardware/esp8266/3.1.2/variants/generic
+		// -I/Users/obnosis5/Library/Arduino15/packages/esp8266/hardware/esp8266/3.1.2/libraries/Wire
+		// /Users/obnosis5/Library/Caches/arduino/sketches/1C5B914ED5195AE28CD84B76EBD00CED/sketch/sketch_apr27a.ino.cpp
+		// -o
+		// /Users/obnosis5/Library/Caches/arduino/sketches/1C5B914ED5195AE28CD84B76EBD00CED/sketch/sketch_apr27a.ino.cpp.o
 
 		// corepkg.LogInfof("Using compiler: %s", compilerPath)
 		// corepkg.LogInfof("Compiler args: %s", strings.Join(compilerArgs, " "))
@@ -222,7 +279,7 @@ func (l *ToolchainArduinoEsp8266Linker) SetupArgs(libraryPaths []string, library
 	l.vars.Set("build.extra_libs", libraryFiles...)
 }
 
-func (l *ToolchainArduinoEsp8266Linker) Link(inputArchiveAbsFilepaths []string, outputAppRelFilepathNoExt string) error {
+func (l *ToolchainArduinoEsp8266Linker) Link(inputObjectsAbsFilepaths, inputArchivesAbsFilepaths []string, outputAppRelFilepathNoExt string) error {
 	corepkg.LogInfof("Linking '%s'...", outputAppRelFilepathNoExt)
 
 	linkerArgs, _ := l.toolChain.Vars.Get(`recipe.c.combine.pattern`)
@@ -230,7 +287,8 @@ func (l *ToolchainArduinoEsp8266Linker) Link(inputArchiveAbsFilepaths []string, 
 	linkerPath := linkerArgs[0]
 	linkerArgs = linkerArgs[1:]
 
-	l.vars.Set("object_files", inputArchiveAbsFilepaths...)
+	l.vars.Set("object_files", inputObjectsAbsFilepaths...)
+	l.vars.Append("object_files", inputArchivesAbsFilepaths...)
 
 	// Split 'outputAppRelFilepathNoExt' into directory and filename parts
 	// Remove the extension of the output file if present
@@ -244,17 +302,135 @@ func (l *ToolchainArduinoEsp8266Linker) Link(inputArchiveAbsFilepaths []string, 
 	linkerPath = l.toolChain.Vars.FinalResolveString(linkerPath, " ", l.vars)
 	linkerArgs = l.toolChain.Vars.FinalResolveArray(linkerArgs, l.vars)
 
-	// Do we need to fill in the arg to generate map file?
-	generateMapfile := true
-	if generateMapfile {
-		outputMapFilepath := outputAppRelFilepathNoExt + ".map"
-		linkerArgs = append(linkerArgs, "-Wl,--Map="+outputMapFilepath)
+	// Copy linker script 'eagle.flash.1m64.ld' to 'ld_h/local.eagle.flash.ld.h'
+	//                /Users/obnosis5/Library/Arduino15/packages/esp8266/tools/python3/3.7.2-post1/python3
+	//                 -I
+	//                 /Users/obnosis5/Library/Arduino15/packages/esp8266/hardware/esp8266/3.1.2/tools/cp.py
+	//                 /Users/obnosis5/Library/Arduino15/packages/esp8266/hardware/esp8266/3.1.2/tools/sdk/ld/eagle.flash.1m64.ld
+	//                 /Users/obnosis5/Library/Caches/arduino/sketches/1C5B914ED5195AE28CD84B76EBD00CED/ld_h/local.eagle.flash.ld.h
+	{
+		preLinkArgs, _ := l.toolChain.Vars.Get("recipe.hooks.linking.prelink.2.pattern")
+		preLinkArgs = l.toolChain.Vars.FinalResolveArray(preLinkArgs, l.vars)
+		preLinkArgs = slices.DeleteFunc(preLinkArgs, func(s string) bool { return strings.TrimSpace(s) == "" })
+
+		cmd := exec.Command(preLinkArgs[0], preLinkArgs[1:]...)
+		out, err := cmd.CombinedOutput()
+		if err != nil {
+			corepkg.LogInfof("Pre-link step 2 failed, output:\n%s", string(out))
+			return corepkg.LogErrorf(err, "Pre-link step 2 failed")
+		}
+		if len(out) > 0 {
+			corepkg.LogInfof("Pre-link step 2 output:\n%s", string(out))
+		}
 	}
 
+	// Preprocess 'ld_h/local.eagle.flash.ld.h' to 'local.eagle.flash.ld'
+	//                 /Users/obnosis5/Library/Arduino15/packages/esp8266/tools/xtensa-lx106-elf-gcc/3.1.0-gcc10.3-e5f9fec/bin/xtensa-lx106-elf-gcc
+	//                  -CC
+	//                  -E
+	//                  -P
+	//                  -DVTABLES_IN_FLASH
+	//                  -DMMU_IRAM_SIZE=0x8000
+	//                  -DMMU_ICACHE_SIZE=0x8000
+	//                  /Users/obnosis5/Library/Caches/arduino/sketches/1C5B914ED5195AE28CD84B76EBD00CED/ld_h/local.eagle.flash.ld.h
+	//                  -o
+	//                  /Users/obnosis5/Library/Caches/arduino/sketches/1C5B914ED5195AE28CD84B76EBD00CED/local.eagle.flash.ld
+	{
+		preLinkArgs, _ := l.toolChain.Vars.Get("recipe.hooks.linking.prelink.3.pattern")
+		preLinkArgs = l.toolChain.Vars.FinalResolveArray(preLinkArgs, l.vars)
+		preLinkArgs = slices.DeleteFunc(preLinkArgs, func(s string) bool { return strings.TrimSpace(s) == "" })
+
+		cmd := exec.Command(preLinkArgs[0], preLinkArgs[1:]...)
+		out, err := cmd.CombinedOutput()
+		if err != nil {
+			corepkg.LogInfof("Pre-link step 3 failed, output:\n%s", string(out))
+			return corepkg.LogErrorf(err, "Pre-link step 3 failed")
+		}
+		if len(out) > 0 {
+			corepkg.LogInfof("Pre-link step 3 output:\n%s", string(out))
+		}
+	}
+
+	// Preprocess '{sdk path}/tools/ld_h/local.eagle.flash.ld.h' to 'local.eagle.flash.ld'
+	//                  /Users/obnosis5/Library/Arduino15/packages/esp8266/tools/xtensa-lx106-elf-gcc/3.1.0-gcc10.3-e5f9fec/bin/xtensa-lx106-elf-gcc
+	//                   -CC
+	//                   -E
+	//                   -P
+	//                   -DVTABLES_IN_FLASH
+	//                   -DMMU_IRAM_SIZE=0x8000
+	//                   -DMMU_ICACHE_SIZE=0x8000
+	//                   /Users/obnosis5/Library/Arduino15/packages/esp8266/hardware/esp8266/3.1.2/tools/sdk/ld/eagle.app.v6.common.ld.h
+	//                   -o
+	//                   /Users/obnosis5/Library/Caches/arduino/sketches/1C5B914ED5195AE28CD84B76EBD00CED/local.eagle.app.v6.common.ld
+	{
+		preLinkArgs, _ := l.toolChain.Vars.Get("recipe.hooks.linking.prelink.4.pattern")
+		preLinkArgs = l.toolChain.Vars.FinalResolveArray(preLinkArgs, l.vars)
+		preLinkArgs = slices.DeleteFunc(preLinkArgs, func(s string) bool { return strings.TrimSpace(s) == "" })
+
+		cmd := exec.Command(preLinkArgs[0], preLinkArgs[1:]...)
+		out, err := cmd.CombinedOutput()
+		if err != nil {
+			corepkg.LogInfof("Pre-link step 4 failed, output:\n%s", string(out))
+			return corepkg.LogErrorf(err, "Pre-link step 4 failed")
+		}
+		if len(out) > 0 {
+			corepkg.LogInfof("Pre-link step 4 output:\n%s", string(out))
+		}
+	}
+
+	// /Users/obnosis5/Library/Arduino15/packages/esp8266/tools/xtensa-lx106-elf-gcc/3.1.0-gcc10.3-e5f9fec/bin/xtensa-lx106-elf-gcc
+	// -fno-exceptions
+	// -Wl,-Map
+	// -Wl,/Users/obnosis5/Library/Caches/arduino/sketches/1C5B914ED5195AE28CD84B76EBD00CED/sketch_apr27a.ino.map
+	// -g @/Users/obnosis5/Library/Arduino15/packages/esp8266/hardware/esp8266/3.1.2/tools/warnings/default-cflags
+	// -Os
+	// -nostdlib
+	// -Wl,--no-check-sections
+	// -u
+	// app_entry
+	// -u
+	// _printf_float
+	// -u
+	// _scanf_float
+	// -Wl,-static
+	// -L/Users/obnosis5/Library/Arduino15/packages/esp8266/hardware/esp8266/3.1.2/tools/sdk/lib
+	// -L/Users/obnosis5/Library/Arduino15/packages/esp8266/hardware/esp8266/3.1.2/tools/sdk/lib/NONOSDK22x_190703
+	// -L/Users/obnosis5/Library/Caches/arduino/sketches/1C5B914ED5195AE28CD84B76EBD00CED
+	// -L/Users/obnosis5/Library/Arduino15/packages/esp8266/hardware/esp8266/3.1.2/tools/sdk/libc/xtensa-lx106-elf/lib
+	// -Tlocal.eagle.flash.ld
+	// -Wl,--gc-sections
+	// -Wl,-wrap,system_restart_local
+	// -Wl,-wrap,spi_flash_read
+	// -o
+	// /Users/obnosis5/Library/Caches/arduino/sketches/1C5B914ED5195AE28CD84B76EBD00CED/sketch_apr27a.ino.elf
+	// -Wl,--start-group
+	// /Users/obnosis5/Library/Caches/arduino/sketches/1C5B914ED5195AE28CD84B76EBD00CED/sketch/sketch_apr27a.ino.cpp.o
+	// /Users/obnosis5/Library/Caches/arduino/sketches/1C5B914ED5195AE28CD84B76EBD00CED/sketch/src/scd4x.cpp.o
+	// /Users/obnosis5/Library/Caches/arduino/sketches/1C5B914ED5195AE28CD84B76EBD00CED/libraries/Wire/Wire.cpp.o
+	// /Users/obnosis5/Library/Caches/arduino/cores/e15ac20c4ae19ea60bcc39f2d61c78ea/core.a
+	// -lhal
+	// -lphy
+	// -lpp
+	// -lnet80211
+	// -llwip2-536-feat
+	// -lwpa
+	// -lcrypto
+	// -lmain
+	// -lwps
+	// -lbearssl
+	// -lespnow
+	// -lsmartconfig
+	// -lairkiss
+	// -lwpa2
+	// -lstdc++
+	// -lm
+	// -lc
+	// -lgcc
+	// -Wl,--end-group
+	// -L/Users/obnosis5/Library/Caches/arduino/sketches/1C5B914ED5195AE28CD84B76EBD00CED
+
 	// Remove any empty entries from linkerArgs
-	linkerArgs = slices.DeleteFunc(linkerArgs, func(s string) bool {
-		return strings.TrimSpace(s) == ""
-	})
+	linkerArgs = slices.DeleteFunc(linkerArgs, func(s string) bool { return strings.TrimSpace(s) == "" })
 
 	cmd := exec.Command(linkerPath, linkerArgs...)
 	out, err := cmd.CombinedOutput()
@@ -452,19 +628,22 @@ func NewArduinoEsp8266Toolchain(boardVars *corepkg.Vars, projectName string, bui
 	boardVars.Set("build.path", buildPath)
 	boardVars.Set("build.arch", "esp8266")
 	boardVars.Set("build.includes", "{runtime.platform.path}/variants/{board.name}")
-	boardVars.Set("build.defines", "")
+    boardVars.Set("_id", "generic")
 
 	// TODO we are not doing a final resolve here, instead, each tool should resolve its own
 	// command line and arguments based on its needs.
 	//boardVars.FinalResolve()
 
-	// Create '{buildPath}/core/build.opt'
-	// TODO not sure what this file is for and who should create it with what content
-	optFilePath := filepath.Join(buildPath, "core", "build.opt")
+	// Create directory for '{buildPath}/ld_h/local.eagle.flash.ld.h'
+	optFilePath := filepath.Join(buildPath, "ld_h/local.eagle.flash.ld.h")
+	os.MkdirAll(filepath.Dir(optFilePath), os.ModePerm)
+
+	// Create file 'core/build.opt' in the build path
+	optFilePath = filepath.Join(buildPath, "core/build.opt")
 	os.MkdirAll(filepath.Dir(optFilePath), os.ModePerm)
 	f, err := os.Create(optFilePath)
 	if err == nil {
-		defer f.Close()
+		f.Close()
 	}
 
 	return tc

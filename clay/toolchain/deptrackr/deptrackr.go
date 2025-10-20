@@ -150,6 +150,8 @@ func castInt32ArrayToByteArray(i []int32) []byte {
 func castByteArrayToInt16Array(b []byte) (array []int16, err error) {
 	if len(b)&1 != 0 {
 		err = fmt.Errorf("byte array length is not a multiple of 2, cannot cast to int16 array")
+	} else if len(b) == 0 {
+		array = []int16{}
 	} else {
 		array = unsafe.Slice((*int16)(unsafe.Pointer(&b[0])), len(b)>>1)
 	}
@@ -159,6 +161,8 @@ func castByteArrayToInt16Array(b []byte) (array []int16, err error) {
 func castByteArrayToInt32Array(b []byte) (array []int32, err error) {
 	if len(b)&3 != 0 {
 		err = fmt.Errorf("byte array length is not a multiple of 4, cannot cast to int32 array")
+	} else if len(b) == 0 {
+		array = []int32{}
 	} else {
 		array = unsafe.Slice((*int32)(unsafe.Pointer(&b[0])), len(b)>>2)
 	}

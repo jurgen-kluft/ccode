@@ -272,7 +272,7 @@ func (l *ToolchainDarwinClangLinkerv2) SetupArgs(libraryPaths []string, libraryF
 	}
 }
 
-func (l *ToolchainDarwinClangLinkerv2) Link(inputArchiveAbsFilepaths []string, outputAppRelFilepathNoExt string) error {
+func (l *ToolchainDarwinClangLinkerv2) Link(inputObjectsAbsFilepaths, inputArchivesAbsFilepaths []string, outputAppRelFilepathNoExt string) error {
 
 	linkerPath := l.linkerPath
 	linkerArgs := l.linkerArgs.Args
@@ -280,7 +280,8 @@ func (l *ToolchainDarwinClangLinkerv2) Link(inputArchiveAbsFilepaths []string, o
 	// TODO would like this to be part of the resolve step
 	linkerArgs = append(linkerArgs, "-Wl,-map,"+outputAppRelFilepathNoExt+".map")
 	linkerArgs = append(linkerArgs, "-o", l.LinkedFilepath(outputAppRelFilepathNoExt))
-	linkerArgs = append(linkerArgs, inputArchiveAbsFilepaths...)
+	linkerArgs = append(linkerArgs, inputObjectsAbsFilepaths...)
+	linkerArgs = append(linkerArgs, inputArchivesAbsFilepaths...)
 
 	corepkg.LogInff("Linking (%s) %s", l.buildConfig.String(), filepath.Base(outputAppRelFilepathNoExt))
 

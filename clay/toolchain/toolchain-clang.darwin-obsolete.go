@@ -274,12 +274,13 @@ func (l *ToolchainDarwinClangLinker) SetupArgs(libraryPaths []string, libraryFil
 	l.cmdline.Save()
 }
 
-func (l *ToolchainDarwinClangLinker) Link(inputArchiveAbsFilepaths []string, outputAppRelFilepathNoExt string) error {
+func (l *ToolchainDarwinClangLinker) Link(inputObjectsAbsFilepaths, inputArchivesAbsFilepaths []string, outputAppRelFilepathNoExt string) error {
 	l.cmdline.Restore()
 
 	l.cmdline.Out(outputAppRelFilepathNoExt)
 	l.cmdline.Libs([]string{"stdc++"})
-	l.cmdline.ObjectFiles(inputArchiveAbsFilepaths)
+	l.cmdline.ObjectFiles(inputObjectsAbsFilepaths)
+	l.cmdline.ObjectFiles(inputArchivesAbsFilepaths)
 
 	linkerPath := l.toolChain.linkerPath
 	linkerArgs := l.args.Args

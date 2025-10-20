@@ -119,20 +119,6 @@ func (p *Project) Build(buildConfig denv.BuildConfig, buildTarget denv.BuildTarg
 	includes := corepkg.NewValueSet2(8)
 	defines := corepkg.NewValueSet2(8)
 
-	if buildTarget.Windows() {
-		defines.Add("TARGET_PC")
-	} else if buildTarget.Linux() {
-		defines.Add("TARGET_LINUX")
-	} else if buildTarget.Mac() {
-		defines.Add("TARGET_MAC")
-	} else if buildTarget.Esp32() {
-		defines.Add("TARGET_ARDUINO")
-		defines.Add("TARGET_ESP32")
-	} else if buildTarget.Esp8266() {
-		defines.Add("TARGET_ARDUINO")
-		defines.Add("TARGET_ESP8266")
-	}
-
 	projects := make([]*Project, 0, len(p.Dependencies)+1)
 	projects = append(projects, p)
 
@@ -161,9 +147,9 @@ func (p *Project) Build(buildConfig denv.BuildConfig, buildTarget denv.BuildTarg
 				incPath = corepkg.PathNormalize(incPath)
 				includes.Add(incPath)
 			}
-			//for _, def := range prjConfig.Defines.Values {
-				//defines.Add(def)
-			//}
+			for _, def := range prjConfig.Defines.Values {
+				defines.Add(def)
+			}
 		}
 	}
 
@@ -233,13 +219,14 @@ func (p *Project) Build(buildConfig denv.BuildConfig, buildTarget denv.BuildTarg
 			}
 
 			// Project object files
-			archivesToLink := make([]string, 0, len(p.SourceFiles)+len(p.Dependencies))
+			objsToLink := make([]string, 0, len(p.SourceFiles)+len(p.Dependencies))
 			for _, src := range p.SourceFiles {
 				srcObjRelPath := filepath.Join(projectBuildPath, compiler.ObjFilepath(src.SrcRelPath))
-				archivesToLink = append(archivesToLink, srcObjRelPath)
+				objsToLink = append(objsToLink, srcObjRelPath)
 			}
 
 			// Project archive dependencies (only those matching the build config)
+			archivesToLink := make([]string, 0, len(p.SourceFiles)+len(p.Dependencies))
 			for _, dep := range p.Dependencies {
 				if dep.CanBuildFor(buildConfig, buildTarget) {
 					libAbsFilepath := dep.GetOutputFilepath(buildPath, staticArchiver.LibFilepath(dep.DevProject.Name))
@@ -248,7 +235,7 @@ func (p *Project) Build(buildConfig denv.BuildConfig, buildTarget denv.BuildTarg
 			}
 
 			// Link them all together into a single executable
-			if err := linker.Link(archivesToLink, executableOutputFilepath); err != nil {
+			if err := linker.Link(objsToLink, archivesToLink, executableOutputFilepath); err != nil {
 				return outOfDate, err
 			}
 			projectDepFileTrackr.AddItem(executableOutputFilepath, archivesToLink)

@@ -1,4 +1,4 @@
-package clay
+package cespressif
 
 import (
 	"bufio"
@@ -9,7 +9,54 @@ import (
 	corepkg "github.com/jurgen-kluft/ccode/core"
 )
 
-func PrintAllFlashSizes(espressifToolchain *EspressifToolchain, arch string, boardName string) (err error) {
+func (t *toolchain) loadJson(inputFilename string) error {
+	file, err := os.Open(inputFilename)
+	if err != nil {
+		return err
+	}
+	defer file.Close()
+
+	stat, err := file.Stat()
+	if err != nil {
+		return err
+	}
+
+	size := stat.Size()
+	buffer := make([]byte, size)
+
+	reader := bufio.NewReader(file)
+	_, err = reader.Read(buffer)
+	if err != nil {
+		return err
+	}
+
+	jsonDecoder := corepkg.NewJsonDecoder()
+	jsonDecoder.Begin(string(buffer))
+	if err := decodeJsonToolchain(t, jsonDecoder); err != nil {
+		return err
+	}
+
+	return nil
+}
+
+func (t *toolchain) saveJson(outputFilename string) error {
+	file, err := os.Create(outputFilename)
+	if err != nil {
+		return err
+	}
+	defer file.Close()
+
+	jsonEncoder := corepkg.NewJsonEncoder("    ")
+	jsonEncoder.HintOutputSize(4 * 1024 * 1024)
+	jsonEncoder.Begin()
+	encodeJsonToolchain(jsonEncoder, "", t)
+	json := jsonEncoder.End()
+
+	file.WriteString(json)
+	return nil
+}
+
+func PrintAllFlashSizes(toolchain *toolchain, arch string, boardName string) (err error) {
 
 	// var flashDefMatch string
 	// if cpuName == "esp32" {
@@ -18,10 +65,8 @@ func PrintAllFlashSizes(espressifToolchain *EspressifToolchain, arch string, boa
 	// 	flashDefMatch = `\.menu\.(?:FlashSize|eesz)\.([^\.]+)=(.+)`
 	// }
 
-	// Get the parsed board
-	//var board *EspressifBoard
-	if i, ok := espressifToolchain.BoardNameToIndex[boardName]; ok {
-		board := espressifToolchain.ListOfBoards[i]
+	if i, ok := toolchain.BoardNameToIndex[boardName]; ok {
+		board := toolchain.ListOfBoards[i]
 
 		column1 := make([]string, 0)
 		column2 := make([]string, 0)
@@ -60,14 +105,14 @@ func PrintAllFlashSizes(espressifToolchain *EspressifToolchain, arch string, boa
 	return nil
 }
 
-func PrintAllBoardInfos(espressifToolchain *EspressifToolchain, boardName string, max int) error {
+func PrintAllBoardInfos(toolchain *toolchain, boardName string, max int) error {
 
 	// Print some info
-	espressifToolchain.PrintInfo()
+	toolchain.PrintInfo()
 
 	// First search in the board names
-	names := make([]string, 0, len(espressifToolchain.ListOfBoards))
-	for _, board := range espressifToolchain.ListOfBoards {
+	names := make([]string, 0, len(toolchain.ListOfBoards))
+	for _, board := range toolchain.ListOfBoards {
 		names = append(names, board.Name)
 	}
 
@@ -75,18 +120,17 @@ func PrintAllBoardInfos(espressifToolchain *EspressifToolchain, boardName string
 	closest := cm.ClosestN(boardName, max)
 	if len(closest) > 0 {
 		for _, match := range closest {
-			if board := espressifToolchain.GetBoardByName(match); board != nil {
-				espressifToolchain.ResolveVariables(board, "buildpath/")
+			if board := toolchain.GetBoardByName(match); board != nil {
+				vars := corepkg.NewVars(corepkg.VarsFormatCurlyBraces)
+				toolchain.ResolveVariablesForBoard(board, vars)
 				corepkg.LogInfo("----------------------- " + board.Name + " -----------------------")
 				corepkg.LogInfof("Board: %s", board.Name)
 				corepkg.LogInfof("Description: %s", board.Description)
-				//corepkg.LogInfo(board.Vars.String())
-				for _, key := range board.Vars.Keys {
+				for _, key := range vars.Keys {
+					key = strings.ToLower(key)
 					if strings.HasPrefix(key, "build.") || strings.HasPrefix(key, "upload.") {
-						values := board.Vars.Values[board.Vars.KeyToIndex[key]]
-						if len(values) > 0 {
-							corepkg.LogInfof("%s:%s", key, values)
-						}
+						values := vars.Values[vars.KeyToIndex22[key]]
+						corepkg.LogInfof("%s:%s", key, values)
 					}
 				}
 
@@ -97,11 +141,11 @@ func PrintAllBoardInfos(espressifToolchain *EspressifToolchain, boardName string
 	return nil
 }
 
-func PrintAllMatchingBoards(espressifToolchain *EspressifToolchain, fuzzy string, listMax int) error {
+func PrintAllMatchingBoards(toolchain *toolchain, fuzzy string, listMax int) error {
 
 	// First search in the board names
-	names := make([]string, 0, len(espressifToolchain.ListOfBoards))
-	for _, board := range espressifToolchain.ListOfBoards {
+	names := make([]string, 0, len(toolchain.ListOfBoards))
+	for _, board := range toolchain.ListOfBoards {
 		names = append(names, board.Name)
 	}
 
@@ -114,7 +158,7 @@ func PrintAllMatchingBoards(espressifToolchain *EspressifToolchain, fuzzy string
 
 		// Create map of board name to board description
 		boardMap := make(map[string]string)
-		for _, board := range espressifToolchain.ListOfBoards {
+		for _, board := range toolchain.ListOfBoards {
 			boardMap[board.Name] = board.Description
 		}
 
@@ -130,8 +174,8 @@ func PrintAllMatchingBoards(espressifToolchain *EspressifToolchain, fuzzy string
 	if len(closest) < listMax {
 
 		// Now search in the board descriptions
-		descriptions := make([]string, 0, len(espressifToolchain.ListOfBoards))
-		for _, board := range espressifToolchain.ListOfBoards {
+		descriptions := make([]string, 0, len(toolchain.ListOfBoards))
+		for _, board := range toolchain.ListOfBoards {
 			descriptions = append(descriptions, board.Description)
 		}
 
@@ -141,7 +185,7 @@ func PrintAllMatchingBoards(espressifToolchain *EspressifToolchain, fuzzy string
 
 			// Create map of board description to board name
 			boardMap := make(map[string]string)
-			for _, board := range espressifToolchain.ListOfBoards {
+			for _, board := range toolchain.ListOfBoards {
 				boardMap[board.Description] = board.Name
 			}
 
@@ -157,53 +201,6 @@ func PrintAllMatchingBoards(espressifToolchain *EspressifToolchain, fuzzy string
 				}
 			}
 		}
-	}
-
-	return nil
-}
-
-func GenerateToolchainJson(espressifToolchain *EspressifToolchain, outputFilename string) error {
-	file, err := os.Create(outputFilename)
-	if err != nil {
-		return err
-	}
-	defer file.Close()
-
-	jsonEncoder := corepkg.NewJsonEncoder("    ")
-	jsonEncoder.HintOutputSize(4 * 1024 * 1024)
-	jsonEncoder.Begin()
-	encodeJsonEspressifToolchain(jsonEncoder, "", espressifToolchain)
-	json := jsonEncoder.End()
-
-	file.WriteString(json)
-	return nil
-}
-
-func LoadToolchainJson(espressifToolchain *EspressifToolchain, inputFilename string) error {
-	file, err := os.Open(inputFilename)
-	if err != nil {
-		return err
-	}
-	defer file.Close()
-
-	stat, err := file.Stat()
-	if err != nil {
-		return err
-	}
-
-	size := stat.Size()
-	buffer := make([]byte, size)
-
-	reader := bufio.NewReader(file)
-	_, err = reader.Read(buffer)
-	if err != nil {
-		return err
-	}
-
-	jsonDecoder := corepkg.NewJsonDecoder()
-	jsonDecoder.Begin(string(buffer))
-	if err := decodeJsonEspressifToolchain(espressifToolchain, jsonDecoder); err != nil {
-		return err
 	}
 
 	return nil

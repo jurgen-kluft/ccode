@@ -14,5 +14,5 @@ type Linker interface {
 	SetupArgs(libraryPaths []string, libraryFiles []string)
 
 	// Link takes a list of input object file paths and an output file path
-	Link(inputArchiveAbsFilepaths []string, outputAppRelFilepathNoExt string) error
+	Link(inputObjectsAbsFilepaths, inputArchivesAbsFilepaths []string, outputAppRelFilepathNoExt string) error
 }

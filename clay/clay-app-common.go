@@ -171,6 +171,13 @@ func ParseProjectNameAndConfig(app *App) {
 		if len(app.Config.TargetBoard) == 0 {
 			app.Config.TargetBoard = loadedConfig.TargetBoard
 		}
+		if len(app.Config.TargetBoard) == 0 {
+			if app.Config.TargetArch == "esp32" {
+				app.Config.TargetBoard = "esp32"
+			} else if app.Config.TargetArch == "esp8266" {
+				app.Config.TargetBoard = "generic"
+			}
+		}
 	}
 
 	if len(app.Config.TargetBuild) == 0 {

@@ -7,15 +7,11 @@ Built using Golang, Clay is a build system designed to be simple, and efficient.
 ## Features
 
 - Platforms:
-  - macOS (darwin)
-  - windows (wip)
+  - MacOS (darwin)
+    - Arduino (ESP32/ESP8266)
+  - Windows (wip)
+  - Linux (should be simple to add)
 - Compilers:
   - GCC/Clang (darwin and linux)
   - MSVC (windows)
 - Dependency Tracker
-- Targets
-  - darwin
-    * darwin
-    * arduino Esp32
-  - windows
-    * windows

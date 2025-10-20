@@ -130,12 +130,13 @@ func (prj *DevProject) ClearSourcePaths() {
 	prj.SourceDirs = make([]PinnedGlobPath, 0)
 }
 
-func (prj *DevProject) SourceFilesFrom(root, base, sub string) {
+func (prj *DevProject) SourceFilesFrom(root, base, sub string, extensions ...string) {
 	root = prj.ResolveEnvironmentVariables(root)
 	base = prj.ResolveEnvironmentVariables(base)
 	sub = prj.ResolveEnvironmentVariables(sub)
-	prj.SourceDirs = append(prj.SourceDirs, PinnedGlobPath{Path: PinnedPath{Root: root, Base: base, Sub: sub}, Glob: "**/*.c"})
-	prj.SourceDirs = append(prj.SourceDirs, PinnedGlobPath{Path: PinnedPath{Root: root, Base: base, Sub: sub}, Glob: "**/*.cpp"})
+	for _, ext := range extensions {
+		prj.SourceDirs = append(prj.SourceDirs, PinnedGlobPath{Path: PinnedPath{Root: root, Base: base, Sub: sub}, Glob: "**/*" + ext})
+	}
 }
 
 func (prj *DevProject) AddDefine(define string) {
@@ -214,8 +215,10 @@ func (proj *DevProject) CollectProjectDependencies(deps *DevProjectList) {
 	}
 }
 
-func (prj *DevProject) AddCppSource(name string) {
-	prj.SourceDirs = append(prj.SourceDirs, PinnedGlobPath{Path: PinnedPath{Root: prj.RootPath(), Base: prj.RepoName, Sub: "source/" + name + "/cpp"}, Glob: "**/*.cpp"})
+func (prj *DevProject) AddSourceFiles(name string, extensions ...string) {
+	for _, ext := range extensions {
+		prj.SourceDirs = append(prj.SourceDirs, PinnedGlobPath{Path: PinnedPath{Root: prj.RootPath(), Base: prj.RepoName, Sub: "source/" + name + "/cpp"}, Glob: "**/*" + ext})
+	}
 	for _, cfg := range prj.Configs {
 		cfg.IncludeDirs = append(cfg.IncludeDirs, PinnedPath{Root: prj.RootPath(), Base: prj.RepoName, Sub: "source/" + name + "/include"})
 	}
@@ -345,7 +348,6 @@ func SetupCppHeaderProject(pkg *Package, name string) *DevProject {
 	project.BuildTargets = BuildTargetsAll
 
 	for _, cfg := range project.Configs {
-		configureProjectCompilerDefines(cfg)
 		cfg.IncludeDirs = append(cfg.IncludeDirs, PinnedPath{Root: pkg.Path(), Base: pkg.RepoName, Sub: "source/main/include"})
 	}
 	return project
@@ -367,7 +369,6 @@ func SetupCppLibProject(pkg *Package, name string) *DevProject {
 	project.BuildTargets = BuildTargetsAll
 
 	for _, cfg := range project.Configs {
-		configureProjectCompilerDefines(cfg)
 		cfg.IncludeDirs = append(cfg.IncludeDirs, PinnedPath{Root: pkg.Path(), Base: pkg.RepoName, Sub: "source/main/include"})
 	}
 	return project
@@ -389,7 +390,6 @@ func SetupCppTestLibProject(pkg *Package, name string) *DevProject {
 	project.BuildTargets = BuildTargetsDesktop
 
 	for _, cfg := range project.Configs {
-		configureProjectCompilerDefines(cfg)
 		cfg.IncludeDirs = append(cfg.IncludeDirs, PinnedPath{Root: pkg.Path(), Base: pkg.RepoName, Sub: "source/main/include"})
 	}
 	return project
@@ -411,7 +411,6 @@ func SetupCppLibProjectForDesktop(pkg *Package, name string) *DevProject {
 	project.BuildTargets = BuildTargetsDesktop
 
 	for _, cfg := range project.Configs {
-		configureProjectCompilerDefines(cfg)
 		cfg.IncludeDirs = append(cfg.IncludeDirs, PinnedPath{Root: pkg.Path(), Base: pkg.RepoName, Sub: "source/main/include"})
 	}
 	return project
@@ -430,7 +429,6 @@ func SetupCppLibProjectForArduinoEsp32(pkg *Package, name string) *DevProject {
 	project.BuildTargets = BuildTargetArduinoEsp32
 
 	for _, cfg := range project.Configs {
-		configureProjectCompilerDefines(cfg)
 		cfg.IncludeDirs = append(cfg.IncludeDirs, PinnedPath{Root: pkg.Path(), Base: pkg.RepoName, Sub: "source/main/include"})
 	}
 	return project
@@ -448,7 +446,6 @@ func SetupCppLibProjectForArduinoEsp8266(pkg *Package, name string) *DevProject 
 
 	project.BuildTargets = BuildTargetArduinoEsp8266
 	for _, cfg := range project.Configs {
-		configureProjectCompilerDefines(cfg)
 		cfg.IncludeDirs = append(cfg.IncludeDirs, PinnedPath{Root: pkg.Path(), Base: pkg.RepoName, Sub: "source/main/include"})
 	}
 	return project
@@ -469,7 +466,6 @@ func SetupDefaultCppTestProject(pkg *Package, name string, buildTarget BuildTarg
 	project.SourceDirs = append(project.SourceDirs, PinnedGlobPath{Path: PinnedPath{Root: pkg.Path(), Base: pkg.RepoName, Sub: "source/test/cpp"}, Glob: "**/*.cpp"})
 
 	for _, cfg := range project.Configs {
-		configureProjectCompilerDefines(cfg)
 		cfg.IncludeDirs = append(cfg.IncludeDirs, PinnedPath{Root: pkg.Path(), Base: pkg.RepoName, Sub: "source/test/include"})
 		cfg.IncludeDirs = append(cfg.IncludeDirs, PinnedPath{Root: pkg.Path(), Base: pkg.RepoName, Sub: "source/main/include"})
 	}
@@ -501,7 +497,6 @@ func SetupDefaultCppCliProject(pkg *Package, name string, buildTarget BuildTarge
 	project.SourceDirs = append(project.SourceDirs, PinnedGlobPath{Path: PinnedPath{Root: pkg.Path(), Base: pkg.RepoName, Sub: "source/cli/cpp"}, Glob: "**/*.cpp"})
 
 	for _, cfg := range project.Configs {
-		configureProjectCompilerDefines(cfg)
 		cfg.IncludeDirs = append(cfg.IncludeDirs, PinnedPath{Root: pkg.Path(), Base: pkg.RepoName, Sub: "source/cli/include"})
 	}
 
@@ -525,7 +520,6 @@ func SetupDefaultCppAppProject(pkg *Package, name string, dirname string, buildT
 	project.SourceDirs = append(project.SourceDirs, PinnedGlobPath{Path: PinnedPath{Root: pkg.Path(), Base: pkg.RepoName, Sub: "source/" + dirname + "/cpp"}, Glob: "**/*.cpp"})
 
 	for _, cfg := range project.Configs {
-		configureProjectCompilerDefines(cfg)
 		cfg.IncludeDirs = append(cfg.IncludeDirs, PinnedPath{Root: pkg.Path(), Base: pkg.RepoName, Sub: "source/" + dirname + "/include"})
 	}
 
@@ -552,25 +546,6 @@ func SetupCppAppProjectForArduino(pkg *Package, name string, dirname string) *De
 	project.SourceDirs = append(project.SourceDirs, PinnedGlobPath{Path: PinnedPath{Root: pkg.Path(), Base: pkg.RepoName, Sub: "source/" + dirname + "/partitions"}, Glob: "**/*.csv"})
 	project.BuildTargets = BuildTargetsArduino
 	return project
-}
-
-func configureProjectCompilerDefines(config *DevConfig) {
-	configType := config.BuildConfig
-	if configType.IsDebug() {
-		config.Defines.AddMany("TARGET_DEBUG", "_DEBUG")
-	} else if configType.IsRelease() {
-		config.Defines.AddMany("TARGET_RELEASE", "NDEBUG")
-	} else if configType.IsFinal() {
-		config.Defines.AddMany("TARGET_FINAL", "NDEBUG")
-	}
-
-	if configType.IsProfile() {
-		config.Defines.AddMany("TARGET_RELEASE", "TARGET_PROFILE", "NDEBUG")
-	}
-
-	if configType.IsTest() {
-		config.Defines.AddMany("TARGET_TEST")
-	}
 }
 
 // -----------------------------------------------------------------------------------------------------

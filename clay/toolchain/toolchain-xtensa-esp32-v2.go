@@ -58,11 +58,16 @@ func (cl *ToolchainArduinoEsp32Compilerv2) SetupArgs(defines []string, includes 
 	for i, def := range defines {
 		defines[i] = "-D" + def
 	}
+	if sdk_defines, ok := cl.toolChain.Vars.Get(`build.defines`); ok {
+		for i, def := range sdk_defines {
+			defines[i] = "-D" + def
+		}
+	}
 
 	cl.vars.Clear()
 	cl.vars.Append("includes", "-I{runtime.platform.path}/variants/{board.name}")
 	cl.vars.Append("includes", includes...)
-	cl.vars.Append("build.defines", defines...)
+	cl.vars.Set("build.defines", defines...)
 }
 
 func (cl *ToolchainArduinoEsp32Compilerv2) Compile(sourceAbsFilepaths []string, objRelFilepaths []string) error {
@@ -209,7 +214,7 @@ func (l *ToolchainArduinoEsp32Linkerv2) SetupArgs(libraryPaths []string, library
 	l.vars.Set("build.extra_libs", libraryFiles...)
 }
 
-func (l *ToolchainArduinoEsp32Linkerv2) Link(inputArchiveAbsFilepaths []string, outputAppRelFilepathNoExt string) error {
+func (l *ToolchainArduinoEsp32Linkerv2) Link(inputObjectsAbsFilepaths, inputArchivesAbsFilepaths []string, outputAppRelFilepathNoExt string) error {
 	corepkg.LogInfof("Linking '%s'...", outputAppRelFilepathNoExt)
 
 	linkerArgs, _ := l.toolChain.Vars.Get(`recipe.c.combine.pattern`)
@@ -217,7 +222,8 @@ func (l *ToolchainArduinoEsp32Linkerv2) Link(inputArchiveAbsFilepaths []string, 
 	linkerPath := linkerArgs[0]
 	linkerArgs = linkerArgs[1:]
 
-	l.vars.Set("object_files", inputArchiveAbsFilepaths...)
+	l.vars.Set("object_files", inputObjectsAbsFilepaths...)
+	l.vars.Append("object_files", inputArchivesAbsFilepaths...)
 
 	// Split 'outputAppRelFilepathNoExt' into directory and filename parts
 	// Remove the extension of the output file if present

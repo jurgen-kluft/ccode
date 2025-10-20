@@ -359,12 +359,13 @@ func (l *ToolchainArduinoEsp32Linker) SetupArgs(libraryPaths []string, libraryFi
 	}
 }
 
-func (l *ToolchainArduinoEsp32Linker) Link(inputArchiveAbsFilepaths []string, outputAppRelFilepathNoExt string) error {
+func (l *ToolchainArduinoEsp32Linker) Link(inputObjectsAbsFilepaths, inputArchivesAbsFilepaths []string, outputAppRelFilepathNoExt string) error {
 	linker := l.linkerPath
 
 	linkerArgs := *l.linkerArgs
 
-	linkerArgs.Add(inputArchiveAbsFilepaths...)
+	linkerArgs.Add(inputObjectsAbsFilepaths...)
+	linkerArgs.Add(inputArchivesAbsFilepaths...)
 	linkerArgs.Add("-Wl,--end-group")
 	linkerArgs.Add("-Wl,-EL") //
 

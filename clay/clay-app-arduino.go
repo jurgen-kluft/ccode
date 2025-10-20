@@ -7,6 +7,7 @@ import (
 
 	corepkg "github.com/jurgen-kluft/ccode/core"
 	"github.com/jurgen-kluft/ccode/denv"
+	cespressif "github.com/jurgen-kluft/ccode/espressif"
 )
 
 // Clay App
@@ -93,8 +94,6 @@ func ClayAppMain(pkg *denv.Package) {
 		err = app.ListFlashSizes(ParseArchAndBoardName())
 	case "board-info":
 		err = app.PrintBoardInfo(ParseArchBoardNameAndMax())
-	case "generate-boards":
-		err = app.GenerateBoards(ParseArch())
 	case "version":
 		version := corepkg.NewVersionInfo()
 		corepkg.LogInff("Version: %s", version.Version)
@@ -186,7 +185,7 @@ func (a *App) BuildInfo() error {
 func (a *App) Flash() error {
 	buildPath := a.GetBuildPath(GetBuildDirname(a.BuildConfig, a.BuildTarget))
 
-    prjs, err := a.CreateProjects(a.BuildTarget, a.BuildConfig)
+	prjs, err := a.CreateProjects(a.BuildTarget, a.BuildConfig)
 	if err != nil {
 		return err
 	}
@@ -231,51 +230,28 @@ func (a *App) ListBoards(arch string, boardName string, matches int) error {
 	if matches <= 0 {
 		matches = 10
 	}
-	espressifToolchain := NewEspressifToolchain(arch)
-	if espressifToolchain == nil {
-		return corepkg.LogErrorf(nil, "Unsupported architecture: %s", arch)
-	}
-	if err := ParseToolchainFiles(espressifToolchain); err != nil {
+	if espressifToolchain, err := cespressif.ParseToolchain(arch); err != nil {
 		return err
+	} else {
+		return cespressif.PrintAllMatchingBoards(espressifToolchain, boardName, matches)
 	}
-	return PrintAllMatchingBoards(espressifToolchain, boardName, matches)
-}
-
-func (a *App) GenerateBoards(arch string) error {
-	espressifToolchain := NewEspressifToolchain(arch)
-	if espressifToolchain == nil {
-		return corepkg.LogErrorf(nil, "Unsupported architecture: %s", arch)
-	}
-	if err := ParseToolchainFiles(espressifToolchain); err != nil {
-		return err
-	}
-	if err := GenerateToolchainJson(espressifToolchain, arch+".json"); err != nil {
-		return err
-	}
-	return corepkg.LogErrorf(nil, "Unsupported architecture: %s", a.Config.TargetArch)
 }
 
 func (a *App) PrintBoardInfo(arch string, boardName string, matches int) error {
 	if matches <= 0 {
 		matches = 10
 	}
-	espressifToolchain := NewEspressifToolchain(arch)
-	if espressifToolchain == nil {
-		return corepkg.LogErrorf(nil, "Unsupported architecture: %s", arch)
-	}
-	if err := ParseToolchainFiles(espressifToolchain); err != nil {
+	if espressifToolchain, err := cespressif.ParseToolchain(arch); err != nil {
 		return err
+	} else {
+		return cespressif.PrintAllBoardInfos(espressifToolchain, boardName, matches)
 	}
-	return PrintAllBoardInfos(espressifToolchain, boardName, matches)
 }
 
 func (a *App) ListFlashSizes(arch string, boardName string) error {
-	espressifToolchain := NewEspressifToolchain(arch)
-	if espressifToolchain == nil {
-		return corepkg.LogErrorf(nil, "Unsupported architecture: %s", arch)
-	}
-	if err := ParseToolchainFiles(espressifToolchain); err != nil {
+	if espressifToolchain, err := cespressif.ParseToolchain(arch); err != nil {
 		return err
+	} else {
+		return cespressif.PrintAllFlashSizes(espressifToolchain, arch, boardName)
 	}
-	return PrintAllFlashSizes(espressifToolchain, arch, boardName)
 }

@@ -246,7 +246,7 @@ func (l *WinMsDevLinker) SetupArgs(libraryPaths []string, libraryFiles []string)
 	l.cmdline.Save()
 }
 
-func (l *WinMsDevLinker) Link(inputArchiveAbsFilepaths []string, outputAppRelFilepath string) error {
+func (l *WinMsDevLinker) Link(inputObjectsAbsFilepaths, inputArchivesAbsFilepaths []string, outputAppRelFilepath string) error {
 
 	outputAppRelFilepath = corepkg.PathWindowsPath(outputAppRelFilepath)
 
@@ -297,7 +297,8 @@ func (l *WinMsDevLinker) Link(inputArchiveAbsFilepaths []string, outputAppRelFil
 	l.cmdline.EnableDataExecutionPrevention()
 	l.cmdline.MachineX64()
 
-	l.cmdline.Libs(inputArchiveAbsFilepaths)
+	l.cmdline.Libs(inputObjectsAbsFilepaths)
+	l.cmdline.Libs(inputArchivesAbsFilepaths)
 
 	linkerPath := filepath.Join(l.toolChain.Msvc.LinkerPath, l.toolChain.Msvc.LinkerBin)
 	linkerArgs := l.args.Args
