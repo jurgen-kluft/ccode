@@ -56,18 +56,15 @@ func (cl *ToolchainArduinoEsp32Compilerv2) SetupArgs(defines []string, includes 
 		includes[i] = "-I" + inc
 	}
 	for i, def := range defines {
-		defines[i] = "-D" + def
-	}
-	if sdk_defines, ok := cl.toolChain.Vars.Get(`build.defines`); ok {
-		for i, def := range sdk_defines {
+		if !strings.HasPrefix(def, "-D") {
 			defines[i] = "-D" + def
 		}
 	}
+    cl.toolChain.Vars.Append("build.defines", defines...)
 
 	cl.vars.Clear()
 	cl.vars.Append("includes", "-I{runtime.platform.path}/variants/{board.name}")
 	cl.vars.Append("includes", includes...)
-	cl.vars.Set("build.defines", defines...)
 }
 
 func (cl *ToolchainArduinoEsp32Compilerv2) Compile(sourceAbsFilepaths []string, objRelFilepaths []string) error {
@@ -576,7 +573,6 @@ func NewArduinoEsp32Toolchainv2(boardVars *corepkg.Vars, projectName string, bui
 	boardVars.Set("build.path", buildPath)
 	boardVars.Set("build.arch", "ESP32")
 	boardVars.Set("build.includes", "{runtime.platform.path}/variants/{board.name}")
-	boardVars.Set("build.defines", "")
 
 	boardVars.SortByKey()
 

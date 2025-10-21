@@ -65,7 +65,9 @@ func (cl *ToolchainArduinoEsp8266Compiler) SetupArgs(defines []string, includes 
 		includes[i] = "-I" + inc
 	}
 	for i, def := range defines {
-		defines[i] = "-D" + def
+		if !strings.HasPrefix(def, "-D") {
+			defines[i] = "-D" + def
+		}
 	}
 
 	cl.vars.Clear()
@@ -628,7 +630,7 @@ func NewArduinoEsp8266Toolchain(boardVars *corepkg.Vars, projectName string, bui
 	boardVars.Set("build.path", buildPath)
 	boardVars.Set("build.arch", "esp8266")
 	boardVars.Set("build.includes", "{runtime.platform.path}/variants/{board.name}")
-    boardVars.Set("_id", "generic")
+	boardVars.Set("_id", "generic")
 
 	// TODO we are not doing a final resolve here, instead, each tool should resolve its own
 	// command line and arguments based on its needs.
