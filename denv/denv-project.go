@@ -543,7 +543,6 @@ func SetupCppAppProjectForDesktop(pkg *Package, name string, dirname string) *De
 func SetupCppAppProjectForArduino(pkg *Package, name string, dirname string) *DevProject {
 	// Arduino project
 	project := SetupDefaultCppAppProject(pkg, "app_"+name, dirname, BuildTargetArduinoEsp32)
-	project.SourceDirs = append(project.SourceDirs, PinnedGlobPath{Path: PinnedPath{Root: pkg.Path(), Base: pkg.RepoName, Sub: "source/" + dirname + "/partitions"}, Glob: "**/*.csv"})
 	project.BuildTargets = BuildTargetsArduino
 	return project
 }

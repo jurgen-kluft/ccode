@@ -284,11 +284,6 @@ func (l *ToolchainArduinoEsp8266Linker) SetupArgs(libraryPaths []string, library
 func (l *ToolchainArduinoEsp8266Linker) Link(inputObjectsAbsFilepaths, inputArchivesAbsFilepaths []string, outputAppRelFilepathNoExt string) error {
 	corepkg.LogInfof("Linking '%s'...", outputAppRelFilepathNoExt)
 
-	linkerArgs, _ := l.toolChain.Vars.Get(`recipe.c.combine.pattern`)
-
-	linkerPath := linkerArgs[0]
-	linkerArgs = linkerArgs[1:]
-
 	l.vars.Set("object_files", inputObjectsAbsFilepaths...)
 	l.vars.Append("object_files", inputArchivesAbsFilepaths...)
 
@@ -299,10 +294,6 @@ func (l *ToolchainArduinoEsp8266Linker) Link(inputObjectsAbsFilepaths, inputArch
 
 	l.toolChain.Vars.Set("build.path", outputDir)
 	l.toolChain.Vars.Set("build.project_name", outputFile)
-
-	// Resolve linkerPath and linkerArgs
-	linkerPath = l.toolChain.Vars.FinalResolveString(linkerPath, " ", l.vars)
-	linkerArgs = l.toolChain.Vars.FinalResolveArray(linkerArgs, l.vars)
 
 	// Copy linker script 'eagle.flash.1m64.ld' to 'ld_h/local.eagle.flash.ld.h'
 	//                /Users/obnosis5/Library/Arduino15/packages/esp8266/tools/python3/3.7.2-post1/python3
@@ -430,6 +421,15 @@ func (l *ToolchainArduinoEsp8266Linker) Link(inputObjectsAbsFilepaths, inputArch
 	// -lgcc
 	// -Wl,--end-group
 	// -L/Users/obnosis5/Library/Caches/arduino/sketches/1C5B914ED5195AE28CD84B76EBD00CED
+
+	linkerArgs, _ := l.toolChain.Vars.Get(`recipe.c.combine.pattern`)
+
+	linkerPath := linkerArgs[0]
+	linkerArgs = linkerArgs[1:]
+
+	// Resolve linkerPath and linkerArgs
+	linkerPath = l.toolChain.Vars.FinalResolveString(linkerPath, " ", l.vars)
+	linkerArgs = l.toolChain.Vars.FinalResolveArray(linkerArgs, l.vars)
 
 	// Remove any empty entries from linkerArgs
 	linkerArgs = slices.DeleteFunc(linkerArgs, func(s string) bool { return strings.TrimSpace(s) == "" })

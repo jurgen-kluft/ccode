@@ -6,7 +6,6 @@ import (
 	"time"
 
 	corepkg "github.com/jurgen-kluft/ccode/core"
-	"github.com/jurgen-kluft/ccode/denv"
 	cespressif "github.com/jurgen-kluft/ccode/espressif"
 )
 
@@ -60,82 +59,6 @@ func ParseArchAndBoardName() (string, string) {
 	flag.StringVar(&boardName, "board", "esp32", "Board name (esp32, esp32s3, generic)")
 	flag.Parse()
 	return arch, boardName
-}
-
-func ClayAppMain(pkg *denv.Package) {
-	// Consume the first argument as the command
-	command := os.Args[1]
-	os.Args = os.Args[1:]
-
-	app := NewApp(pkg)
-
-	// Parse command line arguments
-	var err error
-	switch command {
-	case "build":
-		ParseProjectNameAndConfig(app)
-		err = app.Build()
-	case "build-info":
-		ParseProjectNameAndConfig(app)
-		err = app.BuildInfo()
-	case "clean":
-		ParseProjectNameAndConfig(app)
-		err = app.Clean()
-	case "flash":
-		ParseProjectNameAndConfig(app)
-		err = app.Flash()
-	case "monitor":
-		err = app.SerialMonitor(ParsePortAndBaud())
-	case "list-libraries":
-		err = app.ListLibraries()
-	case "list-boards":
-		err = app.ListBoards(ParseArchBoardNameAndMax())
-	case "list-flash-sizes":
-		err = app.ListFlashSizes(ParseArchAndBoardName())
-	case "board-info":
-		err = app.PrintBoardInfo(ParseArchBoardNameAndMax())
-	case "version":
-		version := corepkg.NewVersionInfo()
-		corepkg.LogInff("Version: %s", version.Version)
-	default:
-		UsageApp()
-	}
-
-	if err != nil {
-		corepkg.LogFatalf("Error: %v", err)
-	}
-}
-
-func UsageApp() {
-	corepkg.LogInfo("Usage: clay [command] [options]")
-	corepkg.LogInfo("Commands:")
-	corepkg.LogInfo("  build-info -p <name> --build <config> --arch <arch>")
-	corepkg.LogInfo("  build -p <name> --arch <arch> --build <config> --board <board>")
-	corepkg.LogInfo("  clean -p <name> --arch <arch> --build <config> --board <board>")
-	corepkg.LogInfo("  flash -p <name> --arch <arch> --build <config> --board <board>")
-	corepkg.LogInfo("  list-libraries")
-	corepkg.LogInfo("  list-boards --arch <arch> --board <name of board> --max <matches>")
-	corepkg.LogInfo("  list-flash-sizes --arch <arch> --board <name of board>")
-	corepkg.LogInfo("Options:")
-	corepkg.LogInfo("  name              Project name (if more than one) ")
-	corepkg.LogInfo("  config            Config name (debug, release, final) ")
-	corepkg.LogInfo("  board             Board name for Arduino (e.g. esp32, c3, s3, xiao_esp32c3) ")
-	corepkg.LogInfo("  matches           Maximum number of boards to list")
-	corepkg.LogInfo("  arch              Architecture for listing flash sizes (esp32 or esp8266)")
-	corepkg.LogInfo("  --help            Show this help message")
-	corepkg.LogInfo("  --version         Show version information")
-
-	corepkg.LogInfo("Examples:")
-	corepkg.LogInfo("  clay build-info (generates buildinfo.h and buildinfo.cpp)")
-	corepkg.LogInfo("  clay build-info --build debug --arch esp32 --board esp32s3")
-	corepkg.LogInfo("  clay build")
-	corepkg.LogInfo("  clay build --build debug --arch esp32 --board esp32s3")
-	corepkg.LogInfo("  clay clean --build debug --arch esp32 --board esp32s3")
-	corepkg.LogInfo("  clay flash --build debug-dev --arch esp32 --board esp32s3")
-	corepkg.LogInfo("  clay list-libraries")
-	corepkg.LogInfo("  clay list-boards --arch <arch> --board esp32 --max 5")
-	corepkg.LogInfo("  clay board-info --arch <arch> --board xiao --max 2")
-	corepkg.LogInfo("  clay list-flash-sizes --arch <arch> --board esp32")
 }
 
 // --------------------------------------------------------------------------------------------------
