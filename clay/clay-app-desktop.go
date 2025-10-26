@@ -103,7 +103,7 @@ func (a *App) BuildDesktop() error {
 
 	// Now build the executables
 	for _, prj := range prjs {
-		if a.Config.ProjectName == "" || a.Config.ProjectName == prj.DevProject.Name {
+		if a.Config.ProjectName == "*" || a.Config.ProjectName == prj.DevProject.Name {
 			if prj.IsExecutable() && prj.CanBuildFor(a.BuildConfig, a.BuildTarget) {
 				//AddBuildInfoAsCppLibrary(prj, a.BuildConfig)
 				if ood, err := prj.Build(a.BuildConfig, a.BuildTarget, buildPath); err != nil {
@@ -140,7 +140,7 @@ func (a *App) BuildInfoDesktop() error {
 	}
 
 	for _, prj := range prjs {
-		if projectName == "" || projectName == prj.DevProject.Name {
+		if projectName == "*" || projectName == prj.DevProject.Name {
 			if prj.CanBuildFor(buildConfig, buildTarget) {
 				appPath, _ := os.Getwd()
 				if err := GenerateBuildInfo(prj.GetBuildPath(buildPath), appPath, sdkVersion, BuildInfoFilenameWithoutExt); err != nil {

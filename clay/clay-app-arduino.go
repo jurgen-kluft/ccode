@@ -89,7 +89,7 @@ func (a *App) BuildInfo() error {
 	}
 
 	for _, prj := range prjs {
-		if a.Config.ProjectName == "" || a.Config.ProjectName == prj.DevProject.Name {
+		if a.Config.ProjectName == "*" || a.Config.ProjectName == prj.DevProject.Name {
 			for _, cfg := range prj.Config {
 				if cfg.BuildConfig.IsEqual(a.BuildConfig) {
 					buildPath := prj.GetBuildPath(a.GetBuildPath(GetBuildDirname(a.BuildConfig, a.BuildTarget)))
@@ -106,6 +106,10 @@ func (a *App) BuildInfo() error {
 }
 
 func (a *App) Flash() error {
+	if a.Config.ProjectName == "*" {
+		return corepkg.LogErrorf(nil, "please specify a project name to flash using -p <project>")
+	}
+
 	buildPath := a.GetBuildPath(GetBuildDirname(a.BuildConfig, a.BuildTarget))
 
 	prjs, err := a.CreateProjects(a.BuildTarget, a.BuildConfig)
@@ -118,11 +122,11 @@ func (a *App) Flash() error {
 	}
 
 	projectNames := []string{}
-    projectMap := map[string]*Project{}
+	projectMap := map[string]*Project{}
 	for _, prj := range prjs {
 		if prj.IsExecutable() && prj.CanBuildFor(a.BuildConfig, a.BuildTarget) {
 			projectNames = append(projectNames, prj.DevProject.Name)
-            projectMap[prj.DevProject.Name] = prj
+			projectMap[prj.DevProject.Name] = prj
 		}
 	}
 
@@ -130,7 +134,7 @@ func (a *App) Flash() error {
 	closest := cm.ClosestN(a.Config.ProjectName, 1)
 
 	for _, prjName := range closest {
-        prj := projectMap[prjName]
+		prj := projectMap[prjName]
 		if prj.IsExecutable() && prj.CanBuildFor(a.BuildConfig, a.BuildTarget) && prj.DevProject.Name == closest[0] {
 
 			corepkg.LogInff("Flashing project: %s, config: %s", prj.DevProject.Name, a.BuildConfig.String())

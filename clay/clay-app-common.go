@@ -175,7 +175,7 @@ func UsageApp() {
 }
 
 func ParseProjectNameAndConfig(app *App) {
-	flag.StringVar(&app.Config.ProjectName, "p", "", "Name of the project")
+	flag.StringVar(&app.Config.ProjectName, "p", "*", "Name of the project")
 	flag.StringVar(&app.Config.TargetOs, "os", "", "Target OS (windows, darwin, linux, arduino)")
 	flag.StringVar(&app.Config.TargetBuild, "build", "", "Format 'build' or 'build-variant', e.g. debug, debug-dev, release-dev, debug-dev-test)")
 	flag.StringVar(&app.Config.TargetArch, "arch", "", "Cpu Architecture (amd64, x64, arm64, esp32, esp8266)")
@@ -204,6 +204,8 @@ func ParseProjectNameAndConfig(app *App) {
 
 	if len(app.Config.ProjectName) == 0 {
 		app.Config.ProjectName = loadedConfig.ProjectName
+	} else if app.Config.ProjectName == "*" || app.Config.ProjectName == "all" || app.Config.ProjectName == "" {
+		app.Config.ProjectName = "*"
 	}
 
 	if len(app.Config.TargetBoard) > 0 {
@@ -253,9 +255,10 @@ func ParseProjectNameAndConfig(app *App) {
 			app.Config.TargetBoard = loadedConfig.TargetBoard
 		}
 		if len(app.Config.TargetBoard) == 0 {
-			if app.Config.TargetArch == "esp32" {
+			switch app.Config.TargetArch {
+			case "esp32":
 				app.Config.TargetBoard = "esp32"
-			} else if app.Config.TargetArch == "esp8266" {
+			case "esp8266":
 				app.Config.TargetBoard = "generic"
 			}
 		}
@@ -342,7 +345,7 @@ func (a *App) Build() (err error) {
 
 	// If we have a project name, we should reduce the list of executable projects to only that one
 	filteredProjects := []*Project{}
-	if len(a.Config.ProjectName) > 0 {
+	if a.Config.ProjectName != "*" {
 		projectNames := []string{}
 		projectMap := map[string]*Project{}
 		for _, prj := range prjs {
