@@ -29,3 +29,5 @@ target/
 !*.ini
 !*.bat
 
+#do ignore 'secret' files
+*.secret.*
