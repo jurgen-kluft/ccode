@@ -340,15 +340,36 @@ func (a *App) Build() (err error) {
 		}
 	}
 
-	// Then build applications
-	for _, prj := range prjs {
-		if prj.DevProject.BuildType.IsExecutable() && prj.CanBuildFor(a.BuildConfig, a.BuildTarget) {
-			numberOfProjects++
-			if outOfDate, err = prj.Build(a.BuildConfig, a.BuildTarget, buildPath); err != nil {
-				return err
+	// If we have a project name, we should reduce the list of executable projects to only that one
+	filteredProjects := []*Project{}
+	if len(a.Config.ProjectName) > 0 {
+		projectNames := []string{}
+		projectMap := map[string]*Project{}
+		for _, prj := range prjs {
+			if prj.IsExecutable() && prj.CanBuildFor(a.BuildConfig, a.BuildTarget) {
+				projectNames = append(projectNames, prj.DevProject.Name)
+				projectMap[prj.DevProject.Name] = prj
 			}
-		} else {
-			numberOfNoMatchConfigs++
+		}
+
+		cm := corepkg.NewClosestMatch(projectNames, []int{2})
+		closest := cm.ClosestN(a.Config.ProjectName, 1)
+		for _, prjName := range closest {
+			filteredProjects = append(filteredProjects, projectMap[prjName])
+		}
+	} else {
+		for _, prj := range prjs {
+			if prj.IsExecutable() && prj.CanBuildFor(a.BuildConfig, a.BuildTarget) {
+				filteredProjects = append(filteredProjects, prj)
+			}
+		}
+	}
+
+	// Then build applications
+	for _, prj := range filteredProjects {
+		numberOfProjects++
+		if outOfDate, err = prj.Build(a.BuildConfig, a.BuildTarget, buildPath); err != nil {
+			return err
 		}
 	}
 

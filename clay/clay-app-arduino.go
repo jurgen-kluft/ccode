@@ -118,16 +118,19 @@ func (a *App) Flash() error {
 	}
 
 	projectNames := []string{}
+    projectMap := map[string]*Project{}
 	for _, prj := range prjs {
 		if prj.IsExecutable() && prj.CanBuildFor(a.BuildConfig, a.BuildTarget) {
 			projectNames = append(projectNames, prj.DevProject.Name)
+            projectMap[prj.DevProject.Name] = prj
 		}
 	}
 
 	cm := corepkg.NewClosestMatch(projectNames, []int{2})
 	closest := cm.ClosestN(a.Config.ProjectName, 1)
 
-	for _, prj := range prjs {
+	for _, prjName := range closest {
+        prj := projectMap[prjName]
 		if prj.IsExecutable() && prj.CanBuildFor(a.BuildConfig, a.BuildTarget) && prj.DevProject.Name == closest[0] {
 
 			corepkg.LogInff("Flashing project: %s, config: %s", prj.DevProject.Name, a.BuildConfig.String())

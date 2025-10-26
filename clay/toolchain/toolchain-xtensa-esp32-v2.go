@@ -1,11 +1,9 @@
 package toolchain
 
 import (
-	"bufio"
 	"crypto/sha1"
 	"fmt"
 	"hash"
-	"io"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -60,7 +58,7 @@ func (cl *ToolchainArduinoEsp32Compilerv2) SetupArgs(defines []string, includes 
 			defines[i] = "-D" + def
 		}
 	}
-    cl.toolChain.Vars.Append("build.defines", defines...)
+	cl.toolChain.Vars.Append("build.defines", defines...)
 
 	cl.vars.Clear()
 	cl.vars.Append("includes", "-I{runtime.platform.path}/variants/{board.name}")
@@ -516,42 +514,44 @@ func (b *ToolchainArduinoEsp32Burnerv2) Burn() error {
 	flashToolPath := b.flashToolPath
 	flashToolArgs := b.flashToolArgs
 
+	flashToolArgs = slices.DeleteFunc(flashToolArgs, func(s string) bool { return strings.TrimSpace(s) == "--port" })
+
 	corepkg.LogInfof("Flashing '%s'...", b.toolChain.ProjectName+".bin")
 
 	flashToolCmd := exec.Command(flashToolPath, flashToolArgs...)
 
-	// out, err := flashToolCmd.CombinedOutput()
-	// if err != nil {
-	// 	if len(out) > 0 {
-	// 		corepkg.LogInfof("Flashing output:\n%s", string(out))
-	// 	}
-	// 	return corepkg.LogErrorf(err, "Flashing failed with %s")
-	// }
-	// if len(out) > 0 {
-	// 	corepkg.LogInfof("Flashing output:\n%s", string(out))
-	// }
-
-	pipe, _ := flashToolCmd.StdoutPipe()
-
-	if err := flashToolCmd.Start(); err != nil {
-		return corepkg.LogErrorf(err, "Flashing failed")
-	}
-
-	reader := bufio.NewReader(pipe)
-	line, err := reader.ReadString('\n')
-	for err == nil {
-		line = strings.TrimRight(line, "\n")
-		corepkg.LogInfo(line)
-		line, err = reader.ReadString('\n')
-		if err == io.EOF {
-			err = nil
-			break
-		}
-	}
-
+	out, err := flashToolCmd.CombinedOutput()
 	if err != nil {
-		return corepkg.LogErrorf(err, "Flashing failed")
+		if len(out) > 0 {
+			corepkg.LogInfof("Flashing output:\n%s", string(out))
+		}
+		return corepkg.LogErrorf(err, "Flashing failed with %s")
 	}
+	if len(out) > 0 {
+		corepkg.LogInfof("Flashing output:\n%s", string(out))
+	}
+
+	//pipe, _ := flashToolCmd.StdoutPipe()
+	//
+	//if err := flashToolCmd.Start(); err != nil {
+	//	return corepkg.LogErrorf(err, "Flashing failed")
+	//}
+	//
+	//reader := bufio.NewReader(pipe)
+	//line, err := reader.ReadString('\n')
+	//for err == nil {
+	//	line = strings.TrimRight(line, "\n")
+	//	corepkg.LogInfo(line)
+	//	line, err = reader.ReadString('\n')
+	//	if err == io.EOF {
+	//		err = nil
+	//		break
+	//	}
+	//}
+	//
+	//if err != nil {
+	//	return corepkg.LogErrorf(err, "Flashing failed")
+	//}
 
 	return nil
 }
