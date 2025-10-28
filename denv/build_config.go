@@ -140,6 +140,22 @@ type BuildConfig struct {
 	Mode    BuildMode
 }
 
+func NewDebugConfig() BuildConfig {
+	return BuildConfig{
+		Build:   BuildDebug,
+		Variant: BuildVariantAny,
+		Mode:    BuildModeNone,
+	}
+}
+
+func NewReleaseConfig() BuildConfig {
+	return BuildConfig{
+		Build:   BuildRelease,
+		Variant: BuildVariantAny,
+		Mode:    BuildModeNone,
+	}
+}
+
 func NewDebugDevConfig() BuildConfig {
 	return BuildConfig{
 		Build:   BuildDebug,
@@ -153,6 +169,22 @@ func NewReleaseDevConfig() BuildConfig {
 		Build:   BuildRelease,
 		Variant: BuildVariantDev,
 		Mode:    BuildModeNone,
+	}
+}
+
+func NewDebugTestConfig() BuildConfig {
+	return BuildConfig{
+		Build:   BuildDebug,
+		Variant: BuildVariantAny,
+		Mode:    BuildModeTest,
+	}
+}
+
+func NewReleaseTestConfig() BuildConfig {
+	return BuildConfig{
+		Build:   BuildRelease,
+		Variant: BuildVariantAny,
+		Mode:    BuildModeTest,
 	}
 }
 

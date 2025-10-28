@@ -55,7 +55,7 @@ func (p *Project) CanBuildFor(buildConfig denv.BuildConfig, buildTarget denv.Bui
 		return false
 	}
 	for _, cfg := range p.Config {
-		if cfg.BuildConfig == buildConfig {
+		if cfg.BuildConfig.Contains(buildConfig) {
 			return true
 		}
 	}
@@ -104,7 +104,7 @@ func (p *Project) AddLibrary(lib *Project) {
 
 func (p *Project) GetConfig(buildConfig denv.BuildConfig) *denv.DevConfig {
 	for _, cfg := range p.Config {
-		if cfg.BuildConfig == buildConfig {
+		if cfg.BuildConfig.Contains(buildConfig) {
 			return cfg
 		}
 	}
