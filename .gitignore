@@ -1,8 +1,7 @@
 #ignore all files
 *
 !*/
-
-vendor/
+target/
 
 #except the following files
 !*.cpp
