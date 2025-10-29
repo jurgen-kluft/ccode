@@ -38,77 +38,6 @@ func getVcLib(hostArch, targetArch WinSupportedArch) (string, error) {
 	}
 }
 
-type winSdkDirs struct {
-	bin      string
-	includes []string
-	libs     []string
-}
-
-// Windows SDK layout
-var preWin8SdkDirs = winSdkDirs{
-	bin:      "bin",
-	includes: []string{"include"},
-	libs:     []string{"lib"},
-}
-
-// Windows 8 SDK layout
-var win8SdkDirs = winSdkDirs{
-	bin:      "bin",
-	includes: []string{"include"},
-	libs:     []string{"lib\\win8\\um"},
-}
-
-// Windows 8.1 SDK layout
-var win81SdkDirs = winSdkDirs{
-	bin:      "bin",
-	includes: []string{"include"},
-	libs:     []string{"lib\\win6.3\\um"},
-}
-
-var preWin8SdkDirsx86 = winSdkDirs{
-	bin:      "",
-	includes: []string{},
-	libs:     []string{},
-}
-
-var preWin8SdkDirsx64 = winSdkDirs{
-	bin:      "x64",
-	includes: []string{},
-	libs:     []string{"x64"},
-}
-
-var postWin8Sdkx86 = winSdkDirs{
-	bin:      "x86",
-	includes: []string{"shared", "um"},
-	libs:     []string{"x86"},
-}
-
-var postWin8Sdkx64 = winSdkDirs{
-	bin:      "x64",
-	includes: []string{"shared", "um"},
-	libs:     []string{"x64"},
-}
-
-var postWin8SdkArm = winSdkDirs{
-	bin:      "arm",
-	includes: []string{"shared", "um"},
-	libs:     []string{"arm"},
-}
-
-func getPostWin8Sdk(arch WinSupportedArch) *winSdkDirs {
-	switch arch {
-	case WinArchx86:
-		return &postWin8Sdkx86
-	case WinArchx64:
-		return &postWin8Sdkx64
-	case WinArchArm:
-		return &postWin8SdkArm
-	case WinArchArm64:
-		return &postWin8SdkArm
-	}
-	return &postWin8SdkArm
-}
-
 // Visual Studio 2008      9.0
 // Visual Studio 2008      9.0
 
@@ -151,111 +80,6 @@ var vsSdkMap = map[string]string{
 	// 10 SDK, and new Win32 apps created in VS2015 default to using the 8.1 SDK
 	"14.0": "v8.1",
 	"2015": "v8.1",
-}
-
-// Each quadruplet specifies a registry key value that gets us the SDK location,
-// followed by a folder structure (for each supported target architecture)
-// and finally the corresponding bin, include and lib folder's relative location
-type winSdkInfo struct {
-	regKey     string
-	regValue   string
-	sdkDirBase *winSdkDirs
-	x86SdkDirs *winSdkDirs
-	x64SdkDirs *winSdkDirs
-	armSdkDirs *winSdkDirs
-}
-
-var preWin10SdkMap = map[string]winSdkInfo{
-	"v6.0A": {"SOFTWARE\\Microsoft\\Microsoft SDKs\\Windows\\v6.0A", "InstallationFolder", &preWin8SdkDirs, &preWin8SdkDirsx86, &preWin8SdkDirsx64, nil},
-	"v7.0A": {"SOFTWARE\\Microsoft\\Microsoft SDKs\\Windows\\v7.0A", "InstallationFolder", &preWin8SdkDirs, &preWin8SdkDirsx86, &preWin8SdkDirsx64, nil},
-	"v7.1A": {"SOFTWARE\\Microsoft\\Microsoft SDKs\\Windows\\v7.1A", "InstallationFolder", &preWin8SdkDirs, &preWin8SdkDirsx86, &preWin8SdkDirsx64, nil},
-	"v8.0":  {"SOFTWARE\\Microsoft\\Windows Kits\\Installed Roots", "KitsRoot", &win8SdkDirs, &postWin8Sdkx86, &postWin8Sdkx64, &postWin8SdkArm},
-	"v8.1":  {"SOFTWARE\\Microsoft\\Windows Kits\\Installed Roots", "KitsRoot81", &win81SdkDirs, &postWin8Sdkx86, &postWin8Sdkx64, &postWin8SdkArm},
-}
-
-var win10Sdk = []string{
-	"SOFTWARE\\Microsoft\\Windows Kits\\Installed Roots", "KitsRoot10",
-}
-
-func getPreWin10Sdk(sdkVersion string, vsVersion VsVersion, targetArch WinSupportedArch) (string, winSdkDirs, error) {
-	result := winSdkDirs{}
-
-	sdk, exists := preWin10SdkMap[sdkVersion]
-	if !exists {
-		return "", result, fmt.Errorf("the requested version of Visual Studio isn't supported: %s", sdkVersion)
-	}
-
-	sdkRoot, err := corepkg.QueryRegistryForStringValue(corepkg.RegistryKeyLocalMachine, sdk.regKey, sdk.regValue)
-	if sdkRoot == "" || err != nil {
-		return "", result, fmt.Errorf("the requested version of the SDK isn't installed: %s", sdkVersion)
-	}
-	sdkRoot = strings.ReplaceAll(sdkRoot, "\\+$", "\\")
-
-	sdkDirBase := sdk.sdkDirBase
-
-	sdkDir := getPostWin8Sdk(targetArch)
-	result.bin = sdkRoot + sdkDirBase.bin + "\\" + sdkDir.bin
-
-	result.includes = make([]string, 0, len(sdkDirBase.includes)+len(sdkDir.includes))
-	for _, includeDir := range sdkDir.includes {
-		result.includes = append(result.includes, sdkRoot+sdkDirBase.includes[0]+"\\"+includeDir)
-	}
-
-	result.libs = make([]string, 0, len(sdkDirBase.libs)+len(sdkDir.libs))
-	result.libs = append(result.libs, sdkRoot+sdkDirBase.libs[0]+"\\"+sdkDir.libs[0])
-
-	// Windows 10 changed CRT to be split between Windows SDK and VC.
-	// It appears that when targeting pre-win10 with VS2015 you should always use
-	// use 10.0.10150.0, according to Microsoft.Cpp.Common.props in MSBuild.
-	if vsVersion == "14.0" {
-		win10SdkRoot, err := corepkg.QueryRegistryForStringValue(corepkg.RegistryKeyLocalMachine, win10Sdk[0], win10Sdk[1])
-		if win10SdkRoot == "" || err != nil {
-			panic("The windows 10 UCRT is required when building using Visual studio 2015")
-		}
-		result.includes = append(result.includes, "include", win10SdkRoot+"Include\\10.0.10150.0\\ucrt")
-		result.libs = append(result.libs, win10SdkRoot+"Lib\\10.0.10150.0\\ucrt\\"+sdkDir.libs[0])
-	}
-
-	return sdkRoot, result, nil
-}
-
-func getWin10Sdk(sdkVersion string, targetArch WinSupportedArch) (string, winSdkDirs, error) {
-	sdkVersion = sdkVersion[2:] // Remove v prefix
-
-	result := winSdkDirs{}
-
-	// This only checks if the windows 10 SDK specifically is installed. A
-	// 'dir exists' method would be needed here to check if a specific SDK
-	// target folder exists.
-	sdkRoot, err := corepkg.QueryRegistryForStringValue(corepkg.RegistryKeyLocalMachine, win10Sdk[0], win10Sdk[1])
-	if sdkRoot == "" || err != nil {
-		return "", result, fmt.Errorf("The requested version of the SDK isn't installed")
-	}
-
-	postWin8Sdk := getPostWin8Sdk(targetArch)
-	result.bin = sdkRoot + "bin\\" + postWin8Sdk.bin
-
-	result.includes = make([]string, 0, len(postWin8Sdk.includes))
-	sdkDirBaseInclude := sdkRoot + "include\\" + sdkVersion + "\\"
-	result.includes = append(result.includes, sdkDirBaseInclude+"shared")
-	result.includes = append(result.includes, sdkDirBaseInclude+"ucrt")
-	result.includes = append(result.includes, sdkDirBaseInclude+"um")
-
-	result.libs = make([]string, 0, len(postWin8Sdk.libs))
-	sdkDirBaseLib := sdkRoot + "Lib\\" + sdkVersion + "\\"
-	result.libs = append(result.libs, sdkDirBaseLib+"ucrt\\"+postWin8Sdk.libs[0])
-	result.libs = append(result.libs, sdkDirBaseLib+"um\\"+postWin8Sdk.libs[0])
-
-	return sdkRoot, result, nil
-}
-
-func getSdk(sdkVersion string, vsVersion VsVersion, targetArch WinSupportedArch) (string, winSdkDirs, error) {
-	// All versions using v10.0.xxxxx.x use specific releases of the
-	// Win10 SDK. Other versions are assumed to be pre-win10
-	if strings.HasPrefix(sdkVersion, "v10.0.") {
-		return getWin10Sdk(sdkVersion, targetArch)
-	}
-	return getPreWin10Sdk(sdkVersion, vsVersion, targetArch)
 }
 
 // MsvcEnvironment represents the installation of Microsoft Visual Studio that was found.
@@ -354,13 +178,7 @@ func InitMsvcVisualStudio(_vsVersion VsVersion, _sdkVersion string, _hostArch Wi
 	}
 	vcLib = vsRoot + "\\vc\\lib\\" + vcLib
 
-	//
-	// Now fix up the SDK
-	//
-	sdkRoot, sdkDirs, err := getSdk(sdkVersion, _vsVersion, targetArch)
-
 	msdev := NewMsvcEnvironment()
-	msdev.WindowsSdkDir = sdkRoot
 
 	//
 	// Tools
@@ -371,7 +189,6 @@ func InitMsvcVisualStudio(_vsVersion VsVersion, _sdkVersion string, _hostArch Wi
 	msdev.ArchiverBin = "lib.exe"
 	msdev.LinkerPath = vcBin
 	msdev.LinkerBin = "link.exe"
-	msdev.RcPath = sdkDirs.bin
 	msdev.RcBin = "rc.exe"
 
 	if sdkVersion == "9.0" {
@@ -390,11 +207,8 @@ func InitMsvcVisualStudio(_vsVersion VsVersion, _sdkVersion string, _hostArch Wi
 	msdev.VcInstallDir = vsRoot + "\\VC"
 	msdev.DevEnvDir = vsRoot + "\\Common7\\IDE"
 
-	include := make([]string, 0, len(sdkDirs.includes)+2)
+	include := make([]string, 0)
 
-	for _, v := range sdkDirs.includes {
-		include = append(include, v)
-	}
 	include = append(include, vsRoot+"\\VC\\ATLMFC\\INCLUDE")
 	include = append(include, vsRoot+"\\VC\\INCLUDE")
 
@@ -405,10 +219,7 @@ func InitMsvcVisualStudio(_vsVersion VsVersion, _sdkVersion string, _hostArch Wi
 		return nil, fmt.Errorf("MFC libraries not found in %s", mfcLibPath)
 	}
 
-	libPaths := make([]string, 0, len(sdkDirs.libs)+2)
-	for _, libDir := range sdkDirs.libs {
-		libPaths = append(libPaths, libDir)
-	}
+	libPaths := make([]string, 0)
 	libPaths = append(libPaths, mfcLibPath)
 	libPaths = append(libPaths, vcLib)
 
@@ -419,7 +230,6 @@ func InitMsvcVisualStudio(_vsVersion VsVersion, _sdkVersion string, _hostArch Wi
 
 	// Extend PATH with the necessary directories
 	path := make([]string, 0, 5)
-	path = append(path, sdkRoot)
 	path = append(path, vsRoot+"\\Common7\\IDE")
 
 	switch _hostArch {
@@ -434,4 +244,8 @@ func InitMsvcVisualStudio(_vsVersion VsVersion, _sdkVersion string, _hostArch Wi
 	msdev.Path = path
 
 	return msdev, nil
+}
+
+func (msvc *MsvcEnvironment) Print() {
+
 }

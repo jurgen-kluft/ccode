@@ -251,45 +251,45 @@ func setupMsvcVersion(msvcVersion *MsvcVersion, useClang bool) (msdev *MsvcEnvir
 		msvcVersion.vsPath = vsDefaultPath
 	}
 
-	// ------------------
-	// Windows SDK
-	// ------------------
+	// // ------------------
+	// // Windows SDK
+	// // ------------------
 
-	// file:///C:/Program%20Files%20(x86)/Microsoft%20Visual%20Studio/2022/BuildTools/Common7/Tools/vsdevcmd/core/winsdk.bat#L513
+	// // file:///C:/Program%20Files%20(x86)/Microsoft%20Visual%20Studio/2022/BuildTools/Common7/Tools/vsdevcmd/core/winsdk.bat#L513
 
-	winSdk, err := FindWindowsSDK(msvcVersion.WinAppPlatform)
-	if err != nil {
-		return nil, err
-	}
-	winsdkDir := winSdk.Dir
-	winsdkVersion := msvcVersion.targetWinsdkVersion
-	if len(winsdkVersion) > 0 && !winSdk.HasVersion(winsdkVersion) {
-		return nil, fmt.Errorf("Windows SDK version %s not found in %s", winsdkVersion, winSdk.Dir)
-	} else {
-		winsdkVersion = winSdk.GetLatestVersion()
-	}
+	// winSdk, err := FindWindowsSDK(msvcVersion.WinAppPlatform)
+	// if err != nil {
+	// 	return nil, err
+	// }
+	// winsdkDir := winSdk.Dir
+	// winsdkVersion := msvcVersion.targetWinsdkVersion
+	// if len(winsdkVersion) > 0 && !winSdk.HasVersion(winsdkVersion) {
+	// 	return nil, fmt.Errorf("Windows SDK version %s not found in %s", winsdkVersion, winSdk.Dir)
+	// } else {
+	// 	winsdkVersion = winSdk.GetLatestVersion()
+	// }
 
-	msdev = NewMsvcEnvironment()
+	// msdev = NewMsvcEnvironment()
 
-	msdev.Path = append(msdev.Path, filepath.Join(winsdkDir, "bin", winsdkVersion, msvcVersion.hostArch.String()))
+	// msdev.Path = append(msdev.Path, filepath.Join(winsdkDir, "bin", winsdkVersion, msvcVersion.hostArch.String()))
 
-	msdev.IncludePaths = append(msdev.IncludePaths, filepath.Join(winsdkDir, "Include", winsdkVersion, "shared"))
-	msdev.IncludePaths = append(msdev.IncludePaths, filepath.Join(winsdkDir, "Include", winsdkVersion, "um"))
-	msdev.IncludePaths = append(msdev.IncludePaths, filepath.Join(winsdkDir, "Include", winsdkVersion, "winrt")) // WinRT (used by DirectX 12 headers)
+	// msdev.IncludePaths = append(msdev.IncludePaths, filepath.Join(winsdkDir, "Include", winsdkVersion, "shared"))
+	// msdev.IncludePaths = append(msdev.IncludePaths, filepath.Join(winsdkDir, "Include", winsdkVersion, "um"))
+	// msdev.IncludePaths = append(msdev.IncludePaths, filepath.Join(winsdkDir, "Include", winsdkVersion, "winrt")) // WinRT (used by DirectX 12 headers)
 
-	// We assume that the Universal CRT isn't loaded from a different directory
-	ucrtSdkDir := winsdkDir
-	ucrtVersion := winsdkVersion
+	// // We assume that the Universal CRT isn't loaded from a different directory
+	// ucrtSdkDir := winsdkDir
+	// ucrtVersion := winsdkVersion
 
-	msdev.IncludePaths = append(msdev.IncludePaths, filepath.Join(ucrtSdkDir, "Include", ucrtVersion, "ucrt"))
+	// msdev.IncludePaths = append(msdev.IncludePaths, filepath.Join(ucrtSdkDir, "Include", ucrtVersion, "ucrt"))
 
-	msdev.Libs = append(msdev.Libs, filepath.Join(winsdkDir, "Lib", winsdkVersion, "um", msvcVersion.targetArch.String()))
-	msdev.Libs = append(msdev.Libs, filepath.Join(ucrtSdkDir, "Lib", ucrtVersion, "ucrt", msvcVersion.targetArch.String()))
+	// msdev.Libs = append(msdev.Libs, filepath.Join(winsdkDir, "Lib", winsdkVersion, "um", msvcVersion.targetArch.String()))
+	// msdev.Libs = append(msdev.Libs, filepath.Join(ucrtSdkDir, "Lib", ucrtVersion, "ucrt", msvcVersion.targetArch.String()))
 
-	// Skip if the Universal CRT is loaded from the same path as the Windows SDK
-	if ucrtSdkDir != winsdkDir || ucrtVersion != winsdkVersion {
-		msdev.Libs = append(msdev.Libs, filepath.Join(ucrtSdkDir, "Lib", ucrtVersion, "um", msvcVersion.targetArch.String()))
-	}
+	// // Skip if the Universal CRT is loaded from the same path as the Windows SDK
+	// if ucrtSdkDir != winsdkDir || ucrtVersion != winsdkVersion {
+	// 	msdev.Libs = append(msdev.Libs, filepath.Join(ucrtSdkDir, "Lib", ucrtVersion, "um", msvcVersion.targetArch.String()))
+	// }
 
 	// -------------------
 	// Visual C++
@@ -410,14 +410,11 @@ func setupMsvcVersion(msvcVersion *MsvcVersion, useClang bool) (msdev *MsvcEnvir
 	msdev.ArchiverBin = "lib.exe"
 	msdev.LinkerPath = vcBin
 	msdev.LinkerBin = "link.exe"
-	msdev.RcPath = filepath.Join(winsdkDir, "bin", winsdkVersion, msvcVersion.hostArch.String())
+	//msdev.RcPath = filepath.Join(winsdkDir, "bin", winsdkVersion, msvcVersion.hostArch.String())
 	msdev.RcBin = "rc.exe"
 
 	// Since there's a bit of magic involved in finding these we log them once, at the end.
 	// This also makes it easy to lock the SDK and C++ tools version if you want to do that.
-	if msvcVersion.targetWinsdkVersion == "" {
-		corepkg.LogInfof("  WindowsSdkVersion : %s\n", winsdkVersion) // verbose?
-	}
 	if msvcVersion.targetVcToolsVersion == "" {
 		corepkg.LogInfof("  VcToolsVersion    : %s\n", vcTools.vcToolsVersion) // verbose?
 	}

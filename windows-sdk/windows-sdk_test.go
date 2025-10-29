@@ -1,4 +1,4 @@
-package msvc
+package winsdk
 
 import (
 	"fmt"
