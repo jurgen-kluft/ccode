@@ -874,8 +874,11 @@ func (vr *varResolver) resolveNode(vars *Vars, varsArray []*Vars, node int) []st
 			// to get the values from each Vars in varsArray and the main Vars
 			for _, vn := range variableName {
 				values := make([]string, 0, 8)
-				for _, vars := range varsArray {
-					if v, ok := vars.Get(vn); ok {
+				for _, va := range varsArray {
+					if va == nil {
+						continue
+					}
+					if v, ok := va.Get(vn); ok {
 						values = append(values, v...)
 					}
 				}

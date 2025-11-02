@@ -1,360 +1,34 @@
 package toolchain
 
 import (
-	"fmt"
-	"os"
-	"os/exec"
-	"path/filepath"
-	"strings"
-
 	"github.com/jurgen-kluft/ccode/clay/toolchain/deptrackr"
-	"github.com/jurgen-kluft/ccode/clay/toolchain/msvc"
 	corepkg "github.com/jurgen-kluft/ccode/core"
 	"github.com/jurgen-kluft/ccode/denv"
 )
 
 type WinMsdev struct {
 	Name string
-	Msvc *msvc.MsvcEnvironment
+	Vars *corepkg.Vars
 }
 
-// --------------------------------------------------------------------------------------------------
-// --------------------------------------------------------------------------------------------------
-// Compiler
-
-// Compiler options
-//   - https://github.com/MicrosoftDocs/cpp-docs/blob/main/docs/build/reference/compiler-options-listed-by-category.md
-//
-
-type WinMsDevCompiler struct {
-	toolChain   *WinMsdev // The toolchain this compiler belongs to
-	buildConfig denv.BuildConfig
-	buildTarget denv.BuildTarget
-	args        *corepkg.Arguments    // Arguments for the compiler
-	cmdline     *msvc.CompilerCmdLine // Cmdline for the compiler
-}
-
-func (m *WinMsdev) NewCompiler(buildConfig denv.BuildConfig, buildTarget denv.BuildTarget) Compiler {
-	args := corepkg.NewArguments(512)
-	return &WinMsDevCompiler{
-		toolChain:   m,
-		buildConfig: buildConfig,
-		buildTarget: buildTarget,
-		args:        args,
-		cmdline:     msvc.NewCompilerCmdLine(args),
-	}
-}
-
-func (cl *WinMsDevCompiler) ObjFilepath(srcRelFilepath string) string {
-	srcRelFilepath = strings.TrimSuffix(srcRelFilepath, ".c")
-	srcRelFilepath = strings.TrimSuffix(srcRelFilepath, ".cpp")
-	return srcRelFilepath + ".obj"
-}
-
-func (cl *WinMsDevCompiler) DepFilepath(objRelFilepath string) string {
-	return objRelFilepath + ".json"
-}
-
-func (cl *WinMsDevCompiler) SetupArgs(_defines []string, _includes []string) {
-	// Common arguments
-	cl.cmdline.CompileOnly()
-	cl.cmdline.NoLogo()
-	cl.cmdline.DiagnosticsColumnMode()
-	cl.cmdline.DiagnosticsEmitFullPathOfSourceFiles()
-	cl.cmdline.WarningLevel3()
-	cl.cmdline.WarningsAreErrors()
-
-	cl.cmdline.EnableStringPooling()
-
-	if cl.buildConfig.IsDebug() {
-		// Debug-specific arguments
-		cl.cmdline.DisableOptimizations()
-		cl.cmdline.GenerateDebugInfo()
-		cl.cmdline.DisableFramePointer()
-		cl.cmdline.UseMultithreadedDebugRuntime()
-	} else if cl.buildConfig.IsRelease() {
-		// Release-specific arguments
-		cl.cmdline.OptimizeForSize()
-		cl.cmdline.OptimizeForSpeed()
-		cl.cmdline.EnableInlineExpansion(1)
-		cl.cmdline.EnableIntrinsicFunctions()
-		cl.cmdline.OmitFramePointer()
-		cl.cmdline.UseMultithreadedRuntime()
-	} else if cl.buildConfig.IsFinal() {
-		// Final-specific arguments
-		cl.cmdline.OptimizeForSize()
-		cl.cmdline.OptimizeForSpeed()
-		cl.cmdline.EnableInlineExpansion(3)
-		cl.cmdline.EnableIntrinsicFunctions()
-		cl.cmdline.OmitFramePointer()
-		cl.cmdline.UseMultithreadedRuntime()
-		cl.cmdline.EnableWholeProgramOptimization()
-	}
-
-	// Test-specific arguments
-	if cl.buildConfig.IsTest() {
-		cl.cmdline.EnableExceptionHandling()
-	}
-
-	cl.cmdline.Defines(_defines)
-	cl.cmdline.Includes(_includes)
-	cl.cmdline.Includes(cl.toolChain.Msvc.IncludePaths)
-
-	cl.cmdline.Save()
-}
-
-func (cl *WinMsDevCompiler) Compile(sourceAbsFilepaths []string, objRelFilepaths []string) error {
-	// Analyze all the object filepaths and organize them per directory, we do this because
-	// the MSVC compiler outputs object files into a single directory, we do not want this.
-	// And we do not want to call the compiler for each source file, but rather for each directory.
-	sourceFilesPerDir := make(map[string][]string)
-	for i, objFilepath := range objRelFilepaths {
-		objFilepath = corepkg.PathWindowsPath(objFilepath)
-		objDirpath := corepkg.PathDirname(objFilepath)
-		srcFile := sourceAbsFilepaths[i]
-		if _, ok := sourceFilesPerDir[objDirpath]; !ok {
-			sourceFiles := make([]string, 0, len(sourceAbsFilepaths)-i)
-			sourceFiles = append(sourceFiles, srcFile)
-			sourceFilesPerDir[objDirpath] = sourceFiles
-		} else {
-			sourceFilesPerDir[objDirpath] = append(sourceFilesPerDir[objDirpath], srcFile)
-		}
-	}
-
-	// Iterate over the source files per directory and compile them.
-	configStr := cl.buildConfig.String()
-	for objDirpath, srcFiles := range sourceFilesPerDir {
-		cl.cmdline.Restore() // Restore the command line arguments
-
-		for _, srcFile := range srcFiles {
-			corepkg.LogInfof("Compiling (%s) %s\n", configStr, srcFile)
-		}
-
-		objDirpath = corepkg.PathWindowsPath(objDirpath)
-		cl.cmdline.OutDir(objDirpath)
-		cl.cmdline.GenerateDependencyFiles(objDirpath)
-		cl.cmdline.SourceFiles(srcFiles)
-
-		// Prepare the command to execute the compiler.
-		compilerPath := filepath.Join(cl.toolChain.Msvc.CompilerPath, cl.toolChain.Msvc.CompilerBin)
-		compilerArgs := cl.args.Args
-		cmd := exec.Command(compilerPath, compilerArgs...)
-		cmd.Env = os.Environ()
-		cmd.Env = append(cmd.Env, "Path="+corepkg.PathWindowsPath(cl.toolChain.Msvc.CompilerPath))
-		out, err := cmd.CombinedOutput()
-		if err != nil {
-			corepkg.LogInfof("Compile failed, output:\n%s\n", string(out))
-			return corepkg.LogErrorf(err, "Compiling failed")
-		}
-		if len(out) > 0 {
-			corepkg.LogInfof("Compile output:\n%s\n", string(out))
-		}
-	}
-
+func (ms *WinMsdev) NewCompiler(config denv.BuildConfig, target denv.BuildTarget) Compiler {
 	return nil
 }
 
-// --------------------------------------------------------------------------------------------------
-// --------------------------------------------------------------------------------------------------
-// Archiver
-
-func (m *WinMsdev) NewArchiver(a ArchiverType, buildConfig denv.BuildConfig, buildTarget denv.BuildTarget) Archiver {
-	args := corepkg.NewArguments(512)
-	return &WinMsDevArchiver{
-		toolChain:   m,
-		buildConfig: buildConfig,
-		buildTarget: buildTarget,
-		args:        args,
-		cmdline:     msvc.NewArchiverCmdline(args),
-	}
-}
-
-type WinMsDevArchiver struct {
-	toolChain   *WinMsdev // The toolchain this archiver belongs to
-	buildConfig denv.BuildConfig
-	buildTarget denv.BuildTarget
-	args        *corepkg.Arguments    // Arguments for the archiver
-	cmdline     *msvc.ArchiverCmdline // Cmdline for the archiver
-}
-
-func (a *WinMsDevArchiver) LibFilepath(_filepath string) string {
-	filename := corepkg.PathFilename(_filepath, true)
-	dirpath := corepkg.PathDirname(_filepath)
-	return filepath.Join(dirpath, filename+".lib")
-}
-
-func (a *WinMsDevArchiver) SetupArgs() {
-	a.cmdline.NoLogo()
-	a.cmdline.MachineX64()
-	a.cmdline.Save()
-}
-
-func (a *WinMsDevArchiver) Archive(inputObjectFilepaths []string, outputArchiveFilepath string) error {
-	a.cmdline.Restore()
-	a.cmdline.Out(outputArchiveFilepath)
-	a.cmdline.ObjectFiles(inputObjectFilepaths)
-
-	archiverArgs := a.args.Args
-	archiverPath := filepath.Join(a.toolChain.Msvc.ArchiverPath, a.toolChain.Msvc.ArchiverBin)
-	cmd := exec.Command(archiverPath, archiverArgs...)
-	cmd.Env = os.Environ()
-	cmd.Env = append(cmd.Env, "PATH="+corepkg.PathWindowsPath(a.toolChain.Msvc.ArchiverPath))
-
-	corepkg.LogInfof("Archiving (%s) %s\n", a.buildConfig.String(), outputArchiveFilepath)
-	out, err := cmd.CombinedOutput()
-	if err != nil {
-		corepkg.LogInfof("Archive failed, output:\n%s\n", string(out))
-		return corepkg.LogErrorf(err, "Archiving failed")
-	}
-	if len(out) > 0 {
-		corepkg.LogInfof("Archive output:\n%s\n", string(out))
-	}
-
+func (ms *WinMsdev) NewArchiver(a ArchiverType, config denv.BuildConfig, target denv.BuildTarget) Archiver {
 	return nil
 }
 
-// --------------------------------------------------------------------------------------------------
-// --------------------------------------------------------------------------------------------------
-// Linker
-
-func (ms *WinMsdev) NewLinker(buildConfig denv.BuildConfig, buildTarget denv.BuildTarget) Linker {
-	args := corepkg.NewArguments(512)
-	return &WinMsDevLinker{
-		toolChain:   ms,
-		buildConfig: buildConfig,
-		buildTarget: buildTarget,
-		args:        args,
-		cmdline:     msvc.NewLinkerCmdline(args),
-	}
-}
-
-type WinMsDevLinker struct {
-	toolChain   *WinMsdev // The toolchain this archiver belongs to
-	buildConfig denv.BuildConfig
-	buildTarget denv.BuildTarget
-	args        *corepkg.Arguments  // Arguments for the linker
-	cmdline     *msvc.LinkerCmdline // Cmdline for the linker
-}
-
-func (l *WinMsDevLinker) LinkedFilepath(filepath string) string {
-	return filepath + ".exe"
-}
-
-func (l *WinMsDevLinker) SetupArgs(libraryPaths []string, libraryFiles []string) {
-	l.cmdline.ErrorReportPrompt()
-
-	l.cmdline.Save()
-}
-
-func (l *WinMsDevLinker) Link(inputObjectsAbsFilepaths, inputArchivesAbsFilepaths []string, outputAppRelFilepath string) error {
-
-	outputAppRelFilepath = corepkg.PathWindowsPath(outputAppRelFilepath)
-
-	l.cmdline.Restore()
-
-	l.cmdline.NoLogo()
-
-	l.cmdline.Out(outputAppRelFilepath)
-	l.cmdline.GenerateMapfile(corepkg.FileChangeExtension(outputAppRelFilepath, ".map"))
-
-	l.cmdline.LibPaths(l.toolChain.Msvc.Libs)
-
-	// TODO Where do we get this list of libraries from?
-	// Note: Could we perhaps scan all the header files that are included for any patterns that
-	//       give us hints about the libraries that are needed?
-	systemLibraries := []string{
-		"kernel32.lib",
-		"user32.lib",
-		"gdi32.lib",
-		"winspool.lib",
-		"comdlg32.lib",
-		"advapi32.lib",
-		"shell32.lib",
-		"ole32.lib",
-		"oleaut32.lib",
-		"uuid.lib",
-		"odbc32.lib",
-		"odbccp32.lib",
-	}
-	l.cmdline.Libs(systemLibraries)
-
-	if l.buildConfig.IsDebug() {
-		l.cmdline.GenerateDebugInfo()
-	}
-	if l.buildConfig.IsRelease() || l.buildConfig.IsFinal() {
-		l.cmdline.OptimizeReferences()
-		l.cmdline.OptimizeIdenticalFolding()
-	}
-	if l.buildConfig.IsFinal() {
-		l.cmdline.LinkTimeCodeGeneration()
-		l.cmdline.DisableIncrementalLinking()
-	}
-
-	// Console or GUI application?
-	l.cmdline.SubsystemConsole()
-
-	l.cmdline.DynamicBase()
-	l.cmdline.EnableDataExecutionPrevention()
-	l.cmdline.MachineX64()
-
-	l.cmdline.Libs(inputObjectsAbsFilepaths)
-	l.cmdline.Libs(inputArchivesAbsFilepaths)
-
-	linkerPath := filepath.Join(l.toolChain.Msvc.LinkerPath, l.toolChain.Msvc.LinkerBin)
-	linkerArgs := l.args.Args
-
-	/*
-		// Setup ccode/cmd/cmd, which can give us the ability to stream stdout and stderr while
-		// the process is running.
-
-		envVars = os.Environ()
-		envVars = append(envVars, "Path="+corepkg.PathWindowsPath(l.toolChain.Msvc.LinkerPath))
-
-		handleStdout := func(line string) {
-			// TODO Analyze the line, if it is a warning or error, print it to stderr
-			fmt.Println(line)
-		}
-		handleStderr := func(line string) {
-			// TODO Analyze the line, if it is a warning or error, print it to stderr
-			fmt.Fprintln(os.Stderr, line)
-		}
-
-		return cmd.ExecCmd(linkerPath, handleStdout, handleStderr, envVars, linkerArgs...)
-	*/
-
-	corepkg.LogInfof("Linking (%s) %s\n", l.buildConfig.String(), outputAppRelFilepath)
-
-	cmd := exec.Command(linkerPath, linkerArgs...)
-	cmd.Env = os.Environ()
-	cmd.Env = append(cmd.Env, "Path="+corepkg.PathWindowsPath(l.toolChain.Msvc.LinkerPath))
-
-	out, err := cmd.CombinedOutput()
-	if err != nil {
-		corepkg.LogInfof("Linking failed, output:\n%s\n", string(out))
-	}
-	if len(out) > 0 {
-		corepkg.LogInfof("Linking output:\n%s\n", string(out))
-	}
-
+func (ms *WinMsdev) NewLinker(config denv.BuildConfig, target denv.BuildTarget) Linker {
 	return nil
 }
 
-// --------------------------------------------------------------------------------------------------
-// --------------------------------------------------------------------------------------------------
-// Burner
-
-func (t *WinMsdev) NewBurner(buildConfig denv.BuildConfig, buildTarget denv.BuildTarget) Burner {
-	return &EmptyBurner{}
+func (ms *WinMsdev) NewBurner(config denv.BuildConfig, target denv.BuildTarget) Burner {
+	return nil
 }
 
-// --------------------------------------------------------------------------------------------------
-// --------------------------------------------------------------------------------------------------
-// Dependency Tracker
-
-func (t *WinMsdev) NewDependencyTracker(dirpath string) deptrackr.FileTrackr {
-	// Note: This should be the dependency tracker that can read .json dependency files that are
-	// generated by the MSVC compiler.
-	return deptrackr.LoadJsonFileTrackr(filepath.Join(dirpath, "deptrackr"))
+func (ms *WinMsdev) NewDependencyTracker(dirpath string) deptrackr.FileTrackr {
+	return nil
 }
 
 // --------------------------------------------------------------------------------------------------
@@ -362,16 +36,8 @@ func (t *WinMsdev) NewDependencyTracker(dirpath string) deptrackr.FileTrackr {
 // Toolchain for Visual Studio on Windows
 
 func NewWinMsdev(arch string, product string) (t *WinMsdev, err error) {
-	msdevSetup, err := msvc.InitMsvcVisualStudio(msvc.VsVersion2022, "", msvc.WinArchx64, msvc.WinArchx64)
-	if err != nil {
-		return nil, err
-	}
-	if msdevSetup == nil {
-		return nil, fmt.Errorf("NewWinMsdev is not implemented yet")
-	}
-
 	return &WinMsdev{
-		Name: "WinMsdev",
-		Msvc: msdevSetup,
+		Name: "msdev",
+		Vars: corepkg.NewVars(corepkg.VarsFormatCurlyBraces),
 	}, nil
 }

@@ -620,7 +620,7 @@ func (t *toolchain) ResolveVariablesForBoard(board *board, vars *corepkg.Vars) e
 
 	for _, key := range vars.Keys {
 		key = strings.ToLower(key)
-		if strings.HasPrefix(key, "tools.") || strings.HasPrefix(key, "compiler.") || strings.HasPrefix(key, "build.") || strings.HasPrefix(key, "recipe.") {
+		if strings.HasPrefix(key, "tools.") || strings.HasPrefix(key, "compiler.") || strings.HasPrefix(key, "build.") || strings.HasPrefix(key, "recipe.") || strings.HasPrefix(key, "upload.") {
 			oldValues := vars.Values[vars.KeyToIndex22[key]]
 			newValues := make([]string, 0, len(oldValues))
 			for _, value := range oldValues {

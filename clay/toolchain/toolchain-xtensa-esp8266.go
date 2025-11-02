@@ -1,11 +1,9 @@
 package toolchain
 
 import (
-	"bufio"
 	"crypto/sha1"
 	"fmt"
 	"hash"
-	"io"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -515,8 +513,8 @@ func (b *ToolchainArduinoEsp8266Burner) SetupBuild(buildPath string) {
 	genImageBinToolArgs, _ := b.toolChain.Vars.Get("recipe.objcopy.hex.1.pattern")
 	b.genImageBinToolPath = genImageBinToolArgs[0]
 	b.genImageBinToolArgs = genImageBinToolArgs[1:]
-	b.genImageBinToolPath = b.toolChain.Vars.FinalResolveString(b.genImageBinToolPath, " ", nil)
-	b.genImageBinToolArgs = b.toolChain.Vars.FinalResolveArray(b.genImageBinToolArgs, nil)
+	b.genImageBinToolPath = b.toolChain.Vars.FinalResolveString(b.genImageBinToolPath, " ", b.vars)
+	b.genImageBinToolArgs = b.toolChain.Vars.FinalResolveArray(b.genImageBinToolArgs, b.vars)
 	b.genImageBinToolArgsHash = b.hashArguments(b.genImageBinToolArgs)
 }
 
@@ -563,8 +561,8 @@ func (b *ToolchainArduinoEsp8266Burner) SetupBurn(buildPath string) error {
 	flashToolArgs, _ := b.toolChain.Vars.Get("tools.esptool.upload.pattern")
 	b.flashToolPath = flashToolArgs[0]
 	b.flashToolArgs = flashToolArgs[1:]
-	b.flashToolPath = b.toolChain.Vars.FinalResolveString(b.flashToolPath, " ", nil)
-	b.flashToolArgs = b.toolChain.Vars.FinalResolveArray(b.flashToolArgs, nil)
+	b.flashToolPath = b.toolChain.Vars.FinalResolveString(b.flashToolPath, " ", b.vars)
+	b.flashToolArgs = b.toolChain.Vars.FinalResolveArray(b.flashToolArgs, b.vars)
 
 	return nil
 }
@@ -575,36 +573,41 @@ func (b *ToolchainArduinoEsp8266Burner) Burn() error {
 
 	corepkg.LogInfof("Flashing '%s'...", b.toolChain.ProjectName+".bin")
 
+	flashToolArgs = slices.DeleteFunc(flashToolArgs, func(s string) bool { return strings.TrimSpace(s) == "--port" })
+	flashToolArgs = slices.DeleteFunc(flashToolArgs, func(s string) bool { return strings.TrimSpace(s) == "" })
+
+	fmt.Println(strings.Join(flashToolArgs, "|"))
+
 	flashToolCmd := exec.Command(flashToolPath, flashToolArgs...)
 
-	// out, err := flashToolCmd.CombinedOutput()
-	// if err != nil {
-	// 	if len(out) > 0 {
-	// 		corepkg.LogInfof("Flashing output:\n%s", string(out))
-	// 	}
-	// 	return corepkg.LogErrorf(err, "Flashing failed with %s")
-	// }
-	// if len(out) > 0 {
-	// 	corepkg.LogInfof("Flashing output:\n%s", string(out))
-	// }
-
-	pipe, _ := flashToolCmd.StdoutPipe()
-
-	if err := flashToolCmd.Start(); err != nil {
-		return corepkg.LogErrorf(err, "Flashing failed")
-	}
-
-	reader := bufio.NewReader(pipe)
-	line, err := reader.ReadString('\n')
-	for err == nil {
-		line = strings.TrimRight(line, "\n")
-		corepkg.LogInfo(line)
-		line, err = reader.ReadString('\n')
-		if err == io.EOF {
-			err = nil
-			break
+	out, err := flashToolCmd.CombinedOutput()
+	if err != nil {
+		if len(out) > 0 {
+			corepkg.LogInfof("Flashing output:\n%s", string(out))
 		}
+		return corepkg.LogErrorf(err, "Flashing failed with %s")
 	}
+	if len(out) > 0 {
+		corepkg.LogInfof("Flashing output:\n%s", string(out))
+	}
+
+	// pipe, _ := flashToolCmd.StdoutPipe()
+
+	// if err := flashToolCmd.Start(); err != nil {
+	// 	return corepkg.LogErrorf(err, "Flashing failed")
+	// }
+
+	// reader := bufio.NewReader(pipe)
+	// line, err := reader.ReadString('\n')
+	// for err == nil {
+	// 	line = strings.TrimRight(line, "\n")
+	// 	corepkg.LogInfo(line)
+	// 	line, err = reader.ReadString('\n')
+	// 	if err == io.EOF {
+	// 		err = nil
+	// 		break
+	// 	}
+	// }
 
 	if err != nil {
 		return corepkg.LogErrorf(err, "Flashing failed")

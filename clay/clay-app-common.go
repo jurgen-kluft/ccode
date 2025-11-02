@@ -394,7 +394,7 @@ func (a *App) Clean() error {
 
 	for _, prj := range prjs {
 		for _, cfg := range prj.Config {
-			if cfg.BuildConfig.IsEqual(a.BuildConfig) {
+			if cfg.BuildConfig.Contains(a.BuildConfig) {
 				fmt.Println(prj.DevProject.Name, a.BuildConfig.String())
 
 				projectBuildPath := prj.GetBuildPath(buildPath)

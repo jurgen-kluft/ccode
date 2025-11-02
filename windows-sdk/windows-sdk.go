@@ -3,7 +3,6 @@ package winsdk
 import (
 	"fmt"
 	"path/filepath"
-	"slices"
 	"strings"
 
 	corepkg "github.com/jurgen-kluft/ccode/core"
@@ -15,56 +14,14 @@ type WindowsSdkLayout struct {
 	Libs     []string
 }
 
-// Windows SDK layout
-var preWin8SdkDirs = WindowsSdkLayout{
-	Bin:      "bin",
-	Includes: []string{"include"},
-	Libs:     []string{"lib"},
-}
-
-// Windows 8 SDK layout
-var win8SdkDirs = WindowsSdkLayout{
-	Bin:      "bin",
-	Includes: []string{"include"},
-	Libs:     []string{"lib\\win8\\um"},
-}
-
-// Windows 8.1 SDK layout
-var win81SdkDirs = WindowsSdkLayout{
-	Bin:      "bin",
-	Includes: []string{"include"},
-	Libs:     []string{"lib\\win6.3\\um"},
-}
-
-var preWin8SdkDirsx86 = WindowsSdkLayout{
-	Bin:      "",
-	Includes: []string{},
-	Libs:     []string{},
-}
-
-var preWin8SdkDirsx64 = WindowsSdkLayout{
-	Bin:      "x64",
-	Includes: []string{},
-	Libs:     []string{"x64"},
-}
-
-var postWin8Sdkx86 = WindowsSdkLayout{
-	Bin:      "x86",
-	Includes: []string{"shared", "um"},
-	Libs:     []string{"x86"},
-}
-
-var postWin8Sdkx64 = WindowsSdkLayout{
-	Bin:      "x64",
-	Includes: []string{"shared", "um"},
-	Libs:     []string{"x64"},
-}
-
-var postWin8SdkArm = WindowsSdkLayout{
-	Bin:      "arm",
-	Includes: []string{"shared", "um"},
-	Libs:     []string{"arm"},
-}
+var preWin8SdkDirs = WindowsSdkLayout{Bin: "bin", Includes: []string{"include"}, Libs: []string{"lib"}}
+var win8SdkDirs = WindowsSdkLayout{Bin: "bin", Includes: []string{"include"}, Libs: []string{"lib\\win8\\um"}}
+var win81SdkDirs = WindowsSdkLayout{Bin: "bin", Includes: []string{"include"}, Libs: []string{"lib\\win6.3\\um"}}
+var preWin8SdkDirsx86 = WindowsSdkLayout{Bin: "", Includes: []string{}, Libs: []string{}}
+var preWin8SdkDirsx64 = WindowsSdkLayout{Bin: "x64", Includes: []string{}, Libs: []string{"x64"}}
+var postWin8Sdkx86 = WindowsSdkLayout{Bin: "x86", Includes: []string{"shared", "um"}, Libs: []string{"x86"}}
+var postWin8Sdkx64 = WindowsSdkLayout{Bin: "x64", Includes: []string{"shared", "um"}, Libs: []string{"x64"}}
+var postWin8SdkArm = WindowsSdkLayout{Bin: "arm", Includes: []string{"shared", "um"}, Libs: []string{"arm"}}
 
 func getPostWin8Sdk(arch WinSupportedArch) *WindowsSdkLayout {
 	switch arch {
@@ -235,25 +192,27 @@ func newWindowsSDK(version string, dir string, layout WindowsSdkLayout) *Windows
 	return sdk
 }
 
-type Windows struct {
-	Versions []*WindowsSDK // List of available Windows SDK versions
-}
+func (w *WindowsSDK) Print() {
+	fmt.Printf("Windows SDK Version: %s\n", w.Version)
+	fmt.Printf("Windows SDK Directory: %s\n", w.Dir)
 
-func newWindows(dir string, versions []*WindowsSDK) *Windows {
+	fmt.Printf("Binary Directory: %s\n", w.Layout.Bin)
 
-	// Sort versions
-	slices.SortFunc(versions, func(a, b *WindowsSDK) int {
-		return strings.Compare(a.Version, b.Version)
-	})
-
-	windows := &Windows{
-		Versions: versions,
+	fmt.Println("Include Directories:")
+	for _, includeDir := range w.Layout.Includes {
+		fmt.Printf("  %s\n", includeDir)
 	}
-	return windows
+
+	fmt.Println("Library Directories:")
+	for _, libDir := range w.Layout.Libs {
+		fmt.Printf("  %s\n", libDir)
+	}
 }
 
-func (w *Windows) HasVersion(version string) bool {
-	for _, v := range w.Versions {
+type WindowsSDKs []*WindowsSDK
+
+func (w WindowsSDKs) HasVersion(version string) bool {
+	for _, v := range w {
 		if v.Version == version {
 			return true
 		}
@@ -261,15 +220,15 @@ func (w *Windows) HasVersion(version string) bool {
 	return false
 }
 
-func (w *Windows) GetLatestVersion() string {
-	if len(w.Versions) == 0 {
+func (w WindowsSDKs) GetLatestVersion() string {
+	if len(w) == 0 {
 		return ""
 	}
-	return w.Versions[len(w.Versions)-1].Version
+	return w[len(w)-1].Version
 }
 
 // From Visual Studio 2017 onwards, this is the recommended way to find the Windows SDK.
-func FindWindowsSDK(winAppPlatform WinAppPlatform) (*Windows, error) {
+func FindWindowsSDKs(winAppPlatform WinAppPlatform) (WindowsSDKs, error) {
 	// file:///C:/Program%20Files%20(x86)/Microsoft%20Visual%20Studio/2022/BuildTools/Common7/Tools/vsdevcmd/core/winsdk.bat#L63
 	//   HKLM\SOFTWARE\Wow6432Node
 	//   HKCU\SOFTWARE\Wow6432Node (ignored)
@@ -318,5 +277,5 @@ func FindWindowsSDK(winAppPlatform WinAppPlatform) (*Windows, error) {
 		windowsSDKs = append(windowsSDKs, winsdk)
 	}
 
-	return newWindows(winsdkDir, windowsSDKs), nil
+	return windowsSDKs, nil
 }
