@@ -69,6 +69,7 @@ func iterateProjects(projects map[string]*DevProject, iterateProject func(prj *D
 		// Add dependencies to the stack
 		for _, dprj := range prj.Dependencies.Values {
 			if _, ok := projectMap[dprj.Name]; !ok {
+				projectMap[dprj.Name] = true
 				projectStack = append(projectStack, dprj)
 			}
 		}

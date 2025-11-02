@@ -1,6 +1,7 @@
 package ccode
 
 import (
+	"fmt"
 	"path/filepath"
 	"strings"
 
@@ -81,12 +82,12 @@ func NewCCoreFixrConfig(prjname string, setting fixr.FixrSetting) *FixrConfig {
 
 func IncludeFixer(pkg *denv.Package, cfg *FixrConfig) {
 
-	libraries := pkg.Libraries()      // All libraries, including dependencies
-	mainProjects := pkg.Executables() // Main Unittest, App or Cli
+	libraries := pkg.Libraries() // All libraries, including dependencies
+	executables := pkg.Executables()
 
-	projects := make([]*denv.DevProject, 0, len(libraries)+len(mainProjects))
-	projects = append(projects, libraries...)    // All libraries, including dependencies
-	projects = append(projects, mainProjects...) // Main Unittest, App or Cli
+	projects := make([]*denv.DevProject, 0, len(libraries)+len(executables))
+	projects = append(projects, libraries...)   // All libraries, including dependencies
+	projects = append(projects, executables...) // Main Unittest, App or Cli
 
 	renamers := fixr.NewRenamers()
 	scanners := fixr.NewDirScanner()
@@ -101,17 +102,35 @@ func IncludeFixer(pkg *denv.Package, cfg *FixrConfig) {
 	}
 
 	// Then we need the source and include directories of the main application(s) and main library
+	mainProjects := pkg.MainLibs
+	for k, v := range pkg.TestLibs {
+		if _, exists := mainProjects[k]; !exists {
+			mainProjects[k] = v
+		}
+	}
+	for k, v := range pkg.MainApps {
+		if _, exists := mainProjects[k]; !exists {
+			mainProjects[k] = v
+		}
+	}
+	for k, v := range pkg.Unittests {
+		if _, exists := mainProjects[k]; !exists {
+			mainProjects[k] = v
+		}
+	}
 	for _, mainProject := range mainProjects {
 		//mainProjectPath := filepath.Join(basePath, mainProject.PackageURL)
 		for _, sp := range mainProject.CollectSourceDirs() {
 			sourcePath := filepath.Join(sp.Path.Root, sp.Path.Base, sp.Path.Sub)
 			renamers.Add(sourcePath, cfg.RenamePolicy, cfg.SourceFileFilter, cfg.SourceFileFilter)
 			fixers.AddSourceFileFilter(sourcePath, cfg.SourceFileFilter)
+			fmt.Printf("Source Path: %s\n", sourcePath)
 		}
 		for _, inc := range mainProject.CollectIncludeDirs() {
 			includePath := filepath.Join(inc.Root, inc.Base, inc.Sub)
 			renamers.Add(includePath, cfg.RenamePolicy, cfg.SourceFileFilter, cfg.HeaderFileFilter)
 			fixers.AddHeaderFileFilter(includePath, cfg.HeaderFileFilter)
+			fmt.Printf("Include Path: %s\n", includePath)
 		}
 	}
 
