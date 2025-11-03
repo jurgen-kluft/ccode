@@ -66,7 +66,7 @@ func getPreWin10Sdk(sdkVersion string, targetArch WinSupportedArch) (string, Win
 
 	sdk, exists := preWin10SdkMap[sdkVersion]
 	if !exists {
-		return "", result, fmt.Errorf("the requested version of Visual Studio isn't supported: %s", sdkVersion)
+		return "", result, fmt.Errorf("the requested version of Windows isn't supported: %s", sdkVersion)
 	}
 
 	sdkRoot, err := corepkg.QueryRegistryForStringValue(corepkg.RegistryKeyLocalMachine, sdk.regKey, sdk.regValue)
@@ -104,7 +104,7 @@ func getPreWin10Sdk(sdkVersion string, targetArch WinSupportedArch) (string, Win
 }
 
 func getWin10Sdk(sdkVersion string, targetArch WinSupportedArch) (string, WindowsSdkLayout, error) {
-	sdkVersion = sdkVersion[2:] // Remove v prefix
+	sdkVersion = sdkVersion[1:]
 
 	result := WindowsSdkLayout{}
 
@@ -136,7 +136,7 @@ func getWin10Sdk(sdkVersion string, targetArch WinSupportedArch) (string, Window
 func getSdk(sdkVersion string, targetArch WinSupportedArch) (string, WindowsSdkLayout, error) {
 	// All versions using v10.0.xxxxx.x use specific releases of the
 	// Win10 SDK. Other versions are assumed to be pre-win10
-	if strings.HasPrefix(sdkVersion, "v10.0.") {
+	if strings.HasPrefix(sdkVersion, "10.0.") || strings.HasPrefix(sdkVersion, "v10.0.") {
 		return getWin10Sdk(sdkVersion, targetArch)
 	}
 	return getPreWin10Sdk(sdkVersion, targetArch)
@@ -193,6 +193,7 @@ func newWindowsSDK(version string, dir string, layout WindowsSdkLayout) *Windows
 }
 
 func (w *WindowsSDK) Print() {
+	fmt.Printf("----------------------------------------\n")
 	fmt.Printf("Windows SDK Version: %s\n", w.Version)
 	fmt.Printf("Windows SDK Directory: %s\n", w.Dir)
 
@@ -207,6 +208,8 @@ func (w *WindowsSDK) Print() {
 	for _, libDir := range w.Layout.Libs {
 		fmt.Printf("  %s\n", libDir)
 	}
+
+	fmt.Println()
 }
 
 type WindowsSDKs []*WindowsSDK
@@ -239,10 +242,11 @@ func FindWindowsSDKs(winAppPlatform WinAppPlatform) (WindowsSDKs, error) {
 	if err != nil {
 		return nil, err
 	}
+	fmt.Printf("Detected Windows SDK installation folder: %s\n", winsdkDir)
 
 	winsdkVersions := []string{}
 
-	// Due to the SDK installer changes beginning with the 10.0.15063.0
+	// Due to the SDK installer changes beginning with the 10.0.xxxxx.x versions,
 	checkFile := "winsdkver.h"
 	if winAppPlatform == WinAppUWP {
 		checkFile = "Windows.h"
@@ -258,6 +262,7 @@ func FindWindowsSDKs(winAppPlatform WinAppPlatform) (WindowsSDKs, error) {
 			testPath := filepath.Join(winsdkDir, "Include", winsdkVersion, "um", checkFile)
 			if corepkg.FileExists(testPath) {
 				winsdkVersions = append(winsdkVersions, winsdkVersion)
+				fmt.Printf("Detected Windows SDK version: %s\n", winsdkVersion)
 			}
 		}
 	}
@@ -268,7 +273,6 @@ func FindWindowsSDKs(winAppPlatform WinAppPlatform) (WindowsSDKs, error) {
 
 	windowsSDKs := []*WindowsSDK{}
 	for _, version := range winsdkVersions {
-		// Create WindowsSDK instance
 		dir, layout, err := getSdk(version, WinArchx64)
 		if err != nil {
 			return nil, fmt.Errorf("failed to get Windows SDK layout for version %s: %v", version, err)
