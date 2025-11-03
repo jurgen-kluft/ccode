@@ -84,6 +84,9 @@ var vsSdkMap = map[string]string{
 
 // MsvcEnvironment represents the installation of Microsoft Visual Studio that was found.
 type MsvcEnvironment struct {
+	Installed      bool
+	Version        VsVersion
+	Product        VsProduct
 	CompilerPath   string
 	CompilerBin    string
 	CcOptions      []string
@@ -102,31 +105,32 @@ type MsvcEnvironment struct {
 	VsInstallDir   string
 	VcInstallDir   string
 	DevEnvDir      string
-	WindowsSdkDir  string
-	Path           []string
+	Path           []string // Additional PATH entries to be set
 }
 
-func NewMsvcEnvironment() *MsvcEnvironment {
+func NewMsvcEnvironment(version VsVersion, product VsProduct) *MsvcEnvironment {
 	return &MsvcEnvironment{
-		CompilerPath:  "",
-		CompilerBin:   "",
-		CcOptions:     []string{},
-		CxxOptions:    []string{},
-		IncludePaths:  []string{},
-		ArchiverPath:  "",
-		ArchiverBin:   "",
-		LinkerPath:    "",
-		LinkerBin:     "",
-		Libs:          []string{},
-		LibPaths:      []string{},
-		RcPath:        "",
-		RcBin:         "",
-		RcOptions:     []string{},
-		VsInstallDir:  "",
-		VcInstallDir:  "",
-		DevEnvDir:     "",
-		WindowsSdkDir: "",
-		Path:          []string{},
+		Installed:    false,
+		Version:      version,
+		Product:      product,
+		CompilerPath: "",
+		CompilerBin:  "",
+		CcOptions:    []string{},
+		CxxOptions:   []string{},
+		IncludePaths: []string{},
+		ArchiverPath: "",
+		ArchiverBin:  "",
+		LinkerPath:   "",
+		LinkerBin:    "",
+		Libs:         []string{},
+		LibPaths:     []string{},
+		RcPath:       "",
+		RcBin:        "",
+		RcOptions:    []string{},
+		VsInstallDir: "",
+		VcInstallDir: "",
+		DevEnvDir:    "",
+		Path:         []string{},
 	}
 }
 
@@ -161,8 +165,14 @@ func InitMsvcVisualStudio(_vsVersion VsVersion, _sdkVersion string, _hostArch Wi
 			vsRoot = strings.ReplaceAll(vcRoot, "\\VC\\$", "\\")
 		}
 	}
+
+	// TODO, find out the exact edition from the registry (Express, Community, Professional, Enterprise)
+	product := vsProductUnknown
+
+	msdev := NewMsvcEnvironment(_vsVersion, product)
+
 	if vsRoot == "" {
-		return nil, fmt.Errorf("Visual Studio [Version %s] isn't installed. Please use a different Visual Studio version", string(_vsVersion))
+		return msdev, nil
 	}
 	vsRoot = strings.TrimSuffix(vsRoot, "\\")
 
@@ -178,7 +188,10 @@ func InitMsvcVisualStudio(_vsVersion VsVersion, _sdkVersion string, _hostArch Wi
 	}
 	vcLib = vsRoot + "\\vc\\lib\\" + vcLib
 
-	msdev := NewMsvcEnvironment()
+	//
+	// Installed
+	//
+	msdev.Installed = corepkg.DirExists(vcBin) && corepkg.DirExists(vcLib)
 
 	//
 	// Tools
@@ -247,5 +260,30 @@ func InitMsvcVisualStudio(_vsVersion VsVersion, _sdkVersion string, _hostArch Wi
 }
 
 func (msvc *MsvcEnvironment) Print() {
+	fmt.Println("========================================")
+	fmt.Println("Microsoft Visual Studio Environment:")
+	fmt.Printf("  Installed: %v\n", msvc.Installed)
+	fmt.Printf("  Version: %s\n", msvc.Version.String())
+	fmt.Printf("  Product: %s\n", msvc.Product.String())
+	fmt.Printf("  Compiler Path: %s\n", msvc.CompilerPath)
+	fmt.Printf("  Compiler Bin: %s\n", msvc.CompilerBin)
+	fmt.Printf("  Cc Options: %v\n", msvc.CcOptions)
+	fmt.Printf("  Cxx Options: %v\n", msvc.CxxOptions)
+	fmt.Printf("  Include Paths: %v\n", msvc.IncludePaths)
+	fmt.Printf("  Archiver Path: %s\n", msvc.ArchiverPath)
+	fmt.Printf("  Archiver Bin: %s\n", msvc.ArchiverBin)
+	fmt.Printf("  Linker Path: %s\n", msvc.LinkerPath)
+	fmt.Printf("  Linker Bin: %s\n", msvc.LinkerBin)
+	fmt.Printf("  Libs: %v\n", msvc.Libs)
+	fmt.Printf("  Lib Paths: %v\n", msvc.LibPaths)
+	fmt.Printf("  Rc Path: %s\n", msvc.RcPath)
+	fmt.Printf("  Rc Bin: %s\n", msvc.RcBin)
+	fmt.Printf("  Rc Options: %v\n", msvc.RcOptions)
+	fmt.Printf("  Vc Tools Version: %s\n", msvc.VcToolsVersion)
+	fmt.Printf("  Vs Install Dir: %s\n", msvc.VsInstallDir)
+	fmt.Printf("  Vc Install Dir: %s\n", msvc.VcInstallDir)
+	fmt.Printf("  DevEnv Dir: %s\n", msvc.DevEnvDir)
+	fmt.Printf("  Path: %v\n", msvc.Path)
 
+	fmt.Println()
 }
