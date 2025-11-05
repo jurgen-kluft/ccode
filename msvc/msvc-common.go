@@ -134,7 +134,7 @@ func NewMsvcEnvironment(version VsVersion, product VsProduct) *MsvcEnvironment {
 	}
 }
 
-func InitMsvcVisualStudio(_vsVersion VsVersion, _sdkVersion string, _hostArch WinSupportedArch, _targetArch WinSupportedArch) (*MsvcEnvironment, error) {
+func Find(_vsVersion VsVersion, _sdkVersion string, _hostArch WinSupportedArch, _targetArch WinSupportedArch) (*MsvcEnvironment, error) {
 	targetArch := getTargetArch(_targetArch)
 
 	if _vsVersion >= VsVersion2017 {

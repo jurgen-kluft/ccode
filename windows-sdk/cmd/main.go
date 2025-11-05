@@ -7,7 +7,7 @@ import (
 )
 
 func main() {
-	sdks, err := winsdk.FindWindowsSDKs(winsdk.WinAppDesktop)
+	sdks, err := winsdk.Find(winsdk.WinAppDesktop)
 	if err != nil || sdks == nil {
 		log.Fatalf("Failed to analyze Windows for its available SDKs: %v", err)
 	}

@@ -20,7 +20,7 @@ func main() {
 
 	for _, version := range versions {
 		// func func InitMsvcVisualStudio(_vsVersion VsVersion, _sdkVersion string, _hostArch WinSupportedArch, _targetArch WinSupportedArch) (*MsvcEnvironment, error) {(_vsVersion VsVersion, _sdkVersion string, _hostArch WinSupportedArch, _targetArch WinSupportedArch) (*MsvcEnvironment, error) {
-		msvc, err := msvc.InitMsvcVisualStudio(version, "", msvc.WinArchx64, msvc.WinArchx64)
+		msvc, err := msvc.Find(version, "", msvc.WinArchx64, msvc.WinArchx64)
 		if err != nil {
 			fmt.Println(err)
 			continue

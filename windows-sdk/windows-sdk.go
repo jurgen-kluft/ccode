@@ -231,7 +231,7 @@ func (w WindowsSDKs) GetLatestVersion() string {
 }
 
 // From Visual Studio 2017 onwards, this is the recommended way to find the Windows SDK.
-func FindWindowsSDKs(winAppPlatform WinAppPlatform) (WindowsSDKs, error) {
+func Find(winAppPlatform WinAppPlatform) (WindowsSDKs, error) {
 	// file:///C:/Program%20Files%20(x86)/Microsoft%20Visual%20Studio/2022/BuildTools/Common7/Tools/vsdevcmd/core/winsdk.bat#L63
 	//   HKLM\SOFTWARE\Wow6432Node
 	//   HKCU\SOFTWARE\Wow6432Node (ignored)
