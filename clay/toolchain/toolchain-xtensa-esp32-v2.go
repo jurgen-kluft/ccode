@@ -332,6 +332,12 @@ func (b *ToolchainArduinoEsp32Burnerv2) SetupBuild(buildPath string) {
 	b.vars.Set("build.source.path", filepath.Join(buildPath, "void"))
 	b.vars.Set("build.variant.path", filepath.Join(buildPath, "void"))
 
+	if b.toolChain.Vars.GetFirstOrEmpty("build.mcu") == "esp32c3" {
+		corepkg.LogWarnf("Overriding flash mode to 'dio' for XIAO_ESP32C3 board")
+		//flashMode = "dio"
+		b.toolChain.Vars.Set("build.flash.mode", "dio")
+	}
+
 	// ------------------------------------------------------------------------------------------------
 	// Image partitions tool setup
 	dstPartitionsFilepath := filepath.Join(buildPath, "partitions.csv")
