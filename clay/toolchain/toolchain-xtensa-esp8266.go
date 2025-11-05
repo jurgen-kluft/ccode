@@ -609,10 +609,6 @@ func (b *ToolchainArduinoEsp8266Burner) Burn() error {
 	// 	}
 	// }
 
-	if err != nil {
-		return corepkg.LogErrorf(err, "Flashing failed")
-	}
-
 	return nil
 }
 
