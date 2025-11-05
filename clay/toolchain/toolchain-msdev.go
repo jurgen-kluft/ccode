@@ -1,6 +1,11 @@
 package toolchain
 
 import (
+	"os/exec"
+	"path/filepath"
+	"slices"
+	"strings"
+
 	"github.com/jurgen-kluft/ccode/clay/toolchain/deptrackr"
 	corepkg "github.com/jurgen-kluft/ccode/core"
 	"github.com/jurgen-kluft/ccode/denv"
@@ -11,7 +16,127 @@ type WinMsdev struct {
 	Vars *corepkg.Vars
 }
 
-func (ms *WinMsdev) NewCompiler(config denv.BuildConfig, target denv.BuildTarget) Compiler {
+// --------------------------------------------------------------------------------------------------
+// --------------------------------------------------------------------------------------------------
+// Microsoft Visual Studio C/C++ Compiler
+
+type WinMsdevCompiler struct {
+	toolChain       *WinMsdev
+	buildConfig     denv.BuildConfig
+	buildTarget     denv.BuildTarget
+	objFilePrefix   string
+	objFileSuffix   string
+	depFilePrefix   string
+	depFileSuffix   string
+	cCompilerPath   string
+	cCompilerArgs   *corepkg.Arguments
+	cppCompilerPath string
+	cppCompilerArgs *corepkg.Arguments
+	vars            *corepkg.Vars
+}
+
+func (t *WinMsdev) NewCompiler(buildConfig denv.BuildConfig, buildTarget denv.BuildTarget) Compiler {
+	objFilePrefix, _ := t.Vars.GetFirst("build.obj.prefix")
+	objFileSuffix, _ := t.Vars.GetFirst("build.obj.suffix")
+	depFilePrefix, _ := t.Vars.GetFirst("build.dep.prefix")
+	depFileSuffix, _ := t.Vars.GetFirst("build.dep.suffix")
+
+	cl := &WinMsdevCompiler{
+		toolChain:       t,
+		buildConfig:     buildConfig,
+		buildTarget:     buildTarget,
+		objFilePrefix:   objFilePrefix,
+		objFileSuffix:   objFileSuffix,
+		depFilePrefix:   depFilePrefix,
+		depFileSuffix:   depFileSuffix,
+		cCompilerPath:   "",
+		cCompilerArgs:   nil,
+		cppCompilerPath: "",
+		cppCompilerArgs: nil,
+		vars:            corepkg.NewVars(corepkg.VarsFormatCurlyBraces),
+	}
+
+	return cl
+}
+
+func (cl *WinMsdevCompiler) ObjFilepath(srcRelFilepath string) string {
+	return cl.objFilePrefix + srcRelFilepath + cl.objFileSuffix
+}
+
+func (cl *WinMsdevCompiler) DepFilepath(objRelFilepath string) string {
+	return cl.depFilePrefix + objRelFilepath + cl.depFileSuffix
+}
+
+func (cl *WinMsdevCompiler) SetupArgs(_defines []string, _includes []string) {
+	for i, inc := range _includes {
+		if !strings.HasPrefix(inc, "/I") {
+			_includes[i] = "/I" + inc
+		}
+	}
+	for i, def := range _defines {
+		if !strings.HasPrefix(def, "/D") {
+			_defines[i] = "/D" + def
+		}
+	}
+	cl.vars.Set("build.includes", _includes...)
+	cl.vars.Set("build.defines", _defines...)
+
+	cl.cCompilerPath = ""
+	cl.cCompilerArgs = corepkg.NewArguments(0)
+	if c_compiler_args, ok := cl.toolChain.Vars.Get(`recipe.c.pattern`); ok {
+		cl.cCompilerPath = c_compiler_args[0]
+		cl.cCompilerArgs.Args = c_compiler_args[1:]
+
+		cl.cCompilerPath = cl.toolChain.Vars.FinalResolveString(cl.cCompilerPath, " ", cl.vars)
+		cl.cCompilerArgs.Args = cl.toolChain.Vars.FinalResolveArray(cl.cCompilerArgs.Args, cl.vars)
+
+		cl.cCompilerArgs.Args = slices.DeleteFunc(cl.cCompilerArgs.Args, func(s string) bool { return strings.TrimSpace(s) == "" })
+	}
+
+	cl.cppCompilerPath = ""
+	cl.cppCompilerArgs = corepkg.NewArguments(0)
+	if cpp_compiler_args, ok := cl.toolChain.Vars.Get(`recipe.cpp.pattern`); ok {
+		cl.cppCompilerPath = cpp_compiler_args[0]
+		cl.cppCompilerArgs.Args = cpp_compiler_args[1:]
+
+		cl.cppCompilerPath = cl.toolChain.Vars.FinalResolveString(cl.cppCompilerPath, " ", cl.vars)
+		cl.cppCompilerArgs.Args = cl.toolChain.Vars.FinalResolveArray(cl.cppCompilerArgs.Args, cl.vars)
+
+		cl.cppCompilerArgs.Args = slices.DeleteFunc(cl.cppCompilerArgs.Args, func(s string) bool { return strings.TrimSpace(s) == "" })
+	}
+}
+
+func (cl *WinMsdevCompiler) Compile(sourceAbsFilepaths []string, objRelFilepaths []string) error {
+	for _, sourceAbsFilepath := range sourceAbsFilepaths {
+		var compilerPath string
+		var compilerArgs []string
+		if strings.HasSuffix(sourceAbsFilepath, ".c") {
+			compilerPath = cl.cCompilerPath
+			compilerArgs = cl.cCompilerArgs.Args
+		} else {
+			compilerPath = cl.cppCompilerPath
+			compilerArgs = cl.cppCompilerArgs.Args
+		}
+
+		// TODO would like this to be part of the resolve step
+		//compilerArgs = append(compilerArgs, "-o", objRelFilepaths[i])
+		compilerArgs = append(compilerArgs, sourceAbsFilepath)
+
+		// TODO add paths to the environment variables
+		// - msvc tools path (to cl.exe, link.exe, lib.exe, etc)
+
+		cmd := exec.Command(compilerPath, compilerArgs...)
+
+		corepkg.LogInfof("Compiling (%s) %s", cl.buildConfig.String(), filepath.Base(sourceAbsFilepath))
+		out, err := cmd.CombinedOutput()
+		if err != nil {
+			corepkg.LogInfof("Compile failed, output:\n%s", string(out))
+			return corepkg.LogErrorf(err, "Compiling failed")
+		}
+		if len(out) > 0 {
+			corepkg.LogInfof("Compile output:\n%s", string(out))
+		}
+	}
 	return nil
 }
 
@@ -35,9 +160,16 @@ func (ms *WinMsdev) NewDependencyTracker(dirpath string) deptrackr.FileTrackr {
 // --------------------------------------------------------------------------------------------------
 // Toolchain for Visual Studio on Windows
 
-func NewWinMsdev(arch string, product string) (t *WinMsdev, err error) {
+func NewWinMsdev(vars *corepkg.Vars, projectName string, buildPath string, arch string) (t *WinMsdev, err error) {
+
+	vars.Set("project.name", projectName)
+	vars.Set("build.path", buildPath)
+	vars.Set("build.arch", arch)
+	vars.Set("build.includes", "")
+	vars.Set("build.defines", "")
+
 	return &WinMsdev{
 		Name: "msdev",
-		Vars: corepkg.NewVars(corepkg.VarsFormatCurlyBraces),
+		Vars: vars,
 	}, nil
 }

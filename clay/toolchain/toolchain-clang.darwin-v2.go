@@ -3,7 +3,7 @@ package toolchain
 import (
 	"os/exec"
 	"path/filepath"
-	"runtime"
+	"slices"
 	"strings"
 
 	"github.com/jurgen-kluft/ccode/clay/toolchain/deptrackr"
@@ -74,6 +74,9 @@ func (cl *ToolchainDarwinClangCompilerv2) SetupArgs(_defines []string, _includes
 
 		cl.cCompilerPath = cl.toolChain.Vars.FinalResolveString(cl.cCompilerPath, " ", cl.vars)
 		cl.cCompilerArgs.Args = cl.toolChain.Vars.FinalResolveArray(cl.cCompilerArgs.Args, cl.vars)
+
+		cl.cCompilerArgs.Args = slices.DeleteFunc(cl.cCompilerArgs.Args, func(s string) bool { return strings.TrimSpace(s) == "" })
+
 	}
 
 	cl.cppCompilerPath = ""
@@ -84,6 +87,8 @@ func (cl *ToolchainDarwinClangCompilerv2) SetupArgs(_defines []string, _includes
 
 		cl.cppCompilerPath = cl.toolChain.Vars.FinalResolveString(cl.cppCompilerPath, " ", cl.vars)
 		cl.cppCompilerArgs.Args = cl.toolChain.Vars.FinalResolveArray(cl.cppCompilerArgs.Args, cl.vars)
+
+		cl.cppCompilerArgs.Args = slices.DeleteFunc(cl.cppCompilerArgs.Args, func(s string) bool { return strings.TrimSpace(s) == "" })
 	}
 }
 
@@ -162,6 +167,8 @@ func (t *ToolchainDarwinClangStaticArchiverv2) SetupArgs() {
 		t.arArgs.Args = archiver_args[1:]
 		t.arPath = t.toolChain.Vars.FinalResolveString(t.arPath, " ")
 		t.arArgs.Args = t.toolChain.Vars.FinalResolveArray(t.arArgs.Args)
+
+		t.arArgs.Args = slices.DeleteFunc(t.arArgs.Args, func(s string) bool { return strings.TrimSpace(s) == "" })
 	}
 }
 
@@ -269,6 +276,8 @@ func (l *ToolchainDarwinClangLinkerv2) SetupArgs(libraryPaths []string, libraryF
 
 		l.linkerPath = l.toolChain.Vars.FinalResolveString(l.linkerPath, " ", l.vars)
 		l.linkerArgs.Args = l.toolChain.Vars.FinalResolveArray(l.linkerArgs.Args, l.vars)
+
+		l.linkerArgs.Args = slices.DeleteFunc(l.linkerArgs.Args, func(s string) bool { return strings.TrimSpace(s) == "" })
 	}
 }
 
@@ -317,11 +326,11 @@ func (t *DarwinClangv2) NewDependencyTracker(dirpath string) deptrackr.FileTrack
 // --------------------------------------------------------------------------------------------------
 // --------------------------------------------------------------------------------------------------
 // Toolchain for Clang on MacOS
-func NewDarwinClangv2(vars *corepkg.Vars, projectName string, buildPath string) *DarwinClangv2 {
+func NewDarwinClangv2(vars *corepkg.Vars, projectName string, buildPath string, arch string) *DarwinClangv2 {
 
 	vars.Set("project.name", projectName)
 	vars.Set("build.path", buildPath)
-	vars.Set("build.arch", runtime.GOARCH)
+	vars.Set("build.arch", arch)
 	vars.Set("build.includes", "")
 	vars.Set("build.defines", "")
 

@@ -92,9 +92,7 @@ func (cl *ToolchainArduinoEsp32Compilerv2) Compile(sourceAbsFilepaths []string, 
 		compilerPath = corepkg.StrTrimDelimiters(compilerPath, '"')
 
 		// Remove empty entries from compilerArgs
-		compilerArgs = slices.DeleteFunc(compilerArgs, func(s string) bool {
-			return strings.TrimSpace(s) == ""
-		})
+		compilerArgs = slices.DeleteFunc(compilerArgs, func(s string) bool { return strings.TrimSpace(s) == "" })
 
 		cmd := exec.Command(compilerPath, compilerArgs...)
 		out, err := cmd.CombinedOutput()

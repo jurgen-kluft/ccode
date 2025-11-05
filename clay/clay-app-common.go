@@ -541,11 +541,15 @@ func (a *App) SetToolchain(p *Project, buildPath string) (err error) {
 		a.Pkg.GetVars(a.BuildTarget, a.BuildConfig, a.Config.TargetBoard, vars)
 		p.Toolchain = toolchain.NewArduinoEsp8266Toolchain(vars, p.DevProject.Name, p.GetBuildPath(buildPath))
 	} else if a.BuildTarget.Windows() {
-		p.Toolchain, err = toolchain.NewWinMsdev(a.BuildTarget.Arch().String(), "Desktop")
-	} else if a.BuildTarget.Mac() {
+		arch := runtime.GOARCH
 		vars := corepkg.NewVars(corepkg.VarsFormatCurlyBraces)
 		a.Pkg.GetVars(a.BuildTarget, a.BuildConfig, a.Config.TargetBoard, vars)
-		p.Toolchain = toolchain.NewDarwinClangv2(vars, p.DevProject.Name, p.GetBuildPath(buildPath))
+		p.Toolchain, err = toolchain.NewWinMsdev(vars, p.DevProject.Name, p.GetBuildPath(buildPath), arch)
+	} else if a.BuildTarget.Mac() {
+		arch := runtime.GOARCH
+		vars := corepkg.NewVars(corepkg.VarsFormatCurlyBraces)
+		a.Pkg.GetVars(a.BuildTarget, a.BuildConfig, a.Config.TargetBoard, vars)
+		p.Toolchain = toolchain.NewDarwinClangv2(vars, p.DevProject.Name, p.GetBuildPath(buildPath), arch)
 	} else {
 		err = corepkg.LogErrorf(os.ErrNotExist, "error, %s as a build target on %s is not supported", a.BuildTarget.Os().String(), runtime.GOOS)
 	}
