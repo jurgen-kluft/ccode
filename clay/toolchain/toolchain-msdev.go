@@ -165,8 +165,6 @@ func NewWinMsdev(vars *corepkg.Vars, projectName string, buildPath string, arch 
 	vars.Set("project.name", projectName)
 	vars.Set("build.path", buildPath)
 	vars.Set("build.arch", arch)
-	vars.Set("build.includes", "")
-	vars.Set("build.defines", "")
 
 	return &WinMsdev{
 		Name: "msdev",
