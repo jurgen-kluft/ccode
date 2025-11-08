@@ -149,13 +149,19 @@ func Init() bool {
 	return base.Init()
 }
 
-func Generate(pkg *denv.Package, dryrun bool, verbose bool) {
+func Generate(pkg *denv.Package, dryrun bool, verbose bool, fixIncludeGuards bool, fixIncludeDirectives bool) {
 	var setting fixr.FixrSetting
 	if dryrun {
 		setting |= fixr.DryRun
 	}
 	if verbose {
 		setting |= fixr.Verbose
+	}
+	if fixIncludeGuards {
+		setting |= fixr.FixIncludeGuards
+	}
+	if fixIncludeDirectives {
+		setting |= fixr.FixIncludeDirectives
 	}
 	config := NewDefaultFixrConfig(pkg.RepoName, setting)
 	IncludeFixer(pkg, config)

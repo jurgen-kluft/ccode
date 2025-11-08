@@ -123,9 +123,11 @@ func newFDir(name string, path string, parent *fdir) *fdir {
 type FixrSetting int
 
 const (
-	DryRun  FixrSetting = 1 << 0
-	Verbose             = 1 << 1
-	Rename              = 1 << 2
+	DryRun               FixrSetting = 1 << 0
+	Verbose                          = 1 << 1
+	Rename                           = 1 << 2
+	FixIncludeGuards                 = 1 << 3
+	FixIncludeDirectives             = 1 << 4
 )
 
 type Fixr struct {
@@ -176,6 +178,9 @@ func (f *Fixr) matchAndFixIncludeDirective(lineNumber int, line string, _filepat
 
 func (f *Fixr) matchAndFixIncludeGuard(line string, nextline string, _filepathOfFileBeingFixed string) (l1 string, l2 string, status bool) {
 	cfg := f.includeGuardConfig
+	if f.Setting&FixIncludeGuards == 0 {
+		return "", "", false
+	}
 
 	_ifndef := cfg.IncludeGuardIfNotDefRegex.FindStringSubmatch(line)
 	if _ifndef == nil || len(_ifndef) != 2 {
@@ -264,55 +269,87 @@ func (f *Fixr) findBestMatchingHeaderFile(lineNumber int, includeDirective strin
 	includeFilename := filepath.Base(includeFilepath)
 	includeFilenameLowerCase := strings.ToLower(includeFilename)
 
-	// Note, this can be optimized by building a map[string][]*ffile to map a filename to a
-	// []*ffile that have the same filename but different path.
 	files := map[string]*ffile{}
-	for _, file := range f.rootStructure.files {
-		if strings.EqualFold(file.name, includeFilenameLowerCase) {
-			files[strings.ToLower(file.path)] = file
-		}
+	for _, file := range f.rootStructure.filenames[includeFilenameLowerCase] {
+		files[strings.ToLower(file.path)] = file
 	}
 
 	if len(files) > 1 {
-		// First check any of them if they have the same parent directory
-		dirs := make(map[string]*fdir)
-		for fk, fi := range files {
-			dirs[fk] = fi.dir
-		}
-		includeFilePathIter := filepath.Dir(includeFilepath)
-		for len(files) > 1 {
-			pruneList := make([]string, 0, len(files))
-			dn := filepath.Base(includeFilePathIter)
-			for fk, fi := range files {
-				fd := dirs[fk]
-				if strings.Compare(dn, filepath.Base(fd.name)) != 0 {
-					pruneList = append(pruneList, fi.path)
+		// Now we have multiple files with the same filename, we need to disambiguate.
+		// For these multiple files, add each one to the map starting at 'parent/file.ext'
+		// and go up until the path is identical to ffile.path
+		for _, fi := range files {
+			fp := fi.path
+			si := strings.LastIndex(fp, string(filepath.Separator))
+			if si != -1 {
+				fp = fp[:si]
+				si = strings.LastIndex(fp, string(filepath.Separator))
+				for si != -1 {
+					fpp := fp[si+1:]
+					fsp := filepath.Join(fpp, fi.name)
+					if _, ok := files[strings.ToLower(fsp)]; !ok {
+						files[strings.ToLower(fsp)] = fi
+					}
+					si = strings.LastIndex(fp[:si], string(filepath.Separator))
 				}
 			}
-			for _, pi := range pruneList { // prune the map of files
-				delete(files, pi)
-				delete(dirs, pi)
-			}
-
-			// Go up one directory
-			for dk, di := range dirs {
-				dirs[dk] = di.parent
-			}
-			includeFilePathIter = ParentPath(includeFilePathIter)
 		}
 
-		for len(files) > 1 {
-			possible := make([]string, len(files))
-			for _, f := range files {
-				possible = append(possible, f.path)
+		{
+			dirOfFileBeingIncluded := filepath.Dir(includeFilepath)
+			if dirOfFileBeingIncluded == "." {
+				dirOfFileBeingIncluded = ""
 			}
-			cm := NewClosestMatch(possible, []int{2, 3, 4}) // Find a fuzzy match for these files
-			closest := cm.Closest(includeFilepath)
-			_, cs := ClosestDistance(includeFilename, closest)
-			if cs >= 0.9 {
-				return closest, true
+			dirPartsOfFileBeingIncluded := strings.Split(dirOfFileBeingIncluded, string(filepath.Separator))
+
+			// 1) Check in the same directory as the file that contains the #include statement.
+			candidatePath := filepath.Join(dirOfFileBeingIncluded, includeFilename)
+			if fi, ok := files[strings.ToLower(candidatePath)]; ok {
+				return fi.path, true
+			}
+
+			// 2) Check in the directories of the currently opened include files, in the reverse order in which they were opened.
+			for i := 0; i < len(dirPartsOfFileBeingIncluded); i++ {
+				candidateDir := strings.Join(dirPartsOfFileBeingIncluded[i:], string(filepath.Separator))
+				candidatePath := filepath.Join(candidateDir, includeFilename)
+				if fi, ok := files[strings.ToLower(candidatePath)]; ok {
+					return fi.path, true
+				}
 			}
 		}
+
+		// The following search order is used:
+		//     1) In the same directory as the file that contains the #include statement.
+		//     2) In the directories of the currently opened include files, in the reverse order in which they were opened.
+		//        The search begins in the directory of the parent include file and continues upward through the directories
+		//        of any grandparent include files.
+
+		// split the path of the file being fixed
+		{
+			dirOfFileBeingFixed := filepath.Dir(_filepathOfFileBeingFixed)
+			if dirOfFileBeingFixed == "." {
+				dirOfFileBeingFixed = ""
+			}
+			dirPartsOfFileBeingFixed := strings.Split(dirOfFileBeingFixed, string(filepath.Separator))
+
+			// 1) Check in the same directory as the file that contains the #include statement.
+			candidatePath := filepath.Join(dirOfFileBeingFixed, includeFilename)
+			if fi, ok := files[strings.ToLower(candidatePath)]; ok {
+				return fi.path, true
+			}
+
+			// 2) Check in the directories of the currently opened include files, in the reverse order in which they were opened.
+			for i := 0; i < len(dirPartsOfFileBeingFixed); i++ {
+				candidateDir := strings.Join(dirPartsOfFileBeingFixed[i:], string(filepath.Separator))
+				candidatePath := filepath.Join(candidateDir, includeFilename)
+				if fi, ok := files[strings.ToLower(candidatePath)]; ok {
+					return fi.path, true
+				}
+			}
+		}
+
+		// If at the final instance we cannot determine which file to use, we will skip this and notify the user.
+		return "", false
 	}
 
 	if len(files) == 1 {
@@ -360,9 +397,7 @@ func skipCommentsAndEmptyLines(line int, lines []string) int {
 	i := line
 	for i < len(lines) {
 		var line string
-
 		skipped := false
-
 		for i < len(lines) {
 			line = lines[i]
 			line = strings.TrimLeft(line, " \t")
@@ -377,10 +412,13 @@ func skipCommentsAndEmptyLines(line int, lines []string) int {
 				continue
 			}
 			if strings.HasPrefix(line, "/*") {
-				for !strings.HasSuffix(line, "*/") {
-					i++
+				for i < len(lines) {
 					line = lines[i]
-					line = strings.TrimLeft(line, " \t")
+					if strings.Contains(line, "*/") {
+						i++
+						break
+					}
+					i++
 				}
 				skipped = true
 				continue
@@ -405,7 +443,7 @@ func (f *Fixr) fixHeaderFile(dirpath string, _filepath string) error {
 	}
 
 	numCorrections := 0
-	if f.includeDirectiveConfig != nil {
+	if f.includeDirectiveConfig != nil && f.Setting&FixIncludeDirectives != 0 {
 		for i, line := range lines {
 			if l, modified := f.matchAndFixIncludeDirective(i+1, line, _filepath); modified {
 				lines[i] = l
@@ -414,7 +452,7 @@ func (f *Fixr) fixHeaderFile(dirpath string, _filepath string) error {
 		}
 	}
 
-	if f.includeGuardConfig != nil {
+	if f.includeGuardConfig != nil && f.Setting&FixIncludeGuards != 0 {
 		// Determine if this header file is using include guards, some header files might
 		// only have 'pragma once' and no include guards.
 		i := skipCommentsAndEmptyLines(0, lines)
@@ -479,7 +517,7 @@ func (f *Fixr) fixSourceFile(dirpath string, _filepath string) error {
 	}
 
 	numCorrections := 0
-	if f.includeDirectiveConfig != nil {
+	if f.includeDirectiveConfig != nil && f.Setting&FixIncludeDirectives != 0 {
 		for i, line := range lines {
 			if l, modified := f.matchAndFixIncludeDirective(i+1, line, _filepath); modified {
 				lines[i] = l
