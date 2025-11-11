@@ -547,6 +547,13 @@ func SetupCppAppProjectForArduino(pkg *Package, name string, dirname string) *De
 	return project
 }
 
+func SetupCppAppProjectForArduinoEsp32(pkg *Package, name string, dirname string) *DevProject {
+	// Arduino project
+	project := SetupDefaultCppAppProject(pkg, "app_"+name, dirname, BuildTargetArduinoEsp32)
+	project.BuildTargets = BuildTarget{BuildTargetOsArduino: BuildTargetArchEsp32}
+	return project
+}
+
 // -----------------------------------------------------------------------------------------------------
 // -----------------------------------------------------------------------------------------------------
 type DevProjectList struct {
