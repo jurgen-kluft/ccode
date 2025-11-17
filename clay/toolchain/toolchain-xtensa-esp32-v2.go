@@ -94,6 +94,8 @@ func (cl *ToolchainArduinoEsp32Compilerv2) Compile(sourceAbsFilepaths []string, 
 		// Remove empty entries from compilerArgs
 		compilerArgs = slices.DeleteFunc(compilerArgs, func(s string) bool { return strings.TrimSpace(s) == "" })
 
+		//fmt.Printf("Compiler path %s and args %v\n", compilerPath, compilerArgs)
+
 		cmd := exec.Command(compilerPath, compilerArgs...)
 		out, err := cmd.CombinedOutput()
 
@@ -338,22 +340,25 @@ func (b *ToolchainArduinoEsp32Burnerv2) SetupBuild(buildPath string) {
 
 	// ------------------------------------------------------------------------------------------------
 	// Image partitions tool setup
-	dstPartitionsFilepath := filepath.Join(buildPath, "partitions.csv")
+	dstPartitionsFilepath := b.toolChain.Vars.FinalResolveString(filepath.Join(buildPath, "{build.partitions}.csv"), " ", b.vars)
 	if !b.dependencyTracker.QueryItem(dstPartitionsFilepath) {
-		// Create a 'partitions.csv' file in the build path if it doesn't exist, take the one from
+		// Create a '{build.partitions}.csv' file in the build path if it doesn't exist, take the one from
 		//    {runtime.platform.path}/tools/partitions/{build.partitions}.csv
 		srcPartitionsFilepath := b.toolChain.Vars.FinalResolveString("{runtime.platform.path}/tools/partitions/{build.partitions}.csv", " ", b.vars)
 		input, err := os.ReadFile(srcPartitionsFilepath)
 		if err == nil {
+			err = os.WriteFile(dstPartitionsFilepath, input, 0644)
+			if err != nil {
+				corepkg.LogErrorf(err, "Failed to create %s", dstPartitionsFilepath)
+			}
 			err = os.WriteFile(filepath.Join(buildPath, "partitions.csv"), input, 0644)
 			if err != nil {
-				corepkg.LogErrorf(err, "Failed to create partitions file in build path")
+				corepkg.LogErrorf(err, "Failed to create %s", filepath.Join(buildPath, "partitions.csv"))
 			}
 		} else {
 			corepkg.LogErrorf(err, "Failed to read partitions file from platform path")
 		}
-
-		b.dependencyTracker.AddItem(dstPartitionsFilepath, []string{srcPartitionsFilepath})
+		b.dependencyTracker.AddItem(dstPartitionsFilepath, []string{srcPartitionsFilepath, filepath.Join(buildPath, "partitions.csv")})
 	} else {
 		b.dependencyTracker.CopyItem(dstPartitionsFilepath)
 	}
@@ -409,10 +414,12 @@ func (b *ToolchainArduinoEsp32Burnerv2) Build() error {
 	// Generate the image partitions bin file
 	if !b.dependencyTracker.QueryItemWithExtraData(b.genImagePartitionsToolOutputFilepath, b.genImagePartitionsToolArgsHash) {
 
-		img, _ := exec.LookPath(b.genImagePartitionsToolPath)
-		args := b.genImagePartitionsToolArgs
+		toolPath, _ := exec.LookPath(b.genImagePartitionsToolPath)
+		toolArgs := b.genImagePartitionsToolArgs
 
-		cmd := exec.Command(img, args...)
+		fmt.Printf("Creating image partitions, cmd args: %s %s\n", toolPath, strings.Join(toolArgs, "|"))
+
+		cmd := exec.Command(toolPath, toolArgs...)
 		corepkg.LogInfof("Creating image partitions '%s' ...", b.toolChain.ProjectName+".partitions.bin")
 		out, err := cmd.CombinedOutput()
 		if err != nil {
@@ -430,10 +437,12 @@ func (b *ToolchainArduinoEsp32Burnerv2) Build() error {
 
 	// Generate the image bin file
 	if !b.dependencyTracker.QueryItemWithExtraData(b.genImageBinToolOutputFilepath, b.genImageBinToolArgsHash) {
-		imgPath := b.genImageBinToolPath
-		args := b.genImageBinToolArgs
+		toolPath := b.genImageBinToolPath
+		toolArgs := b.genImageBinToolArgs
 
-		cmd := exec.Command(imgPath, args...)
+		fmt.Printf("Generating image, cmd args: %s %s\n", toolPath, strings.Join(toolArgs, "|"))
+
+		cmd := exec.Command(toolPath, toolArgs...)
 		corepkg.LogInfof("Generating image '%s'", b.toolChain.ProjectName+".bin")
 		out, err := cmd.CombinedOutput()
 		if err != nil {
@@ -454,10 +463,12 @@ func (b *ToolchainArduinoEsp32Burnerv2) Build() error {
 
 	// Generate the bootloader image
 	if !b.dependencyTracker.QueryItemWithExtraData(b.genBootloaderToolOutputFilepath, b.genBootloaderToolArgsHash) {
-		imgPath := b.genBootloaderToolPath
-		args := b.genBootloaderToolArgs
+		toolPath := b.genBootloaderToolPath
+		toolArgs := b.genBootloaderToolArgs
 
-		cmd := exec.Command(imgPath, args...)
+		fmt.Printf("Generating bootloader, cmd args: %s %s\n", toolPath, strings.Join(toolArgs, "|"))
+
+		cmd := exec.Command(toolPath, toolArgs...)
 		corepkg.LogInfof("Generating bootloader '%s'", b.toolChain.ProjectName+".bootloader.bin")
 		out, err := cmd.CombinedOutput()
 		if err != nil {
@@ -522,6 +533,8 @@ func (b *ToolchainArduinoEsp32Burnerv2) Burn() error {
 
 	corepkg.LogInfof("Flashing '%s'...", b.toolChain.ProjectName+".bin")
 
+	fmt.Printf("Flashing with command: %s %s\n", flashToolPath, strings.Join(flashToolArgs, "|"))
+
 	flashToolCmd := exec.Command(flashToolPath, flashToolArgs...)
 
 	out, err := flashToolCmd.CombinedOutput()
@@ -577,7 +590,6 @@ func NewArduinoEsp32Toolchainv2(boardVars *corepkg.Vars, projectName string, bui
 	boardVars.Set("build.path", buildPath)
 	boardVars.Set("build.arch", "ESP32")
 	boardVars.Set("build.includes", "{runtime.platform.path}/variants/{board.name}")
-
 	boardVars.SortByKey()
 
 	// Create '{buildPath}/build.opt'

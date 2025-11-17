@@ -599,6 +599,8 @@ func GetVars(toolchain *toolchain, boardName string, vars *corepkg.Vars) error {
 		return corepkg.LogError(fmt.Errorf("board '%s' not found in toolchain '%s'", boardName, toolchain.Name), "board not found")
 	}
 
+	corepkg.LogInfof("Using Board '%s' (%s) found in toolchain '%s'", board.Name, board.Description, toolchain.Name)
+
 	return toolchain.ResolveVariablesForBoard(board, vars)
 }
 
