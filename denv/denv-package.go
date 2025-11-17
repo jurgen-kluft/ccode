@@ -25,6 +25,16 @@ type Package struct {
 	getVars   GetVarsFunc
 }
 
+type ArduinoConfig struct {
+	PSRam           string // e.g. "opi or enabled"
+	FlashMode       string // e.g. "dio"
+	FlashSize       string // e.g. "4MB"
+	PartitionScheme string // e.g. "huge_app"
+	CPUFreq         string // e.g. "240"
+	UploadSpeed     string // e.g. "921600"
+	DebugLevel      string // e.g. "none", "error", "warn", "info", "debug", "verbose"
+}
+
 // Root path is the path where you have cloned many repositories, e.g. $GOPATH/src
 // Repo path is the path to all the repositories relative to the root path, e.g. github.com/your_name
 // Repo name is the name of the repository, e.g. your_repo

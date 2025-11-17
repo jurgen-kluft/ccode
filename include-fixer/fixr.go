@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"io/fs"
 	"path/filepath"
+	"sort"
 	"strings"
 )
 
@@ -136,6 +137,7 @@ type Fixr struct {
 	includeDirectiveConfig *IncludeDirectiveConfig
 	includeGuardConfig     *IncludeGuardConfig
 	renamedHeaderFiles     map[string]FileRename
+	systemIncludes         map[string]int
 }
 
 func NewFixr(includeDirectiveConfig *IncludeDirectiveConfig, includeGuardConfig *IncludeGuardConfig) *Fixr {
@@ -146,6 +148,7 @@ func NewFixr(includeDirectiveConfig *IncludeDirectiveConfig, includeGuardConfig 
 	f.includeDirectiveConfig = includeDirectiveConfig
 	f.includeGuardConfig = includeGuardConfig
 	f.renamedHeaderFiles = make(map[string]FileRename)
+	f.systemIncludes = make(map[string]int)
 
 	return f
 }
@@ -169,8 +172,15 @@ func (f *Fixr) matchAndFixIncludeDirective(lineNumber int, line string, _filepat
 
 	// We do not touch system includes, e.g. #include <iostream>
 	if matches[1] == "\"" && matches[3] == "\"" {
-		l, modified = f.correctIncludeDirective(lineNumber, line, matches[2], _filepathOfFileBeingFixed)
+		l, modified = f.correctIncludeDirective(lineNumber, line, false, matches[2], _filepathOfFileBeingFixed)
 		return
+	} else if matches[1] == "<" && matches[3] == ">" {
+		if strings.HasPrefix(strings.ToLower(matches[2]), "sdl3/sdl") {
+			l, modified = f.correctIncludeDirective(lineNumber, line, true, matches[2], _filepathOfFileBeingFixed)
+			return
+		} else {
+			f.systemIncludes[strings.ToLower(matches[2])] = f.systemIncludes[strings.ToLower(matches[2])] + 1
+		}
 	}
 
 	return line, false
@@ -233,9 +243,10 @@ func (f *Fixr) ProcessFixers(fixers *Fixers) {
 				relpath, _ := filepath.Rel(fxr.dir, path)
 				_filepath := filepath.Join(relpath, d.Name())
 				if fxr.filter2(_filepath) {
-					if fxr.fileType == SourceFileType {
+					switch fxr.fileType {
+					case SourceFileType:
 						sourceFilepaths = append(sourceFilepaths, _filepath)
-					} else if fxr.fileType == HeaderFileType {
+					case HeaderFileType:
 						headerFilepaths = append(headerFilepaths, _filepath)
 					}
 				}
@@ -258,6 +269,22 @@ func (f *Fixr) ProcessFixers(fixers *Fixers) {
 		}
 	}
 
+	// Print all system includes found
+	if f.Verbose() {
+		fmt.Println()
+		fmt.Printf("List of %d system includes that where encountered:\n", len(f.systemIncludes))
+		systemIncludes := make([]string, 0, len(f.systemIncludes))
+		for include, _ := range f.systemIncludes {
+			systemIncludes = append(systemIncludes, include)
+		}
+		// Sort the includes
+		sort.Strings(systemIncludes)
+		for _, include := range systemIncludes {
+			count := f.systemIncludes[include]
+			fmt.Printf("  <%s> : (%d)\n", include, count)
+		}
+		fmt.Println()
+	}
 }
 
 func (f *Fixr) findBestMatchingHeaderFile(lineNumber int, includeDirective string, includeFilepath string, _filepathOfFileBeingFixed string) (string, bool) {
@@ -371,10 +398,13 @@ func (f *Fixr) findBestMatchingHeaderFile(lineNumber int, includeDirective strin
 	return includeFilepath, false
 }
 
-func (f *Fixr) correctIncludeDirective(lineNumber int, includeDirective string, includePart string, _filepathOfFileBeingFixed string) (string, bool) {
-
+func (f *Fixr) correctIncludeDirective(lineNumber int, includeDirective string, isSystemInclude bool, includePart string, _filepathOfFileBeingFixed string) (string, bool) {
 	if newIncludeFilePath, found := f.findBestMatchingHeaderFile(lineNumber, includeDirective, includePart, _filepathOfFileBeingFixed); found {
-		newIncludeDirective := strings.Replace(includeDirective, includePart, newIncludeFilePath, -1)
+		newIncludeDirective := strings.ReplaceAll(includeDirective, includePart, newIncludeFilePath)
+		if isSystemInclude {
+			newIncludeDirective = strings.ReplaceAll(newIncludeDirective, `<`, `"`)
+			newIncludeDirective = strings.ReplaceAll(newIncludeDirective, `>`, `"`)
+		}
 		if strings.Compare(newIncludeDirective, includeDirective) != 0 {
 
 			// TODO Handle the rename here ?

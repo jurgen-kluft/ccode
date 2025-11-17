@@ -11,16 +11,16 @@ import (
 // - The bitness (32-bit, 64-bit)
 
 // BuildTargetOs indicates the target OS to build for
-type BuildTargetOs uint8
+type BuildTargetOs uint64
 
 const (
 	BuildTargetOsEmpty   BuildTargetOs = 0
-	BuildTargetOsWindows BuildTargetOs = 1 << 0
-	BuildTargetOsMac     BuildTargetOs = 1 << 1
-	BuildTargetOsLinux   BuildTargetOs = 1 << 2
-	BuildTargetOsiOS     BuildTargetOs = 1 << 3
-	BuildTargetOsArduino BuildTargetOs = 1 << 4
-	BuildTargetOsCount   BuildTargetOs = 1 << 5
+	BuildTargetOsWindows BuildTargetOs = 1 << (32 + 0)
+	BuildTargetOsMac     BuildTargetOs = 1 << (32 + 1)
+	BuildTargetOsLinux   BuildTargetOs = 1 << (32 + 2)
+	BuildTargetOsiOS     BuildTargetOs = 1 << (32 + 3)
+	BuildTargetOsArduino BuildTargetOs = 1 << (32 + 4)
+	BuildTargetOsCount   BuildTargetOs = 1 << (32 + 5)
 )
 
 func (bto BuildTargetOs) String() string {

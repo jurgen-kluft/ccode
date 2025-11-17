@@ -17,6 +17,9 @@ func ChangeExtension(filepath string, from string, to string) string {
 
 // ParentPath returns the parent directory
 func ParentPath(path string) string {
+	if path == "." {
+		return "."
+	}
 	path = filepath.Clean(path)
 	return filepath.Dir(path)
 }

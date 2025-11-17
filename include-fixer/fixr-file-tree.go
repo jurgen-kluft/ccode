@@ -49,6 +49,7 @@ func (r *rootTree) scanDir(dirpath string, filter func(filename string) bool) er
 
 		path = path[len(dirpath):]
 		path = strings.TrimPrefix(path, "/")
+		path = strings.TrimPrefix(path, "\\")
 		if len(path) == 0 {
 			path = "."
 		}
