@@ -106,10 +106,6 @@ func (a *App) BuildInfo() error {
 }
 
 func (a *App) Flash() error {
-	if a.Config.ProjectName == "*" {
-		return corepkg.LogErrorf(nil, "please specify a project name to flash using -p <project>")
-	}
-
 	buildPath := a.GetBuildPath(GetBuildDirname(a.BuildConfig, a.BuildTarget))
 
 	prjs, err := a.CreateProjects(a.BuildTarget, a.BuildConfig)
@@ -128,6 +124,18 @@ func (a *App) Flash() error {
 			projectNames = append(projectNames, prj.DevProject.Name)
 			projectMap[prj.DevProject.Name] = prj
 		}
+	}
+
+	if a.Config.ProjectName == "" || a.Config.ProjectName == "*" {
+		a.Config.ProjectName = ""
+		if len(projectNames) == 1 {
+			a.Config.ProjectName = projectNames[0]
+			corepkg.LogInff("Selecting project: %s", a.Config.ProjectName)
+		}
+	}
+
+	if a.Config.ProjectName == "" {
+		return corepkg.LogErrorf(nil, "please specify a project name to flash using -p <project>")
 	}
 
 	cm := corepkg.NewClosestMatch(projectNames, []int{2})

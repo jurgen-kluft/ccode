@@ -175,9 +175,9 @@ func UsageApp() {
 }
 
 func ParseProjectNameAndConfig(app *App) {
-	flag.StringVar(&app.Config.ProjectName, "p", "*", "Name of the project")
+	flag.StringVar(&app.Config.ProjectName, "p", "", "Name of the project")
 	flag.StringVar(&app.Config.TargetOs, "os", "", "Target OS (windows, darwin, linux, arduino)")
-	flag.StringVar(&app.Config.TargetBuild, "build", "", "Format 'build' or 'build-variant', e.g. debug, debug-dev, release-dev, debug-dev-test)")
+	flag.StringVar(&app.Config.TargetBuild, "build", "", "Format 'build' or 'build-variant', e.g. debug, debug-dev-none, release-dev-none, debug-dev-test)")
 	flag.StringVar(&app.Config.TargetArch, "arch", "", "Cpu Architecture (amd64, x64, arm64, esp32, esp8266)")
 	flag.StringVar(&app.Config.TargetBoard, "board", "", "Board name (s3, c3, xiao-c3, ...)")
 	flag.Parse()
@@ -204,7 +204,7 @@ func ParseProjectNameAndConfig(app *App) {
 
 	if len(app.Config.ProjectName) == 0 {
 		app.Config.ProjectName = loadedConfig.ProjectName
-	} else if app.Config.ProjectName == "*" || app.Config.ProjectName == "all" || app.Config.ProjectName == "" {
+	} else if app.Config.ProjectName == "all" {
 		app.Config.ProjectName = "*"
 	}
 

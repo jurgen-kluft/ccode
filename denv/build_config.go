@@ -330,6 +330,10 @@ func BuildConfigFromString(configStr string) BuildConfig {
 				cfg.Build = BuildDebug
 			case "release":
 				cfg.Build = BuildRelease
+			case "dev":
+				cfg.Variant = BuildVariantDev
+			case "final":
+				cfg.Variant = BuildVariantFinal
 			case "*":
 				cfg.Build = BuildAny
 			}
@@ -337,6 +341,10 @@ func BuildConfigFromString(configStr string) BuildConfig {
 			switch config {
 			case "none":
 				cfg.Variant = BuildVariantNone
+			case "debug":
+				cfg.Build = BuildDebug
+			case "release":
+				cfg.Build = BuildRelease
 			case "dev":
 				cfg.Variant = BuildVariantDev
 			case "final":
