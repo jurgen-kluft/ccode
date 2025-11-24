@@ -122,20 +122,23 @@ func (p *Project) Build(buildConfig denv.BuildConfig, buildTarget denv.BuildTarg
 	projects := make([]*Project, 0, len(p.Dependencies)+1)
 	projects = append(projects, p)
 
-	projectsAdded := map[string]bool{}
-	projectsAdded[p.DevProject.Name] = true
+	projectTypes := []string{"main", "dependency"}
+
+	projectsAdded := map[string]int{}
+	projectsAdded[p.DevProject.Name] = 0
 
 	for len(projects) > 0 {
 		// Pop a project from the list
 		prj := projects[0]
+		prjType := projectTypes[projectsAdded[prj.DevProject.Name]]
 		projects = projects[1:]
 
 		// Add dependency projects to the list to process
 		for _, dep := range prj.Dependencies {
 			if dep.CanBuildFor(buildConfig, buildTarget) {
-				if !projectsAdded[dep.DevProject.Name] {
+				if _, exists := projectsAdded[dep.DevProject.Name]; !exists {
 					projects = append(projects, dep)
-					projectsAdded[dep.DevProject.Name] = true
+					projectsAdded[dep.DevProject.Name] = 1
 				}
 			}
 		}
@@ -145,7 +148,10 @@ func (p *Project) Build(buildConfig denv.BuildConfig, buildTarget denv.BuildTarg
 			for _, incDir := range prjConfig.IncludeDirs {
 				incPath := incDir.String()
 				incPath = corepkg.PathNormalize(incPath)
-				includes.Add(incPath)
+				// For dependency projects, only include public include dirs
+				if prjType == "main" || !incDir.Private {
+					includes.Add(incPath)
+				}
 			}
 			for _, def := range prjConfig.Defines.Values {
 				defines.Add(def)
