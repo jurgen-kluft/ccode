@@ -62,9 +62,13 @@ func (v *Vars) String() string {
 	for i, key := range v.Keys {
 		value := v.Values[i]
 		sb.WriteString(key)
-		sb.WriteString(" := ")
-		sb.WriteString(strings.Join(value, "\n"))
-		sb.WriteString("\n")
+		sb.WriteString(" := \n")
+		//sb.WriteString(strings.Join(value, "\n"))
+		for _, val := range value {
+			sb.WriteString("    ")
+			sb.WriteString(val)
+			sb.WriteString("\n")
+		}
 	}
 	return sb.String()
 }

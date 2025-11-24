@@ -143,7 +143,7 @@ func Find(_vsVersion VsVersion, _sdkVersion string, _hostArch WinSupportedArch, 
 		msvcVersion.vsProduct = vsProductProfessional
 		msvcVersion.hostArch = _hostArch
 		msvcVersion.targetArch = targetArch
-		return setupMsvcVersion(msvcVersion, false)
+		return SetupMsvcVersion(msvcVersion, false)
 	}
 
 	ok := false

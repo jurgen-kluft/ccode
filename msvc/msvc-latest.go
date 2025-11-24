@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"path/filepath"
 	"runtime"
+	"strconv"
 	"strings"
 
 	corepkg "github.com/jurgen-kluft/ccode/core"
@@ -40,6 +41,12 @@ const (
 	VsVersion2019 VsVersion = "2019"
 	VsVersion2022 VsVersion = "2022"
 )
+
+func (v VsVersion) LessThan(v2 VsVersion) bool {
+	iv1, _ := strconv.Atoi(string(v))
+	iv2, _ := strconv.Atoi(string(v2))
+	return iv1 < iv2
+}
 
 func (v VsVersion) String() string {
 	return string(v)
@@ -126,14 +133,12 @@ func getHostArch(hostArch WinSupportedArch) WinSupportedArch {
 	if hostArch == "" {
 		if runtime.GOOS == "windows" {
 			switch runtime.GOARCH {
-			case "amd64", "x86_64":
-				return WinArchx64
+			case "arm":
+				return WinArchArm
 			case "arm64":
 				return WinArchArm64
 			case "386", "i386":
 				return WinArchx86
-			case "arm":
-				return WinArchArm
 			}
 		}
 		return WinArchx64 // If not specified, default to x64
@@ -244,7 +249,7 @@ func NewMsvcVersion() *MsvcVersion {
 	}
 }
 
-func setupMsvcVersion(msvcVersion *MsvcVersion, useClang bool) (msdev *MsvcEnvironment, err error) {
+func SetupMsvcVersion(msvcVersion *MsvcVersion, useClang bool) (msdev *MsvcEnvironment, err error) {
 
 	if vsDefaultPath, ok := vsDefaultPaths[msvcVersion.vsVersion]; !ok {
 		corepkg.LogWarnf("Visual Studio %s has not been tested and might not work out of the box", msvcVersion.vsVersion.String())

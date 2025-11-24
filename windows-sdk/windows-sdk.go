@@ -3,6 +3,7 @@ package winsdk
 import (
 	"fmt"
 	"path/filepath"
+	"strconv"
 	"strings"
 
 	corepkg "github.com/jurgen-kluft/ccode/core"
@@ -104,8 +105,6 @@ func getPreWin10Sdk(sdkVersion string, targetArch WinSupportedArch) (string, Win
 }
 
 func getWin10Sdk(sdkVersion string, targetArch WinSupportedArch) (string, WindowsSdkLayout, error) {
-	sdkVersion = sdkVersion[1:]
-
 	result := WindowsSdkLayout{}
 
 	// This only checks if the windows 10 SDK specifically is installed. A
@@ -228,6 +227,24 @@ func (w WindowsSDKs) GetLatestVersion() string {
 		return ""
 	}
 	return w[len(w)-1].Version
+}
+
+func SelectLatestWindowsSDK(sdks WindowsSDKs) *WindowsSDK {
+	if len(sdks) == 0 {
+		return nil
+	}
+
+	versionIndex := 0
+	versionCurrent := 0
+	for i, sdk := range sdks {
+		version, _ := strconv.Atoi(strings.ReplaceAll(sdk.Version, ".", ""))
+		if version > versionCurrent {
+			versionCurrent = version
+			versionIndex = i
+		}
+	}
+
+	return sdks[versionIndex]
 }
 
 // From Visual Studio 2017 onwards, this is the recommended way to find the Windows SDK.

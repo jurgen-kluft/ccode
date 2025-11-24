@@ -73,13 +73,18 @@ func (cl *WinMsdevCompiler) SetupArgs(_defines []string, _includes []string) {
 			_includes[i] = "/I" + inc
 		}
 	}
-	for i, def := range _defines {
+	defines := make([]string, len(_defines)*2)
+	for _, def := range _defines {
 		if !strings.HasPrefix(def, "/D") {
-			_defines[i] = "/D" + def
+			defines = append(defines, "/D")
+			defines = append(defines, def)
+		} else {
+			defines = append(defines, "/D")
+			defines = append(defines, strings.TrimPrefix(def, "/D"))
 		}
 	}
 	cl.vars.Set("build.includes", _includes...)
-	cl.vars.Set("build.defines", _defines...)
+	cl.vars.Set("build.defines", defines...)
 
 	cl.cCompilerPath = ""
 	cl.cCompilerArgs = corepkg.NewArguments(0)
@@ -118,23 +123,33 @@ func (cl *WinMsdevCompiler) Compile(sourceAbsFilepaths []string, objRelFilepaths
 			compilerArgs = cl.cppCompilerArgs.Args
 		}
 
-		// TODO would like this to be part of the resolve step
-		//compilerArgs = append(compilerArgs, "-o", objRelFilepaths[i])
 		compilerArgs = append(compilerArgs, sourceAbsFilepath)
 
-		// TODO add paths to the environment variables
-		// - msvc tools path (to cl.exe, link.exe, lib.exe, etc)
-
+		compilerArgs = slices.DeleteFunc(compilerArgs, func(s string) bool { return strings.TrimSpace(s) == "" })
 		cmd := exec.Command(compilerPath, compilerArgs...)
 
+		// TODO we could make one single environment and cache it somewhere so that we can reuse it, perhaps
+		//      as a member in toolchain? The Archiver and Linker will need it as well.
+
+		path := make([]string, 0)
+		path = append(path, `C:\Program Files\Microsoft Visual Studio\2022\Professional\VC\Tools\MSVC\14.44.35207\bin\HostX64\x64`)
+		path = append(path, `C:\Program Files (x86)\Windows Kits\10\bin\10.0.26100.0\\x64`)
+		path = append(path, `C:\Program Files (x86)\Windows Kits\10\bin\\x64`)
+
+		cmd.Env = cmd.Environ()
+		for i, env := range cmd.Env {
+			if env, found := strings.CutPrefix(env, "Path="); found {
+				cmd.Env[i] = "Path=" + strings.Join(path, ";") + ";" + env
+				break
+			}
+		}
+
 		corepkg.LogInfof("Compiling (%s) %s", cl.buildConfig.String(), filepath.Base(sourceAbsFilepath))
+
 		out, err := cmd.CombinedOutput()
 		if err != nil {
 			corepkg.LogInfof("Compile failed, output:\n%s", string(out))
 			return corepkg.LogErrorf(err, "Compiling failed")
-		}
-		if len(out) > 0 {
-			corepkg.LogInfof("Compile output:\n%s", string(out))
 		}
 	}
 	return nil
@@ -153,7 +168,7 @@ func (ms *WinMsdev) NewBurner(config denv.BuildConfig, target denv.BuildTarget) 
 }
 
 func (ms *WinMsdev) NewDependencyTracker(dirpath string) deptrackr.FileTrackr {
-	return nil
+	return deptrackr.LoadJsonFileTrackr(filepath.Join(dirpath, "deptrackr"))
 }
 
 // --------------------------------------------------------------------------------------------------
