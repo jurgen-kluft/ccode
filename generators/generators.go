@@ -63,12 +63,13 @@ func (g *Generator) GenerateWorkspace(_pkg *denv.Package, _dev DevEnum, _buildTa
 	g.WorkspacePath = filepath.Join(os.Getenv("GOPATH"), "src", _pkg.RepoPath)
 
 	mainApps := _pkg.GetMainApp()
-	mainTests := _pkg.GetUnittest()
-	testLibs := _pkg.GetTestLib()
 	mainLibs := _pkg.GetMainLib()
+	mainTests := _pkg.GetUnittest()
+	libraries := _pkg.GetLibraries()
+	testLibs := _pkg.GetTestLib()
 
-	if (len(mainApps) == 0 && len(mainTests) == 0) && len(mainLibs) == 0 {
-		return nil, fmt.Errorf("this package has no application(s), unittest(s) or main lib(s)")
+	if (len(mainApps) == 0 && len(mainTests) == 0) && len(mainLibs) == 0 && len(libraries) == 0 {
+		return nil, fmt.Errorf("this package has no main application(s), main lib(s), libraries or unittest(s)")
 	}
 
 	wsc := NewWorkspaceConfig(_dev, _buildTarget.Os(), g.WorkspacePath, _pkg.RepoName)
@@ -94,6 +95,14 @@ func (g *Generator) GenerateWorkspace(_pkg *denv.Package, _dev DevEnum, _buildTa
 			}
 		}
 	}
+	if len(wsc.StartupProject) == 0 {
+		for _, lib := range libraries {
+			if lib.BuildType.IsLibrary() {
+				wsc.StartupProject = lib.Name
+				break
+			}
+		}
+	}
 	wsc.MultiThreadedBuild = true
 
 	ws := NewWorkspace(wsc)
@@ -104,8 +113,9 @@ func (g *Generator) GenerateWorkspace(_pkg *denv.Package, _dev DevEnum, _buildTa
 
 	projectStack := denv.NewDevProjectList()
 	projectStack.AddMany(mainApps)
-	projectStack.AddMany(mainTests)
 	projectStack.AddMany(mainLibs)
+	projectStack.AddMany(libraries)
+	projectStack.AddMany(mainTests)
 	projectStack.AddMany(testLibs)
 
 	projectDependencies := denv.NewDevProjectList()

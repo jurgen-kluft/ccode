@@ -460,6 +460,15 @@ func (a *App) CreateProjects(buildTarget denv.BuildTarget, buildConfig denv.Buil
 	// First create the projects without dependencies
 	projectNameToIndex := make(map[string]int)
 
+	for _, devPrj := range a.Pkg.GetMainApp() {
+		if !devPrj.HasMatchingConfigForTarget(buildConfig, buildTarget) {
+			continue
+		}
+		project := NewProjectFromDevProject(devPrj, devPrj.Configs)
+		projectNameToIndex[devPrj.Name] = len(projects)
+		projects = append(projects, project)
+	}
+
 	for _, devPrj := range a.Pkg.GetMainLib() {
 		if !devPrj.HasMatchingConfigForTarget(buildConfig, buildTarget) {
 			continue
@@ -469,7 +478,7 @@ func (a *App) CreateProjects(buildTarget denv.BuildTarget, buildConfig denv.Buil
 		projects = append(projects, project)
 	}
 
-	for _, devPrj := range a.Pkg.GetMainApp() {
+	for _, devPrj := range a.Pkg.GetLibraries() {
 		if !devPrj.HasMatchingConfigForTarget(buildConfig, buildTarget) {
 			continue
 		}

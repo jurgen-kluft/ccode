@@ -2,11 +2,13 @@ package toolchain
 
 import (
 	"crypto/sha1"
+	"encoding/csv"
 	"fmt"
 	"hash"
 	"os"
 	"os/exec"
 	"path/filepath"
+	"regexp"
 	"slices"
 	"strings"
 
@@ -19,6 +21,173 @@ import (
 type ArduinoEsp32Toolchainv2 struct {
 	ProjectName string // The name of the project, used for output files
 	Vars        *corepkg.Vars
+}
+
+// --------------------------------------------------------------------------------------------------
+// --------------------------------------------------------------------------------------------------
+// Partition Scheme Generator
+
+type Partition struct {
+	Name    string
+	Type    string
+	SubType string
+	Offset  string
+	Size    string
+	Flags   string
+}
+
+// When compiling/linking, could we determine the capabilities of the ESP32 chip (e.g., flash size)
+// and automatically generate/adjust the partition table accordingly?
+
+// Using `esptool flash-id` we can get quite some information about the connected chip:
+// - Manufacturer
+// - Device
+// - Chip type
+// - Crystal frequency
+// - Flash mode
+// - Flash speed
+// - Detected flash size
+// - Features: Bluetooth, WiFi, Dual-Core, LP-Core, Embedded PSRAM size
+// - MAC address
+
+type ESPInfo struct {
+	Version          string
+	Port             string
+	ChipType         string
+	Revision         string
+	Features         []string
+	CrystalFrequency string
+	MAC              string
+	Manufacturer     string
+	Device           string
+	FlashSize        string
+	FlashType        string
+	FlashVoltage     string
+}
+
+// ParseEsptoolOutput parses the given esptool output and returns ESPInfo
+func parseEsptoolOutput(output string) (*ESPInfo, error) {
+	info := &ESPInfo{}
+
+	// Normalize line endings
+	lines := strings.Split(output, "\n")
+
+	// Regex patterns
+	versionRegex := regexp.MustCompile(`esptool v([\d\.]+)`)
+	portRegex := regexp.MustCompile(`Connected to .* on (.+):`)
+	chipRegex := regexp.MustCompile(`Chip type:\s+(.+)\(revision (.+)\)`)
+	featuresRegex := regexp.MustCompile(`Features:\s+(.+)`)
+	crystalRegex := regexp.MustCompile(`Crystal frequency:\s+(.+)`)
+	macRegex := regexp.MustCompile(`MAC:\s+(.+)`)
+	manufacturerRegex := regexp.MustCompile(`Manufacturer:\s+(.+)`)
+	deviceRegex := regexp.MustCompile(`Device:\s+(.+)`)
+	flashSizeRegex := regexp.MustCompile(`Detected flash size:\s+(.+)`)
+	flashTypeRegex := regexp.MustCompile(`Flash type set in eFuse:\s+(.+)`)
+	flashVoltageRegex := regexp.MustCompile(`Flash voltage set by eFuse:\s+(.+)`)
+
+	for _, line := range lines {
+		line = strings.TrimSpace(line)
+		switch {
+		case versionRegex.MatchString(line):
+			info.Version = versionRegex.FindStringSubmatch(line)[1]
+		case portRegex.MatchString(line):
+			info.Port = portRegex.FindStringSubmatch(line)[1]
+		case chipRegex.MatchString(line):
+			matches := chipRegex.FindStringSubmatch(line)
+			info.ChipType = strings.TrimSpace(matches[1])
+			info.Revision = matches[2]
+		case featuresRegex.MatchString(line):
+			features := featuresRegex.FindStringSubmatch(line)[1]
+			info.Features = strings.Split(features, ", ")
+		case crystalRegex.MatchString(line):
+			info.CrystalFrequency = crystalRegex.FindStringSubmatch(line)[1]
+		case macRegex.MatchString(line):
+			info.MAC = macRegex.FindStringSubmatch(line)[1]
+		case manufacturerRegex.MatchString(line):
+			info.Manufacturer = manufacturerRegex.FindStringSubmatch(line)[1]
+		case deviceRegex.MatchString(line):
+			info.Device = deviceRegex.FindStringSubmatch(line)[1]
+		case flashSizeRegex.MatchString(line):
+			info.FlashSize = flashSizeRegex.FindStringSubmatch(line)[1]
+		case flashTypeRegex.MatchString(line):
+			info.FlashType = flashTypeRegex.FindStringSubmatch(line)[1]
+		case flashVoltageRegex.MatchString(line):
+			info.FlashVoltage = flashVoltageRegex.FindStringSubmatch(line)[1]
+		}
+	}
+
+	return info, nil
+}
+
+// filepath = Output CSV file path
+// ota = ( >= 0) Enable OTA partitions, ( < 0) Enable factory partition with size = -ota
+// nvsSize = Size of NVS partition (e.g., 24K, 0x6000)
+// fsType = Filesystem type (spiffs|littlefs|fatfs)
+// fsSize = Size of filesystem partition (e.g., 1M)")
+// coreDump = Enable core dump partition
+func alignOffset(offset int) int {
+	return (offset + 0xFFF) & ^0xFFF // Align to 4KB
+}
+
+func generatePartitions(filepath string, ota int, nvsSize int, fsType string, fsSize int, coreDump bool) error {
+	partitions := []Partition{}
+	offset := 0x9000 // Start offset
+
+	// NVS
+	if nvsSize >= 0 {
+		nvsSize = alignOffset(nvsSize)
+		partitions = append(partitions, Partition{"nvs", "data", "nvs", fmt.Sprintf("0x%X", offset), fmt.Sprintf("0x%X", nvsSize), ""})
+		offset = alignOffset(offset + nvsSize)
+	}
+
+	if ota >= 0 {
+		// OTA
+		otaSize := alignOffset(ota)
+		otaDataSize := 0x2000
+		partitions = append(partitions, Partition{"otadata", "data", "ota", fmt.Sprintf("0x%X", offset), fmt.Sprintf("0x%X", otaDataSize), ""})
+		offset = alignOffset(offset + otaDataSize)
+		partitions = append(partitions, Partition{"ota_0", "app", "ota_0", fmt.Sprintf("0x%X", offset), fmt.Sprintf("0x%X", otaSize), ""})
+		offset = alignOffset(offset + otaSize)
+		partitions = append(partitions, Partition{"ota_1", "app", "ota_1", fmt.Sprintf("0x%X", offset), fmt.Sprintf("0x%X", otaSize), ""})
+		offset = alignOffset(offset + otaSize)
+	} else {
+		// Factory app, no OTA
+		factorySize := alignOffset(-ota)
+		partitions = append(partitions, Partition{"factory", "app", "factory", fmt.Sprintf("0x%X", offset), fmt.Sprintf("0x%X", factorySize), ""})
+		offset = alignOffset(offset + factorySize)
+	}
+
+	if fsSize >= 0 {
+		// FS partition
+		fsSize = alignOffset(fsSize)
+		partitions = append(partitions, Partition{fsType, "data", fsType, fmt.Sprintf("0x%X", offset), fmt.Sprintf("0x%X", fsSize), ""})
+		offset = alignOffset(offset + fsSize)
+	}
+
+	// Crash dump partition
+	if coreDump {
+		coreDumpSize := 0x10000
+		partitions = append(partitions, Partition{"coredump", "data", "coredump", fmt.Sprintf("0x%X", offset), fmt.Sprintf("0x%X", coreDumpSize), ""})
+		offset = alignOffset(offset + coreDumpSize)
+	}
+
+	// Write CSV
+	file, err := os.Create(filepath)
+	if err != nil {
+		return fmt.Errorf("failed to create partitions CSV: %w", err)
+	}
+	defer file.Close()
+
+	writer := csv.NewWriter(file)
+	defer writer.Flush()
+
+	writer.Write([]string{"# Name", "Type", "SubType", "Offset", "Size", "Flags"})
+	for _, p := range partitions {
+		writer.Write([]string{p.Name, p.Type, p.SubType, p.Offset, p.Size, p.Flags})
+	}
+
+	fmt.Println("Partition CSV generated: partitions.csv")
+	return nil
 }
 
 // --------------------------------------------------------------------------------------------------
@@ -339,29 +508,55 @@ func (b *ToolchainArduinoEsp32Burnerv2) SetupBuild(buildPath string) {
 	}
 
 	// ------------------------------------------------------------------------------------------------
-	// Image partitions tool setup
-	dstPartitionsFilepath := b.toolChain.Vars.FinalResolveString(filepath.Join(buildPath, "{build.partitions}.csv"), " ", b.vars)
-	if !b.dependencyTracker.QueryItem(dstPartitionsFilepath) {
-		// Create a '{build.partitions}.csv' file in the build path if it doesn't exist, take the one from
-		//    {runtime.platform.path}/tools/partitions/{build.partitions}.csv
-		srcPartitionsFilepath := b.toolChain.Vars.FinalResolveString("{runtime.platform.path}/tools/partitions/{build.partitions}.csv", " ", b.vars)
-		input, err := os.ReadFile(srcPartitionsFilepath)
-		if err == nil {
-			err = os.WriteFile(dstPartitionsFilepath, input, 0644)
-			if err != nil {
-				corepkg.LogErrorf(err, "Failed to create %s", dstPartitionsFilepath)
-			}
-			err = os.WriteFile(filepath.Join(buildPath, "partitions.csv"), input, 0644)
-			if err != nil {
-				corepkg.LogErrorf(err, "Failed to create %s", filepath.Join(buildPath, "partitions.csv"))
-			}
-		} else {
-			corepkg.LogErrorf(err, "Failed to read partitions file from platform path")
+	// Generate the partitions.csv file, check if the file exists, hash the parameters to see if we need to
+	// regenerate it.
+	dstPartitionsFilepath := filepath.Join(buildPath, "partitions.csv")
+	fmt.Println("Setting up partitions in file :", dstPartitionsFilepath)
+
+	// TEST code
+	otaSize := 0x200000 // 2MB OTA size
+	nvsSize := 0x5000   // 24KB NVS size
+	fsType := "spiffs"  // Filesystem type
+	fsSize := 0x100000  // 1MB FS size
+	coreDump := true    // Enable core dump partition
+
+	// Hash the parameters
+	partitionParams := fmt.Sprintf("%d|%d|%s|%d|%v", otaSize, nvsSize, fsType, fsSize, coreDump)
+	partitionParamsHash := b.hashArguments([]string{partitionParams})
+
+	if !b.dependencyTracker.QueryItemWithExtraData(dstPartitionsFilepath, partitionParamsHash) {
+		err := generatePartitions(dstPartitionsFilepath, otaSize, nvsSize, fsType, fsSize, coreDump)
+		if err != nil {
+			corepkg.LogErrorf(err, "Failed to generate partitions file")
 		}
-		b.dependencyTracker.AddItem(dstPartitionsFilepath, []string{srcPartitionsFilepath, filepath.Join(buildPath, "partitions.csv")})
+		b.dependencyTracker.AddItemWithExtraData(dstPartitionsFilepath, partitionParamsHash, []string{})
 	} else {
 		b.dependencyTracker.CopyItem(dstPartitionsFilepath)
 	}
+
+	// ------------------------------------------------------------------------------------------------
+	// Image partitions tool setup
+	// if !b.dependencyTracker.QueryItem(dstPartitionsFilepath) {
+	// 	// Create a '{build.partitions}.csv' file in the build path if it doesn't exist, take the one from
+	// 	//    {runtime.platform.path}/tools/partitions/{build.partitions}.csv
+	// 	srcPartitionsFilepath := b.toolChain.Vars.FinalResolveString("{runtime.platform.path}/tools/partitions/{build.partitions}.csv", " ", b.vars)
+	// 	input, err := os.ReadFile(srcPartitionsFilepath)
+	// 	if err == nil {
+	// 		err = os.WriteFile(dstPartitionsFilepath, input, 0644)
+	// 		if err != nil {
+	// 			corepkg.LogErrorf(err, "Failed to create %s", dstPartitionsFilepath)
+	// 		}
+	// 		err = os.WriteFile(filepath.Join(buildPath, "partitions.csv"), input, 0644)
+	// 		if err != nil {
+	// 			corepkg.LogErrorf(err, "Failed to create %s", filepath.Join(buildPath, "partitions.csv"))
+	// 		}
+	// 	} else {
+	// 		corepkg.LogErrorf(err, "Failed to read partitions file from platform path")
+	// 	}
+	// 	b.dependencyTracker.AddItem(dstPartitionsFilepath, []string{srcPartitionsFilepath, filepath.Join(buildPath, "partitions.csv")})
+	// } else {
+	// 	b.dependencyTracker.CopyItem(dstPartitionsFilepath)
+	// }
 
 	genImagePartitionsArgs, _ := b.toolChain.Vars.Get("recipe.objcopy.partitions.bin.pattern")
 	genImagePartitionsArgs = b.toolChain.Vars.FinalResolveArray(genImagePartitionsArgs, b.vars)
@@ -423,13 +618,16 @@ func (b *ToolchainArduinoEsp32Burnerv2) Build() error {
 		corepkg.LogInfof("Creating image partitions '%s' ...", b.toolChain.ProjectName+".partitions.bin")
 		out, err := cmd.CombinedOutput()
 		if err != nil {
+			fmt.Printf("1\n")
 			return corepkg.LogErrorf(err, "Creating image partitions failed")
 		}
+		fmt.Printf("2\n")
 		if len(out) > 0 {
 			corepkg.LogInfof("Image partitions output:\n%s", string(out))
 		}
 		fmt.Println()
 
+		fmt.Printf("3\n")
 		b.dependencyTracker.AddItemWithExtraData(b.genImagePartitionsToolOutputFilepath, b.genImagePartitionsToolArgsHash, b.genImagePartitionsToolInputFilepaths)
 	} else {
 		b.dependencyTracker.CopyItem(b.genImagePartitionsToolOutputFilepath)

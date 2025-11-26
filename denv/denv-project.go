@@ -336,6 +336,21 @@ func SetupCppLibProjectForArduinoEsp32(pkg *Package, name string) *DevProject {
 	return project
 }
 
+func SetupCppLibraryForArduinoEsp32(pkg *Package, dir string, name string) *DevProject {
+
+	project := SetupDefaultCppLibProject(pkg, "library_"+name, dir, BuildTargetArduinoEsp32)
+	project.BuildTargets = BuildTargetArduinoEsp32
+
+	// TODO we should create all possible configuration, not just debug/release
+	project.Configs = append(project.Configs, NewDevConfig(BuildTypeStaticLibrary, NewDebugConfig()))
+	project.Configs = append(project.Configs, NewDevConfig(BuildTypeStaticLibrary, NewReleaseConfig()))
+
+	AddDefaultIncludePaths(pkg, project, dir)
+	AddDefaultSourcePaths(pkg, project, dir, ".c", ".cpp")
+
+	return project
+}
+
 // Arduino Esp8266
 func SetupCppLibProjectForArduinoEsp8266(pkg *Package, name string) *DevProject {
 	dir := "main"
@@ -437,8 +452,7 @@ func SetupCppAppProjectForDesktop(pkg *Package, name string, dirname string) *De
 
 func SetupCppAppProjectForArduino(pkg *Package, name string, dirname string) *DevProject {
 	// Arduino project
-	project := SetupDefaultCppAppProject(pkg, "app_"+name, dirname, BuildTargetArduinoEsp32)
-	project.BuildTargets = BuildTargetsArduino
+	project := SetupDefaultCppAppProject(pkg, "app_"+name, dirname, BuildTargetsArduino)
 	return project
 }
 

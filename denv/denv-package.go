@@ -20,6 +20,7 @@ type Package struct {
 	Packages  map[string]*Package
 	MainApps  map[string]*DevProject
 	MainLibs  map[string]*DevProject
+	Library   map[string]*DevProject
 	Unittests map[string]*DevProject
 	TestLibs  map[string]*DevProject
 	getVars   GetVarsFunc
@@ -134,6 +135,7 @@ func NewPackage(repo_path string, repo_name string) *Package {
 		Packages:  make(map[string]*Package),
 		MainApps:  make(map[string]*DevProject, 0),
 		MainLibs:  make(map[string]*DevProject, 0),
+		Library:   make(map[string]*DevProject, 0),
 		Unittests: make(map[string]*DevProject, 0),
 		TestLibs:  make(map[string]*DevProject, 0),
 		getVars:   nil,
@@ -202,6 +204,14 @@ func (p *Package) AddMainLib(prj *DevProject) {
 	p.MainLibs[prj.Name] = prj
 }
 
+// AddLibrary adds a library to this package under its own name, these
+// libraries are not automatically added by consumers of this package.
+// Instead a consumer must explicitly add these libraries as dependency
+// by name.
+func (p *Package) AddLibrary(prj *DevProject) {
+	p.Library[prj.Name] = prj
+}
+
 // AddTestLib adds a project to this package under 'name.testlib'
 func (p *Package) AddTestLib(prj *DevProject) {
 	//p.TestLibs = append(p.TestLibs, prj)
@@ -219,6 +229,20 @@ func (p *Package) GetMainLib() map[string]*DevProject {
 	return p.MainLibs
 }
 
+// GetLibrary returns a project that is registered as a library, it checks
+// all registered packages as well.
+func (p *Package) GetLibrary(name string) *DevProject {
+	if prj, ok := p.Library[name]; ok {
+		return prj
+	}
+	for _, pkg := range p.Packages {
+		if prj, ok := pkg.Library[name]; ok {
+			return prj
+		}
+	}
+	return nil
+}
+
 // GetTestLib returns the projects that are registered as a test library
 func (p *Package) GetTestLib() map[string]*DevProject {
 	return p.TestLibs
@@ -232,6 +256,10 @@ func (p *Package) GetUnittest() map[string]*DevProject {
 // GetMainApp returns the projects that are registered as a main application
 func (p *Package) GetMainApp() map[string]*DevProject {
 	return p.MainApps
+}
+
+func (p *Package) GetLibraries() map[string]*DevProject {
+	return p.Library
 }
 
 func (p *Package) CollectAllPackages(collectPackages func(pkg *Package)) {

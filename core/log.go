@@ -72,7 +72,7 @@ func LogErrf(err error, format string, args ...any) error {
 	return logger.LogErrorf(err, format, args...)
 }
 func LogErrorf(err error, format string, args ...any) error {
-	return err
+	return logger.LogErrorf(err, format, args...)
 }
 
 func LogFatal(err error) {
