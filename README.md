@@ -23,7 +23,7 @@ This allows me to write packages (C++ libraries) and use them in another C++ pac
 And buildsystems:
 
 * [Tundra](https://github.com/deplinenoise/tundra) (supported, Mac, Linux and Windows)
-* [Clay](https://github.com/jurgen-kluft/ccode/tree/master/clay) (supported on Mac, (Linux and Windows are coming soon))
+* [Clay](https://github.com/jurgen-kluft/ccode/tree/master/clay) (supported on Mac, (Windows is coming soon))
 
 Make as a buildsystem is deprecated, but still supported:
 

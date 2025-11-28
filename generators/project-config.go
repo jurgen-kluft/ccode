@@ -144,11 +144,12 @@ func (c *Config) AddIncludeDir(includeDir denv.PinnedPath) {
 	c.IncludeDirs.AddOrSet(includeDir)
 }
 
-func (c *Config) AddLibrary(projectDirectory string, lib denv.PinnedFilepath) {
-	c.LibraryPaths.AddOrSet(lib.Path)
+func (c *Config) AddLibrary(lib string) {
+	c.LibraryFiles.Add(lib)
+}
 
-	libfile := lib.Filename
-	c.LibraryFiles.Add(libfile)
+func (c *Config) AddLibraryPath(libpath denv.PinnedPath) {
+	c.LibraryPaths.AddOrSet(libpath)
 }
 
 func (c *Config) AddFramework(framework string) {

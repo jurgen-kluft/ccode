@@ -14,17 +14,36 @@ import (
 // {VARIABLE:option1:option2:...}
 
 type Vars struct {
-	Values       [][]string
-	Keys         []string
-	Format       VarsFormat
-	KeyToIndex22 map[string]int
-	Resolver     VarResolver
+	Values     [][]string
+	Keys       []string
+	Format     VarsFormat
+	KeyToIndex map[string]int
+	Resolver   VarResolver
 }
 
 func (v *Vars) Clear() {
 	v.Values = v.Values[:0]
 	v.Keys = v.Keys[:0]
-	v.KeyToIndex22 = map[string]int{}
+	v.KeyToIndex = map[string]int{}
+}
+
+func (v *Vars) Copy() *Vars {
+	newVars := &Vars{
+		Values:     make([][]string, len(v.Values)),
+		Keys:       make([]string, len(v.Keys)),
+		Format:     v.Format,
+		KeyToIndex: make(map[string]int, len(v.KeyToIndex)),
+		Resolver:   NewVarResolver(v.Format),
+	}
+	for i, vals := range v.Values {
+		newVars.Values[i] = make([]string, len(vals))
+		copy(newVars.Values[i], vals)
+	}
+	for i, key := range v.Keys {
+		newVars.Keys[i] = key
+		newVars.KeyToIndex[key] = i
+	}
+	return newVars
 }
 
 func (v *Vars) DecodeJson(decoder *JsonDecoder) {
@@ -38,10 +57,10 @@ func (v *Vars) DecodeJson(decoder *JsonDecoder) {
 	}
 	decoder.Decode(fields)
 
-	v.KeyToIndex22 = make(map[string]int, len(v.Keys))
+	v.KeyToIndex = make(map[string]int, len(v.Keys))
 	for i, key := range v.Keys {
 		key = strings.ToLower(key)
-		v.KeyToIndex22[key] = i
+		v.KeyToIndex[key] = i
 	}
 }
 
@@ -104,10 +123,11 @@ func VarsFormatFromString(format string) (VarsFormat, error) {
 
 func NewVars(format VarsFormat) *Vars {
 	vars := &Vars{
-		Values:       make([][]string, 0, 4),
-		Keys:         make([]string, 0, 4),
-		KeyToIndex22: make(map[string]int, 4),
-		Resolver:     NewVarResolver(format),
+		Values:     make([][]string, 0, 4),
+		Keys:       make([]string, 0, 4),
+		Format:     format,
+		KeyToIndex: make(map[string]int, 4),
+		Resolver:   NewVarResolver(format),
 	}
 	return vars
 }
@@ -125,8 +145,8 @@ func (v *Vars) ConvertToMap() map[string]string {
 
 func (v *Vars) Join(other *Vars) {
 	for i, key := range other.Keys {
-		if _, ok := v.KeyToIndex22[key]; !ok {
-			v.KeyToIndex22[key] = len(v.Values)
+		if _, ok := v.KeyToIndex[key]; !ok {
+			v.KeyToIndex[key] = len(v.Values)
 			v.Keys = append(v.Keys, key)
 			v.Values = append(v.Values, other.Values[i])
 		}
@@ -136,8 +156,8 @@ func (v *Vars) Join(other *Vars) {
 func (v *Vars) JoinMap(other map[string]string) {
 	for key, value := range other {
 		key = strings.ToLower(key)
-		if _, ok := v.KeyToIndex22[key]; !ok {
-			v.KeyToIndex22[key] = len(v.Values)
+		if _, ok := v.KeyToIndex[key]; !ok {
+			v.KeyToIndex[key] = len(v.Values)
 			v.Keys = append(v.Keys, key)
 			v.Values = append(v.Values, []string{value})
 		}
@@ -165,17 +185,17 @@ func (s SortKeyAndValue) Swap(i, j int) {
 
 func (v *Vars) SortByKey() {
 	sort.Sort(SortKeyAndValue{Keys: v.Keys, Values: v.Values})
-	newMap := make(map[string]int, len(v.KeyToIndex22))
+	newMap := make(map[string]int, len(v.KeyToIndex))
 	for i, key := range v.Keys {
 		newMap[key] = i
 	}
-	v.KeyToIndex22 = newMap
+	v.KeyToIndex = newMap
 }
 
 func (v *Vars) Set(key string, value ...string) {
 	key = strings.ToLower(key)
-	if i, ok := v.KeyToIndex22[key]; !ok {
-		v.KeyToIndex22[key] = len(v.Values)
+	if i, ok := v.KeyToIndex[key]; !ok {
+		v.KeyToIndex[key] = len(v.Values)
 		v.Values = append(v.Values, value)
 		v.Keys = append(v.Keys, key)
 	} else {
@@ -186,8 +206,8 @@ func (v *Vars) Set(key string, value ...string) {
 func (v *Vars) SetMany(vars map[string][]string) {
 	for key, value := range vars {
 		key = strings.ToLower(key)
-		if i, ok := v.KeyToIndex22[key]; !ok {
-			v.KeyToIndex22[key] = len(v.Values)
+		if i, ok := v.KeyToIndex[key]; !ok {
+			v.KeyToIndex[key] = len(v.Values)
 			v.Values = append(v.Values, value)
 			v.Keys = append(v.Keys, key)
 		} else {
@@ -198,8 +218,8 @@ func (v *Vars) SetMany(vars map[string][]string) {
 
 func (v *Vars) Append(key string, value ...string) {
 	key = strings.ToLower(key)
-	if i, ok := v.KeyToIndex22[key]; !ok {
-		v.KeyToIndex22[key] = len(v.Values)
+	if i, ok := v.KeyToIndex[key]; !ok {
+		v.KeyToIndex[key] = len(v.Values)
 		v.Values = append(v.Values, value)
 		v.Keys = append(v.Keys, key)
 	} else {
@@ -209,8 +229,8 @@ func (v *Vars) Append(key string, value ...string) {
 
 func (v *Vars) Prepend(key string, value ...string) {
 	key = strings.ToLower(key)
-	if i, ok := v.KeyToIndex22[key]; !ok {
-		v.KeyToIndex22[key] = len(v.Values)
+	if i, ok := v.KeyToIndex[key]; !ok {
+		v.KeyToIndex[key] = len(v.Values)
 		v.Values = append(v.Values, value)
 		v.Keys = append(v.Keys, key)
 	} else {
@@ -220,7 +240,7 @@ func (v *Vars) Prepend(key string, value ...string) {
 
 func (v *Vars) GetFirstOrEmpty(key string) string {
 	key = strings.ToLower(key)
-	if i, ok := v.KeyToIndex22[key]; ok {
+	if i, ok := v.KeyToIndex[key]; ok {
 		values := v.Values[i]
 		if len(values) > 0 {
 			return values[0]
@@ -231,7 +251,7 @@ func (v *Vars) GetFirstOrEmpty(key string) string {
 
 func (v *Vars) GetFirst(key string) (string, bool) {
 	key = strings.ToLower(key)
-	if i, ok := v.KeyToIndex22[key]; ok {
+	if i, ok := v.KeyToIndex[key]; ok {
 		values := v.Values[i]
 		if len(values) > 0 {
 			return values[0], true
@@ -242,13 +262,13 @@ func (v *Vars) GetFirst(key string) (string, bool) {
 
 func (v *Vars) Has(key string) bool {
 	key = strings.ToLower(key)
-	_, ok := v.KeyToIndex22[key]
+	_, ok := v.KeyToIndex[key]
 	return ok
 }
 
 func (v *Vars) Get(key string) ([]string, bool) {
 	key = strings.ToLower(key)
-	if i, ok := v.KeyToIndex22[key]; ok {
+	if i, ok := v.KeyToIndex[key]; ok {
 		return v.Values[i], true
 	}
 	return []string{}, false
@@ -258,8 +278,8 @@ func (v *Vars) Get(key string) ([]string, bool) {
 func (v *Vars) Cull() {
 	newValues := make([][]string, 0, len(v.Values))
 	newKeys := make([]string, 0, len(v.Keys))
-	newKeyMap := make(map[string]int, len(v.KeyToIndex22))
-	for key, i := range v.KeyToIndex22 {
+	newKeyMap := make(map[string]int, len(v.KeyToIndex))
+	for key, i := range v.KeyToIndex {
 		if len(v.Values[i]) > 0 {
 			newKeyMap[key] = len(newValues)
 			newValues = append(newValues, v.Values[i])
@@ -268,7 +288,7 @@ func (v *Vars) Cull() {
 	}
 	v.Values = newValues
 	v.Keys = newKeys
-	v.KeyToIndex22 = newKeyMap
+	v.KeyToIndex = newKeyMap
 }
 
 func (v *Vars) Resolve() {

@@ -9,7 +9,7 @@ import (
 	corepkg "github.com/jurgen-kluft/ccode/core"
 )
 
-func (t *toolchain) loadJson(inputFilename string) error {
+func (t *Toolchain) loadJson(inputFilename string) error {
 	file, err := os.Open(inputFilename)
 	if err != nil {
 		return err
@@ -39,7 +39,7 @@ func (t *toolchain) loadJson(inputFilename string) error {
 	return nil
 }
 
-func (t *toolchain) saveJson(outputFilename string) error {
+func (t *Toolchain) saveJson(outputFilename string) error {
 	file, err := os.Create(outputFilename)
 	if err != nil {
 		return err
@@ -56,7 +56,7 @@ func (t *toolchain) saveJson(outputFilename string) error {
 	return nil
 }
 
-func PrintAllFlashSizes(toolchain *toolchain, arch string, boardName string) (err error) {
+func PrintAllFlashSizes(toolchain *Toolchain, arch string, boardName string) (err error) {
 
 	// var flashDefMatch string
 	// if cpuName == "esp32" {
@@ -105,7 +105,7 @@ func PrintAllFlashSizes(toolchain *toolchain, arch string, boardName string) (er
 	return nil
 }
 
-func PrintAllBoardInfos(toolchain *toolchain, boardName string, max int) error {
+func PrintAllBoardInfos(toolchain *Toolchain, boardName string, max int) error {
 
 	// Print some info
 	toolchain.PrintInfo()
@@ -129,7 +129,7 @@ func PrintAllBoardInfos(toolchain *toolchain, boardName string, max int) error {
 				for _, key := range vars.Keys {
 					key = strings.ToLower(key)
 					if strings.HasPrefix(key, "build.") || strings.HasPrefix(key, "upload.") {
-						values := vars.Values[vars.KeyToIndex22[key]]
+						values := vars.Values[vars.KeyToIndex[key]]
 						corepkg.LogInfof("%s:%s", key, values)
 					}
 				}
@@ -141,7 +141,7 @@ func PrintAllBoardInfos(toolchain *toolchain, boardName string, max int) error {
 	return nil
 }
 
-func PrintAllMatchingBoards(toolchain *toolchain, fuzzy string, listMax int) error {
+func PrintAllMatchingBoards(toolchain *Toolchain, fuzzy string, listMax int) error {
 
 	// First search in the board names
 	names := make([]string, 0, len(toolchain.ListOfBoards))

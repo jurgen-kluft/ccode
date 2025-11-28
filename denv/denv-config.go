@@ -9,7 +9,8 @@ type DevConfig struct {
 	BuildConfig BuildConfig
 	IncludeDirs []PinnedPath
 	Defines     *corepkg.ValueSet
-	Libs        []PinnedFilepath // Libraries to link against
+	LibPaths    []PinnedPath
+	Libs        []string // Libraries to link against
 }
 
 func NewDevConfig(buildType BuildType, buildConfig BuildConfig) *DevConfig {
@@ -18,7 +19,8 @@ func NewDevConfig(buildType BuildType, buildConfig BuildConfig) *DevConfig {
 		BuildConfig: buildConfig,
 		IncludeDirs: []PinnedPath{},
 		Defines:     corepkg.NewValueSet(),
-		Libs:        []PinnedFilepath{},
+		LibPaths:    []PinnedPath{},
+		Libs:        []string{},
 	}
 
 	return config

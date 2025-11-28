@@ -120,7 +120,10 @@ func (p *Project) CreateConfiguration(buildTarget denv.BuildTarget, cfg *denv.De
 
 	// Library
 	for _, lib := range cfg.Libs {
-		config.AddLibrary(p.ProjectAbsPath, lib)
+		config.AddLibrary(lib)
+	}
+	for _, libPath := range cfg.LibPaths {
+		config.AddLibraryPath(libPath)
 	}
 
 	// Include directories

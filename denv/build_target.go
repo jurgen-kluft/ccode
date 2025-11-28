@@ -165,10 +165,12 @@ var BuildTargetWindowsX86 = BuildTarget{BuildTargetOsWindows: BuildTargetArchX86
 var BuildTargetWindowsX64 = BuildTarget{BuildTargetOsWindows: BuildTargetArchX64}
 var BuildTargetMacX64 = BuildTarget{BuildTargetOsMac: BuildTargetArchX64}
 var BuildTargetMacArm64 = BuildTarget{BuildTargetOsMac: BuildTargetArchArm64}
+var BuildTargetMacUniversal = BuildTarget{BuildTargetOsMac: BuildTargetArchX64 | BuildTargetArchArm64}
 var BuildTargetLinuxX86 = BuildTarget{BuildTargetOsLinux: BuildTargetArchX86}
 var BuildTargetLinuxX64 = BuildTarget{BuildTargetOsLinux: BuildTargetArchX64}
 var BuildTargetLinuxArm32 = BuildTarget{BuildTargetOsLinux: BuildTargetArchArm32}
 var BuildTargetLinuxArm64 = BuildTarget{BuildTargetOsLinux: BuildTargetArchArm64}
+var BuildTargetLinuxUniversal = BuildTarget{BuildTargetOsLinux: BuildTargetArchX86 | BuildTargetArchX64 | BuildTargetArchArm32 | BuildTargetArchArm64}
 var BuildTargetAppleiOS = BuildTarget{BuildTargetOsiOS: BuildTargetArchArm64}
 var BuildTargetArduinoEsp32 = BuildTarget{BuildTargetOsArduino: BuildTargetArchEsp32}
 var BuildTargetArduinoEsp8266 = BuildTarget{BuildTargetOsArduino: BuildTargetArchEsp8266}
@@ -286,6 +288,21 @@ func (pt BuildTarget) IsEqual(other BuildTarget) bool {
 		}
 	}
 	return true
+}
+
+func (bt BuildTarget) Union(target BuildTarget) BuildTarget {
+	result := BuildTarget{}
+	for os, arch := range bt {
+		result[os] = arch
+	}
+	for os, arch := range target {
+		if existingArch, ok := result[os]; ok {
+			result[os] = existingArch | arch
+		} else {
+			result[os] = arch
+		}
+	}
+	return result
 }
 
 func (bt BuildTarget) HasOverlap(target BuildTarget) bool {

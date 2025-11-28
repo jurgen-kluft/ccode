@@ -36,6 +36,7 @@ func (c *AppConfig) Equal(other *AppConfig) bool {
 
 type App struct {
 	Pkg         *denv.Package
+	PkgVars     *corepkg.Vars
 	Config      *AppConfig
 	BuildTarget denv.BuildTarget
 	BuildConfig denv.BuildConfig
@@ -124,6 +125,12 @@ func ClayAppMain(pkg *denv.Package) {
 		err = app.SerialMonitor(ParsePortAndBaud())
 	case "list-libraries":
 		err = app.ListLibraries()
+	case "identify":
+		app.Config.TargetArch = "esp32"
+		info, err := app.IdentifyBoard()
+		if err == nil {
+			info.Print()
+		}
 	case "list-boards":
 		err = app.ListBoards(ParseArchBoardNameAndMax())
 	case "list-flash-sizes":
@@ -149,6 +156,7 @@ func UsageApp() {
 	corepkg.LogInfo("  build -p <name> --arch <arch> --build <config> --board <board>")
 	corepkg.LogInfo("  clean -p <name> --arch <arch> --build <config> --board <board>")
 	corepkg.LogInfo("  flash -p <name> --arch <arch> --build <config> --board <board>")
+	corepkg.LogInfo("  identify  (identifies connected ESP32 board)")
 	corepkg.LogInfo("  list-libraries")
 	corepkg.LogInfo("  list-boards --arch <arch> --board <name of board> --max <matches>")
 	corepkg.LogInfo("  list-flash-sizes --arch <arch> --board <name of board>")
@@ -345,7 +353,7 @@ func (a *App) Build() (err error) {
 
 	// If we have a project name, we should reduce the list of executable projects to only that one
 	filteredProjects := []*Project{}
-	if a.Config.ProjectName != "*" {
+	if a.Config.ProjectName != "*" && a.Config.ProjectName != "" {
 		projectNames := []string{}
 		projectMap := map[string]*Project{}
 		for _, prj := range prjs {
@@ -540,27 +548,48 @@ func (a *App) CreateProjects(buildTarget denv.BuildTarget, buildConfig denv.Buil
 	return projects, nil
 }
 
-func (a *App) SetToolchain(p *Project, buildPath string) (err error) {
+func (a *App) prepareToolchainVars() (vars *corepkg.Vars) {
 	if a.BuildTarget.Arduino() && a.BuildTarget.Esp32() {
-		vars := corepkg.NewVars(corepkg.VarsFormatCurlyBraces)
+		vars = corepkg.NewVars(corepkg.VarsFormatCurlyBraces)
 		a.Pkg.GetVars(a.BuildTarget, a.BuildConfig, a.Config.TargetBoard, vars)
-		p.Toolchain = toolchain.NewArduinoEsp32Toolchainv2(vars, p.DevProject.Name, p.GetBuildPath(buildPath))
 	} else if a.BuildTarget.Arduino() && a.BuildTarget.Esp8266() {
-		vars := corepkg.NewVars(corepkg.VarsFormatCurlyBraces)
+		vars = corepkg.NewVars(corepkg.VarsFormatCurlyBraces)
 		a.Pkg.GetVars(a.BuildTarget, a.BuildConfig, a.Config.TargetBoard, vars)
-		p.Toolchain = toolchain.NewArduinoEsp8266Toolchain(vars, p.DevProject.Name, p.GetBuildPath(buildPath))
+	} else if a.BuildTarget.Windows() {
+		vars = corepkg.NewVars(corepkg.VarsFormatCurlyBraces)
+		a.Pkg.GetVars(a.BuildTarget, a.BuildConfig, a.Config.TargetBoard, vars)
+	} else if a.BuildTarget.Mac() {
+		vars = corepkg.NewVars(corepkg.VarsFormatCurlyBraces)
+		a.Pkg.GetVars(a.BuildTarget, a.BuildConfig, a.Config.TargetBoard, vars)
+	}
+	return vars
+}
+
+func (a *App) createToolchain(projectName string, projectBuildPath string) (tc toolchain.Environment, err error) {
+	if a.BuildTarget.Arduino() && a.BuildTarget.Esp32() {
+		return toolchain.NewArduinoEsp32Toolchainv2(a.PkgVars.Copy(), projectName, projectBuildPath), nil
+	} else if a.BuildTarget.Arduino() && a.BuildTarget.Esp8266() {
+		return toolchain.NewArduinoEsp8266Toolchain(a.PkgVars.Copy(), projectName, projectBuildPath), nil
 	} else if a.BuildTarget.Windows() {
 		arch := runtime.GOARCH
-		vars := corepkg.NewVars(corepkg.VarsFormatCurlyBraces)
-		a.Pkg.GetVars(a.BuildTarget, a.BuildConfig, a.Config.TargetBoard, vars)
-		p.Toolchain, err = toolchain.NewWinMsdev(vars, p.DevProject.Name, p.GetBuildPath(buildPath), arch)
+		return toolchain.NewWinMsdev(a.PkgVars.Copy(), projectName, projectBuildPath, arch)
 	} else if a.BuildTarget.Mac() {
 		arch := runtime.GOARCH
-		vars := corepkg.NewVars(corepkg.VarsFormatCurlyBraces)
-		a.Pkg.GetVars(a.BuildTarget, a.BuildConfig, a.Config.TargetBoard, vars)
-		p.Toolchain = toolchain.NewDarwinClangv2(vars, p.DevProject.Name, p.GetBuildPath(buildPath), arch)
+		return toolchain.NewDarwinClangv2(a.PkgVars.Copy(), projectName, projectBuildPath, arch), nil
 	} else {
 		err = corepkg.LogErrorf(os.ErrNotExist, "error, %s as a build target on %s is not supported", a.BuildTarget.Os().String(), runtime.GOOS)
 	}
-	return err
+	return nil, err
+}
+
+func (a *App) SetToolchain(p *Project, buildPath string) (err error) {
+	if a.PkgVars == nil {
+		a.PkgVars = a.prepareToolchainVars()
+	}
+	tc, err := a.createToolchain(p.DevProject.Name, p.GetBuildPath(buildPath))
+	if err != nil {
+		return err
+	}
+	p.Toolchain = tc
+	return nil
 }

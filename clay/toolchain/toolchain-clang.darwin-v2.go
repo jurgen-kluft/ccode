@@ -110,7 +110,9 @@ func (cl *ToolchainDarwinClangCompilerv2) Compile(sourceAbsFilepaths []string, o
 
 		cmd := exec.Command(compilerPath, compilerArgs...)
 
-		corepkg.LogInfof("Compiling (%s) %s", cl.buildConfig.String(), filepath.Base(sourceAbsFilepath))
+		//corepkg.LogInfof("Compiling (%s) %s", cl.buildConfig.String(), filepath.Base(sourceAbsFilepath))
+		corepkg.LogInfof("Compiling (%s) %s", cl.buildConfig.String(), sourceAbsFilepath)
+		//corepkg.LogInfof("Command: %s %s", compilerPath, strings.Join(compilerArgs, " "))
 		out, err := cmd.CombinedOutput()
 		if err != nil {
 			corepkg.LogInfof("Compile failed, output:\n%s", string(out))

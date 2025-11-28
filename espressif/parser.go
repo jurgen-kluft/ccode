@@ -64,6 +64,19 @@ func newTool() *tool {
 	return &tool{Vars: make(map[string]string), Functions: make(map[string]*ToolFunction)}
 }
 
+func (tool *tool) ResolveVars() {
+	for _, function := range tool.Functions {
+		for varName, varValue := range tool.Vars {
+			function.Cmd = strings.ReplaceAll(function.Cmd, "{"+varName+"}", varValue)
+			function.CmdLine = strings.ReplaceAll(function.CmdLine, "{"+varName+"}", varValue)
+		}
+		for varName, varValue := range function.Vars {
+			function.Cmd = strings.ReplaceAll(function.Cmd, "{"+varName+"}", varValue)
+			function.CmdLine = strings.ReplaceAll(function.CmdLine, "{"+varName+"}", varValue)
+		}
+	}
+}
+
 func decodeJsonDecodeJsonTool(decoder *corepkg.JsonDecoder) *tool {
 	t := newTool()
 	fields := map[string]corepkg.JsonDecode{
@@ -386,7 +399,7 @@ func newBoardName(name, description, sdkPath string) *board {
 	return &board{Name: name, Description: description, SdkPath: sdkPath, Menu: newBoardMenu(), Vars: corepkg.NewVars(corepkg.VarsFormatCurlyBraces)}
 }
 
-type toolchain struct {
+type Toolchain struct {
 	Name             string         // The name of the toolchain
 	Version          string         // The version of the toolchain
 	SdkPath          string         // The path to the SDK
@@ -431,7 +444,7 @@ func decodeJsonBoard(decoder *corepkg.JsonDecoder) *board {
 	return b
 }
 
-func decodeJsonToolchain(toolchain *toolchain, decoder *corepkg.JsonDecoder) error {
+func decodeJsonToolchain(toolchain *Toolchain, decoder *corepkg.JsonDecoder) error {
 	fields := map[string]corepkg.JsonDecode{
 		"name":               func(decoder *corepkg.JsonDecoder) { toolchain.Name = decoder.DecodeString() },
 		"version":            func(decoder *corepkg.JsonDecoder) { toolchain.Version = decoder.DecodeString() },
@@ -461,7 +474,7 @@ func decodeJsonToolchain(toolchain *toolchain, decoder *corepkg.JsonDecoder) err
 	return nil
 }
 
-func encodeJsonToolchain(encoder *corepkg.JsonEncoder, key string, object *toolchain) {
+func encodeJsonToolchain(encoder *corepkg.JsonEncoder, key string, object *Toolchain) {
 	if object == nil {
 		return
 	}
@@ -503,11 +516,11 @@ func sdkPath(arch string) string {
 	return sdkPath
 }
 
-func NewToolchain(arch string) *toolchain {
+func NewToolchain(arch string) *Toolchain {
 	switch arch {
 	case "esp32":
 		espSdkPath := sdkPath("esp32")
-		toolchain := &toolchain{
+		toolchain := &Toolchain{
 			Name:             "Espressif ESP32 Arduino",
 			Version:          "3.2.0",
 			SdkPath:          espSdkPath,
@@ -518,7 +531,7 @@ func NewToolchain(arch string) *toolchain {
 		return toolchain
 	case "esp8266":
 		espSdkPath := sdkPath("esp8266")
-		toolchain := &toolchain{
+		toolchain := &Toolchain{
 			Name:             "Espressif ESP8266 Arduino",
 			Version:          "3.2.0",
 			SdkPath:          espSdkPath,
@@ -531,14 +544,42 @@ func NewToolchain(arch string) *toolchain {
 	return nil
 }
 
-func (t *toolchain) PrintInfo() {
+func (t *Toolchain) ResolveVars(arch string) {
+	sdkPath := sdkPath(arch)
+	for _, tool := range t.Platform.Tools {
+		for varName, varValue := range tool.Vars {
+			varValue = strings.ReplaceAll(varValue, "{runtime.platform.path}", sdkPath)
+			tool.Vars[varName] = varValue
+		}
+		tool.ResolveVars()
+	}
+}
+
+func (t *Toolchain) GetToolPath(toolName string) (string, bool) {
+	if tool, ok := t.Platform.Tools[toolName]; ok {
+		return filepath.Join(tool.Vars["path"], tool.Vars["cmd"]), true
+	}
+	return "", false
+}
+
+func (t *Toolchain) PrintInfo() {
 	corepkg.LogInfof("Toolchain: %s, version: %s", t.Name, t.Version)
 	corepkg.LogInfof("SDK Path: %s", t.SdkPath)
 	corepkg.LogInfof("Number of boards: %d", len(t.ListOfBoards))
 	corepkg.LogInfof("Platform: %s", t.Platform.Name)
+	// print all tools
+	for toolName, tool := range t.Platform.Tools {
+		corepkg.LogInfof("Tool: %s", toolName)
+		for functionName, function := range tool.Functions {
+			corepkg.LogInfof("  Function: %s, cmd: %s", functionName, function.Cmd)
+		}
+		for varName, varValue := range tool.Vars {
+			corepkg.LogInfof("  Var: %s=%s", varName, varValue)
+		}
+	}
 }
 
-func (t *toolchain) GetBoardByName(name string) *board {
+func (t *Toolchain) GetBoardByName(name string) *board {
 	if index, ok := t.BoardNameToIndex[strings.ToLower(name)]; ok {
 		return t.ListOfBoards[index]
 	}
@@ -547,7 +588,7 @@ func (t *toolchain) GetBoardByName(name string) *board {
 
 var toolchainFormatVersion = "1.0.5"
 
-func ParseToolchain(arch string) (toolchain *toolchain, err error) {
+func ParseToolchain(arch string) (toolchain *Toolchain, err error) {
 	// Can we figure out if we already have a esp32.json or esp8266.json file and if it is up to date?
 	// If so, we can load that file instead of parsing the boards.txt and platform.txt files again
 	toolchain = NewToolchain(arch)
@@ -591,7 +632,7 @@ func ParseToolchain(arch string) (toolchain *toolchain, err error) {
 	return toolchain, nil
 }
 
-func GetVars(toolchain *toolchain, boardName string, vars *corepkg.Vars) error {
+func GetVars(toolchain *Toolchain, boardName string, vars *corepkg.Vars) error {
 
 	// get board by name
 	board := toolchain.GetBoardByName(boardName)
@@ -604,7 +645,7 @@ func GetVars(toolchain *toolchain, boardName string, vars *corepkg.Vars) error {
 	return toolchain.ResolveVariablesForBoard(board, vars)
 }
 
-func (t *toolchain) ResolveVariablesForBoard(board *board, vars *corepkg.Vars) error {
+func (t *Toolchain) ResolveVariablesForBoard(board *board, vars *corepkg.Vars) error {
 
 	vars.Set("runtime.os", runtime.GOOS)
 	vars.Set("runtime.platform.path", t.SdkPath)
@@ -623,7 +664,7 @@ func (t *toolchain) ResolveVariablesForBoard(board *board, vars *corepkg.Vars) e
 	for _, key := range vars.Keys {
 		key = strings.ToLower(key)
 		if strings.HasPrefix(key, "tools.") || strings.HasPrefix(key, "compiler.") || strings.HasPrefix(key, "build.") || strings.HasPrefix(key, "recipe.") || strings.HasPrefix(key, "upload.") {
-			oldValues := vars.Values[vars.KeyToIndex22[key]]
+			oldValues := vars.Values[vars.KeyToIndex[key]]
 			newValues := make([]string, 0, len(oldValues))
 			for _, value := range oldValues {
 				// For a certain set of key types, we should (smartly) split the value by space
@@ -638,14 +679,14 @@ func (t *toolchain) ResolveVariablesForBoard(board *board, vars *corepkg.Vars) e
 				args := parseArgs(value, true)
 				newValues = append(newValues, args...)
 			}
-			vars.Values[vars.KeyToIndex22[key]] = newValues
+			vars.Values[vars.KeyToIndex[key]] = newValues
 		}
 	}
 
 	return nil
 }
 
-func (t *toolchain) parseBoardsFile(boardsFile string) error {
+func (t *Toolchain) parseBoardsFile(boardsFile string) error {
 	file, err := os.OpenFile(boardsFile, os.O_RDONLY, 0644)
 	if err != nil {
 		return err
@@ -791,7 +832,7 @@ func parseArgs(cmdline string, removeEmptyEntries bool) []string {
 	return args
 }
 
-func (t *toolchain) parsePlatformFile(platformFile string) error {
+func (t *Toolchain) parsePlatformFile(platformFile string) error {
 	file, err := os.OpenFile(platformFile, os.O_RDONLY, 0644)
 	if err != nil {
 		return err

@@ -8,7 +8,6 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
-	"regexp"
 	"slices"
 	"strings"
 
@@ -34,89 +33,6 @@ type Partition struct {
 	Offset  string
 	Size    string
 	Flags   string
-}
-
-// When compiling/linking, could we determine the capabilities of the ESP32 chip (e.g., flash size)
-// and automatically generate/adjust the partition table accordingly?
-
-// Using `esptool flash-id` we can get quite some information about the connected chip:
-// - Manufacturer
-// - Device
-// - Chip type
-// - Crystal frequency
-// - Flash mode
-// - Flash speed
-// - Detected flash size
-// - Features: Bluetooth, WiFi, Dual-Core, LP-Core, Embedded PSRAM size
-// - MAC address
-
-type ESPInfo struct {
-	Version          string
-	Port             string
-	ChipType         string
-	Revision         string
-	Features         []string
-	CrystalFrequency string
-	MAC              string
-	Manufacturer     string
-	Device           string
-	FlashSize        string
-	FlashType        string
-	FlashVoltage     string
-}
-
-// ParseEsptoolOutput parses the given esptool output and returns ESPInfo
-func parseEsptoolOutput(output string) (*ESPInfo, error) {
-	info := &ESPInfo{}
-
-	// Normalize line endings
-	lines := strings.Split(output, "\n")
-
-	// Regex patterns
-	versionRegex := regexp.MustCompile(`esptool v([\d\.]+)`)
-	portRegex := regexp.MustCompile(`Connected to .* on (.+):`)
-	chipRegex := regexp.MustCompile(`Chip type:\s+(.+)\(revision (.+)\)`)
-	featuresRegex := regexp.MustCompile(`Features:\s+(.+)`)
-	crystalRegex := regexp.MustCompile(`Crystal frequency:\s+(.+)`)
-	macRegex := regexp.MustCompile(`MAC:\s+(.+)`)
-	manufacturerRegex := regexp.MustCompile(`Manufacturer:\s+(.+)`)
-	deviceRegex := regexp.MustCompile(`Device:\s+(.+)`)
-	flashSizeRegex := regexp.MustCompile(`Detected flash size:\s+(.+)`)
-	flashTypeRegex := regexp.MustCompile(`Flash type set in eFuse:\s+(.+)`)
-	flashVoltageRegex := regexp.MustCompile(`Flash voltage set by eFuse:\s+(.+)`)
-
-	for _, line := range lines {
-		line = strings.TrimSpace(line)
-		switch {
-		case versionRegex.MatchString(line):
-			info.Version = versionRegex.FindStringSubmatch(line)[1]
-		case portRegex.MatchString(line):
-			info.Port = portRegex.FindStringSubmatch(line)[1]
-		case chipRegex.MatchString(line):
-			matches := chipRegex.FindStringSubmatch(line)
-			info.ChipType = strings.TrimSpace(matches[1])
-			info.Revision = matches[2]
-		case featuresRegex.MatchString(line):
-			features := featuresRegex.FindStringSubmatch(line)[1]
-			info.Features = strings.Split(features, ", ")
-		case crystalRegex.MatchString(line):
-			info.CrystalFrequency = crystalRegex.FindStringSubmatch(line)[1]
-		case macRegex.MatchString(line):
-			info.MAC = macRegex.FindStringSubmatch(line)[1]
-		case manufacturerRegex.MatchString(line):
-			info.Manufacturer = manufacturerRegex.FindStringSubmatch(line)[1]
-		case deviceRegex.MatchString(line):
-			info.Device = deviceRegex.FindStringSubmatch(line)[1]
-		case flashSizeRegex.MatchString(line):
-			info.FlashSize = flashSizeRegex.FindStringSubmatch(line)[1]
-		case flashTypeRegex.MatchString(line):
-			info.FlashType = flashTypeRegex.FindStringSubmatch(line)[1]
-		case flashVoltageRegex.MatchString(line):
-			info.FlashVoltage = flashVoltageRegex.FindStringSubmatch(line)[1]
-		}
-	}
-
-	return info, nil
 }
 
 // filepath = Output CSV file path
