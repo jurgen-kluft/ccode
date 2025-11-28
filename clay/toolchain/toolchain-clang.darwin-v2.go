@@ -98,10 +98,16 @@ func (cl *ToolchainDarwinClangCompilerv2) Compile(sourceAbsFilepaths []string, o
 		var compilerArgs []string
 		if strings.HasSuffix(sourceAbsFilepath, ".c") {
 			compilerPath = cl.cCompilerPath
-			compilerArgs = cl.cCompilerArgs.Args
+			compilerArgs = slices.Clone(cl.cCompilerArgs.Args)
+		} else if strings.HasSuffix(sourceAbsFilepath, ".m") || strings.HasSuffix(sourceAbsFilepath, ".mm") {
+			// Remove the -std=c11 flag if it exists, as Objective-C does not support it
+			compilerPath = cl.cCompilerPath
+			compilerArgs = slices.Clone(cl.cCompilerArgs.Args)
+			compilerArgs = slices.DeleteFunc(compilerArgs, func(s string) bool { return strings.HasPrefix(s, "-std=") })
+			compilerArgs = append(compilerArgs, "-ObjC")
 		} else {
 			compilerPath = cl.cppCompilerPath
-			compilerArgs = cl.cppCompilerArgs.Args
+			compilerArgs = slices.Clone(cl.cppCompilerArgs.Args)
 		}
 
 		// TODO would like this to be part of the resolve step
@@ -110,9 +116,7 @@ func (cl *ToolchainDarwinClangCompilerv2) Compile(sourceAbsFilepaths []string, o
 
 		cmd := exec.Command(compilerPath, compilerArgs...)
 
-		//corepkg.LogInfof("Compiling (%s) %s", cl.buildConfig.String(), filepath.Base(sourceAbsFilepath))
-		corepkg.LogInfof("Compiling (%s) %s", cl.buildConfig.String(), sourceAbsFilepath)
-		//corepkg.LogInfof("Command: %s %s", compilerPath, strings.Join(compilerArgs, " "))
+		corepkg.LogInfof("Compiling (%s) %s", cl.buildConfig.String(), filepath.Base(sourceAbsFilepath))
 		out, err := cmd.CombinedOutput()
 		if err != nil {
 			corepkg.LogInfof("Compile failed, output:\n%s", string(out))
