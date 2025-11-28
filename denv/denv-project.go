@@ -220,6 +220,14 @@ func (prj *DevProject) AddInclude(dir string, extensions ...string) {
 	}
 }
 
+func (prj *DevProject) AddExternalInclude(root string, base string, sub string, extensions ...string) {
+	// Environment variable resolve on root
+	root = prj.ResolveEnvironmentVariables(root)
+	for _, cfg := range prj.Configs {
+		cfg.IncludeDirs = append(cfg.IncludeDirs, PinnedPath{Root: root, Base: base, Sub: sub})
+	}
+}
+
 func AddDefaultIncludePaths(pkg *Package, prj *DevProject, dir string) {
 	for _, cfg := range prj.Configs {
 		cfg.IncludeDirs = append(cfg.IncludeDirs, PinnedPath{Root: pkg.Path(), Base: pkg.RepoName, Sub: "source/" + dir + "/include"})
@@ -352,6 +360,28 @@ func SetupCppLibProjectForArduinoEsp32(pkg *Package, name string) *DevProject {
 	project.Configs = append(project.Configs, NewDevConfig(BuildTypeStaticLibrary, NewReleaseConfig()))
 
 	AddDefaultIncludePaths(pkg, project, dir)
+
+	return project
+}
+
+// Arduino
+func SetupCppLibProjectForArduino(pkg *Package, name string) *DevProject {
+	project := SetupDefaultCppLibProject(pkg, "library_"+name)
+	project.BuildTargets = BuildTargetsArduino
+
+	// TODO we should create all possible configuration, not just debug/release
+	project.Configs = append(project.Configs, NewDevConfig(BuildTypeStaticLibrary, NewDebugConfig()))
+	project.Configs = append(project.Configs, NewDevConfig(BuildTypeStaticLibrary, NewReleaseConfig()))
+
+	return project
+}
+
+func SetupDefaultCppLibProjectForArduino(pkg *Package, name string) *DevProject {
+	project := SetupCppLibProjectForArduino(pkg, name)
+
+	dir := "main"
+	AddDefaultIncludePaths(pkg, project, dir)
+	AddDefaultSourcePaths(pkg, project, dir, ".c", ".cpp")
 
 	return project
 }
