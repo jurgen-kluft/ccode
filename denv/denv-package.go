@@ -27,13 +27,14 @@ type Package struct {
 }
 
 type ArduinoConfig struct {
-	PSRam           string // e.g. "opi or enabled"
-	FlashMode       string // e.g. "dio"
-	FlashSize       string // e.g. "4MB"
-	PartitionScheme string // e.g. "huge_app"
-	CPUFreq         string // e.g. "240"
-	UploadSpeed     string // e.g. "921600"
-	DebugLevel      string // e.g. "none", "error", "warn", "info", "debug", "verbose"
+	OTA         bool   // enable OTA partitioning
+	AppSize     int64  // e.g. "2MB"
+	CoreDump    bool   // enable core dump on crash
+	FSType      string // e.g. "littlefs", "spiffs"
+	FSSize      int64  // e.g. "1MB"
+	FlashSize   int64  // e.g. "4MB"
+	UploadSpeed string // e.g. "921600"
+	DebugLevel  string // e.g. "none", "error", "warn", "info", "debug", "verbose"
 }
 
 // Root path is the path where you have cloned many repositories, e.g. $GOPATH/src

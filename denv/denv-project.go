@@ -214,13 +214,13 @@ func (prj *DevProject) AddSourceFilesFrom(root, base, sub string, extensions ...
 	}
 }
 
-func (prj *DevProject) AddInclude(dir string, extensions ...string) {
+func (prj *DevProject) AddDefaultInclude(dir string) {
 	for _, cfg := range prj.Configs {
 		cfg.IncludeDirs = append(cfg.IncludeDirs, PinnedPath{Root: prj.RootPath(), Base: prj.RepoName, Sub: dir})
 	}
 }
 
-func (prj *DevProject) AddExternalInclude(root string, base string, sub string, extensions ...string) {
+func (prj *DevProject) AddInclude(root string, base string, sub string, extensions ...string) {
 	// Environment variable resolve on root
 	root = prj.ResolveEnvironmentVariables(root)
 	for _, cfg := range prj.Configs {
@@ -350,16 +350,12 @@ func SetupCppLibProjectForDesktop(pkg *Package, name string) *DevProject {
 
 // Arduino Esp32
 func SetupCppLibProjectForArduinoEsp32(pkg *Package, name string) *DevProject {
-	dir := "main"
-
 	project := SetupDefaultCppLibProject(pkg, "library_"+name)
 	project.BuildTargets = BuildTargetArduinoEsp32
 
 	// TODO we should create all possible configuration, not just debug/release
 	project.Configs = append(project.Configs, NewDevConfig(BuildTypeStaticLibrary, NewDebugConfig()))
 	project.Configs = append(project.Configs, NewDevConfig(BuildTypeStaticLibrary, NewReleaseConfig()))
-
-	AddDefaultIncludePaths(pkg, project, dir)
 
 	return project
 }

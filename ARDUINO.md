@@ -3,10 +3,10 @@
 Clay as a buildsystem supports Arduino, ESP8266 and ESP32 boards. You can create a package that holds source code that can be 
 compiled, linked and uploaded to an Arduino board.
 
-- rdno_core; This is the core library that supports Arduino development and should always be a dependency.
-- rdno_wifi; This is an extension library that supports WiFi, Tcp and Udp on Arduino boards.
-- rdno_sensors; This is an extension library that supports specific sensors on Arduino boards.
-- rdno_espnow; This is an extension library that supports ESP-NOW communication on Arduino boards.
+- rcore; This is the core library that supports Arduino development and should always be a dependency.
+- rwifi; This is an extension library that supports WiFi, Tcp and Udp on Arduino boards.
+- rsensors; This is an extension library that supports specific sensors on Arduino boards.
+- respnow; This is an extension library that supports ESP-NOW communication on Arduino boards.
 
 Furthermore, clay provides some further helpful functionality:
 

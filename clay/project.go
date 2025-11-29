@@ -13,23 +13,21 @@ import (
 // Project represents a C/C++ project that can be built using the Clay build system.
 // A project can be a library or an executable.
 type Project struct {
-	Toolchain      toolchain.Environment // Build environment for this project
-	DevProject     *denv.DevProject      // Development environment project (if any)
-	Config         []*denv.DevConfig     // Build configurations
-	SourceFiles    []SourceFile          // C/C++ Source files for the library
-	PartitionFiles []string              // Partition CSV files (for ESP32)
-	Dependencies   []*Project            // Libraries that this project depends on
-	Frameworks     []string              // Frameworks to link against (for macOS)
+	Toolchain    toolchain.Environment // Build environment for this project
+	DevProject   *denv.DevProject      // Development environment project (if any)
+	Config       []*denv.DevConfig     // Build configurations
+	SourceFiles  []SourceFile          // C/C++ Source files for the library
+	Dependencies []*Project            // Libraries that this project depends on
+	Frameworks   []string              // Frameworks to link against (for macOS)
 }
 
 func NewProjectFromDevProject(devPrj *denv.DevProject, configs []*denv.DevConfig) *Project {
 	return &Project{
-		DevProject:     devPrj,
-		Config:         configs,
-		Toolchain:      nil,
-		SourceFiles:    []SourceFile{},
-		PartitionFiles: []string{},
-		Dependencies:   []*Project{},
+		DevProject:   devPrj,
+		Config:       configs,
+		Toolchain:    nil,
+		SourceFiles:  []SourceFile{},
+		Dependencies: []*Project{},
 	}
 }
 
@@ -93,9 +91,6 @@ func (p *Project) GlobSourceFiles(isExcluded func(string) bool) {
 			corepkg.LogErrorf(err, "failed to enumerate files in %q: %v", dirpath)
 		}
 	}
-}
-func (p *Project) AddPartitionFile(partitionFile string) {
-	p.PartitionFiles = append(p.PartitionFiles, partitionFile)
 }
 
 func (p *Project) AddLibrary(lib *Project) {

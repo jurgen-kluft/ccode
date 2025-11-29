@@ -6,6 +6,8 @@ import (
 	"os"
 	"os/exec"
 	"regexp"
+	"slices"
+	"strconv"
 	"strings"
 	"time"
 
@@ -173,15 +175,16 @@ type BoardInfo struct {
 	Device            string
 	MAC               string
 	ChipType          string
-	CrystalFrequency  int64 // in MHz
+	CrystalFrequency  int // in MHz
 	Revision          string
 	WiFi              bool
 	Bluetooth         bool
 	Zigbee            bool
 	DualCore          bool
 	LowPowerCore      bool
-	EmbeddedPSRamSize int64 // in MB
-	FlashSize         int64 // in MB
+	EmbeddedSRamSize  int // in KB
+	EmbeddedPSRamSize int // in MB
+	FlashSize         int // in MB
 	FlashType         string
 	FlashVoltage      string
 }
@@ -210,6 +213,9 @@ func (info *BoardInfo) Print() {
 	}
 	if info.LowPowerCore {
 		fmt.Printf("  Feature: Low-Power Core\n")
+	}
+	if info.EmbeddedSRamSize > 0 {
+		fmt.Printf("  Embedded SRAM Size: %dKB\n", info.EmbeddedSRamSize)
 	}
 	if info.EmbeddedPSRamSize > 0 {
 		fmt.Printf("  Embedded PSRAM Size: %dMB\n", info.EmbeddedPSRamSize)
@@ -257,8 +263,12 @@ func (a *App) IdentifyBoard() (info *BoardInfo, err error) {
 
 	// Normalize line endings
 	output := strings.ReplaceAll(string(out), "\r\n", "\n")
+
 	// Split output into lines
 	lines := strings.Split(output, "\n")
+
+	// Delete empty lines
+	lines = slices.DeleteFunc(lines, func(s string) bool { return len(strings.TrimSpace(s)) == 0 })
 
 	// Regex patterns
 	chipRegex := regexp.MustCompile(`Chip type:\s+(.+)\(revision (.+)\)`)
@@ -281,7 +291,7 @@ func (a *App) IdentifyBoard() (info *BoardInfo, err error) {
 		case featuresRegex.MatchString(line):
 			features := featuresRegex.FindStringSubmatch(line)[1]
 			fmt.Printf("Detected features: %s\n", features)
-			for _, feature := range strings.Split(features, ", ") {
+			for feature := range strings.SplitSeq(features, ", ") {
 				switch feature {
 				case "Wi-Fi":
 					info.WiFi = true
@@ -296,7 +306,7 @@ func (a *App) IdentifyBoard() (info *BoardInfo, err error) {
 					info.LowPowerCore = true
 				default:
 					if strings.HasPrefix(feature, "Embedded PSRAM") {
-						var sizeMB int64
+						var sizeMB int
 						fmt.Sscanf(feature, "Embedded PSRAM %dMB", &sizeMB)
 						info.EmbeddedPSRamSize = sizeMB
 					}
@@ -316,7 +326,7 @@ func (a *App) IdentifyBoard() (info *BoardInfo, err error) {
 			info.Device = deviceRegex.FindStringSubmatch(line)[1]
 		case flashSizeRegex.MatchString(line):
 			flashSize := flashSizeRegex.FindStringSubmatch(line)[1]
-			var size int64
+			var size int
 			fmt.Sscanf(flashSize, "%dMB", &size)
 			info.FlashSize = size
 		case flashTypeRegex.MatchString(line):
@@ -324,6 +334,57 @@ func (a *App) IdentifyBoard() (info *BoardInfo, err error) {
 		case flashVoltageRegex.MatchString(line):
 			info.FlashVoltage = flashVoltageRegex.FindStringSubmatch(line)[1]
 		}
+	}
+
+	sramSizesInKB := map[string]int{
+		"esp32":   520,
+		"esp32s2": 320,
+		"esp32s3": 512,
+		"esp32c3": 400,
+		"esp32c6": 400,
+		"esp32h2": 320,
+		"esp32c2": 272,
+		"esp32c5": 400,
+	}
+
+	// Using the chip type, determine the internal SRAM size. Chip Type might not
+	// be formatted correctly, example: "ESP32-S3 (QFN56)", so we need to clean it up.
+	cleanChipType := strings.ToLower(info.ChipType)
+	cleanChipType = strings.SplitN(cleanChipType, " ", 2)[0]
+	cleanChipType = strings.ReplaceAll(cleanChipType, "-", "")
+	if sramSize, ok := sramSizesInKB[cleanChipType]; ok {
+		fmt.Printf("Detected internal SRAM size: %dKB\n", sramSize/1024)
+		info.EmbeddedSRamSize = sramSize
+	} else {
+		fmt.Printf("Unknown internal SRAM size for chip type: %s\n", info.ChipType)
+		info.EmbeddedSRamSize = 320 * 1024 // default to 320KB
+	}
+
+	// Write to board_info.json in the clay directory
+	stringBuilder := corepkg.NewStringBuilder()
+	stringBuilder.WriteLn("{")
+	stringBuilder.WriteLn(`  "manufacturer": "`, info.Manufacturer, `",`)
+	stringBuilder.WriteLn(`  "device": "`, info.Device, `",`)
+	stringBuilder.WriteLn(`  "mac": "`, info.MAC, `",`)
+	stringBuilder.WriteLn(`  "chip_type": "`, info.ChipType, `",`)
+	stringBuilder.WriteLn(`  "crystal_frequency_mhz": `, strconv.Itoa(info.CrystalFrequency), `,`)
+	stringBuilder.WriteLn(`  "revision": "`, info.Revision, `",`)
+	stringBuilder.WriteLn(`  "wifi": "`, strconv.FormatBool(info.WiFi), `",`)
+	stringBuilder.WriteLn(`  "bluetooth": "`, strconv.FormatBool(info.Bluetooth), `",`)
+	stringBuilder.WriteLn(`  "zigbee": "`, strconv.FormatBool(info.Zigbee), `",`)
+	stringBuilder.WriteLn(`  "dual_core": "`, strconv.FormatBool(info.DualCore), `",`)
+	stringBuilder.WriteLn(`  "low_power_core": "`, strconv.FormatBool(info.LowPowerCore), `",`)
+	stringBuilder.WriteLn(`  "embedded_sram_size_kb": `, strconv.Itoa(info.EmbeddedSRamSize), `,`)
+	stringBuilder.WriteLn(`  "embedded_psram_size_mb": `, strconv.Itoa(info.EmbeddedPSRamSize), `,`)
+	stringBuilder.WriteLn(`  "flash_size_mb": `, strconv.Itoa(info.FlashSize), `,`)
+	stringBuilder.WriteLn(`  "flash_type": "`, info.FlashType, `",`)
+	stringBuilder.WriteLn(`  "flash_voltage": "`, info.FlashVoltage, `"`)
+	stringBuilder.WriteLn("}")
+
+	boardInfoPath := "board_info.json"
+	fmt.Println("Writing board information to " + boardInfoPath)
+	if err := os.WriteFile(boardInfoPath, []byte(stringBuilder.String()), 0644); err != nil {
+		return nil, fmt.Errorf("failed to write board info to %s: %w", boardInfoPath, err)
 	}
 
 	return info, nil
