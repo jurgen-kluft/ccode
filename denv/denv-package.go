@@ -28,6 +28,7 @@ type Package struct {
 
 type ArduinoConfig struct {
 	OTA         bool   // enable OTA partitioning
+	AutoAppSize bool   // automatically calculate app size based on ELF size details
 	AppSize     int64  // e.g. "2MB"
 	CoreDump    bool   // enable core dump on crash
 	FSType      string // e.g. "littlefs", "spiffs"

@@ -1,6 +1,8 @@
 package toolchain
 
 import (
+	"bufio"
+	"bytes"
 	"crypto/sha1"
 	"encoding/csv"
 	"fmt"
@@ -9,6 +11,7 @@ import (
 	"os/exec"
 	"path/filepath"
 	"slices"
+	"strconv"
 	"strings"
 
 	"github.com/jurgen-kluft/ccode/clay/toolchain/deptrackr"
@@ -41,50 +44,55 @@ type Partition struct {
 // fsType = Filesystem type (spiffs|littlefs|fatfs)
 // fsSize = Size of filesystem partition (e.g., 1M)")
 // coreDump = Enable core dump partition
-func alignOffset(offset int) int {
-	return (offset + 0xFFF) & ^0xFFF // Align to 4KB
+func alignInt64(offset int64, alignment int64) int64 {
+	return (offset + (alignment - 1)) & ^(alignment - 1)
 }
 
-func generatePartitions(filepath string, ota int, nvsSize int, fsType string, fsSize int, coreDump bool) error {
+func generatePartitions(filepath string, ota bool, otaSize int64, nvsSize int64, fsType string, fsSize int64, coreDump bool) error {
 	partitions := []Partition{}
-	offset := 0x9000 // Start offset
+	offset := int64(0x9000)     // Start offset
+	align4KB := int64(0x1000)   // 4KB align4KB
+	align64KB := int64(0x10000) // 64KB align4KB
 
-	// NVS
-	if nvsSize >= 0 {
-		nvsSize = alignOffset(nvsSize)
+	if nvsSize >= 0 { // NVS
+		nvsSize = alignInt64(nvsSize, align4KB)
 		partitions = append(partitions, Partition{"nvs", "data", "nvs", fmt.Sprintf("0x%X", offset), fmt.Sprintf("0x%X", nvsSize), ""})
-		offset = alignOffset(offset + nvsSize)
+		offset = alignInt64(offset+nvsSize, align4KB)
 	}
 
-	if ota >= 0 {
-		// OTA
-		otaSize := alignOffset(ota)
-		otaDataSize := 0x2000
+	// Note: There seems to be another unwritten rule and that is that the filesystem partitions should always come after
+	// the application partitions. So we first write the app partitions and then the FS partition.
+
+	if ota { // OTA
+		otaSize := alignInt64(otaSize, align64KB)
+
+		otaDataSize := int64(0x2000)
 		partitions = append(partitions, Partition{"otadata", "data", "ota", fmt.Sprintf("0x%X", offset), fmt.Sprintf("0x%X", otaDataSize), ""})
-		offset = alignOffset(offset + otaDataSize)
+
+		offset = alignInt64(offset+otaDataSize, align64KB)
 		partitions = append(partitions, Partition{"ota_0", "app", "ota_0", fmt.Sprintf("0x%X", offset), fmt.Sprintf("0x%X", otaSize), ""})
-		offset = alignOffset(offset + otaSize)
+
+		offset = alignInt64(offset+otaSize, align64KB)
 		partitions = append(partitions, Partition{"ota_1", "app", "ota_1", fmt.Sprintf("0x%X", offset), fmt.Sprintf("0x%X", otaSize), ""})
-		offset = alignOffset(offset + otaSize)
-	} else {
-		// Factory app, no OTA
-		factorySize := alignOffset(-ota)
+
+		offset = alignInt64(offset+otaSize, align64KB)
+	} else { // Factory app, no OTA
+		offset = alignInt64(offset, align64KB)
+		factorySize := alignInt64(otaSize, align4KB)
 		partitions = append(partitions, Partition{"factory", "app", "factory", fmt.Sprintf("0x%X", offset), fmt.Sprintf("0x%X", factorySize), ""})
-		offset = alignOffset(offset + factorySize)
+		offset = alignInt64(offset+factorySize, align4KB)
 	}
 
-	if fsSize >= 0 {
-		// FS partition
-		fsSize = alignOffset(fsSize)
+	if fsSize >= 0 { // FS partition
+		fsSize = alignInt64(fsSize, align4KB)
 		partitions = append(partitions, Partition{fsType, "data", fsType, fmt.Sprintf("0x%X", offset), fmt.Sprintf("0x%X", fsSize), ""})
-		offset = alignOffset(offset + fsSize)
+		offset = alignInt64(offset+fsSize, align4KB)
 	}
 
-	// Crash dump partition
-	if coreDump {
-		coreDumpSize := 0x10000
+	if coreDump { // Crash dump partition
+		coreDumpSize := int64(0x10000)
 		partitions = append(partitions, Partition{"coredump", "data", "coredump", fmt.Sprintf("0x%X", offset), fmt.Sprintf("0x%X", coreDumpSize), ""})
-		offset = alignOffset(offset + coreDumpSize)
+		offset = alignInt64(offset+coreDumpSize, align4KB)
 	}
 
 	// Write CSV
@@ -102,7 +110,7 @@ func generatePartitions(filepath string, ota int, nvsSize int, fsType string, fs
 		writer.Write([]string{p.Name, p.Type, p.SubType, p.Offset, p.Size, p.Flags})
 	}
 
-	fmt.Println("Partition CSV generated: partitions.csv")
+	fmt.Println("Partition CSV generated: " + filepath)
 	return nil
 }
 
@@ -353,6 +361,7 @@ type ToolchainArduinoEsp32Burnerv2 struct {
 	buildTarget                          denv.BuildTarget
 	dependencyTracker                    deptrackr.FileTrackr // Dependency tracker for the burner
 	hasher                               hash.Hash            // Hasher for generating digests of arguments
+	partitionsFilepath                   string
 	genImageBinToolArgs                  []string
 	genImageBinToolArgsHash              []byte   // Hash of the arguments for the image bin tool
 	genImageBinToolOutputFilepath        string   // The output file for the image bin
@@ -368,6 +377,8 @@ type ToolchainArduinoEsp32Burnerv2 struct {
 	genBootloaderToolOutputFilepath      string   // The output file for the bootloader
 	genBootloaderToolInputFilepaths      []string // The input files for the bootloader
 	genBootloaderToolPath                string
+	elfSizeToolArgs                      []string
+	elfSizeToolPath                      string
 	flashToolArgs                        []string
 	flashToolPath                        string
 	vars                                 *corepkg.Vars // Local variables for the burner
@@ -380,6 +391,7 @@ func (t *ArduinoEsp32Toolchainv2) NewBurner(buildConfig denv.BuildConfig, buildT
 		buildTarget:                          buildTarget,
 		dependencyTracker:                    nil,
 		hasher:                               sha1.New(),
+		partitionsFilepath:                   "",
 		genImageBinToolArgs:                  make([]string, 0, 32),
 		genImageBinToolArgsHash:              nil, // Will be set later
 		genImageBinToolOutputFilepath:        "",
@@ -395,6 +407,8 @@ func (t *ArduinoEsp32Toolchainv2) NewBurner(buildConfig denv.BuildConfig, buildT
 		genBootloaderToolOutputFilepath:      "",
 		genBootloaderToolInputFilepaths:      []string{},
 		genBootloaderToolPath:                "",
+		elfSizeToolArgs:                      make([]string, 0, 32),
+		elfSizeToolPath:                      "",
 		flashToolArgs:                        make([]string, 0, 32),
 		flashToolPath:                        "",
 		vars:                                 corepkg.NewVars(16),
@@ -424,63 +438,25 @@ func (b *ToolchainArduinoEsp32Burnerv2) SetupBuild(buildPath string) {
 	}
 
 	// ------------------------------------------------------------------------------------------------
-	// Generate the partitions.csv file, check if the file exists, hash the parameters to see if we need to
-	// regenerate it.
-	dstPartitionsFilepath := filepath.Join(buildPath, "partitions.csv")
-	fmt.Println("Setting up partitions in file :", dstPartitionsFilepath)
+	// Partitions file setup
+	b.partitionsFilepath = filepath.Join(buildPath, "partitions.csv")
 
-	// TEST code
-	otaSize := 0x200000 // 2MB OTA size
-	nvsSize := 0x5000   // 24KB NVS size
-	fsType := "spiffs"  // Filesystem type
-	fsSize := 0x100000  // 1MB FS size
-	coreDump := true    // Enable core dump partition
-
-	// Hash the parameters
-	partitionParams := fmt.Sprintf("%d|%d|%s|%d|%v", otaSize, nvsSize, fsType, fsSize, coreDump)
-	partitionParamsHash := b.hashArguments([]string{partitionParams})
-
-	if !b.dependencyTracker.QueryItemWithExtraData(dstPartitionsFilepath, partitionParamsHash) {
-		err := generatePartitions(dstPartitionsFilepath, otaSize, nvsSize, fsType, fsSize, coreDump)
-		if err != nil {
-			corepkg.LogErrorf(err, "Failed to generate partitions file")
-		}
-		b.dependencyTracker.AddItemWithExtraData(dstPartitionsFilepath, partitionParamsHash, []string{})
-	} else {
-		b.dependencyTracker.CopyItem(dstPartitionsFilepath)
-	}
+	// ------------------------------------------------------------------------------------------------
+	// Elf size tool setup
+	b.elfSizeToolArgs, _ = b.toolChain.Vars.Get("recipe.size.pattern")
+	b.elfSizeToolArgs = b.toolChain.Vars.FinalResolveArray(b.elfSizeToolArgs, b.vars)
+	b.elfSizeToolPath = b.elfSizeToolArgs[0]
+	b.elfSizeToolArgs = b.elfSizeToolArgs[1:]
 
 	// ------------------------------------------------------------------------------------------------
 	// Image partitions tool setup
-	// if !b.dependencyTracker.QueryItem(dstPartitionsFilepath) {
-	// 	// Create a '{build.partitions}.csv' file in the build path if it doesn't exist, take the one from
-	// 	//    {runtime.platform.path}/tools/partitions/{build.partitions}.csv
-	// 	srcPartitionsFilepath := b.toolChain.Vars.FinalResolveString("{runtime.platform.path}/tools/partitions/{build.partitions}.csv", " ", b.vars)
-	// 	input, err := os.ReadFile(srcPartitionsFilepath)
-	// 	if err == nil {
-	// 		err = os.WriteFile(dstPartitionsFilepath, input, 0644)
-	// 		if err != nil {
-	// 			corepkg.LogErrorf(err, "Failed to create %s", dstPartitionsFilepath)
-	// 		}
-	// 		err = os.WriteFile(filepath.Join(buildPath, "partitions.csv"), input, 0644)
-	// 		if err != nil {
-	// 			corepkg.LogErrorf(err, "Failed to create %s", filepath.Join(buildPath, "partitions.csv"))
-	// 		}
-	// 	} else {
-	// 		corepkg.LogErrorf(err, "Failed to read partitions file from platform path")
-	// 	}
-	// 	b.dependencyTracker.AddItem(dstPartitionsFilepath, []string{srcPartitionsFilepath, filepath.Join(buildPath, "partitions.csv")})
-	// } else {
-	// 	b.dependencyTracker.CopyItem(dstPartitionsFilepath)
-	// }
-
 	genImagePartitionsArgs, _ := b.toolChain.Vars.Get("recipe.objcopy.partitions.bin.pattern")
 	genImagePartitionsArgs = b.toolChain.Vars.FinalResolveArray(genImagePartitionsArgs, b.vars)
 
 	b.genImagePartitionsToolPath = genImagePartitionsArgs[0]
 	b.genImagePartitionsToolArgs = genImagePartitionsArgs[1:]
 	b.genImagePartitionsToolOutputFilepath = filepath.Join(buildPath, b.toolChain.ProjectName+".partitions.bin")
-	b.genImagePartitionsToolInputFilepaths = []string{}
+	b.genImagePartitionsToolInputFilepaths = []string{b.partitionsFilepath}
 
 	// Remove any empty entries from genImagePartitionsArgs
 	b.genImagePartitionsToolArgs = slices.DeleteFunc(b.genImagePartitionsToolArgs, func(s string) bool { return strings.TrimSpace(s) == "" })
@@ -488,7 +464,6 @@ func (b *ToolchainArduinoEsp32Burnerv2) SetupBuild(buildPath string) {
 
 	// ------------------------------------------------------------------------------------------------
 	// Image bin tool setup
-
 	genImageBinArgs, _ := b.toolChain.Vars.Get("recipe.objcopy.bin.pattern")
 	genImageBinArgs = b.toolChain.Vars.FinalResolveArray(genImageBinArgs, b.vars)
 
@@ -516,11 +491,155 @@ func (b *ToolchainArduinoEsp32Burnerv2) SetupBuild(buildPath string) {
 	b.genBootloaderToolArgsHash = b.hashArguments(b.genBootloaderToolArgs)
 }
 
+// Note: SRAM = IRAM + DRAM
+
+type ImageStats struct {
+	ImageSize int64 // Total image size = Flash size + RAM size
+	FlashSize int64 // Flash size
+	FlashCode int64 // Flash .text size
+	FlashData int64 // Flash .rodata size
+	RAMSize   int64 // RAM size = IRAM + DRAM + RTC
+	IRAM0Size int64 // Instruction RAM size
+	DRAM0Size int64 // Data RAM size
+	RTCSize   int64 // RTC RAM size
+}
+
+func (s *ImageStats) Print() {
+	corepkg.LogInfof("Image Size: %d bytes", s.ImageSize)
+	corepkg.LogInfof("  Flash: %d bytes", s.FlashSize)
+	corepkg.LogInfof("    Code Size: %d bytes", s.FlashCode)
+	corepkg.LogInfof("    Data Size: %d bytes", s.FlashData)
+	corepkg.LogInfof("  RAM: %d bytes", s.RAMSize)
+	corepkg.LogInfof("    IRAM0 Size: %d bytes", s.IRAM0Size)
+	corepkg.LogInfof("    DRAM0 Size: %d bytes", s.DRAM0Size)
+	corepkg.LogInfof("    RTC Size: %d bytes", s.RTCSize)
+}
+
+func (b *ToolchainArduinoEsp32Burnerv2) AnalyzeElfSize(s string) (*ImageStats, error) {
+	var gPatternsRTC = []string{".rtc_reserved"}
+	var gPatternsIRAM = []string{".iram?.text", ".iram?.vectors", ".iram?.data"}
+	var gPatternsDRAM = []string{".dram?.data", ".dram?.bss"}
+	var gPatternsFLASHText = []string{".flash.text"}
+	var gPatternsFLASHData = []string{".flash.rodata", ".flash.appdesc", ".flash.init_array", ".eh_frame"}
+
+	// Match does a direct string match, and for the '?' character it will match any character.
+	match := func(pattern string, str string) bool {
+		if len(pattern) != len(str) {
+			return false
+		}
+		for i := 0; i < len(pattern); i++ {
+			if pattern[i] == str[i] || pattern[i] == '?' {
+				continue
+			}
+			return false
+		}
+		return true
+	}
+
+	collect := func(fields []string, patterns []string) (collected int64, found bool) {
+		for _, pattern := range patterns {
+			if match(pattern, fields[0]) {
+				if size, err := strconv.ParseInt(fields[1], 10, 64); err == nil {
+					collected += size
+				}
+				found = true
+				return collected, found
+			}
+		}
+		return 0, false
+	}
+
+	stats := &ImageStats{}
+	scanner := bufio.NewScanner(bytes.NewBufferString(s))
+	for scanner.Scan() {
+		line := scanner.Text()
+		if len(line) == 0 {
+			continue
+		}
+
+		// Split the line into fields
+		fields := strings.Fields(line)
+		if len(fields) < 2 {
+			continue
+		}
+
+		if size, found := collect(fields, gPatternsIRAM); found {
+			stats.IRAM0Size += size
+		} else if size, found := collect(fields, gPatternsDRAM); found {
+			stats.DRAM0Size += size
+		} else if size, found := collect(fields, gPatternsFLASHText); found {
+			stats.FlashCode += size
+		} else if size, found := collect(fields, gPatternsFLASHData); found {
+			stats.FlashData += size
+		} else if size, found := collect(fields, gPatternsRTC); found {
+			stats.RTCSize += size
+		}
+	}
+
+	stats.FlashSize = stats.FlashCode + stats.FlashData
+	stats.RAMSize = stats.IRAM0Size + stats.DRAM0Size + stats.RTCSize
+	stats.ImageSize = stats.FlashSize + stats.RAMSize
+
+	if err := scanner.Err(); err != nil {
+		return nil, fmt.Errorf("failed to read output: %w", err)
+	}
+
+	return stats, nil
+}
+
 func (b *ToolchainArduinoEsp32Burnerv2) Build() error {
 
+	// - Analyze the ELF file to get section sizes
+	// - Generate the partitions.csv file
 	// - Generate image partitions bin file ('PROJECT.NAME.partitions.bin')
 	// - Generate image bin file ('PROJECT.NAME.bin')
 	// - Generate bootloader image ('PROJECT.NAME.bootloader.bin')
+
+	// ------------------------------------------------------------------------------------------------
+	// ELF size analysis
+	elfSizeToolPath := b.elfSizeToolPath
+	elfSizeToolArgs := b.elfSizeToolArgs
+
+	fmt.Printf("Analyzing ELF size, cmd args: %s %s\n", elfSizeToolPath, strings.Join(elfSizeToolArgs, "|"))
+
+	cmd := exec.Command(elfSizeToolPath, elfSizeToolArgs...)
+	out, err := cmd.CombinedOutput()
+	if err != nil {
+		return corepkg.LogErrorf(err, "ELF size analysis failed")
+	}
+
+	//AnalyzeElfSize(string(out))
+	elfStats, err := b.AnalyzeElfSize(string(out))
+	if err != nil {
+		return corepkg.LogErrorf(err, "ELF size analysis parsing failed")
+	}
+	elfStats.Print()
+
+	// ------------------------------------------------------------------------------------------------
+	// Generate the partitions.csv file, check if the file exists, hash the parameters to see if we need to
+	// regenerate it.
+
+	// TEST
+	ota := true                                               // Enable OTA partitions
+	otaSize := alignInt64(elfStats.ImageSize, int64(0x20000)) // OTA size aligned to 128KB
+	nvsSize := int64(0x5000)                                  // 16KB NVS size
+	fsType := "spiffs"                                        // Filesystem type
+	fsSize := int64(0x40000)                                  // 64KB FS size
+	coreDump := true                                          // Enable core dump partition
+
+	// Hash the parameters
+	partitionParams := fmt.Sprintf("%d|%d|%s|%d|%v", otaSize, nvsSize, fsType, fsSize, coreDump)
+	partitionParamsHash := b.hashArguments([]string{partitionParams})
+
+	if !b.dependencyTracker.QueryItemWithExtraData(b.partitionsFilepath, partitionParamsHash) {
+		err := generatePartitions(b.partitionsFilepath, ota, otaSize, nvsSize, fsType, fsSize, coreDump)
+		if err != nil {
+			corepkg.LogErrorf(err, "Failed to generate partitions file")
+		}
+		b.dependencyTracker.AddItemWithExtraData(b.partitionsFilepath, partitionParamsHash, []string{})
+	} else {
+		b.dependencyTracker.CopyItem(b.partitionsFilepath)
+	}
 
 	// Generate the image partitions bin file
 	if !b.dependencyTracker.QueryItemWithExtraData(b.genImagePartitionsToolOutputFilepath, b.genImagePartitionsToolArgsHash) {
@@ -534,16 +653,14 @@ func (b *ToolchainArduinoEsp32Burnerv2) Build() error {
 		corepkg.LogInfof("Creating image partitions '%s' ...", b.toolChain.ProjectName+".partitions.bin")
 		out, err := cmd.CombinedOutput()
 		if err != nil {
-			fmt.Printf("1\n")
+			corepkg.LogInfof("Image partitions output:\n%s", string(out))
 			return corepkg.LogErrorf(err, "Creating image partitions failed")
 		}
-		fmt.Printf("2\n")
 		if len(out) > 0 {
 			corepkg.LogInfof("Image partitions output:\n%s", string(out))
 		}
 		fmt.Println()
 
-		fmt.Printf("3\n")
 		b.dependencyTracker.AddItemWithExtraData(b.genImagePartitionsToolOutputFilepath, b.genImagePartitionsToolArgsHash, b.genImagePartitionsToolInputFilepaths)
 	} else {
 		b.dependencyTracker.CopyItem(b.genImagePartitionsToolOutputFilepath)

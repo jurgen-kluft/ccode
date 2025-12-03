@@ -352,12 +352,11 @@ func (a *App) IdentifyBoard() (info *BoardInfo, err error) {
 	cleanChipType := strings.ToLower(info.ChipType)
 	cleanChipType = strings.SplitN(cleanChipType, " ", 2)[0]
 	cleanChipType = strings.ReplaceAll(cleanChipType, "-", "")
-	if sramSize, ok := sramSizesInKB[cleanChipType]; ok {
-		fmt.Printf("Detected internal SRAM size: %dKB\n", sramSize/1024)
+	if sramSize, ok := sramSizesInKB[strings.ToLower(cleanChipType)]; ok {
 		info.EmbeddedSRamSize = sramSize
 	} else {
 		fmt.Printf("Unknown internal SRAM size for chip type: %s\n", info.ChipType)
-		info.EmbeddedSRamSize = 320 * 1024 // default to 320KB
+		info.EmbeddedSRamSize = 320 // default to 320KB
 	}
 
 	// Write to board_info.json in the clay directory
@@ -382,7 +381,6 @@ func (a *App) IdentifyBoard() (info *BoardInfo, err error) {
 	stringBuilder.WriteLn("}")
 
 	boardInfoPath := "board_info.json"
-	fmt.Println("Writing board information to " + boardInfoPath)
 	if err := os.WriteFile(boardInfoPath, []byte(stringBuilder.String()), 0644); err != nil {
 		return nil, fmt.Errorf("failed to write board info to %s: %w", boardInfoPath, err)
 	}
