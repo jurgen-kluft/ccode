@@ -52,7 +52,7 @@ func Init() bool {
 	if cdev == "" {
 		switch cos {
 		case "darwin":
-			cdev = "tundra"
+			cdev = "clay"
 		case "windows":
 			cdev = "vs2022"
 		}
