@@ -18,6 +18,13 @@ type WinMsdev struct {
 
 // --------------------------------------------------------------------------------------------------
 // --------------------------------------------------------------------------------------------------
+// File Commander
+func (t *WinMsdev) NewFileCommander(buildConfig denv.BuildConfig, buildTarget denv.BuildTarget) FileCommander {
+	return &BasicFileCommander{}
+}
+
+// --------------------------------------------------------------------------------------------------
+// --------------------------------------------------------------------------------------------------
 // Microsoft Visual Studio C/C++ Compiler
 
 type WinMsdevCompiler struct {

@@ -22,12 +22,16 @@ Clay also will help you to configure the partition table of an Arduino board. Yo
 your package to customize the partition table. For example, you can specify the following:
 
 - OTA (true or false)
+  - When OTA is true, the App Size indicates the size of each app partition.
 - APP size (xxKB or xxMB)
+  - You may set APP size to 0, in that case Clay will run `elf-size` on the application binary and determine the 
+    size required for the application partition.
 - SPIFFS size (xxKB or xxMB)
 - NVS size (xxKB or xxMB)
 - CoreDump (true or false)
 
 When flashing the application, clay will load the `board_info.json` file to identify the connected board and
 will generate a partition table based on the specified parameters. 
+If no `board_info.json` file is found, clay will use default parameters, which means a Flash Size of 4MB.
 It will also identify the application and determine if SRAM, Flash and other resources are sufficient, Clay
 will give warnings when resources are low or insufficient.

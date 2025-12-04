@@ -27,6 +27,13 @@ type ArduinoEsp32Toolchainv2 struct {
 
 // --------------------------------------------------------------------------------------------------
 // --------------------------------------------------------------------------------------------------
+// File Commander
+func (t *ArduinoEsp32Toolchainv2) NewFileCommander(buildConfig denv.BuildConfig, buildTarget denv.BuildTarget) FileCommander {
+	return &BasicFileCommander{}
+}
+
+// --------------------------------------------------------------------------------------------------
+// --------------------------------------------------------------------------------------------------
 // Partition Scheme Generator
 
 type Partition struct {

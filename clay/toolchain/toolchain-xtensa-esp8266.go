@@ -25,6 +25,13 @@ type ArduinoEsp8266Toolchain struct {
 
 // --------------------------------------------------------------------------------------------------
 // --------------------------------------------------------------------------------------------------
+// File Commander
+func (t *ArduinoEsp8266Toolchain) NewFileCommander(buildConfig denv.BuildConfig, buildTarget denv.BuildTarget) FileCommander {
+	return &BasicFileCommander{}
+}
+
+// --------------------------------------------------------------------------------------------------
+// --------------------------------------------------------------------------------------------------
 // Compiler
 
 type ToolchainArduinoEsp8266Compiler struct {

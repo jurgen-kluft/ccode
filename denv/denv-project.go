@@ -1,6 +1,7 @@
 package denv
 
 import (
+	"io"
 	"os"
 	"path/filepath"
 	"strings"
@@ -15,7 +16,7 @@ type DevProject struct {
 	PackagePath  string
 	BuildType    BuildType
 	BuildTargets BuildTarget
-	EnvVars      map[string]string
+	Copy2Output  map[string]string
 	SourceDirs   []PinnedGlobPath
 	Configs      []*DevConfig
 	Dependencies *DevProjectList
@@ -28,7 +29,7 @@ func NewProject(pkg *Package, name string) *DevProject {
 		PackagePath:  pkg.Path(),
 		BuildType:    BuildTypeUnknown,
 		BuildTargets: EmptyBuildTarget,
-		EnvVars:      make(map[string]string),
+		Copy2Output:  make(map[string]string),
 		Configs:      []*DevConfig{},
 		Dependencies: NewDevProjectList(),
 	}
@@ -49,6 +50,71 @@ func (p *DevProject) SetBuildTargets(target ...BuildTarget) {
 	}
 }
 
+// Copy copies the contents of the file at srcpath to a regular file
+// at dstpath. If the file named by dstpath already exists, it is
+// truncated. The function does not copy the file mode, file
+// permission bits, or file attributes.
+func FileCopy(srcpath, dstpath string) (err error) {
+	r, err := os.Open(srcpath)
+	if err != nil {
+		return err
+	}
+	defer r.Close() // ignore error: file was opened read-only.
+
+	w, err := os.Create(dstpath)
+	if err != nil {
+		return err
+	}
+
+	defer func() {
+		// Report the error, if any, from Close, but do so
+		// only if there isn't already an outgoing error.
+		if c := w.Close(); err == nil {
+			err = c
+		}
+	}()
+
+	_, err = io.Copy(w, r)
+	return err
+}
+
+func (prj *DevProject) DoCopyToOutput(outputPath string) {
+	for src, dest := range prj.Copy2Output {
+		srcPath := filepath.Join(prj.RootPath(), prj.RepoName, src)
+		destPath := filepath.Join(outputPath, dest)
+
+		// Create destination directory if it does not exist
+		if _, err := os.Stat(destPath); os.IsNotExist(err) {
+			os.MkdirAll(destPath, os.ModePerm)
+		}
+
+		// Copy files from srcPath to destPath, preserving directory structure
+		// Use filepath.Walk to traverse the source directory
+		filepath.Walk(srcPath, func(path string, info os.FileInfo, err error) error {
+			if err != nil {
+				return err
+			}
+
+			// Determine the relative path from srcPath
+			relPath, err := filepath.Rel(srcPath, path)
+			if err != nil {
+				return err
+			}
+
+			destFilePath := filepath.Join(destPath, relPath)
+
+			if info.IsDir() {
+				// Create the directory in the destination
+				os.MkdirAll(destFilePath, os.ModePerm)
+			} else {
+				// Copy the file
+				FileCopy(path, destFilePath)
+			}
+			return nil
+		})
+	}
+}
+
 func (prj *DevProject) HasMatchingConfigForTarget(config BuildConfig, target BuildTarget) bool {
 	if prj.BuildTargets.HasOverlap(target) {
 		for _, cfg := range prj.Configs {
@@ -60,17 +126,18 @@ func (prj *DevProject) HasMatchingConfigForTarget(config BuildConfig, target Bui
 	return false
 }
 
-func (prj *DevProject) AddEnvironmentVariable(ev string) {
-	// Environment variable should exist
-	if value, ok := os.LookupEnv(ev); ok {
-		prj.EnvVars[strings.ToLower(ev)] = value
-	}
-}
-
 func (prj *DevProject) ResolveEnvironmentVariables(str string) string {
 	// Replace all environment variables in the string
 	// Variables can be nested, so we need to know when a replace was
 	// done, and repeat the replace until no more replacements are done.
+	vars := make(map[string]string)
+	for _, kv := range os.Environ() {
+		parts := strings.SplitN(kv, "=", 2)
+		if len(parts) == 2 {
+			vars[strings.ToLower(parts[0])] = parts[1]
+		}
+	}
+
 	for {
 		// Check if there are any environment variables in the string
 		start := strings.Index(str, "{")
@@ -82,7 +149,7 @@ func (prj *DevProject) ResolveEnvironmentVariables(str string) string {
 			break
 		}
 
-		if value, ok := prj.EnvVars[strings.ToLower(str[start+1:end])]; ok {
+		if value, ok := vars[strings.ToLower(str[start+1:end])]; ok {
 			str = strings.ReplaceAll(str, str[start:end+1], value)
 			end = start
 			continue
@@ -108,6 +175,12 @@ func (prj *DevProject) AddDependency(dep *DevProject) {
 			panic("Cannot add dependency " + dep.Name + " to project " + prj.Name + ", because it is a unittest project")
 		}
 	}
+}
+
+func (prj *DevProject) CopyToOutput(srcdir string, destdir string) {
+	srcdir = prj.ResolveEnvironmentVariables(srcdir)
+	destdir = prj.ResolveEnvironmentVariables(destdir)
+	prj.Copy2Output[srcdir] = destdir
 }
 
 func (prj *DevProject) AddDependencies(deps map[string]*DevProject) {
@@ -231,7 +304,6 @@ func (prj *DevProject) AddInclude(root string, base string, sub string, extensio
 func AddDefaultIncludePaths(pkg *Package, prj *DevProject, dir string) {
 	for _, cfg := range prj.Configs {
 		cfg.IncludeDirs = append(cfg.IncludeDirs, PinnedPath{Root: pkg.Path(), Base: pkg.RepoName, Sub: "source/" + dir + "/include"})
-		cfg.IncludeDirs = append(cfg.IncludeDirs, PinnedPath{Root: pkg.Path(), Base: pkg.RepoName, Sub: "source/" + dir + "/private/include", Private: true})
 	}
 }
 

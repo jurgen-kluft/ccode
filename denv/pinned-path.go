@@ -7,10 +7,9 @@ import (
 )
 
 type PinnedPath struct {
-	Root    string // Root directory
-	Base    string // Base directory
-	Sub     string // Sub directory
-	Private bool   // Path is private (not exposed outside the package)
+	Root string // Root directory
+	Base string // Base directory
+	Sub  string // Sub directory
 }
 
 func (fp PinnedPath) String() string {

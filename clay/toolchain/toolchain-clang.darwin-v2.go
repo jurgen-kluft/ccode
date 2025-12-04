@@ -18,6 +18,13 @@ type DarwinClangv2 struct {
 
 // --------------------------------------------------------------------------------------------------
 // --------------------------------------------------------------------------------------------------
+// File Commander
+func (t *DarwinClangv2) NewFileCommander(buildConfig denv.BuildConfig, buildTarget denv.BuildTarget) FileCommander {
+	return &BasicFileCommander{}
+}
+
+// --------------------------------------------------------------------------------------------------
+// --------------------------------------------------------------------------------------------------
 // C/C++ Compiler
 
 type ToolchainDarwinClangCompilerv2 struct {
