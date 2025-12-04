@@ -99,7 +99,9 @@ func (cl *ToolchainDarwinClangCompilerv2) SetupArgs(_defines []string, _includes
 	}
 }
 
-func (cl *ToolchainDarwinClangCompilerv2) Compile(sourceAbsFilepaths []string, objRelFilepaths []string) error {
+func (cl *ToolchainDarwinClangCompilerv2) Compile(sourceAbsFilepaths []string, objRelFilepaths []string) ([]bool, bool) {
+	errors := 0
+	compiled := make([]bool, len(sourceAbsFilepaths))
 	for i, sourceAbsFilepath := range sourceAbsFilepaths {
 		var compilerPath string
 		var compilerArgs []string
@@ -126,14 +128,16 @@ func (cl *ToolchainDarwinClangCompilerv2) Compile(sourceAbsFilepaths []string, o
 		corepkg.LogInfof("Compiling (%s) %s", cl.buildConfig.String(), filepath.Base(sourceAbsFilepath))
 		out, err := cmd.CombinedOutput()
 		if err != nil {
-			corepkg.LogInfof("Compile failed, output:\n%s", string(out))
-			return corepkg.LogErrorf(err, "Compiling failed")
-		}
-		if len(out) > 0 {
-			corepkg.LogInfof("Compile output:\n%s", string(out))
+			corepkg.LogInfof("Compile failed for %s, output:\n%s", filepath.Base(sourceAbsFilepath), string(out))
+			errors = errors + 1
+		} else {
+			if len(out) > 0 {
+				corepkg.LogInfof("Compile output:\n%s", string(out))
+			}
+			compiled[i] = true
 		}
 	}
-	return nil
+	return compiled, errors == 0
 }
 
 // --------------------------------------------------------------------------------------------------
@@ -306,6 +310,8 @@ func (l *ToolchainDarwinClangLinkerv2) Link(inputObjectsAbsFilepaths, inputArchi
 	linkerArgs = append(linkerArgs, inputArchivesAbsFilepaths...)
 
 	corepkg.LogInff("Linking (%s) %s", l.buildConfig.String(), filepath.Base(outputAppRelFilepathNoExt))
+
+	//corepkg.LogInfof("Linker command: %s %s", linkerPath, strings.Join(linkerArgs, " "))
 
 	cmd := exec.Command(linkerPath, linkerArgs...)
 	out, err := cmd.CombinedOutput()

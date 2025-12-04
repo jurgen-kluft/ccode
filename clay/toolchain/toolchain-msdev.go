@@ -118,8 +118,10 @@ func (cl *WinMsdevCompiler) SetupArgs(_defines []string, _includes []string) {
 	}
 }
 
-func (cl *WinMsdevCompiler) Compile(sourceAbsFilepaths []string, objRelFilepaths []string) error {
-	for _, sourceAbsFilepath := range sourceAbsFilepaths {
+func (cl *WinMsdevCompiler) Compile(sourceAbsFilepaths []string, objRelFilepaths []string) ([]bool, bool) {
+	errors := 0
+	compiled := make([]bool, len(sourceAbsFilepaths))
+	for s, sourceAbsFilepath := range sourceAbsFilepaths {
 		var compilerPath string
 		var compilerArgs []string
 		if strings.HasSuffix(sourceAbsFilepath, ".c") {
@@ -156,10 +158,16 @@ func (cl *WinMsdevCompiler) Compile(sourceAbsFilepaths []string, objRelFilepaths
 		out, err := cmd.CombinedOutput()
 		if err != nil {
 			corepkg.LogInfof("Compile failed, output:\n%s", string(out))
-			return corepkg.LogErrorf(err, "Compiling failed")
+			compiled[s] = false
+			errors = errors + 1
+		} else {
+			if len(out) > 0 {
+				corepkg.LogInfof("Compile output:\n%s", string(out))
+			}
+			compiled[s] = true
 		}
 	}
-	return nil
+	return compiled, errors == 0
 }
 
 func (ms *WinMsdev) NewArchiver(a ArchiverType, config denv.BuildConfig, target denv.BuildTarget) Archiver {

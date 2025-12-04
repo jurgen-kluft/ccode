@@ -165,7 +165,10 @@ func (cl *ToolchainArduinoEsp32Compilerv2) SetupArgs(defines []string, includes 
 	cl.vars.Append("includes", includes...)
 }
 
-func (cl *ToolchainArduinoEsp32Compilerv2) Compile(sourceAbsFilepaths []string, objRelFilepaths []string) error {
+func (cl *ToolchainArduinoEsp32Compilerv2) Compile(sourceAbsFilepaths []string, objRelFilepaths []string) ([]bool, bool) {
+	errors := 0
+	compiled := make([]bool, len(sourceAbsFilepaths))
+
 	for i, sourceAbsFilepath := range sourceAbsFilepaths {
 		corepkg.LogInfof("Compiling %s", filepath.Base(sourceAbsFilepath))
 
@@ -201,14 +204,17 @@ func (cl *ToolchainArduinoEsp32Compilerv2) Compile(sourceAbsFilepaths []string, 
 
 		if err != nil {
 			corepkg.LogInfof("Compile failed, output:\n%s", string(out))
-			return corepkg.LogErrorf(err, "Compiling failed")
-		}
-		if len(out) > 0 {
-			corepkg.LogInfof("Compile output:\n%s", string(out))
+			errors++
+			compiled[i] = false
+		} else {
+			if len(out) > 0 {
+				corepkg.LogInfof("Compile output:\n%s", string(out))
+			}
+			compiled[i] = true
 		}
 	}
 
-	return nil
+	return compiled, errors == 0
 }
 
 // --------------------------------------------------------------------------------------------------

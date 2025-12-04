@@ -1,6 +1,7 @@
 package clay
 
 import (
+	"fmt"
 	"os"
 
 	corepkg "github.com/jurgen-kluft/ccode/core"
@@ -88,28 +89,31 @@ func (a *App) BuildDesktop() error {
 		a.SetToolchain(prj, buildPath)
 	}
 
+	var anyErrors int
 	var outOfDate int
 
 	// Build the libraries first
 	for _, prj := range prjs {
 		if !prj.IsExecutable() && prj.CanBuildFor(a.BuildConfig, a.BuildTarget) {
-			if ood, err := prj.Build(a.BuildConfig, a.BuildTarget, buildPath); err != nil {
-				return err
+			if buildOutOfDate, buildErr := prj.Build(a.BuildConfig, a.BuildTarget, buildPath); buildErr {
+				corepkg.LogError(fmt.Errorf("Failed to build project %s", prj.DevProject.Name), "Build error")
+				anyErrors++
 			} else {
-				outOfDate += ood
+				outOfDate += buildOutOfDate
 			}
 		}
 	}
 
-	// Now build the executables
-	for _, prj := range prjs {
-		if a.Config.ProjectName == "*" || a.Config.ProjectName == prj.DevProject.Name {
-			if prj.IsExecutable() && prj.CanBuildFor(a.BuildConfig, a.BuildTarget) {
-				//AddBuildInfoAsCppLibrary(prj, a.BuildConfig)
-				if ood, err := prj.Build(a.BuildConfig, a.BuildTarget, buildPath); err != nil {
-					return err
-				} else {
-					outOfDate += ood
+	// Now build the executables (only if no errors occurred building the libraries)
+	if anyErrors == 0 {
+		for _, prj := range prjs {
+			if a.Config.ProjectName == "*" || a.Config.ProjectName == prj.DevProject.Name {
+				if prj.IsExecutable() && prj.CanBuildFor(a.BuildConfig, a.BuildTarget) {
+					if buildOutOfDate, buildErr := prj.Build(a.BuildConfig, a.BuildTarget, buildPath); buildErr {
+						return err
+					} else {
+						outOfDate += buildOutOfDate
+					}
 				}
 			}
 		}

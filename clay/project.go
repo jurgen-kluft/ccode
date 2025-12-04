@@ -108,24 +108,28 @@ func (p *Project) GetConfig(buildConfig denv.BuildConfig) *denv.DevConfig {
 }
 
 type CompileContext struct {
-	buildPath         string
-	compiler          toolchain.Compiler
-	depTrackr         deptrackr.FileTrackr
-	srcFilesOutOfDate []SourceFile
-	srcFilesUpToDate  []SourceFile
-	absSrcFilepaths   []string
-	objRelFilepaths   []string
+	buildPath          string
+	compiler           toolchain.Compiler
+	depTrackr          deptrackr.FileTrackr
+	srcFilesOutOfDate  []SourceFile
+	srcFilesCompiled   []bool
+	srcFilesUpToDate   []SourceFile
+	absSrcFilepaths    []string
+	objRelFilepaths    []string
+	allObjRelFilepaths []string
 }
 
 func newCompileContext(buildPath string, compiler toolchain.Compiler, depTrackr deptrackr.FileTrackr, numSourceFiles int) *CompileContext {
 	return &CompileContext{
-		buildPath:         buildPath,
-		depTrackr:         depTrackr,
-		compiler:          compiler,
-		srcFilesOutOfDate: make([]SourceFile, 0, numSourceFiles),
-		srcFilesUpToDate:  make([]SourceFile, 0, numSourceFiles),
-		absSrcFilepaths:   []string{},
-		objRelFilepaths:   []string{},
+		buildPath:          buildPath,
+		depTrackr:          depTrackr,
+		compiler:           compiler,
+		srcFilesOutOfDate:  make([]SourceFile, 0, numSourceFiles),
+		srcFilesCompiled:   make([]bool, 0, numSourceFiles),
+		srcFilesUpToDate:   make([]SourceFile, 0, numSourceFiles),
+		absSrcFilepaths:    []string{},
+		objRelFilepaths:    []string{},
+		allObjRelFilepaths: make([]string, 0, numSourceFiles),
 	}
 }
 
@@ -157,6 +161,7 @@ func (cc *CompileContext) collectFilesToCompile(sourceFiles []SourceFile) int {
 		} else {
 			cc.srcFilesUpToDate = append(cc.srcFilesUpToDate, src)
 		}
+		cc.allObjRelFilepaths = append(cc.allObjRelFilepaths, srcObjRelPath)
 	}
 
 	cc.absSrcFilepaths = make([]string, len(cc.srcFilesOutOfDate))
@@ -169,12 +174,10 @@ func (cc *CompileContext) collectFilesToCompile(sourceFiles []SourceFile) int {
 	return len(cc.srcFilesOutOfDate)
 }
 
-func (cc *CompileContext) compile() error {
-
-	// TODO, get back a list of files that where compiled successfully, use that to update the dependency tracker.
-	// For now we recompile all files next time if an error occured.
-
-	return cc.compiler.Compile(cc.absSrcFilepaths, cc.objRelFilepaths)
+func (cc *CompileContext) compile() bool {
+	var anyErrors bool
+	cc.srcFilesCompiled, anyErrors = cc.compiler.Compile(cc.absSrcFilepaths, cc.objRelFilepaths)
+	return anyErrors
 }
 
 func (cc *CompileContext) updateDependencyTracker() {
@@ -234,7 +237,7 @@ func (p *Project) GetIncludesAndDefines(buildConfig denv.BuildConfig, buildTarge
 	return includes.Values, defines.Values
 }
 
-func (p *Project) Build(buildConfig denv.BuildConfig, buildTarget denv.BuildTarget, buildPath string) (outOfDate int, err error) {
+func (p *Project) Build(buildConfig denv.BuildConfig, buildTarget denv.BuildTarget, buildPath string) (outOfDate int, err bool) {
 	config := p.GetConfig(buildConfig)
 
 	includes, defines := p.GetIncludesAndDefines(buildConfig, buildTarget)
@@ -250,10 +253,12 @@ func (p *Project) Build(buildConfig denv.BuildConfig, buildTarget denv.BuildTarg
 	outOfDate = compilerContext.collectFilesToCompile(p.SourceFiles)
 	if outOfDate > 0 {
 		corepkg.LogInfof("Building project: %s, config: %s\n", p.DevProject.Name, config.BuildConfig.String())
-		if err := compilerContext.compile(); err != nil {
-			return outOfDate, err
-		}
+		compileOk := compilerContext.compile()
 		compilerContext.updateDependencyTracker()
+		if !compileOk {
+			corepkg.LogErrorf(nil, "Compilation failed for project %s", p.DevProject.Name)
+			return outOfDate, true
+		}
 	}
 
 	staticArchiver := p.Toolchain.NewArchiver(toolchain.ArchiverTypeStatic, buildConfig, buildTarget)
@@ -272,7 +277,7 @@ func (p *Project) Build(buildConfig denv.BuildConfig, buildTarget denv.BuildTarg
 			}
 
 			// Project archive dependencies (only those matching the build config)
-			archivesToLink := make([]string, 0, len(p.SourceFiles)+len(p.Dependencies))
+			archivesToLink := make([]string, 0, len(p.Dependencies))
 			for _, dep := range p.Dependencies {
 				if dep.CanBuildFor(buildConfig, buildTarget) {
 					libAbsFilepath := dep.GetOutputFilepath(buildPath, staticArchiver.LibFilepath(dep.DevProject.Name))
@@ -281,8 +286,9 @@ func (p *Project) Build(buildConfig denv.BuildConfig, buildTarget denv.BuildTarg
 			}
 
 			// Link them all together into a single executable
-			if err := linker.Link(compilerContext.objRelFilepaths, archivesToLink, executableOutputFilepath); err != nil {
-				return outOfDate, err
+			if err := linker.Link(compilerContext.allObjRelFilepaths, archivesToLink, executableOutputFilepath); err != nil {
+				corepkg.LogErrorf(err, "Linking failed for project %s", p.DevProject.Name)
+				return outOfDate, true
 			}
 
 			compilerContext.trackOutOfDateItem(executableOutputFilepath, archivesToLink)
@@ -302,8 +308,9 @@ func (p *Project) Build(buildConfig denv.BuildConfig, buildTarget denv.BuildTarg
 			staticArchiver.SetupArgs()
 
 			// Archive all object files into a static library using the static archiver
-			if err := staticArchiver.Archive(compilerContext.objRelFilepaths, archiveOutputFilepath); err != nil {
-				return outOfDate, err
+			if err := staticArchiver.Archive(compilerContext.allObjRelFilepaths, archiveOutputFilepath); err != nil {
+				corepkg.LogErrorf(err, "Archiving failed for project %s", p.DevProject.Name)
+				return outOfDate, true
 			}
 
 			compilerContext.trackOutOfDateItem(archiveOutputFilepath, compilerContext.objRelFilepaths)
@@ -313,7 +320,8 @@ func (p *Project) Build(buildConfig denv.BuildConfig, buildTarget denv.BuildTarg
 	}
 
 	if err := compilerContext.saveDependencyTrackr(); err != nil {
-		return outOfDate, err
+		corepkg.LogErrorf(err, "Failed to save dependency tracker for project %s", p.DevProject.Name)
+		return outOfDate, true
 	}
 
 	if outOfDate > 0 {
@@ -321,7 +329,7 @@ func (p *Project) Build(buildConfig denv.BuildConfig, buildTarget denv.BuildTarg
 		corepkg.LogInfof("Building done ... (duration %.2f seconds)\n", seconds)
 	}
 
-	return outOfDate, nil
+	return outOfDate, false
 }
 
 func (p *Project) Flash(buildConfig denv.BuildConfig, buildTarget denv.BuildTarget, buildPath string) error {

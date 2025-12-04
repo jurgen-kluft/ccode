@@ -111,7 +111,9 @@ func ClayAppMain(pkg *denv.Package) {
 	switch command {
 	case "build":
 		ParseProjectNameAndConfig(app)
-		err = app.Build()
+		if !app.Build() {
+			err = fmt.Errorf("build failed")
+		}
 	case "build-info":
 		ParseProjectNameAndConfig(app)
 		err = app.BuildInfo()
@@ -321,14 +323,15 @@ func ParseProjectNameAndConfig(app *App) {
 	app.BuildTarget = denv.BuildTargetFromString(buildTargetStr)
 }
 
-func (a *App) Build() (err error) {
+func (a *App) Build() (success bool) {
 	// Create the build directory
 	buildPath := a.GetBuildPath(GetBuildDirname(a.BuildConfig, a.BuildTarget))
 	os.MkdirAll(buildPath+"/", os.ModePerm)
 
 	prjs, err := a.CreateProjects(a.BuildTarget, a.BuildConfig)
 	if err != nil {
-		return err
+		corepkg.LogError(err, "Failed to create projects")
+		return false
 	}
 
 	for _, prj := range prjs {
@@ -343,8 +346,10 @@ func (a *App) Build() (err error) {
 	for _, prj := range prjs {
 		if prj.DevProject.BuildType.IsLibrary() && prj.CanBuildFor(a.BuildConfig, a.BuildTarget) {
 			numberOfProjects++
-			if outOfDate, err = prj.Build(a.BuildConfig, a.BuildTarget, buildPath); err != nil {
-				return err
+			if buildOutOfDate, buildError := prj.Build(a.BuildConfig, a.BuildTarget, buildPath); buildError {
+				return false
+			} else {
+				outOfDate += buildOutOfDate
 			}
 		} else {
 			numberOfNoMatchConfigs++
@@ -379,8 +384,10 @@ func (a *App) Build() (err error) {
 	// Then build applications
 	for _, prj := range filteredProjects {
 		numberOfProjects++
-		if outOfDate, err = prj.Build(a.BuildConfig, a.BuildTarget, buildPath); err != nil {
-			return err
+		if buildOutOfDate, buildErr := prj.Build(a.BuildConfig, a.BuildTarget, buildPath); buildErr {
+			return false
+		} else {
+			outOfDate += buildOutOfDate
 		}
 	}
 
@@ -390,7 +397,7 @@ func (a *App) Build() (err error) {
 		corepkg.LogError(fmt.Errorf("!"), "No matching project configurations found")
 	}
 
-	return err
+	return true
 }
 
 func (a *App) Clean() error {

@@ -19,5 +19,7 @@ type Compiler interface {
 	// Compile takes a list of input source file paths and output object file paths
 	// The source file paths may be absolute or relative to the build directory, however
 	// the object file paths should be relative to the build directory.
-	Compile(sourceAbsFilepath []string, objRelFilepath []string) error
+	// Returns an array of booleans indicating success or failure for each file compiled,
+	// and a boolean indicating if any compilation failed.
+	Compile(sourceAbsFilepath []string, objRelFilepath []string) ([]bool, bool)
 }

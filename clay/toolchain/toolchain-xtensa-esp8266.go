@@ -83,7 +83,9 @@ func (cl *ToolchainArduinoEsp8266Compiler) SetupArgs(defines []string, includes 
 	cl.vars.Append("build.extra_flags", defines...)
 }
 
-func (cl *ToolchainArduinoEsp8266Compiler) Compile(sourceAbsFilepaths []string, objRelFilepaths []string) error {
+func (cl *ToolchainArduinoEsp8266Compiler) Compile(sourceAbsFilepaths []string, objRelFilepaths []string) ([]bool, bool) {
+	errors := 0
+	compiled := make([]bool, len(sourceAbsFilepaths))
 	for i, sourceAbsFilepath := range sourceAbsFilepaths {
 		corepkg.LogInfof("Compiling %s", filepath.Base(sourceAbsFilepath))
 
@@ -121,56 +123,6 @@ func (cl *ToolchainArduinoEsp8266Compiler) Compile(sourceAbsFilepaths []string, 
 		// Remove empty entries from compilerArgs
 		compilerArgs = slices.DeleteFunc(compilerArgs, func(s string) bool { return strings.TrimSpace(s) == "" })
 
-		// /Users/obnosis5/Library/Arduino15/packages/esp8266/tools/python3/3.7.2-post1/python3 -I /Users/obnosis5/Library/Arduino15/packages/esp8266/hardware/esp8266/3.1.2/tools/signing.py --mode header --publickey /Users/obnosis5/Documents/Arduino/sketch_apr27a/public.key --out /Users/obnosis5/Library/Caches/arduino/sketches/1C5B914ED5195AE28CD84B76EBD00CED/core/Updater_Signing.h
-		// /Users/obnosis5/Library/Arduino15/packages/esp8266/tools/xtensa-lx106-elf-gcc/3.1.0-gcc10.3-e5f9fec/bin/xtensa-lx106-elf-g++
-		// -D__ets__
-		// -DICACHE_FLASH
-		// -U__STRICT_ANSI__
-		// -D_GNU_SOURCE
-		// -DESP8266
-		// @/Users/obnosis5/Library/Caches/arduino/sketches/1C5B914ED5195AE28CD84B76EBD00CED/core/build.opt
-		// -I/Users/obnosis5/Library/Arduino15/packages/esp8266/hardware/esp8266/3.1.2/tools/sdk/include
-		// -I/Users/obnosis5/Library/Arduino15/packages/esp8266/hardware/esp8266/3.1.2/tools/sdk/lwip2/include
-		// -I/Users/obnosis5/Library/Arduino15/packages/esp8266/hardware/esp8266/3.1.2/tools/sdk/libc/xtensa-lx106-elf/include
-		// -I/Users/obnosis5/Library/Caches/arduino/sketches/1C5B914ED5195AE28CD84B76EBD00CED/core
-		// -c
-		// @/Users/obnosis5/Library/Arduino15/packages/esp8266/hardware/esp8266/3.1.2/tools/warnings/default-cppflags
-		// -Os
-		// -g
-		// -free
-		// -fipa-pta
-		// -Werror=return-type
-		// -mlongcalls
-		// -mtext-section-literals
-		// -fno-rtti
-		// -falign-functions=4
-		// -std=gnu++17
-		// -MMD
-		// -ffunction-sections
-		// -fdata-sections
-		// -fno-exceptions
-		// -DMMU_IRAM_SIZE=0x8000
-		// -DMMU_ICACHE_SIZE=0x8000
-		// -DNONOSDK22x_190703=1
-		// -DF_CPU=80000000L
-		// -DLWIP_OPEN_SRC
-		// -DTCP_MSS=536
-		// -DLWIP_FEATURES=1
-		// -DLWIP_IPV6=0
-		// -DARDUINO=10607
-		// -DARDUINO_ESP8266_GENERIC
-		// -DARDUINO_ARCH_ESP8266
-		// "-DARDUINO_BOARD=\"ESP8266_GENERIC\""
-		// "-DARDUINO_BOARD_ID=\"generic\""
-		// -DLED_BUILTIN=2
-		// -DFLASHMODE_DOUT
-		// -I/Users/obnosis5/Library/Arduino15/packages/esp8266/hardware/esp8266/3.1.2/cores/esp8266
-		// -I/Users/obnosis5/Library/Arduino15/packages/esp8266/hardware/esp8266/3.1.2/variants/generic
-		// -I/Users/obnosis5/Library/Arduino15/packages/esp8266/hardware/esp8266/3.1.2/libraries/Wire
-		// /Users/obnosis5/Library/Caches/arduino/sketches/1C5B914ED5195AE28CD84B76EBD00CED/sketch/sketch_apr27a.ino.cpp
-		// -o
-		// /Users/obnosis5/Library/Caches/arduino/sketches/1C5B914ED5195AE28CD84B76EBD00CED/sketch/sketch_apr27a.ino.cpp.o
-
 		// corepkg.LogInfof("Using compiler: %s", compilerPath)
 		// corepkg.LogInfof("Compiler args: %s", strings.Join(compilerArgs, " "))
 
@@ -179,14 +131,16 @@ func (cl *ToolchainArduinoEsp8266Compiler) Compile(sourceAbsFilepaths []string, 
 
 		if err != nil {
 			corepkg.LogInfof("Compile failed, output:\n%s", string(out))
-			return corepkg.LogErrorf(err, "Compiling failed")
-		}
-		if len(out) > 0 {
-			corepkg.LogInfof("Compile output:\n%s", string(out))
+			errors += 1
+			compiled[i] = false
+		} else {
+			if len(out) > 0 {
+				corepkg.LogInfof("Compile output:\n%s", string(out))
+			}
+			compiled[i] = true
 		}
 	}
-
-	return nil
+	return compiled, errors == 0
 }
 
 // --------------------------------------------------------------------------------------------------
