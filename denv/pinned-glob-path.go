@@ -5,6 +5,10 @@ type PinnedGlobPath struct {
 	Glob string
 }
 
+func NewPinnedGlobPath(root string, base string, sub string, glob string) PinnedGlobPath {
+	return PinnedGlobPath{PinnedPath{Root: root, Base: base, Sub: sub}, glob}
+}
+
 // func (fp PinnedGlobPath) EncodeJson(encoder *corepkg.JsonEncoder, key string) {
 // 	encoder.BeginObject(key)
 // 	{

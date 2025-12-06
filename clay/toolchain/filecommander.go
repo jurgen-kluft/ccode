@@ -4,6 +4,8 @@ import (
 	"io"
 	"os"
 	"path/filepath"
+
+	corepkg "github.com/jurgen-kluft/ccode/core"
 )
 
 // FileCommander is an interface that defines the methods for copying files
@@ -15,12 +17,12 @@ type FileCommander interface {
 	// The fileFilter function is used to determine which files to copy (true = copy, false = skip).
 	// The dirFilter function is used to determine which directories to traverse (true = traverse, false = skip).
 	// It returns slices of source and destination absolute file paths that were copied.
-	CopyDir(dir string, fileFilter func(file string) bool, dirFilter func(file string) bool) ([]string, []string, error)
+	CopyDir(srcdir string, dstsubdir string, fileFilter func(file string) bool, dirFilter func(file string) bool) (srcFiles []string, dstFiles []string, result error)
 
 	// CopyFiles copies the specified files to the build directory.
 	// The specified dir is the root directory from which the files are copied.
 	// The files slice contains the relative paths of the files to be copied.
-	CopyFiles(dir string, files []string) error
+	CopyFiles(srcdir string, srcfiles []string, dstsubdir string) error
 }
 
 // --------------------------------------------------------------------------------------------------
@@ -54,9 +56,9 @@ func (cl *BasicFileCommander) Setup(buildPath string) {
 	cl.buildPath = buildPath
 }
 
-func (cl *BasicFileCommander) CopyDir(dir string, fileFilter func(file string) bool, dirFilter func(file string) bool) (srcFiles []string, dstFiles []string, result error) {
+func (cl *BasicFileCommander) CopyDir(srcdir string, dstsubdir string, fileFilter func(file string) bool, dirFilter func(file string) bool) (srcFiles []string, dstFiles []string, result error) {
 	relFiles := []string{}
-	result = filepath.Walk(dir, func(path string, info os.FileInfo, err error) error {
+	result = filepath.Walk(srcdir, func(path string, info os.FileInfo, err error) error {
 		if err != nil {
 			return err
 		}
@@ -76,7 +78,7 @@ func (cl *BasicFileCommander) CopyDir(dir string, fileFilter func(file string) b
 		}
 
 		// Get the relative path of the file
-		relPath, err := filepath.Rel(dir, path)
+		relPath, err := filepath.Rel(srcdir, path)
 		if err != nil {
 			return err
 		}
@@ -90,7 +92,7 @@ func (cl *BasicFileCommander) CopyDir(dir string, fileFilter func(file string) b
 	}
 
 	// Now copy the collected files
-	result = cl.CopyFiles(dir, relFiles)
+	result = cl.CopyFiles(srcdir, relFiles, dstsubdir)
 
 	if result != nil {
 		return nil, nil, result
@@ -99,36 +101,45 @@ func (cl *BasicFileCommander) CopyDir(dir string, fileFilter func(file string) b
 	srcFiles = []string{}
 	dstFiles = []string{}
 	for _, relFile := range relFiles {
-		srcFiles = append(srcFiles, filepath.Join(dir, relFile))
-		dstFiles = append(dstFiles, filepath.Join(cl.buildPath, relFile))
+		srcFiles = append(srcFiles, filepath.Join(srcdir, relFile))
+		dstFiles = append(dstFiles, filepath.Join(cl.buildPath, dstsubdir, relFile))
 	}
 
 	return srcFiles, dstFiles, nil
 }
 
-func (cl *BasicFileCommander) CopyFiles(dir string, files []string) error {
-	for _, file := range files {
-		srcFile := filepath.Join(dir, file)
-		destFile := filepath.Join(cl.buildPath, srcFile)
+func (cl *BasicFileCommander) CopyFiles(srcdir string, srcfiles []string, dstsubdir string) error {
+	for _, srcFile := range srcfiles {
+		destFile := filepath.Join(cl.buildPath, dstsubdir, srcFile)
+		srcFile = filepath.Join(srcdir, srcFile)
 
 		// Open the source file
 		src, err := os.Open(srcFile)
 		if err != nil {
-			return err
+			corepkg.LogError(err, "CopyFiles", "Failed to open source file: "+srcFile)
+			continue
 		}
-		src.Close()
+		defer src.Close()
+
+		// Make sure the destination directories exist
+		err = os.MkdirAll(filepath.Dir(destFile), os.ModePerm)
+		if err != nil {
+			corepkg.LogError(err, "CopyFiles", "Failed to create destination directory for file: "+destFile)
+			continue
+		}
 
 		// Create the destination file
 		dest, err := os.Create(destFile)
 		if err != nil {
-			return err
+			corepkg.LogError(err, "CopyFiles", "Failed to create destination file: "+destFile)
+			continue
 		}
 		defer dest.Close()
 
 		// Copy the contents from source to destination
 		_, err = io.Copy(dest, src)
 		if err != nil {
-			return err
+			corepkg.LogError(err, "CopyFiles", "Failed to copy file from "+srcFile+" to "+destFile)
 		}
 	}
 	return nil

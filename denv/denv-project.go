@@ -16,7 +16,7 @@ type DevProject struct {
 	PackagePath  string
 	BuildType    BuildType
 	BuildTargets BuildTarget
-	Copy2Output  map[string]string
+	Copy2Output  map[PinnedGlobPath]string
 	SourceDirs   []PinnedGlobPath
 	Configs      []*DevConfig
 	Dependencies *DevProjectList
@@ -29,7 +29,7 @@ func NewProject(pkg *Package, name string) *DevProject {
 		PackagePath:  pkg.Path(),
 		BuildType:    BuildTypeUnknown,
 		BuildTargets: EmptyBuildTarget,
-		Copy2Output:  make(map[string]string),
+		Copy2Output:  make(map[PinnedGlobPath]string),
 		Configs:      []*DevConfig{},
 		Dependencies: NewDevProjectList(),
 	}
@@ -76,43 +76,6 @@ func FileCopy(srcpath, dstpath string) (err error) {
 
 	_, err = io.Copy(w, r)
 	return err
-}
-
-func (prj *DevProject) DoCopyToOutput(outputPath string) {
-	for src, dest := range prj.Copy2Output {
-		srcPath := filepath.Join(prj.RootPath(), prj.RepoName, src)
-		destPath := filepath.Join(outputPath, dest)
-
-		// Create destination directory if it does not exist
-		if _, err := os.Stat(destPath); os.IsNotExist(err) {
-			os.MkdirAll(destPath, os.ModePerm)
-		}
-
-		// Copy files from srcPath to destPath, preserving directory structure
-		// Use filepath.Walk to traverse the source directory
-		filepath.Walk(srcPath, func(path string, info os.FileInfo, err error) error {
-			if err != nil {
-				return err
-			}
-
-			// Determine the relative path from srcPath
-			relPath, err := filepath.Rel(srcPath, path)
-			if err != nil {
-				return err
-			}
-
-			destFilePath := filepath.Join(destPath, relPath)
-
-			if info.IsDir() {
-				// Create the directory in the destination
-				os.MkdirAll(destFilePath, os.ModePerm)
-			} else {
-				// Copy the file
-				FileCopy(path, destFilePath)
-			}
-			return nil
-		})
-	}
 }
 
 func (prj *DevProject) HasMatchingConfigForTarget(config BuildConfig, target BuildTarget) bool {
@@ -177,10 +140,9 @@ func (prj *DevProject) AddDependency(dep *DevProject) {
 	}
 }
 
-func (prj *DevProject) CopyToOutput(srcdir string, destdir string) {
-	srcdir = prj.ResolveEnvironmentVariables(srcdir)
-	destdir = prj.ResolveEnvironmentVariables(destdir)
-	prj.Copy2Output[srcdir] = destdir
+func (prj *DevProject) CopyToOutput(srcdir string, srcglob string, destdir string) {
+	pgp := NewPinnedGlobPath(prj.RootPath(), prj.RepoName, srcdir, srcglob)
+	prj.Copy2Output[pgp] = destdir
 }
 
 func (prj *DevProject) AddDependencies(deps map[string]*DevProject) {

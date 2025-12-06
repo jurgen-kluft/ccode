@@ -243,6 +243,21 @@ func (p *Project) Build(buildConfig denv.BuildConfig, buildTarget denv.BuildTarg
 	includes, defines := p.GetIncludesAndDefines(buildConfig, buildTarget)
 	projectBuildPath := p.GetBuildPath(buildPath)
 
+	if len(p.DevProject.Copy2Output) > 0 {
+		fileCommander := p.Toolchain.NewFileCommander(buildConfig, buildTarget)
+		fileCommander.Setup(projectBuildPath)
+		for srcpgp, dstsubdir := range p.DevProject.Copy2Output {
+			corepkg.LogInfof("Copying files from %q to %q\n", srcpgp.Path.String(), dstsubdir)
+			fileFilter := func(file string) bool {
+				if match, _ := filepath.Match(srcpgp.Glob, filepath.Base(file)); match {
+					return true
+				}
+				return false
+			}
+			fileCommander.CopyDir(srcpgp.Path.String(), dstsubdir, fileFilter, func(dir string) bool { return true })
+		}
+	}
+
 	compiler := p.Toolchain.NewCompiler(buildConfig, buildTarget)
 	compiler.SetupArgs(defines, includes)
 	depTrackr := p.Toolchain.NewDependencyTracker(projectBuildPath)
