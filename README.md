@@ -153,5 +153,5 @@ There are some requirements for the layout of folders inside of your repository 
 3. `source\test\cpp`: the cpp files of your unittest app
 4. `source\test\include`: the header files of your unittest app
 5. `embedded\**`: all the files that need to be auto embedded or are used for code generation 
-   - binary file to .cpp `C array`
+   - any file content (binary or text) to .cpp `C array`
    - C++ enum code generation (from `.json` file)

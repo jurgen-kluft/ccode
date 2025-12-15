@@ -13,7 +13,6 @@ import (
 )
 
 // constants used
-const ebcdicOffset = 0x40
 const upper = true
 const columns = -1
 const group = -1
@@ -524,11 +523,6 @@ func fileNameWithoutExtension(fileName string) string {
 }
 
 func WriteEmbedded() {
-
-	// Collect all files in 'embedded' folder.
-	// Anything under the 'embedded' folder will be considered to be embedded.
-	// The directory hierarchy will be put over the root, e.g. :
-	// embedded/source/main/cpp/data.txt -> source/main/cpp/data.cpp
 
 	root_dir, err := os.Getwd()
 	if err != nil {
