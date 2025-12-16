@@ -59,7 +59,7 @@ func (cm *ClosestMatch) Add(possible []string) {
 	cm.mux.Unlock()
 }
 
-func (cm *ClosestMatch) worker(id int, jobs <-chan job, results chan<- result) {
+func (cm *ClosestMatch) worker(jobs <-chan job, results chan<- result) {
 	for j := range jobs {
 		m := make(map[string]int)
 		cm.mux.Lock()
@@ -94,7 +94,7 @@ func (cm *ClosestMatch) match(searchWord string) map[string]int {
 	workers := 8
 
 	for w := 1; w <= workers; w++ {
-		go cm.worker(w, jobs, results)
+		go cm.worker(jobs, results)
 	}
 
 	for substring := range searchSubstrings {
@@ -106,11 +106,7 @@ func (cm *ClosestMatch) match(searchWord string) map[string]int {
 	for a := 1; a <= searchSubstringsLen; a++ {
 		r := <-results
 		for key := range r.m {
-			if _, ok := m[key]; ok {
-				m[key] += r.m[key]
-			} else {
-				m[key] = r.m[key]
-			}
+			m[key] += r.m[key]
 		}
 	}
 
@@ -283,15 +279,16 @@ func (cm *ClosestMatch) AccuracyMutatingLetters() float64 {
 		letters := "abcdefghijklmnopqrstuvwxyz"
 
 		choice := rand.Intn(3)
-		if choice == 0 {
+		switch choice {
+		case 0:
 			// replace random letter
 			ii := rand.Intn(len(testString))
 			testString = testString[:ii] + string(letters[rand.Intn(len(letters))]) + testString[ii+1:]
-		} else if choice == 1 {
+		case 1:
 			// delete random letter
 			ii := rand.Intn(len(testString))
 			testString = testString[:ii] + testString[ii+1:]
-		} else {
+		default:
 			// add random letter
 			ii := rand.Intn(len(testString))
 			testString = testString[:ii] + string(letters[rand.Intn(len(letters))]) + testString[ii:]
