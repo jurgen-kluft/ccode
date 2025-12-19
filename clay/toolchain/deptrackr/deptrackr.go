@@ -14,6 +14,10 @@ import (
 	corepkg "github.com/jurgen-kluft/ccode/core"
 )
 
+const (
+	cDeptrackrVerbose = false
+)
+
 // Golang prototype for a dependency tracker database, the core is the hash shard structure.
 // Mostly this is about adding items to the database and should be very efficient to implement
 // in a language like C or C++ where we have virtual memory and even mmapped file IO.
@@ -37,6 +41,21 @@ const (
 	StateOutOfDate State = 2
 	StateError     State = 3
 )
+
+func (s State) String() string {
+	switch s {
+	case StateNone:
+		return "None"
+	case StateUpToDate:
+		return "UpToDate"
+	case StateOutOfDate:
+		return "OutOfDate"
+	case StateError:
+		return "Error"
+	default:
+		return "Unknown"
+	}
+}
 
 type trackr struct {
 	hasher               hash.Hash
@@ -226,7 +245,7 @@ func (d *trackr) readArray(signature string, f *os.File) (byteArray []byte, err 
 	_ = d.scratchBuffer.ReadInt() // Reserved, not used
 	_ = d.scratchBuffer.ReadInt() // Reserved, not used
 	lastSignatureHash := d.scratchBuffer.ReadNBytes(8)
-	if bytes.Compare(signatureHash[:8], firstSignatureHash) != 0 || bytes.Compare(signatureHash[(20-8):], lastSignatureHash) != 0 {
+	if !bytes.Equal(signatureHash[:8], firstSignatureHash) || !bytes.Equal(signatureHash[(20-8):], lastSignatureHash) {
 		return nil, fmt.Errorf("signature mismatch for '%s'", signature)
 	}
 
@@ -502,6 +521,15 @@ func newDefaultTracker(storageFilepath string, signature string) *trackr {
 	return d
 }
 
+func newDefaultTrackerOnError(storageFilepath string, signature string) *trackr {
+	if cDeptrackrVerbose {
+		fmt.Printf("Error loading dependency tracker %s\n", storageFilepath)
+	}
+	d := constructTrackr(storageFilepath, signature, 8, 8)
+	d.readonly = true // Set the trackr to read-only mode
+	return d
+}
+
 func loadTrackr(storageFilepath string, signature string) *trackr {
 	// If "/name.main.db" exists and "/name.point.db" then
 	// delete "/name.main.db" and rename "/name.point.db" to "/name.main.db".
@@ -523,14 +551,14 @@ func loadTrackr(storageFilepath string, signature string) *trackr {
 
 	// On any error, we just create a new database
 	if err != nil {
-		return newDefaultTracker(storageFilepath, signature)
+		return newDefaultTrackerOnError(storageFilepath, signature)
 	}
 
 	// Open the database file
 	dbFile, err := os.Open(mainDbFilepath)
 	if err != nil {
 		// No database exists on disk, so we just create an empty one
-		d := newDefaultTracker(storageFilepath, signature)
+		d := newDefaultTrackerOnError(storageFilepath, signature)
 		return d
 	}
 	defer dbFile.Close()
@@ -546,7 +574,7 @@ func loadTrackr(storageFilepath string, signature string) *trackr {
 	// Read the header
 	//if err := d.scratchBuffer.ReadFromFile(headerSize, dbFile); err != nil {
 	if header, err := corepkg.FileRead(dbFile, headerSize); err != nil {
-		return newDefaultTracker(storageFilepath, signature)
+		return newDefaultTrackerOnError(storageFilepath, signature)
 	} else {
 		d.scratchBuffer.ResetCursor()
 		d.scratchBuffer.WriteBytes(header)
@@ -555,8 +583,8 @@ func loadTrackr(storageFilepath string, signature string) *trackr {
 
 	// The first 10 bytes is the first 10 bytes of the SHA1 of the signature
 	readSignatureHash := d.scratchBuffer.ReadNBytes(10)
-	if bytes.Compare(signatureHash[:10], readSignatureHash) != 0 {
-		return newDefaultTracker(storageFilepath, signature)
+	if !bytes.Equal(signatureHash[:10], readSignatureHash) {
+		return newDefaultTrackerOnError(storageFilepath, signature)
 	}
 
 	numItems := d.scratchBuffer.ReadInt()
@@ -565,8 +593,8 @@ func loadTrackr(storageFilepath string, signature string) *trackr {
 
 	// The last 10 bytes are the last 10 bytes of the SHA1 of the signature
 	readSignatureHash = d.scratchBuffer.ReadNBytes(10)
-	if bytes.Compare(signatureHash[10:], readSignatureHash) != 0 {
-		return newDefaultTracker(storageFilepath, signature)
+	if !bytes.Equal(signatureHash[10:], readSignatureHash) {
+		return newDefaultTrackerOnError(storageFilepath, signature)
 	}
 
 	var newItemIdHash []byte
@@ -588,64 +616,64 @@ func loadTrackr(storageFilepath string, signature string) *trackr {
 	var newData []byte
 
 	if newItemIdHash, err = d.readByteArray("item.id.hash.array", dbFile); err != nil {
-		return newDefaultTracker(storageFilepath, signature)
+		return newDefaultTrackerOnError(storageFilepath, signature)
 	}
 	if newItemChangeHash, err = d.readByteArray("item.change.hash.array", dbFile); err != nil {
-		return newDefaultTracker(storageFilepath, signature)
+		return newDefaultTrackerOnError(storageFilepath, signature)
 	}
 	if newItemIdFlags, err = d.readByteArray("item.id.flags.array", dbFile); err != nil {
-		return newDefaultTracker(storageFilepath, signature)
+		return newDefaultTrackerOnError(storageFilepath, signature)
 	}
 	if newItemChangeFlags, err = d.readByteArray("item.change.flags.array", dbFile); err != nil {
-		return newDefaultTracker(storageFilepath, signature)
+		return newDefaultTrackerOnError(storageFilepath, signature)
 	}
 	if newItemDepsStart, err = d.readInt32Array("item.deps.start.array", dbFile); err != nil {
-		return newDefaultTracker(storageFilepath, signature)
+		return newDefaultTrackerOnError(storageFilepath, signature)
 	}
 	if newItemDepsCount, err = d.readInt32Array("item.deps.count.array", dbFile); err != nil {
-		return newDefaultTracker(storageFilepath, signature)
+		return newDefaultTrackerOnError(storageFilepath, signature)
 	}
 	if newItemIdDataOffset, err = d.readInt32Array("item.id.data.offset.array", dbFile); err != nil {
-		return newDefaultTracker(storageFilepath, signature)
+		return newDefaultTrackerOnError(storageFilepath, signature)
 	}
 	if newItemIdDataSize, err = d.readInt32Array("item.id.data.size.array", dbFile); err != nil {
-		return newDefaultTracker(storageFilepath, signature)
+		return newDefaultTrackerOnError(storageFilepath, signature)
 	}
 	if newItemExtraDataOffset, err = d.readInt32Array("item.extra.data.offset.array", dbFile); err != nil {
-		return newDefaultTracker(storageFilepath, signature)
+		return newDefaultTrackerOnError(storageFilepath, signature)
 	}
 	if newItemExtraDataSize, err = d.readByteArray("item.extra.data.size.array", dbFile); err != nil {
-		return newDefaultTracker(storageFilepath, signature)
+		return newDefaultTrackerOnError(storageFilepath, signature)
 	}
 	if newItemChangeDataOffset, err = d.readInt32Array("item.change.data.offset.array", dbFile); err != nil {
-		return newDefaultTracker(storageFilepath, signature)
+		return newDefaultTrackerOnError(storageFilepath, signature)
 	}
 	if newItemChangeDataSize, err = d.readByteArray("item.change.data.size.array", dbFile); err != nil {
-		return newDefaultTracker(storageFilepath, signature)
+		return newDefaultTrackerOnError(storageFilepath, signature)
 	}
 	if newDeps, err = d.readInt32Array("item.deps.array", dbFile); err != nil {
-		return newDefaultTracker(storageFilepath, signature)
+		return newDefaultTrackerOnError(storageFilepath, signature)
 	}
 	if newData, err = d.readByteArray("item.data.array", dbFile); err != nil {
-		return newDefaultTracker(storageFilepath, signature)
+		return newDefaultTrackerOnError(storageFilepath, signature)
 	}
 
 	if newShardOffsets, err = d.readInt32Array("shard.offsets.array", dbFile); err != nil {
-		return newDefaultTracker(storageFilepath, signature)
+		return newDefaultTrackerOnError(storageFilepath, signature)
 	}
 	if newShardSizes, err = d.readInt16Array("shard.sizes.array", dbFile); err != nil {
-		return newDefaultTracker(storageFilepath, signature)
+		return newDefaultTrackerOnError(storageFilepath, signature)
 	}
 	// if newDirtyFlags, err = d.readByteArray("shard.dirty.flags.array", dbFile); err != nil {
-	// 	return newDefaultTracker(storageFilepath, signature)
+	// 	return newDefaultTrackerOnError(storageFilepath, signature)
 	// }
 	if newShards, err = d.readInt32Array("shard.items.array", dbFile); err != nil {
-		return newDefaultTracker(storageFilepath, signature)
+		return newDefaultTrackerOnError(storageFilepath, signature)
 	}
 
 	// Initialize the trackr with the loaded data
 	d.readonly = true                                // Set the trackr to read-only mode after loading
-	d.itemState = make([]State, numItems, numItems)  // State of the item (used in Query, not loaded/saved)
+	d.itemState = make([]State, numItems)            // State of the item (used in Query, not loaded/saved)
 	d.ItemIdHash = newItemIdHash                     // Item Id hash
 	d.ItemChangeHash = newItemChangeHash             // Item Change hash
 	d.ItemIdFlags = newItemIdFlags                   // Item Id flags
@@ -668,9 +696,12 @@ func loadTrackr(storageFilepath string, signature string) *trackr {
 	d.Data = newData                                 // Data for Id and Change
 
 	if err := d.validate(); err != nil {
-		return newDefaultTracker(storageFilepath, signature)
+		return newDefaultTrackerOnError(storageFilepath, signature)
 	}
 
+	if cDeptrackrVerbose {
+		fmt.Printf("Loaded dependency tracker %s with %d items\n", storageFilepath, numItems)
+	}
 	return d
 }
 
@@ -883,12 +914,22 @@ func (d *trackr) AddItemWithExtraData(item ItemToAdd, itemExtraData []byte, deps
 func (d *trackr) queryItem(itemHash []byte, verifyAll bool, verifyCb verifyItemIndexFunc) (State, error) {
 	itemIndex := d.DoesItemExistInDb(itemHash)
 	if itemIndex == NilIndex {
+		if cDeptrackrVerbose {
+			if len(d.ItemIdFlags) == 0 {
+				fmt.Println("DB is empty")
+			} else {
+				fmt.Printf("Item %x does not exist in DB -> out of date\n", itemHash)
+			}
+		}
 		return StateOutOfDate, nil // item does not exist, so it is out of date
 	}
 
 	// If the item is already marked as up to date, we can return immediately
 	itemState := d.itemState[itemIndex]
 	if itemState == StateUpToDate || itemState == StateOutOfDate {
+		if cDeptrackrVerbose {
+			fmt.Println("Item state already known: ", itemState)
+		}
 		return itemState, nil
 	}
 
@@ -897,6 +938,9 @@ func (d *trackr) queryItem(itemHash []byte, verifyAll bool, verifyCb verifyItemI
 
 	outOfDateCount := 0
 	if itemState == StateOutOfDate {
+		if cDeptrackrVerbose {
+			fmt.Println("Item is verified to be out of date")
+		}
 		outOfDateCount++
 	}
 

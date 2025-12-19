@@ -243,6 +243,11 @@ func (p *Project) Build(buildConfig denv.BuildConfig, buildTarget denv.BuildTarg
 	includes, defines := p.GetIncludesAndDefines(buildConfig, buildTarget)
 	projectBuildPath := p.GetBuildPath(buildPath)
 
+	compiler := p.Toolchain.NewCompiler(buildConfig, buildTarget)
+	compiler.SetupArgs(defines, includes)
+	depTrackr := p.Toolchain.NewDependencyTracker(projectBuildPath)
+	compilerContext := newCompileContext(projectBuildPath, compiler, depTrackr, len(p.SourceFiles))
+
 	if len(p.DevProject.Copy2Output) > 0 {
 		fileCommander := p.Toolchain.NewFileCommander(buildConfig, buildTarget)
 		fileCommander.Setup(projectBuildPath)
@@ -254,14 +259,10 @@ func (p *Project) Build(buildConfig denv.BuildConfig, buildTarget denv.BuildTarg
 				}
 				return false
 			}
+			// TODO pass on the deptrackr, to avoid unnecessary copies
 			fileCommander.CopyDir(srcpgp.Path.String(), dstsubdir, fileFilter, func(dir string) bool { return true })
 		}
 	}
-
-	compiler := p.Toolchain.NewCompiler(buildConfig, buildTarget)
-	compiler.SetupArgs(defines, includes)
-	depTrackr := p.Toolchain.NewDependencyTracker(projectBuildPath)
-	compilerContext := newCompileContext(projectBuildPath, compiler, depTrackr, len(p.SourceFiles))
 
 	buildStartTime := time.Now()
 
@@ -271,9 +272,12 @@ func (p *Project) Build(buildConfig denv.BuildConfig, buildTarget denv.BuildTarg
 		compileOk := compilerContext.compile()
 		compilerContext.updateDependencyTracker()
 		if !compileOk {
+			// TODO save the dependency tracker even on failure?
 			corepkg.LogErrorf(nil, "Compilation failed for project %s", p.DevProject.Name)
 			return outOfDate, true
 		}
+	} else {
+		compilerContext.updateDependencyTracker()
 	}
 
 	staticArchiver := p.Toolchain.NewArchiver(toolchain.ArchiverTypeStatic, buildConfig, buildTarget)
@@ -282,7 +286,7 @@ func (p *Project) Build(buildConfig denv.BuildConfig, buildTarget denv.BuildTarg
 		linker := p.Toolchain.NewLinker(buildConfig, buildTarget)
 		linker.SetupArgs([]string{}, []string{})
 
-		executableOutputFilepath := p.GetOutputFilepath(buildPath, linker.LinkedFilepath(p.DevProject.Name))
+		executableOutputFilepath := linker.LinkedFilepath(filepath.Join(projectBuildPath, p.DevProject.Name))
 
 		if outOfDate > 0 || !compilerContext.queryItem(executableOutputFilepath) {
 			if outOfDate == 0 {
@@ -306,6 +310,10 @@ func (p *Project) Build(buildConfig denv.BuildConfig, buildTarget denv.BuildTarg
 				return outOfDate, true
 			}
 
+			// Make sure we also track the object files as dependencies for the executable
+			for _, objRelFilepath := range compilerContext.allObjRelFilepaths {
+				archivesToLink = append(archivesToLink, objRelFilepath)
+			}
 			compilerContext.trackOutOfDateItem(executableOutputFilepath, archivesToLink)
 		} else {
 			compilerContext.trackUpToDateItem(executableOutputFilepath)

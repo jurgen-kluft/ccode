@@ -207,8 +207,15 @@ func (d *depFileTracker) QueryItem(item string) bool {
 				srcFileInfo, err := os.Stat(string(itemIdData))
 				if err == nil {
 					binary.LittleEndian.PutUint64(modTimeBytes, uint64(srcFileInfo.ModTime().Unix()))
-					if bytes.Compare(modTimeBytes, itemChangeData) == 0 {
+					if bytes.Equal(modTimeBytes, itemChangeData) {
 						return StateUpToDate
+					}
+					if cDeptrackrVerbose {
+						fmt.Printf("File %q is out of date\n", string(itemIdData))
+					}
+				} else {
+					if cDeptrackrVerbose {
+						fmt.Printf("File %q does not exist\n", string(itemIdData))
 					}
 				}
 				return StateOutOfDate
