@@ -251,23 +251,27 @@ func (t *ToolchainDarwinClangDynamicArchiverv2) Archive(inputObjectFilepaths []s
 // Linker
 
 type ToolchainDarwinClangLinkerv2 struct {
-	toolChain   *DarwinClangv2
-	buildConfig denv.BuildConfig
-	buildTarget denv.BuildTarget
-	linkerPath  string
-	linkerArgs  *corepkg.Arguments
-	vars        *corepkg.Vars
-	frameworks  []string
+	toolChain    *DarwinClangv2
+	buildConfig  denv.BuildConfig
+	buildTarget  denv.BuildTarget
+	linkerPath   string
+	linkerArgs   *corepkg.Arguments
+	vars         *corepkg.Vars
+	frameworks   []string
+	libraryFiles []string
 }
 
 func (l *DarwinClangv2) NewLinker(buildConfig denv.BuildConfig, buildTarget denv.BuildTarget) Linker {
 	args := corepkg.NewArguments(512)
 	return &ToolchainDarwinClangLinkerv2{
-		toolChain:   l,
-		buildConfig: buildConfig,
-		buildTarget: buildTarget,
-		vars:        corepkg.NewVars(corepkg.VarsFormatCurlyBraces),
-		linkerArgs:  args,
+		toolChain:    l,
+		buildConfig:  buildConfig,
+		buildTarget:  buildTarget,
+		linkerPath:   "",
+		linkerArgs:   args,
+		vars:         corepkg.NewVars(corepkg.VarsFormatCurlyBraces),
+		frameworks:   []string{},
+		libraryFiles: []string{},
 	}
 }
 
@@ -283,8 +287,12 @@ func (l *ToolchainDarwinClangLinkerv2) SetupArgs(libraryPaths []string, libraryF
 		libraryFiles[i] = "-l" + libFile
 	}
 
-	l.vars.Set("library.paths", libraryPaths...)
-	l.vars.Set("library.files", libraryFiles...)
+	l.vars.Prepend("library.paths", libraryPaths...)
+	l.libraryFiles = append(l.libraryFiles, libraryFiles...)
+
+	// Adding ncurses library ?
+	// TODO fix this properly later
+	l.libraryFiles = append(l.libraryFiles, "-lncurses")
 
 	if linker_args, ok := l.toolChain.Vars.Get(`recipe.link.pattern`); ok {
 		l.linkerPath = linker_args[0]
@@ -308,6 +316,9 @@ func (l *ToolchainDarwinClangLinkerv2) Link(inputObjectsAbsFilepaths, inputArchi
 	linkerArgs = append(linkerArgs, "-o", l.LinkedFilepath(outputAppRelFilepathNoExt))
 	linkerArgs = append(linkerArgs, inputObjectsAbsFilepaths...)
 	linkerArgs = append(linkerArgs, inputArchivesAbsFilepaths...)
+	for _, libFile := range l.libraryFiles {
+		linkerArgs = append(linkerArgs, libFile)
+	}
 
 	corepkg.LogInff("Linking (%s) %s", l.buildConfig.String(), filepath.Base(outputAppRelFilepathNoExt))
 
