@@ -939,7 +939,10 @@ func (d *trackr) queryItem(itemHash []byte, verifyAll bool, verifyCb verifyItemI
 	outOfDateCount := 0
 	if itemState == StateOutOfDate {
 		if cDeptrackrVerbose {
-			fmt.Println("Item is verified to be out of date")
+			itemIdDataOffset := d.ItemIdDataOffset[itemIndex]
+			itemIdDataSize := d.ItemIdDataSize[itemIndex]
+			itemIdData := d.Data[itemIdDataOffset : itemIdDataOffset+itemIdDataSize]
+			fmt.Printf("Item %s is verified to be out of date\n", string(itemIdData))
 		}
 		outOfDateCount++
 	}

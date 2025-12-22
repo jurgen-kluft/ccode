@@ -259,7 +259,7 @@ func Find(winAppPlatform WinAppPlatform) (WindowsSDKs, error) {
 	if err != nil {
 		return nil, err
 	}
-	fmt.Printf("Detected Windows SDK installation folder: %s\n", winsdkDir)
+	// fmt.Printf("Detected Windows SDK installation folder: %s\n", winsdkDir)
 
 	winsdkVersions := []string{}
 
@@ -279,7 +279,7 @@ func Find(winAppPlatform WinAppPlatform) (WindowsSDKs, error) {
 			testPath := filepath.Join(winsdkDir, "Include", winsdkVersion, "um", checkFile)
 			if corepkg.FileExists(testPath) {
 				winsdkVersions = append(winsdkVersions, winsdkVersion)
-				fmt.Printf("Detected Windows SDK version: %s\n", winsdkVersion)
+				//fmt.Printf("Detected Windows SDK version: %s\n", winsdkVersion)
 			}
 		}
 	}

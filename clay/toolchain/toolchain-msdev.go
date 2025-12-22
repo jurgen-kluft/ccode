@@ -28,6 +28,11 @@ func (t *WinMsdev) NewFileCommander(buildConfig denv.BuildConfig, buildTarget de
 	return &BasicFileCommander{}
 }
 
+func (t *WinMsdev) ChangeFileExtension(_filepath string, newExt string) string {
+	ext := filepath.Ext(_filepath)
+	return strings.TrimSuffix(_filepath, ext) + newExt
+}
+
 // --------------------------------------------------------------------------------------------------
 // --------------------------------------------------------------------------------------------------
 // Microsoft Visual Studio C/C++ Compiler
@@ -132,11 +137,6 @@ func (cl *WinMsdevCompiler) SetupArgs(projectName string, buildPath string, _def
 	}
 }
 
-func (cl *WinMsdevCompiler) ChangeFileExtension(_filepath string, newExt string) string {
-	ext := filepath.Ext(_filepath)
-	return strings.TrimSuffix(_filepath, ext) + newExt
-}
-
 func (cl *WinMsdevCompiler) Compile(sourceAbsFilepaths []string, objRelFilepaths []string) ([]bool, bool) {
 	errors := 0
 	compiled := make([]bool, len(sourceAbsFilepaths))
@@ -152,7 +152,7 @@ func (cl *WinMsdevCompiler) Compile(sourceAbsFilepaths []string, objRelFilepaths
 		}
 
 		compilerArgs = append(compilerArgs, "/sourceDependencies")
-		compilerArgs = append(compilerArgs, cl.ChangeFileExtension(objRelFilepaths[s], ".json"))
+		compilerArgs = append(compilerArgs, cl.toolChain.ChangeFileExtension(objRelFilepaths[s], ".json"))
 
 		compilerArgs = append(compilerArgs, "/Fo"+objRelFilepaths[s])
 
@@ -310,23 +310,23 @@ func (l *WinMsdevLinker) SetupArgs(libraryPaths []string, libraryFiles []string)
 	}
 }
 
-func (l *WinMsdevLinker) Link(inputObjectsAbsFilepaths, inputArchivesAbsFilepaths []string, outputAppRelFilepathNoExt string) error {
+func (l *WinMsdevLinker) Link(inputObjectsAbsFilepaths, inputArchivesAbsFilepaths []string, outputAppRelFilepath string) error {
 
 	linkerPath := l.linkerPath
 	linkerArgs := l.linkerArgs.Args
 
 	// TODO would like this to be part of the resolve step
-	linkerArgs = append(linkerArgs, "/MAP:"+outputAppRelFilepathNoExt+".map")
-	linkerArgs = append(linkerArgs, "/OUT:"+l.LinkedFilepath(outputAppRelFilepathNoExt))
+	linkerArgs = append(linkerArgs, "/MAP:"+l.toolChain.ChangeFileExtension(outputAppRelFilepath, ".map"))
+	linkerArgs = append(linkerArgs, "/OUT:"+outputAppRelFilepath)
 	linkerArgs = append(linkerArgs, inputObjectsAbsFilepaths...)
 	linkerArgs = append(linkerArgs, inputArchivesAbsFilepaths...)
 	// for _, libFile := range l.libraryFiles {
 	// 	linkerArgs = append(linkerArgs, libFile)
 	// }
 
-	corepkg.LogInff("Linking (%s) %s", l.buildConfig.String(), filepath.Base(outputAppRelFilepathNoExt))
+	corepkg.LogInff("Linking (%s) %s", l.buildConfig.String(), filepath.Base(outputAppRelFilepath))
 
-	corepkg.LogInfof("Linker command: %s %s", linkerPath, strings.Join(linkerArgs, " "))
+	// corepkg.LogInfof("Linker command: %s %s", linkerPath, strings.Join(linkerArgs, " "))
 
 	cmd := exec.Command(linkerPath, linkerArgs...)
 	cmd.Env = l.toolChain.Env

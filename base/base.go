@@ -54,7 +54,7 @@ func Init() bool {
 		case "darwin":
 			cdev = "clay"
 		case "windows":
-			cdev = "vs2022"
+			cdev = "clay"
 		}
 	}
 
