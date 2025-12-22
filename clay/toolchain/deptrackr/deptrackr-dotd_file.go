@@ -258,7 +258,7 @@ func (d *depFileTracker) QueryItemWithExtraData(item string, data []byte) bool {
 					srcFileInfo, err := os.Stat(string(itemIdData))
 					if err == nil {
 						binary.LittleEndian.PutUint64(modTimeBytes, uint64(srcFileInfo.ModTime().Unix()))
-						if bytes.Compare(modTimeBytes, itemChangeData) == 0 {
+						if bytes.Equal(modTimeBytes, itemChangeData) {
 							return StateUpToDate
 						}
 					}
