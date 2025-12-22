@@ -28,7 +28,7 @@ func TestWindowsSDK(t *testing.T) {
 				t.Fatalf("Windows SDK include path does not exist: %s", incPath)
 			}
 		}
-		for _, libPath := range sdk.Layout.Libs {
+		for _, libPath := range sdk.Layout.LibPaths {
 			if !DoesDirExist(libPath) {
 				t.Fatalf("Windows SDK lib path does not exist: %s", libPath)
 			}

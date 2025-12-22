@@ -12,17 +12,17 @@ import (
 type WindowsSdkLayout struct {
 	Bin      string
 	Includes []string
-	Libs     []string
+	LibPaths []string
 }
 
-var preWin8SdkDirs = WindowsSdkLayout{Bin: "bin", Includes: []string{"include"}, Libs: []string{"lib"}}
-var win8SdkDirs = WindowsSdkLayout{Bin: "bin", Includes: []string{"include"}, Libs: []string{"lib\\win8\\um"}}
-var win81SdkDirs = WindowsSdkLayout{Bin: "bin", Includes: []string{"include"}, Libs: []string{"lib\\win6.3\\um"}}
-var preWin8SdkDirsx86 = WindowsSdkLayout{Bin: "", Includes: []string{}, Libs: []string{}}
-var preWin8SdkDirsx64 = WindowsSdkLayout{Bin: "x64", Includes: []string{}, Libs: []string{"x64"}}
-var postWin8Sdkx86 = WindowsSdkLayout{Bin: "x86", Includes: []string{"shared", "um"}, Libs: []string{"x86"}}
-var postWin8Sdkx64 = WindowsSdkLayout{Bin: "x64", Includes: []string{"shared", "um"}, Libs: []string{"x64"}}
-var postWin8SdkArm = WindowsSdkLayout{Bin: "arm", Includes: []string{"shared", "um"}, Libs: []string{"arm"}}
+var preWin8SdkDirs = WindowsSdkLayout{Bin: "bin", Includes: []string{"include"}, LibPaths: []string{"lib"}}
+var win8SdkDirs = WindowsSdkLayout{Bin: "bin", Includes: []string{"include"}, LibPaths: []string{"lib\\win8\\um"}}
+var win81SdkDirs = WindowsSdkLayout{Bin: "bin", Includes: []string{"include"}, LibPaths: []string{"lib\\win6.3\\um"}}
+var preWin8SdkDirsx86 = WindowsSdkLayout{Bin: "", Includes: []string{}, LibPaths: []string{}}
+var preWin8SdkDirsx64 = WindowsSdkLayout{Bin: "x64", Includes: []string{}, LibPaths: []string{"x64"}}
+var postWin8Sdkx86 = WindowsSdkLayout{Bin: "x86", Includes: []string{"shared", "um"}, LibPaths: []string{"x86"}}
+var postWin8Sdkx64 = WindowsSdkLayout{Bin: "x64", Includes: []string{"shared", "um"}, LibPaths: []string{"x64"}}
+var postWin8SdkArm = WindowsSdkLayout{Bin: "arm", Includes: []string{"shared", "um"}, LibPaths: []string{"arm"}}
 
 func getPostWin8Sdk(arch WinSupportedArch) *WindowsSdkLayout {
 	switch arch {
@@ -86,8 +86,8 @@ func getPreWin10Sdk(sdkVersion string, targetArch WinSupportedArch) (string, Win
 		result.Includes = append(result.Includes, sdkRoot+sdkDirBase.Includes[0]+"\\"+includeDir)
 	}
 
-	result.Libs = make([]string, 0, len(sdkDirBase.Libs)+len(sdkDir.Libs))
-	result.Libs = append(result.Libs, sdkRoot+sdkDirBase.Libs[0]+"\\"+sdkDir.Libs[0])
+	result.LibPaths = make([]string, 0, len(sdkDirBase.LibPaths)+len(sdkDir.LibPaths))
+	result.LibPaths = append(result.LibPaths, sdkRoot+sdkDirBase.LibPaths[0]+"\\"+sdkDir.LibPaths[0])
 
 	// Windows 10 changed CRT to be split between Windows SDK and VC.
 	// It appears that when targeting pre-win10 with VS2015 you should always use
@@ -124,10 +124,10 @@ func getWin10Sdk(sdkVersion string, targetArch WinSupportedArch) (string, Window
 	result.Includes = append(result.Includes, sdkDirBaseInclude+"ucrt")
 	result.Includes = append(result.Includes, sdkDirBaseInclude+"um")
 
-	result.Libs = make([]string, 0, len(postWin8Sdk.Libs))
+	result.LibPaths = make([]string, 0, len(postWin8Sdk.LibPaths))
 	sdkDirBaseLib := sdkRoot + "Lib\\" + sdkVersion + "\\"
-	result.Libs = append(result.Libs, sdkDirBaseLib+"ucrt\\"+postWin8Sdk.Libs[0])
-	result.Libs = append(result.Libs, sdkDirBaseLib+"um\\"+postWin8Sdk.Libs[0])
+	result.LibPaths = append(result.LibPaths, sdkDirBaseLib+"ucrt\\"+postWin8Sdk.LibPaths[0])
+	result.LibPaths = append(result.LibPaths, sdkDirBaseLib+"um\\"+postWin8Sdk.LibPaths[0])
 
 	return sdkRoot, result, nil
 }
@@ -204,7 +204,7 @@ func (w *WindowsSDK) Print() {
 	}
 
 	fmt.Println("Library Directories:")
-	for _, libDir := range w.Layout.Libs {
+	for _, libDir := range w.Layout.LibPaths {
 		fmt.Printf("  %s\n", libDir)
 	}
 

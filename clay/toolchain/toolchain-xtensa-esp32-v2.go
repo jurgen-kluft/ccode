@@ -149,7 +149,7 @@ func (cl *ToolchainArduinoEsp32Compilerv2) DepFilepath(objRelFilepath string) st
 	return objRelFilepath + ".d"
 }
 
-func (cl *ToolchainArduinoEsp32Compilerv2) SetupArgs(defines []string, includes []string) {
+func (cl *ToolchainArduinoEsp32Compilerv2) SetupArgs(projectName string, buildPath string, defines []string, includes []string) {
 	for i, inc := range includes {
 		includes[i] = "-I" + inc
 	}

@@ -59,7 +59,7 @@ func (cl *ToolchainDarwinClangCompilerv2) DepFilepath(objRelFilepath string) str
 	return objRelFilepath + ".d"
 }
 
-func (cl *ToolchainDarwinClangCompilerv2) SetupArgs(_defines []string, _includes []string) {
+func (cl *ToolchainDarwinClangCompilerv2) SetupArgs(projectName string, buildPath string, _defines []string, _includes []string) {
 	for i, inc := range _includes {
 		if !strings.HasPrefix(inc, "-I") {
 			_includes[i] = "-I" + inc
@@ -122,6 +122,8 @@ func (cl *ToolchainDarwinClangCompilerv2) Compile(sourceAbsFilepaths []string, o
 		// TODO would like this to be part of the resolve step
 		compilerArgs = append(compilerArgs, "-o", objRelFilepaths[i])
 		compilerArgs = append(compilerArgs, sourceAbsFilepath)
+
+		//fmt.Printf("Compiler path %s and args %v\n", compilerPath, compilerArgs)
 
 		cmd := exec.Command(compilerPath, compilerArgs...)
 

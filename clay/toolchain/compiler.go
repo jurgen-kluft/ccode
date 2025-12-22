@@ -14,7 +14,7 @@ type Compiler interface {
 
 	// SetupArgs prepares the arguments for the compiler
 	// It should be called before using the Compile method.
-	SetupArgs(defines []string, includes []string)
+	SetupArgs(projectName string, buildPath string, defines []string, includes []string)
 
 	// Compile takes a list of input source file paths and output object file paths
 	// The source file paths may be absolute or relative to the build directory, however

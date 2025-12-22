@@ -109,6 +109,7 @@ func (p *Project) GetConfig(buildConfig denv.BuildConfig) *denv.DevConfig {
 
 type CompileContext struct {
 	buildPath          string
+	toolchain          toolchain.Environment
 	compiler           toolchain.Compiler
 	depTrackr          deptrackr.FileTrackr
 	srcFilesOutOfDate  []SourceFile
@@ -119,9 +120,18 @@ type CompileContext struct {
 	allObjRelFilepaths []string
 }
 
-func newCompileContext(buildPath string, compiler toolchain.Compiler, depTrackr deptrackr.FileTrackr, numSourceFiles int) *CompileContext {
+func newCompileContext(buildPath string, project *Project, buildConfig denv.BuildConfig, buildTarget denv.BuildTarget) *CompileContext {
+	includes, defines := project.GetIncludesAndDefines(buildConfig, buildTarget)
+
+	projectBuildPath := project.GetBuildPath(buildPath)
+	compiler := project.Toolchain.NewCompiler(buildConfig, buildTarget)
+	compiler.SetupArgs(project.DevProject.Name, projectBuildPath, defines, includes)
+	depTrackr := project.Toolchain.NewDependencyTracker(projectBuildPath)
+	numSourceFiles := len(project.SourceFiles)
+
 	return &CompileContext{
-		buildPath:          buildPath,
+		buildPath:          projectBuildPath,
+		toolchain:          project.Toolchain,
 		depTrackr:          depTrackr,
 		compiler:           compiler,
 		srcFilesOutOfDate:  make([]SourceFile, 0, numSourceFiles),
@@ -191,6 +201,8 @@ func (cc *CompileContext) updateDependencyTracker() {
 		depRelFilepath := filepath.Join(cc.buildPath, cc.compiler.DepFilepath(src.SrcRelPath))
 		if mainItem, depItems, err := cc.depTrackr.ParseDependencyFile(src.SrcAbsPath, objRelFilepath, depRelFilepath); err == nil {
 			cc.depTrackr.AddItem(mainItem, depItems)
+		} else {
+			corepkg.LogErrorf(err, "Failed to parse dependency file %q", depRelFilepath)
 		}
 	}
 }
@@ -238,15 +250,9 @@ func (p *Project) GetIncludesAndDefines(buildConfig denv.BuildConfig, buildTarge
 }
 
 func (p *Project) Build(buildConfig denv.BuildConfig, buildTarget denv.BuildTarget, buildPath string) (outOfDate int, err bool) {
-	config := p.GetConfig(buildConfig)
+	compilerContext := newCompileContext(buildPath, p, buildConfig, buildTarget)
 
-	includes, defines := p.GetIncludesAndDefines(buildConfig, buildTarget)
 	projectBuildPath := p.GetBuildPath(buildPath)
-
-	compiler := p.Toolchain.NewCompiler(buildConfig, buildTarget)
-	compiler.SetupArgs(defines, includes)
-	depTrackr := p.Toolchain.NewDependencyTracker(projectBuildPath)
-	compilerContext := newCompileContext(projectBuildPath, compiler, depTrackr, len(p.SourceFiles))
 
 	if len(p.DevProject.Copy2Output) > 0 {
 		fileCommander := p.Toolchain.NewFileCommander(buildConfig, buildTarget)
@@ -268,7 +274,7 @@ func (p *Project) Build(buildConfig denv.BuildConfig, buildTarget denv.BuildTarg
 
 	outOfDate = compilerContext.collectFilesToCompile(p.SourceFiles)
 	if outOfDate > 0 {
-		corepkg.LogInfof("Building project: %s, config: %s\n", p.DevProject.Name, config.BuildConfig.String())
+		corepkg.LogInfof("Building project: %s, config: %s\n", p.DevProject.Name, buildConfig.String())
 		compileOk := compilerContext.compile()
 		compilerContext.updateDependencyTracker()
 		if !compileOk {

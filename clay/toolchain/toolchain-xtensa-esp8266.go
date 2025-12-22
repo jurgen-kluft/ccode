@@ -67,7 +67,7 @@ func (cl *ToolchainArduinoEsp8266Compiler) DepFilepath(objRelFilepath string) st
 	return objRelFilepath + ".d"
 }
 
-func (cl *ToolchainArduinoEsp8266Compiler) SetupArgs(defines []string, includes []string) {
+func (cl *ToolchainArduinoEsp8266Compiler) SetupArgs(projectName string, buildPath string, defines []string, includes []string) {
 	for i, inc := range includes {
 		includes[i] = "-I" + inc
 	}
