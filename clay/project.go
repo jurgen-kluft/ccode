@@ -258,7 +258,7 @@ func (p *Project) Build(buildConfig denv.BuildConfig, buildTarget denv.BuildTarg
 		fileCommander := p.Toolchain.NewFileCommander(buildConfig, buildTarget)
 		fileCommander.Setup(projectBuildPath)
 		for srcpgp, dstsubdir := range p.DevProject.Copy2Output {
-			corepkg.LogInfof("Copying files from %q to %q\n", srcpgp.Path.String(), dstsubdir)
+			corepkg.LogInfof("Copying files from %q to %q", srcpgp.Path.String(), dstsubdir)
 			fileFilter := func(file string) bool {
 				if match, _ := filepath.Match(srcpgp.Glob, filepath.Base(file)); match {
 					return true
