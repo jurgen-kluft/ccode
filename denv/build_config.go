@@ -371,6 +371,36 @@ func BuildConfigFromString(configStr string) BuildConfig {
 }
 
 // -----------------------------------------------------------------------------------------------------
+// BuildConfig to Visual Studio string
+// -----------------------------------------------------------------------------------------------------
+
+func (t BuildConfig) VisualStudio() string {
+	config := ""
+
+	if t.IsRelease() {
+		config += "Release"
+	} else {
+		config += "Debug"
+	}
+
+	if t.IsDevelopment() {
+		config += "Dev"
+	} else if t.IsFinal() {
+		config += "Final"
+	} else {
+		config += "Dev"
+	}
+
+	if t.IsTest() {
+		config += "Test"
+	} else if t.IsProfile() {
+		config += "Profile"
+	}
+
+	return config
+}
+
+// -----------------------------------------------------------------------------------------------------
 // BuildConfig to Tundra string
 // -----------------------------------------------------------------------------------------------------
 

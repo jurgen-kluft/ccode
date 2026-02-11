@@ -18,35 +18,21 @@ func NewMsDevGenerator(ws *Workspace) *MsDevGenerator {
 	g := &MsDevGenerator{
 		Workspace: ws,
 	}
-	g.init(ws)
 	return g
 }
 
 func (g *MsDevGenerator) Generate(buildTarget denv.BuildTarget) {
 	g.BuildTarget = buildTarget
-
-	for _, p := range g.Workspace.ProjectList.Values {
-		g.genProject(p)
-		g.genProjectFilters(p)
-	}
-}
-
-func (g *MsDevGenerator) init(ws *Workspace) {
 	if g.BuildTarget.X64() {
 		g.VcxProjCpu = "x64"
 	} else {
 		g.VcxProjCpu = "Win32"
 	}
-
-	for _, p := range ws.ProjectList.Values {
+	for _, p := range g.Workspace.ProjectList.Values {
 		g.genProject(p)
 		g.genProjectFilters(p)
 	}
-
-	// g.genWorkspace(ws.MasterWorkspace)
-	// for _, ew := range ws.ExtraWorkspaces {
-	// 	g.genWorkspace(ew)
-	// }
+	g.genWorkspace(g.Workspace)
 }
 
 func (g *MsDevGenerator) PlatformToolset(proj *Project) string {
@@ -81,9 +67,9 @@ func (g *MsDevGenerator) genProject(proj *Project) {
 
 			for _, config := range proj.Resolved.Configs.Values {
 				tag := wr.TagScope("ProjectConfiguration")
-				wr.Attr("Include", config.String()+"|"+g.VcxProjCpu)
+				wr.Attr("Include", config.BuildConfig.VisualStudio()+"|"+g.VcxProjCpu)
 
-				wr.TagWithBody("Configuration", config.String())
+				wr.TagWithBody("Configuration", config.BuildConfig.VisualStudio())
 				wr.TagWithBody("Platform", g.VcxProjCpu)
 				tag.Close()
 			}
@@ -274,7 +260,7 @@ func (g *MsDevGenerator) genProjectPch(wr *corepkg.XmlWriter, proj *Project) {
 }
 
 func (g *MsDevGenerator) genProjectConfig(wr *corepkg.XmlWriter, proj *Project, config *Config) {
-	cond := "'$(Configuration)|$(Platform)'=='" + config.String() + "|" + g.VcxProjCpu + "'"
+	cond := "'$(Configuration)|$(Platform)'=='" + config.BuildConfig.VisualStudio() + "|" + g.VcxProjCpu + "'"
 	{
 		tag := wr.TagScope("PropertyGroup")
 		wr.Attr("Condition", cond)
@@ -284,7 +270,7 @@ func (g *MsDevGenerator) genProjectConfig(wr *corepkg.XmlWriter, proj *Project, 
 			outDir = filepath.Join(outDir, g.BuildTarget.Os().String())
 		}
 
-		intDir := filepath.Join(g.Workspace.GenerateAbsPath, "obj", proj.Name, config.String()+"_"+g.BuildTarget.Arch().String()+"_"+g.Workspace.Config.MsDev.PlatformToolset)
+		intDir := filepath.Join(g.Workspace.GenerateAbsPath, "obj", proj.Name, config.BuildConfig.VisualStudio()+"_"+g.BuildTarget.Arch().String()+"_"+g.Workspace.Config.MsDev.PlatformToolset)
 		targetName := corepkg.PathFilename(config.Resolved.OutputTarget.Path, false)
 		targetExt := corepkg.PathFileExtension(config.Resolved.OutputTarget.Path)
 
@@ -519,6 +505,14 @@ func (g *MsDevGenerator) genWorkspace(ws *Workspace) {
 
 		sb.WriteLines("", "# ----  (ProjectGroups) -> parent ----", "")
 		sb.WriteLine("Global")
+
+		// GlobalSection(SolutionConfigurationPlatforms) = preSolution
+		// 	DebugDev|x64 = DebugDev|x64
+		// 	DebugDevTest|x64 = DebugDevTest|x64
+		// 	ReleaseDev|x64 = ReleaseDev|x64
+		// 	ReleaseDevTest|x64 = ReleaseDevTest|x64
+		// EndGlobalSection
+
 		sb.WriteLine("\tGlobalSection(NestedProjects) = preSolution")
 
 		for _, c := range g.Workspace.ProjectGroups.Values {
