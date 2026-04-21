@@ -149,6 +149,9 @@ func Init() bool {
 	return base.Init()
 }
 
+// e.g. Generate(pkg, true, true, false, true)
+//
+//	do a dry run with verbose output and only fix include directives
 func Generate(pkg *denv.Package, dryrun bool, verbose bool, fixIncludeGuards bool, fixIncludeDirectives bool) {
 	var setting fixr.FixrSetting
 	if dryrun {

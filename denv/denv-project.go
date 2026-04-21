@@ -236,6 +236,12 @@ func (proj *DevProject) CollectProjectDependencies(deps *DevProjectList) {
 
 func (prj *DevProject) AddSourceFiles(dir string, extensions ...string) {
 	for _, ext := range extensions {
+		prj.SourceDirs = append(prj.SourceDirs, PinnedGlobPath{Path: PinnedPath{Root: prj.RootPath(), Base: prj.RepoName, Sub: dir}, Glob: "*" + ext})
+	}
+}
+
+func (prj *DevProject) AddSourceFilesRecursively(dir string, extensions ...string) {
+	for _, ext := range extensions {
 		prj.SourceDirs = append(prj.SourceDirs, PinnedGlobPath{Path: PinnedPath{Root: prj.RootPath(), Base: prj.RepoName, Sub: dir}, Glob: "**/*" + ext})
 	}
 }
@@ -249,24 +255,21 @@ func (prj *DevProject) AddSourceFilesFrom(root, base, sub string, extensions ...
 	}
 }
 
-func (prj *DevProject) AddDefaultInclude(dir string) {
+func (prj *DevProject) AddInclude(dir string) {
 	for _, cfg := range prj.Configs {
 		cfg.IncludeDirs = append(cfg.IncludeDirs, PinnedPath{Root: prj.RootPath(), Base: prj.RepoName, Sub: dir})
 	}
 }
 
-func (prj *DevProject) AddInclude(root string, base string, sub string, extensions ...string) {
-	// Environment variable resolve on root
-	root = prj.ResolveEnvironmentVariables(root)
-	for _, cfg := range prj.Configs {
-		cfg.IncludeDirs = append(cfg.IncludeDirs, PinnedPath{Root: root, Base: base, Sub: sub})
-	}
+func (prj *DevProject) AddDefaultInclude(dir string) {
+	prj.AddInclude(dir)
 }
 
 func AddDefaultIncludePaths(pkg *Package, prj *DevProject, dir string) {
-	for _, cfg := range prj.Configs {
-		cfg.IncludeDirs = append(cfg.IncludeDirs, PinnedPath{Root: pkg.Path(), Base: pkg.RepoName, Sub: "source/" + dir + "/include"})
-	}
+	prj.AddInclude("source/" + dir + "/include")
+	// for _, cfg := range prj.Configs {
+	// 	cfg.IncludeDirs = append(cfg.IncludeDirs, PinnedPath{Root: pkg.Path(), Base: pkg.RepoName, Sub: "source/" + dir + "/include"})
+	// }
 }
 
 func AddDefaultSourcePaths(pkg *Package, prj *DevProject, dir string, extensions ...string) {
