@@ -261,6 +261,17 @@ func (prj *DevProject) AddInclude(dir string) {
 	}
 }
 
+func (prj *DevProject) AddExternalInclude(root string, base string, dir string) {
+	// resolve the environment variable in the dir path
+	root = prj.ResolveEnvironmentVariables(root)
+	base = prj.ResolveEnvironmentVariables(base)
+	dir = prj.ResolveEnvironmentVariables(dir)
+
+	for _, cfg := range prj.Configs {
+		cfg.IncludeDirs = append(cfg.IncludeDirs, PinnedPath{Root: root, Base: base, Sub: dir})
+	}
+}
+
 func (prj *DevProject) AddDefaultInclude(dir string) {
 	prj.AddInclude(dir)
 }
