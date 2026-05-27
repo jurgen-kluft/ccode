@@ -194,6 +194,13 @@ func (cl *ToolchainArduinoEsp32Compilerv2) Compile(sourceAbsFilepaths []string, 
 		}
 		compilerPath = corepkg.StrTrimDelimiters(compilerPath, '"')
 
+		// Replace '-w' with a narrower warning suppression.
+		for j, arg := range compilerArgs {
+			if arg == "-w" {
+				compilerArgs[j] = "-Wno-deprecated-declarations"
+			}
+		}
+
 		// Remove empty entries from compilerArgs
 		compilerArgs = slices.DeleteFunc(compilerArgs, func(s string) bool { return strings.TrimSpace(s) == "" })
 
