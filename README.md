@@ -50,6 +50,7 @@ For Clay (on Mac):
 1. `go run cbase.go --dev=clay`
 2. cd into `target/clay`
 3. run `./clay build --build debug-dev-test`
+4. run `./build/darwin-arm64-debug-dev-test/unittest_cbase/unittest_cbase` to run the unittest
 
 These are the steps to make a new package, or take a peek at one of my libraries, 
 like `github.com/jurgen-kluft/cbase`:
