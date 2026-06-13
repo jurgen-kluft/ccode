@@ -278,9 +278,6 @@ func (prj *DevProject) AddDefaultInclude(dir string) {
 
 func AddDefaultIncludePaths(pkg *Package, prj *DevProject, dir string) {
 	prj.AddInclude("source/" + dir + "/include")
-	// for _, cfg := range prj.Configs {
-	// 	cfg.IncludeDirs = append(cfg.IncludeDirs, PinnedPath{Root: pkg.Path(), Base: pkg.RepoName, Sub: "source/" + dir + "/include"})
-	// }
 }
 
 func AddDefaultSourcePaths(pkg *Package, prj *DevProject, dir string, extensions ...string) {
@@ -313,23 +310,6 @@ func SetupCppHeaderProject(pkg *Package, name string) *DevProject {
 	return project
 }
 
-func SetupCppLibProject(pkg *Package, name string) *DevProject {
-	dir := "main"
-
-	// Windows, Mac and Linux, build for the Host platform
-	project := SetupDefaultCppLibProject(pkg, "library_"+name)
-	project.BuildTargets = BuildTargetsAll
-
-	// TODO we should create all possible configuration, not just debug/release
-	project.Configs = append(project.Configs, NewDevConfig(BuildTypeStaticLibrary, NewDebugConfig()))
-	project.Configs = append(project.Configs, NewDevConfig(BuildTypeStaticLibrary, NewReleaseConfig()))
-
-	AddDefaultIncludePaths(pkg, project, dir)
-	AddDefaultSourcePaths(pkg, project, dir, ".c", ".cpp")
-
-	return project
-}
-
 func SetupCppLibraryDefault(pkg *Package, dir string, name string) *DevProject {
 
 	project := SetupDefaultCppLibProject(pkg, "library_"+name)
@@ -345,6 +325,14 @@ func SetupCppLibraryDefault(pkg *Package, dir string, name string) *DevProject {
 	return project
 }
 
+func SetupCppLibrary(pkg *Package, dir string, name string) *DevProject {
+	return SetupCppLibraryDefault(pkg, dir, name)
+}
+
+func SetupCppLibProject(pkg *Package, name string) *DevProject {
+	return SetupCppLibraryDefault(pkg, "main", name)
+}
+
 func SetupCppLibraryCustom(pkg *Package, name string) *DevProject {
 
 	project := SetupDefaultCppLibProject(pkg, "library_"+name)
@@ -357,8 +345,7 @@ func SetupCppLibraryCustom(pkg *Package, name string) *DevProject {
 	return project
 }
 
-func SetupCppTestLibProject(pkg *Package, name string) *DevProject {
-	dir := "main"
+func SetupCppTestLibrary(pkg *Package, dir, name string) *DevProject {
 
 	// Windows, Mac and Linux, build for the Host platform
 	project := SetupDefaultCppLibProject(pkg, "unittest_library_"+name)
@@ -374,6 +361,10 @@ func SetupCppTestLibProject(pkg *Package, name string) *DevProject {
 	AddDefaultIncludePaths(pkg, project, dir)
 
 	return project
+}
+
+func SetupCppTestLibProject(pkg *Package, name string) *DevProject {
+	return SetupCppTestLibrary(pkg, "main", name)
 }
 
 func SetupCppLibProjectForDesktop(pkg *Package, name string) *DevProject {

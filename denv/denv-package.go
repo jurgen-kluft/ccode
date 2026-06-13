@@ -216,13 +216,11 @@ func (p *Package) AddLibrary(prj *DevProject) {
 
 // AddTestLib adds a project to this package under 'name.testlib'
 func (p *Package) AddTestLib(prj *DevProject) {
-	//p.TestLibs = append(p.TestLibs, prj)
 	p.TestLibs[prj.Name] = prj
 }
 
 // AddUnittest adds a project to this package under 'name.unittest'
 func (p *Package) AddUnittest(prj *DevProject) {
-	//p.Unittests = append(p.Unittests, prj)
 	p.Unittests[prj.Name] = prj
 }
 
