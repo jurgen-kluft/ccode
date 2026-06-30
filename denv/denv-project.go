@@ -123,6 +123,10 @@ func (prj *DevProject) ResolveEnvironmentVariables(str string) string {
 }
 
 func (prj *DevProject) AddDependency(dep *DevProject) {
+	if dep == nil {
+		panic("Cannot add nil dependency to project " + prj.Name)
+	}
+
 	if strings.HasPrefix(prj.Name, "unittest_") {
 		// The dependency project has to be a unittest library, if not panic
 		if dep != nil && strings.HasPrefix(dep.Name, "unittest_library_") {
