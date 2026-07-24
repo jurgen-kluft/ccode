@@ -109,6 +109,7 @@ func (p *Package) Libraries() []*DevProject {
 		}
 	}
 	iterateProjects(p.MainLibs, addProjectFunc)
+	iterateProjects(p.Library, addProjectFunc)
 	iterateProjects(p.TestLibs, addProjectFunc)
 	return list.Values
 }

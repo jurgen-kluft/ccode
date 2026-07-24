@@ -102,7 +102,17 @@ func IncludeFixer(pkg *denv.Package, cfg *FixrConfig) {
 	}
 
 	// Then we need the source and include directories of the main application(s) and main library
-	mainProjects := pkg.MainLibs
+	mainProjects := map[string]*denv.DevProject{}
+	for k, v := range pkg.MainLibs {
+		if _, exists := mainProjects[k]; !exists {
+			mainProjects[k] = v
+		}
+	}
+	for k, v := range pkg.Library {
+		if _, exists := mainProjects[k]; !exists {
+			mainProjects[k] = v
+		}
+	}
 	for k, v := range pkg.TestLibs {
 		if _, exists := mainProjects[k]; !exists {
 			mainProjects[k] = v

@@ -37,20 +37,21 @@ const (
 var (
 	dumpType int
 
-	space        = []byte(" ")
-	doubleSpace  = []byte("  ")
-	dot          = []byte(".")
-	newLine      = []byte("\n")
-	zeroHeader   = []byte("0000000: ")
-	unsignedChar = []byte("unsigned char ")
-	unsignedInt  = []byte("};\nunsigned int ")
-	lenEquals    = []byte("_len = ")
-	brackets     = []byte("[] = {")
-	asterisk     = []byte("*")
-	commaSpace   = []byte(", ")
-	comma        = []byte(",")
-	semiColonNl  = []byte(";\n")
-	bar          = []byte("|")
+	space         = []byte(" ")
+	doubleSpace   = []byte("  ")
+	dot           = []byte(".")
+	newLine       = []byte("\n")
+	zeroHeader    = []byte("0000000: ")
+	cformatHeader = []byte("#include \"ccore/c_target.h\"\n\n")
+	unsignedChar  = []byte("CC_ALIGN(4) unsigned char ")
+	unsignedInt   = []byte("};\nunsigned int ")
+	lenEquals     = []byte("_len = ")
+	brackets      = []byte("[] = {")
+	asterisk      = []byte("*")
+	commaSpace    = []byte(", ")
+	comma         = []byte(",")
+	semiColonNl   = []byte(";\n")
+	bar           = []byte("|")
 )
 
 // convert a byte into its binary representation
@@ -227,6 +228,10 @@ func parseSpecifier(b string) float64 {
 
 // parses *seek input
 func parseSeek(s string) int64 {
+	if ret, err := strconv.ParseFloat(s, 64); err == nil {
+		return int64(ret)
+	}
+
 	var (
 		sl    = len(s)
 		split int
@@ -279,8 +284,8 @@ func xxd(r io.Reader, w io.Writer, fname string) error {
 		caps       = ldigits
 		doCHeader  = true
 		doCEnd     bool
-		// enough room for "unsigned char NAME_FORMAT[] = {"
-		varDeclChar = make([]byte, 14+len(fname)+6)
+		// enough room for "CC_ALIGN(4) unsigned char NAME_FORMAT[] = {"
+		varDeclChar = make([]byte, len(unsignedChar)+len(fname)+6)
 		// enough room for "unsigned int NAME_FORMAT = "
 		varDeclInt = make([]byte, 16+len(fname)+7)
 		nulLine    int64
@@ -290,21 +295,21 @@ func xxd(r io.Reader, w io.Writer, fname string) error {
 	// Generate the first and last line in the -i output:
 	// e.g. unsigned char foo_txt[] = { and unsigned int foo_txt_len =
 	if dumpType == dumpCformat {
-		// copy over "unnsigned char " and "unsigned int"
-		_ = copy(varDeclChar[0:14], unsignedChar[:])
+		// copy over the aligned byte-array declaration and "unsigned int"
+		_ = copy(varDeclChar[0:len(unsignedChar)], unsignedChar[:])
 		_ = copy(varDeclInt[0:16], unsignedInt[:])
 
 		for i := 0; i < len(fname); i++ {
 			if fname[i] != '.' {
-				varDeclChar[14+i] = fname[i]
+				varDeclChar[len(unsignedChar)+i] = fname[i]
 				varDeclInt[16+i] = fname[i]
 			} else {
-				varDeclChar[14+i] = '_'
+				varDeclChar[len(unsignedChar)+i] = '_'
 				varDeclInt[16+i] = '_'
 			}
 		}
 		// copy over "[] = {" and "_len = "
-		_ = copy(varDeclChar[14+len(fname):], brackets[:])
+		_ = copy(varDeclChar[len(unsignedChar)+len(fname):], brackets[:])
 		_ = copy(varDeclInt[16+len(fname):], lenEquals[:])
 	}
 
@@ -329,7 +334,7 @@ func xxd(r io.Reader, w io.Writer, fname string) error {
 		octs = 8
 		groupSize = 1
 	case dumpPostscript:
-		octs = 0
+		octs = 2
 	case dumpCformat:
 		octs = 4
 	default:
@@ -426,12 +431,14 @@ func xxd(r io.Reader, w io.Writer, fname string) error {
 			w.Write(zeroHeader[6:])
 			lineOffset++
 		} else if doCHeader {
+			w.Write(cformatHeader)
 			w.Write(varDeclChar)
 			w.Write(newLine)
 			doCHeader = false
 		}
 
-		if dumpType == dumpBinary {
+		switch dumpType {
+		case dumpBinary:
 			// Binary values
 			for i, k := 0, octs; i < n; i, k = i+1, k+octs {
 				binaryEncode(char, line[i:i+1])
@@ -443,7 +450,7 @@ func xxd(r io.Reader, w io.Writer, fname string) error {
 					w.Write(space)
 				}
 			}
-		} else if dumpType == dumpCformat {
+		case dumpCformat:
 			// C values
 			if !doCEnd {
 				w.Write(doubleSpace)
@@ -460,7 +467,7 @@ func xxd(r io.Reader, w io.Writer, fname string) error {
 					w.Write(comma)
 				}
 			}
-		} else {
+		default:
 			// Hex values -- default xxd FILE output
 			for i, k := 0, octs; i < n; i, k = i+1, k+octs {
 				hexEncode(char, line[i:i+1], caps)
@@ -544,6 +551,9 @@ func WriteEmbedded() {
 			}
 			if !d.IsDir() {
 				subdir, filename := filepath.Split(path)
+				if filename == ".DS_Store" {
+					return nil
+				}
 				subdir = subdir[len(embedded_dir)+1:]
 
 				arrayName := fileNameWithoutExtension(filename)
