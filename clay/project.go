@@ -124,10 +124,6 @@ func newCompileContext(buildPath string, project *Project, buildConfig denv.Buil
 	includes, defines := project.GetIncludesAndDefines(buildConfig, buildTarget)
 
 	projectBuildPath := project.GetBuildPath(buildPath)
-	if err := project.Toolchain.Prepare(buildConfig, projectBuildPath); err != nil {
-		corepkg.LogErrorf(err, "Failed to prepare toolchain for project %q", project.DevProject.Name)
-		return nil
-	}
 	compiler := project.Toolchain.NewCompiler(buildConfig, buildTarget)
 	compiler.SetupArgs(project.DevProject.Name, projectBuildPath, defines, includes)
 	depTrackr := project.Toolchain.NewDependencyTracker(projectBuildPath)

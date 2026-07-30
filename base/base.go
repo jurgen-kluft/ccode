@@ -88,18 +88,22 @@ func Generate(pkg *denv.Package) {
 }
 
 func GenerateGitIgnore() {
+	//fmt.Println("Generating .gitignore...")
 	embedded.WriteGitIgnore(false)
 }
 
 func GenerateTestMainCpp(ccore, cbase bool) {
+	//fmt.Println("Generating test_main.cpp...")
 	embedded.WriteTestMainCpp(ccore, cbase, true)
 }
 
 func GenerateEmbedded() {
+	//fmt.Println("Generating embedded files...")
 	embedded.WriteEmbedded()
 }
 
 func GenerateClangFormat() {
+	//fmt.Println("Generating .clang-format...")
 	embedded.WriteClangFormat(false)
 }
 
