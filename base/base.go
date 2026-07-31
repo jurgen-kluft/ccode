@@ -2,6 +2,7 @@ package ccode
 
 import (
 	"flag"
+	"path/filepath"
 	"runtime"
 	"strings"
 
@@ -9,6 +10,7 @@ import (
 	ide_generators "github.com/jurgen-kluft/ccode/generators"
 	corepkg "github.com/jurgen-kluft/gcore"
 	"github.com/jurgen-kluft/gide/denv"
+	"github.com/jurgen-kluft/gide/msdev"
 )
 
 // Init will initialize ccode before anything else is run
@@ -34,6 +36,7 @@ func Init() bool {
 	flag.StringVar(&carch, "arch", "", "the architecture to target (x64, arm64, esp32, esp8266)")
 	flag.BoolVar(&cverbose, "verbose", false, "verbose output")
 	flag.Parse()
+	requestedArch := carch
 
 	// If architecture is targetting esp32
 	if strings.HasPrefix(carch, "esp32") || strings.HasPrefix(carch, "esp8266") {
@@ -58,9 +61,17 @@ func Init() bool {
 		}
 	}
 
+	dev := ide_generators.NewDevEnum(cdev)
+	if dev.IsVisualStudio() {
+		cos = "windows"
+		if requestedArch == "" {
+			carch = "x64"
+		}
+	}
+
 	corepkg.LogInfo("ccode, a tool to generate C/C++ workspace and project files")
 
-	if ide_generators.NewDevEnum(cdev) == ide_generators.DevInvalid {
+	if dev == ide_generators.DevInvalid {
 		corepkg.LogInfo()
 		corepkg.LogInfo("Error, wrong parameter for '-dev', '", cdev, "' is not recognized")
 		corepkg.LogInfo()
@@ -83,8 +94,24 @@ func Init() bool {
 // Generate is the main function that requires 'arguments' to then generate
 // workspace and project files for a specified IDE.
 func Generate(pkg *denv.Package) {
-	generator := ide_generators.NewGenerator(cdev, denv.GetBuildTarget(), cverbose)
+	if err := generateForDev(pkg, cdev, denv.GetBuildTarget(), cverbose); err != nil {
+		corepkg.LogError(err, "Failed to generate project files")
+	}
+}
+
+func generateForDev(pkg *denv.Package, dev string, buildTarget denv.BuildTarget, verbose bool) error {
+	devType := ide_generators.NewDevEnum(dev)
+	if devType == ide_generators.DevVs2022 || devType == ide_generators.DevVisualStudio {
+		outputDir := filepath.Join(pkg.Path(), pkg.RepoName, "target", "vs2022")
+		return msdev.GeneratePackage(pkg, msdev.WorkspaceOptions{
+			OutputDir:   outputDir,
+			BuildTarget: buildTarget,
+		})
+	}
+
+	generator := ide_generators.NewGenerator(dev, buildTarget, verbose)
 	generator.Generate(pkg)
+	return nil
 }
 
 func GenerateGitIgnore() {
