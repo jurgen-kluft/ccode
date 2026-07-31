@@ -7,8 +7,8 @@ import (
 	"strings"
 
 	"github.com/jurgen-kluft/ccode/clay/toolchain/deptrackr"
-	corepkg "github.com/jurgen-kluft/ccode/core"
-	"github.com/jurgen-kluft/ccode/denv"
+	corepkg "github.com/jurgen-kluft/gcore"
+	"github.com/jurgen-kluft/gide/denv"
 )
 
 type DarwinClangv2 struct {

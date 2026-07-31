@@ -5,7 +5,7 @@ import (
 	"path/filepath"
 	"strings"
 
-	"github.com/jurgen-kluft/ccode/denv"
+	"github.com/jurgen-kluft/gide/denv"
 )
 
 // -----------------------------------------------------------------------------------------------------

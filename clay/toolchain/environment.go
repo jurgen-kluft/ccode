@@ -2,7 +2,7 @@ package toolchain
 
 import (
 	"github.com/jurgen-kluft/ccode/clay/toolchain/deptrackr"
-	"github.com/jurgen-kluft/ccode/denv"
+	"github.com/jurgen-kluft/gide/denv"
 )
 
 type Environment interface {

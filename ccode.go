@@ -2,7 +2,7 @@ package ccode
 
 import (
 	base "github.com/jurgen-kluft/ccode/base"
-	"github.com/jurgen-kluft/ccode/denv"
+	"github.com/jurgen-kluft/gide/denv"
 )
 
 // Init will initialize ccode before anything else is run

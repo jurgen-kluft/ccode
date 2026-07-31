@@ -3,7 +3,7 @@ package denv
 import (
 	"path/filepath"
 
-	corepkg "github.com/jurgen-kluft/ccode/core"
+	corepkg "github.com/jurgen-kluft/gcore"
 )
 
 type PinnedFilepath struct {

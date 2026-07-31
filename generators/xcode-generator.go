@@ -5,7 +5,7 @@ import (
 	"path/filepath"
 	"strings"
 
-	corepkg "github.com/jurgen-kluft/ccode/core"
+	corepkg "github.com/jurgen-kluft/gcore"
 )
 
 type XcodeGenerator struct {

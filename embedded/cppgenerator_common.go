@@ -6,7 +6,7 @@ import (
 	"os"
 	"strings"
 
-	corepkg "github.com/jurgen-kluft/ccode/core"
+	corepkg "github.com/jurgen-kluft/gcore"
 )
 
 // This is the public function that will generate the C++ code

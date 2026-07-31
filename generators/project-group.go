@@ -1,7 +1,7 @@
 package ide_generators
 
 import (
-	corepkg "github.com/jurgen-kluft/ccode/core"
+	corepkg "github.com/jurgen-kluft/gcore"
 )
 
 type ProjectGroup struct {

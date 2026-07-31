@@ -7,7 +7,7 @@ import (
 	"strconv"
 	"strings"
 
-	corepkg "github.com/jurgen-kluft/ccode/core"
+	corepkg "github.com/jurgen-kluft/gcore"
 )
 
 // How does this work?

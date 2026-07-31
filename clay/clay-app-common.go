@@ -10,8 +10,8 @@ import (
 	"strings"
 
 	"github.com/jurgen-kluft/ccode/clay/toolchain"
-	corepkg "github.com/jurgen-kluft/ccode/core"
-	"github.com/jurgen-kluft/ccode/denv"
+	corepkg "github.com/jurgen-kluft/gcore"
+	"github.com/jurgen-kluft/gide/denv"
 )
 
 const (
@@ -109,6 +109,8 @@ func ClayAppMain(pkg *denv.Package) {
 	// Parse command line arguments
 	var err error
 	switch command {
+	case "generate":
+		err = app.Generate(os.Args[1:])
 	case "build":
 		ParseProjectNameAndConfig(app)
 		if !app.Build() {
@@ -154,6 +156,7 @@ func ClayAppMain(pkg *denv.Package) {
 func UsageApp() {
 	corepkg.LogInfo("Usage: clay [command] [options]")
 	corepkg.LogInfo("Commands:")
+	corepkg.LogInfo("  generate --dev=vs2022 [--arch <arch>] [--build <config>] [-p <startup project>]")
 	corepkg.LogInfo("  build-info -p <name> --build <config> --arch <arch>")
 	corepkg.LogInfo("  build -p <name> --arch <arch> --build <config> --board <board>")
 	corepkg.LogInfo("  clean -p <name> --arch <arch> --build <config> --board <board>")
@@ -172,6 +175,8 @@ func UsageApp() {
 	corepkg.LogInfo("  --version         Show version information")
 
 	corepkg.LogInfo("Examples:")
+	corepkg.LogInfo("  clay generate --dev=vs2022")
+	corepkg.LogInfo("  clay generate --dev=vs2022 --arch arm64 --build debug")
 	corepkg.LogInfo("  clay build-info (generates buildinfo.h and buildinfo.cpp)")
 	corepkg.LogInfo("  clay build-info --build debug --arch esp32 --board esp32s3")
 	corepkg.LogInfo("  clay build")

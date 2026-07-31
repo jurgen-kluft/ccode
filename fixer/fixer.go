@@ -6,8 +6,8 @@ import (
 	"strings"
 
 	base "github.com/jurgen-kluft/ccode/base"
-	"github.com/jurgen-kluft/ccode/denv"
 	fixr "github.com/jurgen-kluft/ccode/include-fixer"
+	"github.com/jurgen-kluft/gide/denv"
 )
 
 var DefaultHeaderFileExtensions = map[string]bool{".h": true, ".hpp": true, ".inl": true, ".inc": true}

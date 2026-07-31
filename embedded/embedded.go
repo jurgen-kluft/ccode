@@ -9,7 +9,7 @@ import (
 	"path/filepath"
 	"strconv"
 
-	corepkg "github.com/jurgen-kluft/ccode/core"
+	corepkg "github.com/jurgen-kluft/gcore"
 )
 
 // constants used

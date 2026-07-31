@@ -11,8 +11,8 @@ import (
 	"strings"
 	"time"
 
-	corepkg "github.com/jurgen-kluft/ccode/core"
 	cespressif "github.com/jurgen-kluft/ccode/espressif"
+	corepkg "github.com/jurgen-kluft/gcore"
 )
 
 // Clay App

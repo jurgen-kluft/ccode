@@ -3,7 +3,7 @@ package ide_generators
 import (
 	"fmt"
 
-	corepkg "github.com/jurgen-kluft/ccode/core"
+	corepkg "github.com/jurgen-kluft/gcore"
 )
 
 type LevelType int8

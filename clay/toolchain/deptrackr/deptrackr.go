@@ -11,7 +11,7 @@ import (
 	"slices"
 	"unsafe"
 
-	corepkg "github.com/jurgen-kluft/ccode/core"
+	corepkg "github.com/jurgen-kluft/gcore"
 )
 
 const (

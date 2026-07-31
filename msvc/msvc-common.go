@@ -4,7 +4,7 @@ import (
 	"fmt"
 	"strings"
 
-	corepkg "github.com/jurgen-kluft/ccode/core"
+	corepkg "github.com/jurgen-kluft/gcore"
 )
 
 // Visual Studio tooling layout

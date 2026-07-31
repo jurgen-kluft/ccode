@@ -5,10 +5,10 @@ import (
 	"runtime"
 	"strings"
 
-	corepkg "github.com/jurgen-kluft/ccode/core"
-	"github.com/jurgen-kluft/ccode/denv"
 	"github.com/jurgen-kluft/ccode/embedded"
 	ide_generators "github.com/jurgen-kluft/ccode/generators"
+	corepkg "github.com/jurgen-kluft/gcore"
+	"github.com/jurgen-kluft/gide/denv"
 )
 
 // Init will initialize ccode before anything else is run

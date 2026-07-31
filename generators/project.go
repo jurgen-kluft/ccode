@@ -4,8 +4,8 @@ import (
 	"fmt"
 	"path/filepath"
 
-	corepkg "github.com/jurgen-kluft/ccode/core"
-	"github.com/jurgen-kluft/ccode/denv"
+	corepkg "github.com/jurgen-kluft/gcore"
+	"github.com/jurgen-kluft/gide/denv"
 )
 
 // -----------------------------------------------------------------------------------------------------
@@ -217,11 +217,6 @@ func (p *Project) Resolve(devEnum DevEnum) error {
 	}
 
 	resolved.GeneratedFilesDir = filepath.Join(p.Workspace.GenerateAbsPath, "_generated_", p.Name)
-
-	// if p.Settings.PchHeader != "" {
-	// 	resolved.PchHeader = NewFileEntry()
-	// 	resolved.PchHeader.Init(p.Settings.PchHeader, false)
-	// }
 
 	for _, g := range p.SrcFileGroups {
 		for _, f := range g.Values {

@@ -1,7 +1,7 @@
 package clay
 
 import (
-	"github.com/jurgen-kluft/ccode/denv"
+	"github.com/jurgen-kluft/gide/denv"
 )
 
 type Config struct {

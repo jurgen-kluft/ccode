@@ -3,8 +3,8 @@ package ide_generators
 import (
 	"path/filepath"
 
-	corepkg "github.com/jurgen-kluft/ccode/core"
-	"github.com/jurgen-kluft/ccode/denv"
+	corepkg "github.com/jurgen-kluft/gcore"
+	"github.com/jurgen-kluft/gide/denv"
 )
 
 // -----------------------------------------------------------------------------------------------------
@@ -79,7 +79,7 @@ type Config struct {
 	BuildConfig       denv.BuildConfig     // The build configuration of the project (Debug, Release, Final)
 	GenerateAbsPath   string               // The path where generated files are stored
 	ToolSet           string               // String identifying the toolset to use, e.g. "v142", "v143", "clang12", "gcc10", "gcc11", "gcc12", "gcc13"
-	RuntimeLibrary    RuntimeLibraryType   // The runtime library to use
+	RuntimeLibrary    RuntimeLibraryType   // The runtime library type
 	Dev               DevEnum              // The dev environment this config is part of
 	Project           *Project             // The project this config is part of
 	CppDefines        *corepkg.KeyValueSet // e.g. "DEBUG" "PROFILE"

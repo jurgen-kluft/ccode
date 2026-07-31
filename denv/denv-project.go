@@ -6,7 +6,7 @@ import (
 	"path/filepath"
 	"strings"
 
-	corepkg "github.com/jurgen-kluft/ccode/core"
+	corepkg "github.com/jurgen-kluft/gcore"
 )
 
 // DevProject is a structure that holds all the information that defines a project in an IDE

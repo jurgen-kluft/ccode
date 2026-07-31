@@ -6,7 +6,7 @@ import (
 	"sort"
 	"strings"
 
-	corepkg "github.com/jurgen-kluft/ccode/core"
+	corepkg "github.com/jurgen-kluft/gcore"
 )
 
 func (t *Toolchain) loadJson(inputFilename string) error {

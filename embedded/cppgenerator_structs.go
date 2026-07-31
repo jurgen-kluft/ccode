@@ -3,7 +3,7 @@ package embedded
 import (
 	"strconv"
 
-	corepkg "github.com/jurgen-kluft/ccode/core"
+	corepkg "github.com/jurgen-kluft/gcore"
 )
 
 type featureFlags struct {
