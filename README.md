@@ -1,7 +1,9 @@
 # CCODE - Package Manager + Project Generator
 
 This is a project generator that uses Go and its package management for C++ packages. 
-The structure of packages are defined in Go and files can be generated for `Visual Studio` (.sln, .vcxproj and .filters), `Xcode`, `Tundra` and also a custom C++ buildsystem called `Clay`. 
+The structure of packages are defined in Go and files can be generated for `Visual Studio` (.sln, .vcxproj and .filters), `Xcode`, and also a custom C++ buildsystem called `Clay`. 
+
+Note: CCode with Clay also supports Arduino, you can read more about it in the [Arduino section](ARDUINO.md)
 
 If you like my work and want to support me. Please consider to buy me a [coffee!](https://www.buymeacoffee.com/Jur93n)
 <img src="bmacoffee.png" width="100">
@@ -22,32 +24,27 @@ This allows me to write packages (C++ libraries) and use them in another C++ pac
 
 And buildsystems:
 
-* [Tundra](https://github.com/deplinenoise/tundra) (supported, Mac, Linux and Windows)
-* [Clay](https://github.com/jurgen-kluft/ccode/tree/master/clay) (supported on Mac, (Windows is coming soon))
+* [Clay](https://github.com/jurgen-kluft/ccode/tree/master/clay) (supported on Mac, Windows and Linux)
 
-Make as a buildsystem is deprecated, but still supported:
+Note: Linux is untested, since I don't have direct access to a machine with Linux.
 
-* [Make](https://www.gnu.org/software/make/manual/make.html) (supported on Mac and Linux)
+If you have a repository/package that uses ccode, you can do the following to generate clay build files (default on Mac, Windows and Linux), this example uses the `cbase` repository:
 
-Currently the design is quite set and the goal is to keep API changes to a minimum.
+1. `go run cbase.go`
+2. cd into `target/clay`
+3. `./clay build` (will build debug, dev, test configuration)
+4. `./clay clean` (will clean all artifacts)
 
-If you have a repository/package that uses ccode, you can do the following to generate the tundra build files (default on Mac and Linux), this example uses the `cbase` repository:
+For Clay (on Windows):
 
-1. `go run cbase.go --dev=tundra`
-2. cd into `target/tundra`
-3. `tundra debug` (will build all configuration, e.g. debug and release)
-4. `tundra clean` (will clean all artifacts)
-5. `tundra debugtest` (will build only `debugtest` configuration)
-
-For Visual Studio (on Windows, Visual Studio is the default generator):
-
-1. `go run cbase.go --dev=vs2022`
-2. cd into `target/msdev`
-3. You now should have Visual Studio solution and project files
+1. `go run cbase.go`
+2. cd into `target/clay`
+3. run `./clay build --build debug-dev-test`
+4. run `./build/windows-x64-debug-dev-test/unittest_cbase/unittest_cbase.exe` to run the unittest
 
 For Clay (on Mac):
 
-1. `go run cbase.go --dev=clay`
+1. `go run cbase.go`
 2. cd into `target/clay`
 3. run `./clay build --build debug-dev-test`
 4. run `./build/darwin-arm64-debug-dev-test/unittest_cbase/unittest_cbase` to run the unittest
@@ -104,8 +101,8 @@ package mylibrary
 
 import (
 	cbase "github.com/jurgen-kluft/cbase/package"
-	denv "github.com/jurgen-kluft/ccode/denv"
 	cunittest "github.com/jurgen-kluft/cunittest/package"
+	denv "github.com/jurgen-kluft/gide/denv"
 )
 
 const (

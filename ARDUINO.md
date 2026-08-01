@@ -1,7 +1,8 @@
 # CCODE - Arduino
 
-Clay as a buildsystem supports Arduino, ESP8266 and ESP32 boards. You can create a package that holds source code that can be 
-compiled, linked and uploaded to an Arduino board.
+Clay as a buildsystem supports Arduino, ESP8266 and ESP32 boards. 
+
+You can create a package that holds source code that can be compiled, linked and uploaded to an Arduino board.
 
 - rcore; This is the core library that supports Arduino development and should always be a dependency.
 - rwifi; This is an extension library that supports WiFi, Tcp and Udp on Arduino boards.
@@ -10,9 +11,7 @@ compiled, linked and uploaded to an Arduino board.
 
 Furthermore, clay provides some further helpful functionality:
 
-- ./clay identify; This command will identify a USB connected Arduino board and list information like its MAC address, the
-  information is written to a file called 'board_info.json' in the target/clay folder, this file is then used when calling 
-  the flash command.
+- ./clay identify; This command will identify a USB connected Arduino board and list information like its MAC address, the information is written to a file called 'board_info.json' in the target/clay folder, this file is then used when calling the flash command.
 - ./clay flash; This command will build and upload an application to the connected Arduino board.
 - ./clay list-boards; This command will list Arduino boards closely matching a given name
 
