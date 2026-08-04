@@ -265,17 +265,3 @@ func (g *ClayGenerator) generateProjectFile(out *corepkg.LineWriter) {
 	out.WriteLine("}")
 	out.WriteLine()
 }
-
-// func (g *ClayGenerator) registerEsp32CoreLibrary() {
-
-// 		// System Library is at ESP_ROOT+'cores/esp32', collect
-// 		// all the C and Cpp source files in this directory and create a Library.
-// 		sdkRoot := tc.Vars.GetOne("esp.sdk.path")
-// 		coreLibPath := filepath.Join(sdkRoot, "cores/esp32/")
-
-// 		coreCppLib := NewLibraryProject("core-cpp-"+targetMcu, p.Config)
-
-// 		// Get all the .cpp files from the core library path
-// 		coreCppLib.AddSourceFilesFrom(coreLibPath, OptionAddCppFiles|OptionAddCFiles|OptionAddRecursively)
-
-// }
