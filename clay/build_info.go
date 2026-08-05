@@ -4,7 +4,7 @@ import (
 	"fmt"
 	"path/filepath"
 
-	corepkg "github.com/jurgen-kluft/gcore"
+	corepkg "github.com/jurgen-kluft/go-core"
 )
 
 // TODO should the cpp code be emitted in a C++ namespace ?

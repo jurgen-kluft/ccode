@@ -5,8 +5,8 @@ import (
 	"runtime"
 	"strings"
 
-	corepkg "github.com/jurgen-kluft/gcore"
-	"github.com/jurgen-kluft/gide/denv"
+	corepkg "github.com/jurgen-kluft/go-core"
+	"github.com/jurgen-kluft/go-ide/denv"
 )
 
 type TundraGenerator struct {

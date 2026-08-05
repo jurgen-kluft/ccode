@@ -8,7 +8,7 @@ import (
 	"runtime"
 	"strings"
 
-	corepkg "github.com/jurgen-kluft/gcore"
+	corepkg "github.com/jurgen-kluft/go-core"
 )
 
 type ToolFunction struct {

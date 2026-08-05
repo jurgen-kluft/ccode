@@ -12,7 +12,7 @@ import (
 	"time"
 
 	cespressif "github.com/jurgen-kluft/ccode/espressif"
-	corepkg "github.com/jurgen-kluft/gcore"
+	corepkg "github.com/jurgen-kluft/go-core"
 )
 
 // Clay App

@@ -1,7 +1,7 @@
 package ide_generators
 
 import (
-	corepkg "github.com/jurgen-kluft/gcore"
+	corepkg "github.com/jurgen-kluft/go-core"
 )
 
 type ProjectGroup struct {

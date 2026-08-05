@@ -4,7 +4,7 @@ import (
 	"path/filepath"
 	"sort"
 
-	corepkg "github.com/jurgen-kluft/gcore"
+	corepkg "github.com/jurgen-kluft/go-core"
 )
 
 type VirtualDirectory struct {

@@ -8,9 +8,9 @@ import (
 
 	"github.com/jurgen-kluft/ccode/embedded"
 	ide_generators "github.com/jurgen-kluft/ccode/generators"
-	corepkg "github.com/jurgen-kluft/gcore"
-	"github.com/jurgen-kluft/gide/denv"
-	"github.com/jurgen-kluft/gide/msdev"
+	corepkg "github.com/jurgen-kluft/go-core"
+	"github.com/jurgen-kluft/go-ide/denv"
+	"github.com/jurgen-kluft/go-ide/msdev"
 )
 
 // Init will initialize ccode before anything else is run

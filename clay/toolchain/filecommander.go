@@ -5,7 +5,7 @@ import (
 	"os"
 	"path/filepath"
 
-	corepkg "github.com/jurgen-kluft/gcore"
+	corepkg "github.com/jurgen-kluft/go-core"
 )
 
 // FileCommander is an interface that defines the methods for copying files

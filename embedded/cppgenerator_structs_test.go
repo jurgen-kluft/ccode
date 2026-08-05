@@ -4,7 +4,7 @@ import (
 	"strings"
 	"testing"
 
-	corepkg "github.com/jurgen-kluft/gcore"
+	corepkg "github.com/jurgen-kluft/go-core"
 )
 
 /*
