@@ -5,7 +5,7 @@ import (
 	"path/filepath"
 	"strings"
 
-	"github.com/jurgen-kluft/gide/denv"
+	"github.com/jurgen-kluft/go-ide/denv"
 )
 
 // -----------------------------------------------------------------------------------------------------

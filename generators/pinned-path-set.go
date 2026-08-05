@@ -3,7 +3,7 @@ package ide_generators
 import (
 	"strings"
 
-	"github.com/jurgen-kluft/gide/denv"
+	"github.com/jurgen-kluft/go-ide/denv"
 )
 
 // ----------------------------------------------------------------------------------------------------------

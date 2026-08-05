@@ -7,7 +7,7 @@ import (
 
 	base "github.com/jurgen-kluft/ccode/base"
 	fixr "github.com/jurgen-kluft/ccode/include-fixer"
-	"github.com/jurgen-kluft/gide/denv"
+	"github.com/jurgen-kluft/go-ide/denv"
 )
 
 var DefaultHeaderFileExtensions = map[string]bool{".h": true, ".hpp": true, ".inl": true, ".inc": true}
