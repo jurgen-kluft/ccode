@@ -210,8 +210,8 @@ func (cc *CompileContext) updateDependencyTracker() {
 func (p *Project) GetIncludesAndDefines(buildConfig denv.BuildConfig, buildTarget denv.BuildTarget) ([]string, []string) {
 	// Collect all include directories from project and dependencies
 	// Collect all defines from project and dependencies
-	includes := corepkg.NewValueSet2(8)
-	defines := corepkg.NewValueSet2(8)
+	includes := corepkg.NewValueSetPreSize(8)
+	defines := corepkg.NewValueSetPreSize(8)
 
 	projects := make([]*Project, 0, len(p.Dependencies)+1)
 	projects = append(projects, p)

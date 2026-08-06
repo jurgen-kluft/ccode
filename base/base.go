@@ -11,18 +11,19 @@ import (
 	corepkg "github.com/jurgen-kluft/go-core"
 	"github.com/jurgen-kluft/go-ide/denv"
 	"github.com/jurgen-kluft/go-ide/msdev"
+	"github.com/jurgen-kluft/go-ide/xcode"
 )
 
 // Init will initialize ccode before anything else is run
 
 var (
-	// tundra, vs2022, make, cmake, xcode, clay
-	cdev = "tundra"
+	// vs2022, xcode, clay
+	cdev = "clay"
 
 	// win32, win64, linux32, linux64, macos64
 	cos = runtime.GOOS
 
-	// x64, arm64, amd64, 386, esp32 / esp32c3 / esp32s3
+	// x64, arm64, amd64, 386, esp32, esp8266
 	carch = runtime.GOARCH
 
 	// verbose
@@ -77,8 +78,6 @@ func Init() bool {
 		corepkg.LogInfo()
 		corepkg.LogInfo("Examples:")
 		corepkg.LogInfo("    -> Usage: go run cbase.go -dev=vs2022/vs2019/vs2015")
-		corepkg.LogInfo("    -> Usage: go run cbase.go -dev=tundra")
-		corepkg.LogInfo("    -> Usage: go run cbase.go -dev=make")
 		corepkg.LogInfo("    -> Usage: go run cbase.go -dev=xcode")
 		corepkg.LogInfo("    -> Usage: go run cbase.go -dev=clay")
 		corepkg.LogInfo("    -> Usage: go run cbase.go -arch=esp32 / esp32s3 / esp32c3 / esp8266")
@@ -101,9 +100,14 @@ func Generate(pkg *denv.Package) {
 
 func generateForDev(pkg *denv.Package, dev string, buildTarget denv.BuildTarget, verbose bool) error {
 	devType := ide_generators.NewDevEnum(dev)
-	if devType == ide_generators.DevVs2022 || devType == ide_generators.DevVisualStudio {
-		outputDir := filepath.Join(pkg.Path(), pkg.RepoName, "target", "vs2022")
+	outputDir := filepath.Join(pkg.Path(), pkg.RepoName, "target", devType.ToString())
+	if devType.IsVisualStudio() {
 		return msdev.GeneratePackage(pkg, msdev.WorkspaceOptions{
+			OutputDir:   outputDir,
+			BuildTarget: buildTarget,
+		})
+	} else if devType.IsXCode() {
+		return xcode.GeneratePackage(pkg, xcode.WorkspaceOptions{
 			OutputDir:   outputDir,
 			BuildTarget: buildTarget,
 		})
