@@ -81,7 +81,7 @@ func (g *Generator) GenerateWorkspace(_pkg *denv.Package, _dev DevEnum, _buildTa
 	}
 	if len(wsc.StartupProject) == 0 {
 		for _, test := range mainTests {
-			if test.BuildType.IsUnittest() {
+			if test.BuildType.IsApplication() {
 				wsc.StartupProject = test.Name
 				break
 			}
@@ -148,14 +148,14 @@ func (g *Generator) getOrCreateProject(devProj *denv.DevProject, ws *Workspace) 
 	projectSettings := NewProjectSettings()
 	{
 		if !devProj.BuildType.IsExecutable() {
-			if devProj.BuildType.IsUnittest() {
+			if devProj.IsUnittest {
 				projectSettings.Group = "unittest/cpp-library"
 			} else {
 				projectSettings.Group = "main/cpp-library"
 			}
 			//projectSettings.Type = ProjectTypeCppLib
 		} else {
-			if devProj.BuildType.IsUnittest() {
+			if devProj.IsUnittest {
 				projectSettings.Group = "unittest/cpp-exe"
 			} else if devProj.BuildType.IsCli() {
 				projectSettings.Group = "cli/cpp-exe"
